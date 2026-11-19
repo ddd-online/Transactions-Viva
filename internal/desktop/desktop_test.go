@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/vivaui/viva/app"
+	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 )
 
@@ -34,6 +35,23 @@ func click(t *testing.T, driver *app.Driver, name string) {
 		}
 	}
 	t.Fatalf("no control named %q on screen", name)
+}
+
+// rightClickText presses the secondary button on the first painted text that
+// contains want, which opens the context menu of the row it belongs to.
+func rightClickText(t *testing.T, driver *app.Driver, want string) {
+	t.Helper()
+	for _, label := range driver.Snapshot().Labels {
+		if !strings.Contains(label.Value, want) {
+			continue
+		}
+		b := label.Bounds
+		if err := driver.ClickButton(b.X+b.Width/2, b.Y+b.Height/2, gfx.PointerButtonSecondary); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	t.Fatalf("no text %q on screen", want)
 }
 
 func shows(driver *app.Driver, want string) bool {
@@ -117,6 +135,28 @@ func TestRecordsPage(t *testing.T) {
 			t.Fatal("the composer did not add its row")
 		}
 	})
+}
+
+func TestRecordsRowContextMenu(t *testing.T) {
+	driver, _ := open(t)
+	rightClickText(t, driver, "早餐 · 豆浆油条")
+	for _, item := range []string{"编辑记录", "同步到其他账本", "删除记录"} {
+		if !hasControl(driver, item) {
+			t.Fatalf("the row menu has no %q", item)
+		}
+	}
+
+	click(t, driver, "删除记录")
+	if !shows(driver, "删除这条消费记录？") {
+		t.Fatal("删除记录 did not open the confirmation")
+	}
+	click(t, driver, "删除")
+	if shows(driver, "早餐 · 豆浆油条") {
+		t.Fatal("删除 left the row on the page")
+	}
+	if !shows(driver, "记录已删除") {
+		t.Fatal("删除 did not report the result")
+	}
 }
 
 func TestRecordsPagination(t *testing.T) {

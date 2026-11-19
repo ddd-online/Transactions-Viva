@@ -1,6 +1,7 @@
 package accounting
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -38,6 +39,50 @@ func TestRecordsRefilter(t *testing.T) {
 	m.refilter()
 	if m.shown[0].id != "c" {
 		t.Fatalf("amount sort first row = %q, want c", m.shown[0].id)
+	}
+}
+
+func TestRecordActions(t *testing.T) {
+	m := newRecordsModel()
+	m.rangeMode = rangeAll
+	m.refilter()
+	if len(m.shown) < 2 {
+		t.Fatalf("shown = %d, want at least 2", len(m.shown))
+	}
+	id := m.shown[1].id
+
+	m.openEdit(id)
+	if m.draft.editingID != id {
+		t.Fatalf("editing ID = %q, want %q", m.draft.editingID, id)
+	}
+	if m.draft.amount == "" || m.draft.category == "" {
+		t.Fatalf("the edit dialog was not filled: %+v", m.draft)
+	}
+	m.draft.amount = "99.99"
+	m.draft.description = "改过的描述"
+	m.saveDraft()
+	if rec := m.find(id); rec == nil || rec.description != "改过的描述" || rec.amount != 9999 {
+		t.Fatalf("edit saved %+v", rec)
+	}
+	if m.notice != "记录已更新" {
+		t.Fatalf("edit notice = %q", m.notice)
+	}
+
+	m.syncTo(id, "家庭账本")
+	if !strings.Contains(m.notice, "家庭账本") {
+		t.Fatalf("sync notice = %q", m.notice)
+	}
+
+	before := len(m.records)
+	m.deleteRecord(id)
+	if m.find(id) != nil {
+		t.Fatal("delete left the record")
+	}
+	if len(m.records) != before-1 {
+		t.Fatalf("records = %d, want %d", len(m.records), before-1)
+	}
+	if m.notice != "记录已删除" {
+		t.Fatalf("delete notice = %q", m.notice)
 	}
 }
 

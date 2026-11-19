@@ -16,8 +16,8 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   开发时 `viva dev .`，一次性运行 `go run .`。
 - 外壳（标题栏 / 左侧导航 / 底栏 / 设置页）、页面骨架、领域类型与文档已就位。
 - 记账-记录页已迁移前端：工具栏、时间范围、排序、表格、分页、收支统计与
-  「记一笔」对话框都在；行数据来自 `internal/pages/accounting/records_mock.go`，新增只写
-  内存，不落库。
+  「记一笔」对话框都在；记录行右键打开 ContextMenu（编辑 / 同步到其他账本 / 删除）。行数据
+  来自 `internal/pages/accounting/records_mock.go`，新增只写内存，不落库。
 - 原来的 `viva init` 示例（计数页）已移除；根目录 `main.go` 现在是真实入口。
 - SQLite 存储、配置持久化尚未接入；其余页面的真实内容也还没迁移（见下面的迁移顺序）。
 

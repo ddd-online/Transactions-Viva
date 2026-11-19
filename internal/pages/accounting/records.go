@@ -101,6 +101,10 @@ type recordsModel struct {
 	sortMenu  bool
 	draft     recordDraft
 
+	notice        string
+	deletingID    string
+	deleteConfirm bool
+
 	// The pagination component paints its own hits, so the page names its
 	// items in the page tree once per paint: previous, seven page slots, next.
 	pageIDs   [9]gfx.ID
@@ -143,6 +147,7 @@ func (m *recordsModel) View(c ui.C) {
 		m.footer(c)
 	})
 	m.composerView(c)
+	m.deleteView(c)
 }
 
 // toolbar is the page's actions, laid out like the reference hosts page: the
@@ -259,6 +264,25 @@ func (m *recordsModel) row(r ui.ListRow) {
 		})
 	ui.Text(r.C, rec.signedAmount()).Width(recordAmountWidth).TextEnd().
 		FontSize(13).Weight(gfx.WeightMedium).Color(color)
+
+	// The old operation column's three actions live on the row's context menu.
+	id := rec.id
+	ui.ContextMenu(r.C, r.Element, func(menu *ui.MenuItems) {
+		if menu.Item("编辑记录").Clicked() {
+			m.openEdit(id)
+		}
+		menu.Sub("同步到其他账本", func(sub *ui.MenuItems) {
+			for _, target := range mockSyncTargets {
+				if sub.Item(target).Clicked() {
+					m.syncTo(id, target)
+				}
+			}
+		})
+		menu.Separator()
+		if menu.Item("删除记录").Destructive().Clicked() {
+			m.deletingID, m.deleteConfirm = id, true
+		}
+	})
 }
 
 // empty is what the content area says when the time range matches nothing.
@@ -280,6 +304,10 @@ func (m *recordsModel) footer(c ui.C) {
 		m.stat(c, "收入", m.stats[0], kindColor(*theme, kindIncome))
 		m.stat(c, "支出", m.stats[1], kindColor(*theme, kindExpense))
 		m.stat(c, "转账", m.stats[2], kindColor(*theme, kindTransfer))
+		ui.Spacer(c)
+		if m.notice != "" {
+			ui.Text(c, m.notice).FontSize(11).Muted().MaxWidth(560).Ellipsis()
+		}
 	})
 }
 
@@ -445,6 +473,7 @@ func (m *recordsModel) choosePage(id gfx.ID) {
 func (m *recordsModel) refilter() {
 	start := m.rangeStart(time.Now())
 
+	m.notice = ""
 	m.shown = m.shown[:0]
 	m.stats = [3]int64{}
 	for _, rec := range m.records {

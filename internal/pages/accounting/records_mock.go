@@ -2,6 +2,11 @@ package accounting
 
 import "time"
 
+// mockSyncTargets are the other ledgers a row can be copied to. The real app
+// reads them from the workspace; the mock has no ledger switcher, so syncing
+// reports the chosen target instead of adding a second copy to this table.
+var mockSyncTargets = [...]string{"家庭账本", "旅行账本"}
+
 // mockRecords is the 记录 page's seed while the SQLite store is not wired yet.
 // The dates are relative to today so the ranges and the statistics have
 // something to show on any day; they are never persisted. Replace this file

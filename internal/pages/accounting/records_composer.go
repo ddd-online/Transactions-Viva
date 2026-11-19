@@ -18,6 +18,7 @@ var kindLabels = []string{"支出", "收入", "转账"}
 // too: saving appends to the page's in-memory rows, not to SQLite.
 type recordDraft struct {
 	open        bool
+	editingID   string
 	kind        string
 	amount      string
 	category    string
@@ -36,11 +37,35 @@ func (m *recordsModel) openComposer() {
 	}
 }
 
-// composerView declares the 记一笔 dialog while it is open.
+// openEdit fills the same dialog from an existing row.
+func (m *recordsModel) openEdit(id string) {
+	rec := m.find(id)
+	if rec == nil {
+		return
+	}
+	m.draft = recordDraft{
+		open:        true,
+		editingID:   rec.id,
+		kind:        kindLabel(rec.kind),
+		amount:      domain.CentsToYuan(rec.amount),
+		category:    rec.category,
+		description: rec.description,
+		tags:        strings.Join(rec.tags, ", "),
+		date:        rec.at.Format("2006-01-02"),
+	}
+}
+
+// composerView declares the create/edit dialog while it is open.
 func (m *recordsModel) composerView(c ui.C) {
-	ui.ModalWith(c, &m.draft.open, "记一笔", ui.ModalSpec{
+	title := "记一笔"
+	description := "当前为 mock 数据：只在本次运行内新增，不写入数据库。"
+	if m.draft.editingID != "" {
+		title = "编辑记录"
+		description = "当前为 mock 数据：修改只在本次运行内生效，不写入数据库。"
+	}
+	ui.ModalWith(c, &m.draft.open, title, ui.ModalSpec{
 		Width:       460,
-		Description: "当前为 mock 数据：只在本次运行内新增，不写入数据库。",
+		Description: description,
 	}, func() {
 		ui.Column(c).FillWidth().Gap(8).Children(func() {
 			ui.Text(c, "类型").FontSize(12).Muted()
@@ -87,18 +112,94 @@ func (m *recordsModel) saveDraft() {
 		return
 	}
 	at := time.Date(day.Year(), day.Month(), day.Day(), 12, 0, 0, 0, time.Local)
+	kind := kindValue(m.draft.kind)
+	tags := splitTags(m.draft.tags)
+	description := strings.TrimSpace(m.draft.description)
 
-	m.records = append(m.records, record{
-		id:          "mock-new-" + strconv.FormatInt(time.Now().UnixNano(), 10),
-		kind:        kindValue(m.draft.kind),
-		category:    category,
-		description: strings.TrimSpace(m.draft.description),
-		tags:        splitTags(m.draft.tags),
-		amount:      amount,
-		at:          at,
-	})
+	notice := "已记一笔"
+	if m.draft.editingID != "" {
+		if rec := m.find(m.draft.editingID); rec != nil {
+			// Keep the clock time when the date did not change, so editing a
+			// field does not reshuffle rows within the same day.
+			if rec.at.Format("2006-01-02") == day.Format("2006-01-02") {
+				at = time.Date(day.Year(), day.Month(), day.Day(), rec.at.Hour(), rec.at.Minute(), 0, 0, time.Local)
+			}
+			rec.kind, rec.category, rec.description = kind, category, description
+			rec.tags, rec.amount, rec.at = tags, amount, at
+			notice = "记录已更新"
+		}
+	} else {
+		m.records = append(m.records, record{
+			id:          "mock-new-" + strconv.FormatInt(time.Now().UnixNano(), 10),
+			kind:        kind,
+			category:    category,
+			description: description,
+			tags:        tags,
+			amount:      amount,
+			at:          at,
+		})
+	}
 	m.refilter()
+	m.notice = notice
 	m.draft.open = false
+}
+
+// find returns the mock row with id, or nil.
+func (m *recordsModel) find(id string) *record {
+	for index := range m.records {
+		if m.records[index].id == id {
+			return &m.records[index]
+		}
+	}
+	return nil
+}
+
+// deleteView declares the delete confirmation while one is pending.
+func (m *recordsModel) deleteView(c ui.C) {
+	if m.deletingID == "" {
+		return
+	}
+	ui.ModalWith(c, &m.deleteConfirm, "删除这条消费记录？", ui.ModalSpec{
+		Width:       380,
+		Description: "删除后不会保留；当前为 mock 数据。",
+	}, func() {
+		ui.Text(c, "这条记录会从当前列表移除。").FontSize(13).Muted()
+	}, func() {
+		if ui.Button(c, "取消").Outline().Clicked() {
+			m.deleteConfirm = false
+		}
+		if ui.Button(c, "删除").Destructive().Clicked() {
+			m.deleteRecord(m.deletingID)
+		}
+	})
+}
+
+// deleteRecord removes one mock row and reports it in the footer notice.
+func (m *recordsModel) deleteRecord(id string) {
+	for index := range m.records {
+		if m.records[index].id != id {
+			continue
+		}
+		m.records = append(m.records[:index], m.records[index+1:]...)
+		break
+	}
+	m.deletingID, m.deleteConfirm = "", false
+	m.refilter()
+	m.notice = "记录已删除"
+}
+
+// syncTo reports copying the row to another ledger. The mock has one table and
+// no ledger switcher, so the target is reported instead of duplicated visibly.
+func (m *recordsModel) syncTo(id, target string) {
+	rec := m.find(id)
+	if rec == nil {
+		return
+	}
+	description := rec.description
+	if description == "" {
+		description = rec.category
+	}
+	m.notice = "「" + description + "」已同步到「" + target + "」（mock）"
 }
 
 // splitTags reads the comma-separated tag field, accepting the Chinese comma
