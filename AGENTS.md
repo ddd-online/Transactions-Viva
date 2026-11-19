@@ -38,7 +38,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 ```text
 main.go                  真实入口：只做 log.Fatal(desktop.Run())
 internal/desktop/        应用外壳：窗口、自绘标题栏、Sidebar 导航、底栏、设置页、主题
-internal/desktop/icons/  由 SVG 编译出的矢量图标（viva icons）
+internal/icons/          由 SVG 编译出的矢量图标（viva icons）
 internal/pages/          各功能页：accounting、stock、todo、events、diary、settings
 internal/components/     跨页复用的 UI 片段（占位空态等）
 internal/domain/         纯领域规则与数据形状：金额、记录、账本、事件、日记、待办、股票
@@ -56,7 +56,7 @@ main → desktop → pages → components
 config 不依赖 UI；domain 不依赖 UI、数据库或操作系统。
 ```
 
-规则：页面只 import `ui`（以及本工程的 `components` / `domain`）；页面不持有 `ui.C`、
+规则：页面只 import `ui`（以及本工程的 `components` / `domain` / `icons`）；页面不持有 `ui.C`、
 `ui.Box` 或 `gfx.Canvas`；后台工作走 `ui.Effect` 或 `Invalidator`，不从页面函数里起
 goroutine；坐标与像素只交给布局，不手算 `gfx.Rect`。
 

@@ -2,7 +2,7 @@ package desktop
 
 import (
 	"github.com/vivaui/viva/gfx"
-	"transactions/internal/desktop/icons"
+	"transactions/internal/icons"
 )
 
 // Section is one entry of the left navigation rail. The order here is also the

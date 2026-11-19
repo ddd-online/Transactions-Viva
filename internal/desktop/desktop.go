@@ -9,7 +9,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
-	"transactions/internal/desktop/icons"
+	"transactions/internal/icons"
 	"transactions/internal/pages/accounting"
 	"transactions/internal/pages/diary"
 	"transactions/internal/pages/events"

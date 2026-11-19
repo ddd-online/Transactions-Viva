@@ -77,6 +77,20 @@ var Moon = gfx.Icon{
 	},
 }
 
+// plus is a compiled vector icon.
+var Plus = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(5.0, 12.0),
+		gfx.LineTo(19.0, 12.0),
+		gfx.MoveTo(12.0, 5.0),
+		gfx.LineTo(12.0, 19.0),
+	},
+}
+
 // settings is a compiled vector icon.
 var Settings = gfx.Icon{
 	ViewBox: 24.0,

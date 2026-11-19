@@ -18,6 +18,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/domain"
+	"transactions/internal/icons"
 )
 
 const (
@@ -175,7 +176,7 @@ func (m *recordsModel) toolbar(c ui.C) {
 		})
 
 		ui.Spacer(c)
-		if ui.Button(c, "记一笔").Clicked() {
+		if ui.Button(c, "记一笔").Icon(icons.Plus).Clicked() {
 			m.openComposer()
 		}
 	})
