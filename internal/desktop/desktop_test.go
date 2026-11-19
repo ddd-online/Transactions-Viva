@@ -123,6 +123,7 @@ func TestRecordsPage(t *testing.T) {
 	t.Run("saves a mock row", func(t *testing.T) {
 		driver, _ := open(t)
 		click(t, driver, "记一笔")
+		click(t, driver, "金额")
 		if err := driver.Type("88.50"); err != nil {
 			t.Fatal(err)
 		}

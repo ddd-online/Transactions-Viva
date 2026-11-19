@@ -10,15 +10,19 @@
 - 入口是根目录 `main.go`，已可运行窗口外壳（自绘标题栏、Viva Sidebar 导航、底栏、设置页、
   浅色 / 深色主题）。
 - 记账-记录页有工具栏、时间范围、排序、表格、分页和收支统计；「记一笔」打开
-  一个可用的 mock 对话框。记录行右键打开 ContextMenu：编辑、同步到其他账本、删除。分页栏
-  组合 Viva 分页与每页 15 / 30 / 50 的 Select。数据来自
-  `internal/pages/accounting/records_mock.go`，只在内存里。
+  新增记录弹窗，右键「编辑记录」复用同一弹窗（模板 / 日期 / 类型 / 分类 / 标签 / 标记 /
+  关联事件日期 / 描述 / 金额）。记录行右键还提供同步到其他账本、删除。分页栏
+  组合 Viva 分页与每页 15 / 30 / 50 的 Select。行数据、模板与新增 / 编辑都只在内存里。
 - 其余功能页仍是 Sidebar 导航 + 占位空态；子功能作为 Sidebar 二级项（点击一级项展开、
   其他收起）。
 - `internal/domain` 已放入核心数据形状与金额换算；SQLite 存储、配置持久化还没开始。
 - `viva init` 的计数示例已移除。
 
 ![外壳：记账页（浅色）](docs/scaffold-light.png)
+
+![新增记录弹窗](docs/record-composer.png)
+
+![编辑记录弹窗](docs/record-composer-edit.png)
 
 ## 开发
 

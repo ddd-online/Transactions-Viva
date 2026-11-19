@@ -98,6 +98,7 @@ type recordsModel struct {
 	rangeMenu bool
 	sortMenu  bool
 	draft     recordDraft
+	templates []recordTemplate
 
 	notice        string
 	deletingID    string
@@ -109,6 +110,7 @@ type recordsModel struct {
 func newRecordsModel() *recordsModel {
 	m := &recordsModel{
 		records:   mockRecords(),
+		templates: mockTemplates(),
 		rangeMode: rangeToday,
 		sortField: sortDate,
 		sortDesc:  true,

@@ -83,6 +83,50 @@ func TestRecordActions(t *testing.T) {
 	}
 }
 
+func TestComposerTemplateAndMarks(t *testing.T) {
+	m := newRecordsModel()
+	m.openComposer()
+	m.draft.templateID = "tpl-lunch"
+	m.applyTemplate()
+	if m.draft.kind != "支出" || m.draft.category != "餐饮美食" ||
+		m.draft.description != "午餐" || m.draft.tags != "日常" {
+		t.Fatalf("template did not fill the draft: %+v", m.draft)
+	}
+
+	m.openEdit("mock-4")
+	if m.draft.mark != "离群值" {
+		t.Fatalf("edit mark = %q, want 离群值", m.draft.mark)
+	}
+	if rec := m.find("mock-2"); rec != nil {
+		m.openEdit("mock-2")
+		if m.draft.eventDate != rec.keyEventDate {
+			t.Fatalf("edit event date = %q, want %q", m.draft.eventDate, rec.keyEventDate)
+		}
+	}
+
+	before := len(m.templates)
+	m.openComposer()
+	m.draft.category = "测试"
+	m.saveTemplate()
+	if len(m.templates) != before+1 {
+		t.Fatalf("templates = %d, want %d", len(m.templates), before+1)
+	}
+	if m.draft.templateID == "" || m.draft.templateMsg != "模板已保存" {
+		t.Fatalf("saving a template left %+v", m.draft)
+	}
+
+	m.openComposer()
+	m.draft.amount = "1.00"
+	m.draft.category = "测试"
+	m.draft.mark = "离群值"
+	m.draft.eventDate = time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+	m.saveDraft()
+	last := m.records[len(m.records)-1]
+	if !last.outlier || last.keyEventDate != m.draft.eventDate {
+		t.Fatalf("saved marks = outlier %v, event %q", last.outlier, last.keyEventDate)
+	}
+}
+
 func TestTypeColorsMatchTheOldProject(t *testing.T) {
 	light, dark := gfx.LightTheme(), gfx.DarkTheme()
 	cases := []struct {

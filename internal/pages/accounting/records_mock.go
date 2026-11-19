@@ -7,6 +7,27 @@ import "time"
 // reports the chosen target instead of adding a second copy to this table.
 var mockSyncTargets = [...]string{"家庭账本", "旅行账本"}
 
+// recordTemplate is one entry of the composer's 模板 Select. The real app reads
+// them from the workspace; these are mock rows for the form.
+type recordTemplate struct {
+	id          string
+	name        string
+	kind        string
+	category    string
+	description string
+	tags        []string
+}
+
+// mockTemplates returns the templates the composer starts with. Saving a new
+// template appends to the page's copy for the rest of the run.
+func mockTemplates() []recordTemplate {
+	return []recordTemplate{
+		{id: "tpl-lunch", name: "午餐 · 餐饮美食", kind: kindExpense, category: "餐饮美食", description: "午餐", tags: []string{"日常"}},
+		{id: "tpl-commute", name: "地铁通勤 · 交通出行", kind: kindExpense, category: "交通出行", description: "地铁通勤", tags: []string{"通勤"}},
+		{id: "tpl-salary", name: "工资到账 · 工资奖金", kind: kindIncome, category: "工资奖金", description: "工资到账", tags: []string{"月薪"}},
+	}
+}
+
 // mockRecords is the 记录 page's seed while the SQLite store is not wired yet.
 // The dates are relative to today so the ranges and the statistics have
 // something to show on any day; they are never persisted. Replace this file

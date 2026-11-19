@@ -11,6 +11,31 @@ package icons
 
 import "github.com/vivaui/viva/gfx"
 
+// calendar is a compiled vector icon.
+var Calendar = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(8.0, 2.0),
+		gfx.LineTo(8.0, 6.0),
+		gfx.MoveTo(16.0, 2.0),
+		gfx.LineTo(16.0, 6.0),
+		gfx.MoveTo(19.0, 4.0),
+		gfx.CubicTo(20.1046, 4.0, 21.0, 4.89543, 21.0, 6.0),
+		gfx.LineTo(21.0, 20.0),
+		gfx.CubicTo(21.0, 21.1046, 20.1046, 22.0, 19.0, 22.0),
+		gfx.LineTo(5.0, 22.0),
+		gfx.CubicTo(3.89543, 22.0, 3.0, 21.1046, 3.0, 20.0),
+		gfx.LineTo(3.0, 6.0),
+		gfx.CubicTo(3.0, 4.89543, 3.89543, 4.0, 5.0, 4.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(3.0, 10.0),
+		gfx.LineTo(21.0, 10.0),
+	},
+}
+
 // diary is a compiled vector icon.
 var Diary = gfx.Icon{
 	ViewBox: 24.0,
