@@ -326,13 +326,15 @@ func (m *recordsModel) multiSelect(c ui.C) {
 	m.tags.trigger = ui.ID(c)
 	m.tags.dismiss = ui.ID(c)
 	m.tags.scope = ui.ID(c)
+	// The dialog has its own compositing layer; 20 keeps both the field and its
+	// popup above it (6 painted them under the dialog, so the field vanished).
 	ui.Slot(c).FillWidth().Height(c.Theme().Metrics.ControlHeight).Draw(func(d *ui.DrawContext) {
 		viva.PaintMultiSelect(d.Canvas, *d.Theme, d.Rect, &m.tags.state, viva.MultiSelectOptions{
 			InputID: m.tags.input, TriggerID: m.tags.trigger, DismissID: m.tags.dismiss, Scope: m.tags.scope,
 			OptionIDs: m.tags.options, RemoveIDs: m.tags.removes,
 			Label: "标签", Placeholder: "选择一个或多个标签",
 			EmptyLabel: "没有匹配项", CreatePrefix: "创建：",
-			Viewport: m.bounds, Layer: 6, MaxRows: 7,
+			Viewport: m.bounds, Layer: 20, MaxRows: 7,
 		})
 		changed := false
 		switch {
