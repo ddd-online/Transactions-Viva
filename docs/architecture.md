@@ -58,6 +58,10 @@ main → desktop → pages → components
 - 外壳的中栏固定为「左侧 Sidebar + 右侧内容」：Sidebar 使用 Viva 的 `components.Sidebar`
   （204px，与 motty 的 `navigationWidth` 对齐；图标 + 文字，`应用设置` 固定在底部；选中状态由
   `desktop.Model.section` 持有）。页面只负责右侧内容，不再自己画导航。
+- 右侧内容是 motty 式的工作区卡片：`RadiusSurface` 圆角、1px 边框、`theme.Background`
+  底色，浮在 `theme.Muted` 的窗口壳上（标题栏、底栏、导航同壳）。卡片顶部贴标题栏、
+  左侧贴导航，右侧与底栏上方各留 7px；Sidebar 自带的右分隔线用其自身底色覆盖，由卡片的
+  圆角边框充当边界。
 - 设置是一个普通分区页，不是弹窗：左栏是分区列表，右栏是分区标题 + 分组卡片；卡片里的
   「设置行」是标题 / 说明在左、控件在右的 64px 行。尺寸与分组方式对齐 motty 的设置页
   （208px 分区列、760px 阅读列、32px 页边距），进入设置时左侧主导航保持可见，选中状态由

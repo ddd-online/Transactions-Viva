@@ -20,6 +20,10 @@ func (m *Model) sidebar(c ui.C) {
 // component documentation asks.
 func (m *Model) drawSidebar(d *ui.DrawContext) {
 	theme := *d.Theme
+	// The workspace card's rounded border is the boundary between the rail and
+	// the content; a second line on the rail would double it. Paint the rail's
+	// edge in its own surface color so only the card's border shows.
+	theme.Border = theme.CardElevated
 	nav := components.BeginSidebarWithOptions(d.Canvas, theme, d.Rect, "", components.SidebarOptions{
 		Side:        components.SidebarLeft,
 		Variant:     components.SidebarStandard,

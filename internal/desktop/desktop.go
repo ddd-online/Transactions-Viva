@@ -93,12 +93,11 @@ func Run() error {
 // newConfig is the one place the native window is described. Tests build the
 // same window without opening one.
 func newConfig(m *Model) app.Config {
-	// The window's edge is the chrome around the content: the title bar and
-	// footer above and below, the navigation rail at the left and the content at
-	// the right. Windows 11 composites its border around a custom-titlebar
-	// window against the desktop, so the border has to name the surface it meets
-	// or the desktop shows through as a white seam.
-	edge := m.theme.CardElevated
+	// The window's edge is the shell around the workspace card: the title bar,
+	// the footer and the navigation rail. Windows 11 composites its border around
+	// a custom-titlebar window against the desktop, so the border has to name the
+	// surface it meets or the desktop shows through as a white seam.
+	edge := m.theme.Muted
 	return app.Config{
 		Title:  "Transactions",
 		Width:  1500,
@@ -120,10 +119,10 @@ func newConfig(m *Model) app.Config {
 }
 
 // windowBorderColor is the color of the system-drawn border around the window:
-// the chrome surface the window's own edge is painted with, so the border does
+// the shell surface the window's own edge is painted with, so the border does
 // not read as a white ring (ClearColor's default) in either appearance.
 func (m *Model) windowBorderColor() app.Color {
-	return windowColor(m.theme.CardElevated)
+	return windowColor(m.theme.Muted)
 }
 
 // windowColor converts a theme color to the window config's color type.
@@ -151,11 +150,17 @@ func (m *Model) windowControls() app.WindowControlsStyle {
 	}
 }
 
+// contentCardMargin is the room the workspace card keeps from the window's
+// right and bottom edges, after the reference application: the card sits on the
+// shell surface instead of filling the window.
+const contentCardMargin = float32(7)
+
 // page declares the whole window: title bar, navigation, content and footer.
+// The window's own surface is the shell the card floats on.
 func (m *Model) page(c ui.C) {
 	leading, trailing := app.TitlebarInsets()
 	theme := c.Theme()
-	ui.Column(c).Fill().Background(theme.Background).Children(func() {
+	ui.Column(c).Fill().Background(theme.Muted).Children(func() {
 		m.titlebar(c, leading, trailing)
 		ui.Row(c).Grow(1).FillWidth().Children(func() {
 			m.sidebar(c)
@@ -187,24 +192,33 @@ func (m *Model) titlebar(c ui.C, leading, trailing float32) {
 	})
 }
 
-// content is the room the active section fills.
+// content is the active section, in the rounded workspace card the reference
+// application floats on its shell: flush under the title bar and against the
+// navigation rail, with room on the right and above the footer.
 func (m *Model) content(c ui.C) {
-	ui.Column(c).Grow(1).FillHeight().Background(c.Theme().Background).Children(func() {
-		switch m.section {
-		case SectionAccounting:
-			m.accounting.View(c)
-		case SectionStock:
-			m.stock.View(c)
-		case SectionTodo:
-			m.todo.View(c)
-		case SectionEvents:
-			m.events.View(c)
-		case SectionDiary:
-			m.diary.View(c)
-		case SectionSettings:
-			m.settings.View(c)
-		}
-	})
+	theme := c.Theme()
+	ui.Column(c).Grow(1).
+		MarginSides(0, contentCardMargin, contentCardMargin, 0).
+		Radius(theme.Metrics.RadiusSurface).
+		Border(1, theme.Border).
+		Background(theme.Background).
+		Clip().
+		Children(func() {
+			switch m.section {
+			case SectionAccounting:
+				m.accounting.View(c)
+			case SectionStock:
+				m.stock.View(c)
+			case SectionTodo:
+				m.todo.View(c)
+			case SectionEvents:
+				m.events.View(c)
+			case SectionDiary:
+				m.diary.View(c)
+			case SectionSettings:
+				m.settings.View(c)
+			}
+		})
 }
 
 // footer is the 36px band that runs under the whole window.
