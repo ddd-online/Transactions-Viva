@@ -20,6 +20,20 @@ var kindLabels = []string{"收入", "支出", "转账"}
 // an empty value shows the Select's placeholder.
 var markLabels = []string{"无标记", "离群值"}
 
+// recordFields are the FormField scratch values of the composer, one for each
+// field; ui.FormField keeps its layout here between paints.
+type recordFields struct {
+	template    ui.FormFieldState
+	date        ui.FormFieldState
+	kind        ui.FormFieldState
+	category    ui.FormFieldState
+	tags        ui.FormFieldState
+	mark        ui.FormFieldState
+	eventDate   ui.FormFieldState
+	description ui.FormFieldState
+	amount      ui.FormFieldState
+}
+
 // recordDraft is the 新增记录 / 编辑记录 dialog's copy of the fields it edits.
 // It is mock too: saving writes to the page's in-memory rows, not to SQLite.
 type recordDraft struct {
@@ -86,8 +100,7 @@ func (m *recordsModel) composerView(c ui.C) {
 		Width: 640,
 	}, func() {
 		ui.Column(c).FillWidth().Gap(14).Children(func() {
-			ui.Column(c).Gap(6).Children(func() {
-				ui.Text(c, "模板").FontSize(12).Muted()
+			m.wideFormField(c, &m.fields.template, "模板", func() {
 				ui.Row(c).Gap(8).Children(func() {
 					if ui.Select(c, &m.draft.templateID, m.templateIDs(), m.templateName).
 						Placeholder("选择模板").Grow(1).Changed() {
@@ -97,19 +110,19 @@ func (m *recordsModel) composerView(c ui.C) {
 						m.saveTemplate()
 					}
 				})
-				if m.draft.templateMsg != "" {
-					ui.Text(c, m.draft.templateMsg).FontSize(11).Color(c.Theme().Success)
-				}
 			})
+			if m.draft.templateMsg != "" {
+				ui.Text(c, m.draft.templateMsg).FontSize(11).Color(c.Theme().Success)
+			}
 
 			ui.Row(c).Gap(12).Children(func() {
-				m.field(c, "日期", func() {
+				m.formField(c, &m.fields.date, "日期", func() {
 					if ui.TextField(c, &m.draft.date, "日期", "YYYY-MM-DD").
 						Action(icons.Calendar, "打开日期选择").ActionClicked() {
 						m.openDatePicker()
 					}
 				})
-				m.field(c, "类型", func() {
+				m.formField(c, &m.fields.kind, "类型", func() {
 					ui.Choice(c, &m.draft.kind, kindLabels, nil).Grow(1)
 				})
 			})
@@ -119,10 +132,10 @@ func (m *recordsModel) composerView(c ui.C) {
 			}
 
 			ui.Row(c).Gap(12).Children(func() {
-				m.field(c, "分类", func() {
+				m.formField(c, &m.fields.category, "分类", func() {
 					ui.TextField(c, &m.draft.category, "分类", "选择或输入分类")
 				})
-				m.field(c, "标签", func() {
+				m.formField(c, &m.fields.tags, "标签", func() {
 					m.tagsField(c)
 				})
 			})
@@ -132,10 +145,10 @@ func (m *recordsModel) composerView(c ui.C) {
 			}
 
 			ui.Row(c).Gap(12).Children(func() {
-				m.field(c, "标记", func() {
+				m.formField(c, &m.fields.mark, "标记", func() {
 					ui.Select(c, &m.draft.mark, markLabels, nil).Placeholder("选择标记")
 				})
-				m.field(c, "关联事件日期", func() {
+				m.formField(c, &m.fields.eventDate, "关联事件日期", func() {
 					if ui.TextField(c, &m.draft.eventDate, "关联事件日期", "请选择日期").
 						Action(icons.Calendar, "打开事件日期选择").ActionClicked() {
 						m.openEventPicker()
@@ -147,10 +160,10 @@ func (m *recordsModel) composerView(c ui.C) {
 				m.calendar(c, &m.draft.eventMonth, &m.draft.eventDate, &m.draft.eventOpen)
 			}
 
-			m.wideField(c, "描述", func() {
+			m.wideFormField(c, &m.fields.description, "描述", func() {
 				ui.TextField(c, &m.draft.description, "描述", "描述消费内容")
 			})
-			m.wideField(c, "金额", func() {
+			m.wideFormField(c, &m.fields.amount, "金额", func() {
 				ui.TextField(c, &m.draft.amount, "金额", "0.00")
 			})
 
@@ -169,22 +182,21 @@ func (m *recordsModel) composerView(c ui.C) {
 	})
 }
 
-// field declares one half of a two-column form row. Basis(0) makes both
-// halves share the row equally instead of letting the wider control (a date
-// field beside a segmented Choice, say) take more than its share.
-func (m *recordsModel) field(c ui.C, label string, body func()) {
-	ui.Column(c).Grow(1).Basis(0).Gap(6).Children(func() {
-		ui.Text(c, label).FontSize(12).Muted()
-		body()
-	})
+// formFieldHeight is the compact form row: the FormField title and its 32 px
+// control. FormField reserves description and error rows by default, which this
+// dialog does not use, so the fixed row keeps the old modal's density.
+const formFieldHeight float32 = 64
+
+// formField declares one half of a two-column form row with Viva's FormField,
+// which owns the title and the control rhythm. Basis(0) makes both halves share
+// the row equally instead of letting the wider control take more than its share.
+func (m *recordsModel) formField(c ui.C, state *ui.FormFieldState, label string, body func()) {
+	ui.FormField(c, state, label).Grow(1).Basis(0).Height(formFieldHeight).Children(body)
 }
 
-// wideField declares a field that takes the dialog's whole width.
-func (m *recordsModel) wideField(c ui.C, label string, body func()) {
-	ui.Column(c).FillWidth().Gap(6).Children(func() {
-		ui.Text(c, label).FontSize(12).Muted()
-		body()
-	})
+// wideFormField is a FormField that takes the dialog's whole width.
+func (m *recordsModel) wideFormField(c ui.C, state *ui.FormFieldState, label string, body func()) {
+	ui.FormField(c, state, label).FillWidth().Height(formFieldHeight).Children(body)
 }
 
 // openDatePicker prepares the calendar for the record date.

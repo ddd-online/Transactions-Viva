@@ -69,7 +69,9 @@ main → desktop → pages → components
 - 记账-记录页是当前唯一有真实前端的页面：工具栏 / 时间范围 / 排序 / 表格 / 分页 /
   收支统计都在 `internal/pages/accounting/records.go`，行数据来自 `records_mock.go`，
   `records_composer.go` 的「新增记录 / 编辑记录」弹窗只写内存：模板、日期、类型、分类、
-  标签、标记、关联事件日期、描述与金额按旧工程 `record-composer.tsx` 排列，模板也是 mock。
+  标签、标记、关联事件日期、描述与金额按旧工程 `record-composer.tsx` 排列，模板也是 mock；
+  每个字段用 `ui.FormField`（标题 + 控件的标准表单节奏），日期/事件日期是弹窗内展开的月历，
+  标签是可多选的标签字段。
   记录行的右键 ContextMenu 取代原「操作」列：
   编辑、同步到其他账本、删除。底部分页是共享组件 `internal/components/pagination.go`：
   每页 15 / 30 / 50 的 `ui.Select` 在 Viva 分页左侧，「共 N 条」在右侧，三者同属一个自定义

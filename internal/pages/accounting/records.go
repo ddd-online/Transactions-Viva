@@ -98,6 +98,7 @@ type recordsModel struct {
 	rangeMenu bool
 	sortMenu  bool
 	draft     recordDraft
+	fields    recordFields
 	templates []recordTemplate
 
 	notice        string
