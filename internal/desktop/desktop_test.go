@@ -181,8 +181,8 @@ func TestSettingsPageAndThemeToggle(t *testing.T) {
 	if !shows(driver, "窗口关闭行为") {
 		t.Fatal("应用设置 did not show the settings page")
 	}
-	if got := model.title(); got != "应用设置" {
-		t.Fatalf("title while settings is shown = %q", got)
+	if model.section != SectionSettings {
+		t.Fatalf("section while settings is shown = %v", model.section)
 	}
 
 	click(t, driver, "功能开关")
@@ -196,8 +196,8 @@ func TestSettingsPageAndThemeToggle(t *testing.T) {
 	if !shows(driver, "记录表格") {
 		t.Fatal("记账 did not replace the settings page")
 	}
-	if got := model.title(); got != "记账" {
-		t.Fatalf("title after leaving settings = %q", got)
+	if model.section != SectionAccounting {
+		t.Fatalf("section after leaving settings = %v", model.section)
 	}
 	click(t, driver, "应用设置")
 	if !shows(driver, "五个开关") {

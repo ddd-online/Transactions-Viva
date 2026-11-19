@@ -170,8 +170,7 @@ func (m *Model) page(c ui.C) {
 	})
 }
 
-// titlebar is the 36px application band: the product name at the left, the
-// current page name in the middle (centered by the two spacers) and the
+// titlebar is the 36px application band: the product name at the left and the
 // appearance toggle at the right, clear of the window buttons.
 func (m *Model) titlebar(c ui.C, leading, trailing float32) {
 	theme := c.Theme()
@@ -179,8 +178,6 @@ func (m *Model) titlebar(c ui.C, leading, trailing float32) {
 		PadLeft(leading + 12).PadRight(trailing + 8).Gap(8).Items(ui.Center).
 		MovesWindow().Children(func() {
 		ui.Text(c, "Transactions").FontSize(12).Bold()
-		ui.Spacer(c)
-		ui.Text(c, m.title()).FontSize(12).Muted()
 		ui.Spacer(c)
 		icon, tip := icons.Moon, "切换到深色模式"
 		if m.dark {
@@ -231,11 +228,6 @@ func (m *Model) footer(c ui.C) {
 		ui.Text(c, "尚未打开工作空间").FontSize(11).Muted()
 		ui.Text(c, "v"+Version).FontSize(11).Muted().Mono()
 	})
-}
-
-// title is what the title bar calls the window: the section's name.
-func (m *Model) title() string {
-	return m.section.Label()
 }
 
 // toggleTheme switches between the light and dark palettes. The page holds
