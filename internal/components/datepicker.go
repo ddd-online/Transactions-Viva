@@ -87,16 +87,18 @@ func NewDatePickerState() DatePickerState {
 type DatePickerSpec struct {
 	// Label names the control for assistive technology.
 	Label string
-	// ActionLabel names the button that opens a DateField's panel, such as
-	// "打开日期选择".
-	ActionLabel string
 	// Start and End are the chosen range as local YYYY-MM-DD dates; End is empty
 	// while the range still waits for its second end.
 	Start, End string
 	// Grain is the unit the range is picked in. Grains shows the 日 / 月 / 年
-	// choice and the period arrows beside the trigger.
-	Grain  DateGrain
-	Grains bool
+	// choice, so the user can change it; Periods shows the arrows that move the
+	// range a whole period. A form's single date leaves both off and keeps Grain
+	// at DateByDay, so it is one field and one month grid.
+	Grain   DateGrain
+	Grains  bool
+	Periods bool
+	// Fill stretches the trigger to its container, for a form's field row.
+	Fill bool
 	// Placeholder is what the trigger says while nothing is chosen.
 	Placeholder string
 	// Viewport is the page's rectangle: a press anywhere in it closes the panel.
@@ -111,23 +113,13 @@ type DatePickerSpec struct {
 	OnRange func(start, end string)
 }
 
-// DateField is a form's date: a text field the user may also type in, with the
-// button that opens the picker's panel under it.
-func DateField(c ui.C, state *DatePickerState, value *string, spec DatePickerSpec) {
-	state.bind(c)
-	spec.Start = *value
-	field := ui.TextField(c, value, spec.Label, spec.Placeholder).
-		Action(icons.Calendar, spec.ActionLabel)
-	if field.ActionClicked() {
-		state.toggle(spec.Start)
-	}
-	field.DrawOver(func(d *ui.DrawContext) { state.paint(d, spec, d.Rect) })
-}
-
-// DateRangePicker is a toolbar's time range: the 日 / 月 / 年 choice, the period
-// arrows, the value, and the panel under it. It is built from the theme's own
-// controls, so it looks like the buttons beside it.
-func DateRangePicker(c ui.C, state *DatePickerState, spec DatePickerSpec) {
+// DatePicker is a date field: the value, a clock icon, and the panel under it.
+// The parameters decide its chrome: a toolbar's range shows the 日 / 月 / 年
+// choice and the period arrows, a form's single date shows neither.
+//
+// It is built from the theme's own controls, so it looks like the buttons
+// beside it.
+func DatePicker(c ui.C, state *DatePickerState, spec DatePickerSpec) {
 	state.bind(c)
 	theme := c.Theme()
 	metrics := theme.Metrics
@@ -144,17 +136,23 @@ func DateRangePicker(c ui.C, state *DatePickerState, spec DatePickerSpec) {
 				}
 			}
 		}
-		if ui.Button(c, "上一周期").Ghost().Icon(icons.ChevronLeft).IconOnly().Clicked() {
-			state.shift(spec, -1)
+		if spec.Periods {
+			if ui.Button(c, "上一周期").Ghost().Icon(icons.ChevronLeft).IconOnly().Clicked() {
+				state.shift(spec, -1)
+			}
 		}
-		field := ui.Button(c, rangeText(spec.Start, spec.End, spec.Grain)).
-			Outline().Icon(icons.Clock)
+		field := ui.Button(c, triggerText(spec)).Outline().Icon(icons.Clock)
+		if spec.Fill {
+			field = field.FillWidth()
+		}
 		if field.Clicked() {
 			state.toggle(spec.Start)
 		}
 		field.DrawOver(func(d *ui.DrawContext) { state.paint(d, spec, d.Rect) })
-		if ui.Button(c, "下一周期").Ghost().Icon(icons.ChevronRight).IconOnly().Clicked() {
-			state.shift(spec, 1)
+		if spec.Periods {
+			if ui.Button(c, "下一周期").Ghost().Icon(icons.ChevronRight).IconOnly().Clicked() {
+				state.shift(spec, 1)
+			}
 		}
 	})
 }
@@ -662,32 +660,41 @@ func shiftPeriod(start, end string, grain DateGrain, direction int) (string, str
 	return dateText(from.AddDate(0, 0, days)), dateText(to.AddDate(0, 0, days))
 }
 
-// rangeText is what the trigger shows: the day, the month or the years of the
-// range, with a trailing tilde while its second end is still missing.
-func rangeText(start, end string, grain DateGrain) string {
-	if start == "" {
+// triggerText is what the field shows: the picked value, or the placeholder
+// while nothing is chosen. A range still waiting for its second end ends with a
+// tilde; a single-date field always shows one day.
+func triggerText(spec DatePickerSpec) string {
+	if spec.Start == "" {
+		if spec.Placeholder != "" {
+			return spec.Placeholder
+		}
 		return "请选择时间范围"
 	}
-	label := func(value string) string {
-		day, ok := parseDate(value)
-		if !ok {
-			return value
-		}
-		switch grain {
-		case DateByMonth:
-			return day.Format("2006-01")
-		case DateByYear:
-			return strconv.Itoa(day.Year())
-		}
-		return value
+	from := valueLabel(spec.Start, spec.Grain)
+	if spec.CloseOnPick {
+		return from
 	}
-	from := label(start)
-	if end == "" {
+	if spec.End == "" {
 		return from + " ~"
 	}
-	to := label(end)
+	to := valueLabel(spec.End, spec.Grain)
 	if from == to {
 		return from
 	}
 	return from + " ~ " + to
+}
+
+// valueLabel is one end of the range at the grain's precision.
+func valueLabel(value string, grain DateGrain) string {
+	day, ok := parseDate(value)
+	if !ok {
+		return value
+	}
+	switch grain {
+	case DateByMonth:
+		return day.Format("2006-01")
+	case DateByYear:
+		return strconv.Itoa(day.Year())
+	}
+	return value
 }

@@ -146,8 +146,8 @@ func (m *recordsModel) composerView(c ui.C) {
 
 			ui.Row(c).Gap(12).Children(func() {
 				m.formField(c, &m.fields.date, "日期", func() {
-					components.DateField(c, &m.datePick, &m.draft.date, m.dateSpec(
-						"日期", "打开日期选择", "YYYY-MM-DD", &m.draft.date))
+					components.DatePicker(c, &m.datePick,
+						m.dateSpec("日期", "YYYY-MM-DD", &m.draft.date))
 				})
 				m.formField(c, &m.fields.kind, "类型", func() {
 					ui.Choice(c, &m.draft.kind, kindLabels, nil).Grow(1)
@@ -169,8 +169,8 @@ func (m *recordsModel) composerView(c ui.C) {
 					components.Select(c, &m.draft.mark, markLabels, nil).Placeholder("选择标记")
 				})
 				m.formField(c, &m.fields.eventDate, "关联事件日期", func() {
-					components.DateField(c, &m.eventPick, &m.draft.eventDate, m.dateSpec(
-						"关联事件日期", "打开事件日期选择", "请选择日期", &m.draft.eventDate))
+					components.DatePicker(c, &m.eventPick,
+						m.dateSpec("关联事件日期", "请选择日期", &m.draft.eventDate))
 				})
 			})
 
@@ -213,13 +213,15 @@ func (m *recordsModel) wideFormField(c ui.C, state *ui.FormFieldState, label str
 	ui.FormField(c, state, label).FillWidth().Height(formFieldHeight).Children(body)
 }
 
-// dateSpec is the composer's single-day picker: a DateField that writes the day
-// it is given back into value and closes, as the old form's DatePicker did.
-func (m *recordsModel) dateSpec(label, action, placeholder string, value *string) components.DatePickerSpec {
+// dateSpec is the composer's single-day picker: the same DatePicker as the
+// toolbar's range, fixed to days, with no grain choice and no period arrows, and
+// it writes the day it is given back into value and closes.
+func (m *recordsModel) dateSpec(label, placeholder string, value *string) components.DatePickerSpec {
 	return components.DatePickerSpec{
-		Label: label, ActionLabel: action, Placeholder: placeholder,
-		Viewport: m.bounds, CloseOnPick: true,
-		OnRange: func(start, _ string) { *value = start },
+		Label: label, Placeholder: placeholder, Start: *value,
+		Grain: components.DateByDay, Fill: true, CloseOnPick: true,
+		Viewport: m.bounds,
+		OnRange:  func(start, _ string) { *value = start },
 	}
 }
 

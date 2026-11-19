@@ -152,9 +152,9 @@ func (m *recordsModel) toolbar(c ui.C) {
 		if ui.Button(c, "今天").Outline().Clicked() {
 			m.setRange(todayDate(), todayDate(), components.DateByDay)
 		}
-		components.DateRangePicker(c, &m.rangePick, components.DatePickerSpec{
+		components.DatePicker(c, &m.rangePick, components.DatePickerSpec{
 			Label: "选择时间范围", Start: m.rangeStart, End: m.rangeEnd,
-			Grain: m.rangeGrain, Grains: true, Viewport: m.bounds,
+			Grain: m.rangeGrain, Grains: true, Periods: true, Viewport: m.bounds,
 			OnGrain: func(grain components.DateGrain) {
 				m.rangeGrain, m.rangeStale = grain, true
 			},

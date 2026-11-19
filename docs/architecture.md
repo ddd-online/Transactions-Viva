@@ -105,12 +105,13 @@ main → desktop → pages → components
 
 ## 时间选择器（internal/components/datepicker.go）
 
-- 一个组件两种用法：`DateRangePicker`（工具栏：粒度分段 + 前后周期箭头 + 值字段 + 浮层）和
-  `DateField`（表单：可输入的日期框 + 日历按钮 + 浮层）。两者共用同一块面板；日期算术
-  （月长、整周、按粒度对齐 / 翻页）与快捷区间在这个文件里，纯函数、用 UTC 上的 `time.Time`
-  做公历运算，不碰时区与夏令时。
-- **只用原生样式**：触发器是 `ui.Button(...).Outline().Icon(...)`（工具栏）和 `ui.TextField`
-  （表单）；面板的日和周由 Viva 的 `components.Calendar` 画（标题、箭头、星期、格子连同选中 /
+- 只有一个组件 `DatePicker(c, state, spec)`，外观由参数决定：
+  - 工具栏的时间范围：`Grains: true`（日 / 月 / 年分段）+ `Periods: true`（前后一个周期的箭头）。
+  - 表单的日期 / 关联事件日期：固定 `Grain: DateByDay`，`Grains` / `Periods` 都不开，
+    `Fill: true` 撑满字段列，`CloseOnPick: true` 选完即收起。
+  日期算术（月长、整周、按粒度对齐 / 翻页）与快捷区间都在这个文件里，纯函数、用 UTC 上的
+  `time.Time` 做公历运算，不碰时区与夏令时。
+- **只用原生样式**：触发器统一是 `ui.Button(值).Outline().Icon(Clock)`，表单里加 `.FillWidth()`；面板的日和周由 Viva 的 `components.Calendar` 画（标题、箭头、星期、格子连同选中 /
   区间 / 今天 / 灰格都是它自己的样式）；月份格、年份格、前后十年箭头和快捷区间用
   `components.BeginButton` 的 `Ghost` / `Default` / `Secondary` / `Link` / `Icon` 变体；浮层表面
   取 `components.PopupRecipe` 的填充、描边、圆角与阴影。这里不写颜色、字号或固定像素尺寸：

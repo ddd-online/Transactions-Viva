@@ -23,6 +23,37 @@ func open(t *testing.T) (*app.Driver, *Model) {
 	return driver, model
 }
 
+// inDialog reports whether a control with the name sits in the dialog area,
+// which starts under the toolbar.
+func inDialog(driver *app.Driver, name string) bool {
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == name && hit.Bounds.Y > 150 {
+			return true
+		}
+	}
+	return false
+}
+
+// clickLast presses the last control with the given name: a dialog paints after
+// the page, so the field inside it is the last one.
+func clickLast(t *testing.T, driver *app.Driver, name string) {
+	t.Helper()
+	var last *gfx.Hit
+	for index := range driver.Snapshot().Hits {
+		hit := driver.Snapshot().Hits[index]
+		if hit.Label == name && !hit.IsLabel {
+			last = &hit
+		}
+	}
+	if last == nil {
+		t.Fatalf("no control named %q on screen", name)
+	}
+	b := last.Bounds
+	if err := driver.Click(b.X+b.Width/2, b.Y+b.Height/2); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // clickContains presses the middle of the first control whose name contains
 // want, for a control whose name is its value.
 func clickContains(t *testing.T, driver *app.Driver, want string) {
@@ -294,15 +325,20 @@ func TestRecordMarkSelectKeepsTheDialogStill(t *testing.T) {
 }
 
 // TestRecordDatePicker drives the composer's date panel: it opens over the
-// form, floats without moving it, writes the picked day and closes.
+// form, floats without moving it, writes the picked day and closes. The field
+// is the same DatePicker as the toolbar's, fixed to days and without the grain
+// choice and the period arrows.
 func TestRecordDatePicker(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "记一笔")
 	settle(t, driver)
 	still := labelBoundsOf(t, driver, "取消")
-	click(t, driver, "打开日期选择")
+	clickLast(t, driver, time.Now().Format("2006-01-02"))
 	if !hasControl(driver, "关闭日期选择") {
 		t.Fatal("the date panel did not open")
+	}
+	if inDialog(driver, "上一周期") || inDialog(driver, "月") {
+		t.Fatal("a single date kept the range's grain choice or period arrows")
 	}
 	if moved := labelBoundsOf(t, driver, "取消"); moved != still {
 		t.Fatalf("opening the panel moved the form: %v -> %v", still, moved)
