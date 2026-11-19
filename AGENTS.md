@@ -17,7 +17,8 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 - 外壳（标题栏 / 左侧导航 / 底栏 / 设置页）、页面骨架、领域类型与文档已就位。
 - 记账-记录页已迁移前端：工具栏、时间范围、排序、表格、分页、收支统计与
   「记一笔」对话框都在；记录行右键打开 ContextMenu（编辑 / 同步到其他账本 / 删除）。行数据
-  来自 `internal/pages/accounting/records_mock.go`，新增只写内存，不落库。
+  来自 `internal/pages/accounting/records_mock.go`，新增只写内存，不落库。共享分页栏在
+  `internal/components/pagination.go`，Viva 分页与每页 15 / 30 / 50 的 Select 组合在一起。
 - 原来的 `viva init` 示例（计数页）已移除；根目录 `main.go` 现在是真实入口。
 - SQLite 存储、配置持久化尚未接入；其余页面的真实内容也还没迁移（见下面的迁移顺序）。
 
@@ -40,7 +41,7 @@ main.go                  真实入口：只做 log.Fatal(desktop.Run())
 internal/desktop/        应用外壳：窗口、自绘标题栏、Sidebar 导航、底栏、设置页、主题
 internal/icons/          由 SVG 编译出的矢量图标（viva icons）
 internal/pages/          各功能页：accounting、stock、todo、events、diary、settings
-internal/components/     跨页复用的 UI 片段（占位空态等）
+internal/components/     跨页复用的 UI 片段：占位空态、设置卡片 / 设置行、分页栏
 internal/domain/         纯领域规则与数据形状：金额、记录、账本、事件、日记、待办、股票
 internal/config/         应用配置的形状与默认值（~/.tr.json，旧工程 shared/types/config.ts）
 internal/store/          SQLite 工作空间与 DAO 的位置（目前只有包文档）

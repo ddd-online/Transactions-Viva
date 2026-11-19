@@ -9,14 +9,13 @@ package accounting
 
 import (
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/vivaui/viva/components"
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
 )
@@ -88,7 +87,6 @@ type recordsModel struct {
 	rangeMode rangeMode
 	sortField sortField
 	sortDesc  bool
-	countText string
 
 	// page is the 1-based page of the table; pageSize is the mock page size.
 	// pageStart is where the current page begins in shown, set by table.
@@ -104,18 +102,6 @@ type recordsModel struct {
 	notice        string
 	deletingID    string
 	deleteConfirm bool
-
-	// The pagination component paints its own hits, so the page names its
-	// items in the page tree once per paint: previous, seven page slots, next.
-	pageIDs   [9]gfx.ID
-	pageItems [7]pageItem
-}
-
-// pageItem is one slot of the pagination row: a page number, an ellipsis, or
-// an unused slot when there are fewer than seven pages.
-type pageItem struct {
-	number   int
-	ellipsis bool
 }
 
 // newRecordsModel returns the page on 今天, newest first, with the mock rows
@@ -127,7 +113,7 @@ func newRecordsModel() *recordsModel {
 		sortField: sortDate,
 		sortDesc:  true,
 		page:      1,
-		pageSize:  5,
+		pageSize:  15,
 	}
 	m.refilter()
 	return m
@@ -140,7 +126,6 @@ func (m *recordsModel) View(c ui.C) {
 		ui.Divider(c)
 		m.table(c)
 		if len(m.shown) > 0 {
-			ui.Divider(c)
 			m.pager(c)
 		}
 		ui.Divider(c)
@@ -216,6 +201,7 @@ func (m *recordsModel) table(c ui.C) {
 			m.empty(c)
 			return
 		}
+		m.page = min(max(m.page, 1), m.pageCount())
 		m.pageStart = (m.page - 1) * m.pageSize
 		end := min(m.pageStart+m.pageSize, len(m.shown))
 		ui.List(c, &m.list, end-m.pageStart, m.row).Label("记录").Grow(1)
@@ -319,19 +305,20 @@ func (m *recordsModel) stat(c ui.C, label string, cents int64, color gfx.Color) 
 	})
 }
 
-// pager is the row under the table: the total on the left and Viva's
-// pagination component on the right.
+// pager is the shared pagination bar: total, page-size select and Viva pages.
 func (m *recordsModel) pager(c ui.C) {
-	ui.Row(c).Height(48).FillWidth().PadX(18).Gap(12).Items(ui.Center).Children(func() {
-		ui.Text(c, m.countText).FontSize(12).Muted()
-		ui.Spacer(c)
-		// The component paints its own hit regions, so their identities are
-		// named here, before the slot that paints it.
-		for index := range m.pageIDs {
-			m.pageIDs[index] = ui.ID(c)
-		}
-		m.buildPageItems()
-		ui.Slot(c).Width(480).Height(32).Draw(m.drawPagination)
+	components.Pagination(c, components.PaginationSpec{
+		Total:    len(m.shown),
+		Page:     m.page,
+		PageSize: m.pageSize,
+		OnPage: func(page int) {
+			m.page = page
+			m.list.Select(-1)
+		},
+		OnPageSize: func(size int) {
+			m.pageSize = size
+			m.refilter()
+		},
 	})
 }
 
@@ -340,133 +327,7 @@ func (m *recordsModel) pageCount() int {
 	if len(m.shown) == 0 || m.pageSize <= 0 {
 		return 1
 	}
-	pages := (len(m.shown) + m.pageSize - 1) / m.pageSize
-	if pages < 1 {
-		pages = 1
-	}
-	return pages
-}
-
-// buildPageItems fills the seven pagination slots: every page when they fit,
-// otherwise the first and last page with an ellipsis and a window around the
-// current one.
-func (m *recordsModel) buildPageItems() {
-	m.pageItems = [7]pageItem{}
-	total := m.pageCount()
-	if total <= len(m.pageItems) {
-		for number := 1; number <= total; number++ {
-			m.pageItems[number-1].number = number
-		}
-		return
-	}
-	switch {
-	case m.page <= 4:
-		for index := 0; index < 5; index++ {
-			m.pageItems[index].number = index + 1
-		}
-		m.pageItems[5].ellipsis = true
-		m.pageItems[6].number = total
-	case m.page >= total-3:
-		m.pageItems[0].number = 1
-		m.pageItems[1].ellipsis = true
-		for index := 0; index < 5; index++ {
-			m.pageItems[2+index].number = total - 4 + index
-		}
-	default:
-		m.pageItems[0].number = 1
-		m.pageItems[1].ellipsis = true
-		m.pageItems[2].number = m.page - 1
-		m.pageItems[3].number = m.page
-		m.pageItems[4].number = m.page + 1
-		m.pageItems[5].ellipsis = true
-		m.pageItems[6].number = total
-	}
-}
-
-// drawPagination paints Viva's pagination component against the right edge of
-// its slot and turns a click into a page change.
-func (m *recordsModel) drawPagination(d *ui.DrawContext) {
-	theme := *d.Theme
-	metrics := theme.Metrics
-	itemHeight := min(metrics.ControlHeight, d.Rect.Height)
-	edge := metrics.GapItem
-	inner := metrics.GapItem * 1.25
-	gap := metrics.GapItem * 0.75
-	spacing := metrics.GapItem / 2
-
-	previousWidth := edge + 16 + gap +
-		d.Canvas.TextWidthWeight("上一页", metrics.FontSizeM, gfx.WeightMedium) + inner
-	nextWidth := edge + 16 + gap +
-		d.Canvas.TextWidthWeight("下一页", metrics.FontSizeM, gfx.WeightMedium) + inner
-	items := 0
-	for _, item := range m.pageItems {
-		if item.number > 0 || item.ellipsis {
-			items++
-		}
-	}
-	width := previousWidth + nextWidth + float32(items)*itemHeight +
-		float32(items+1)*spacing
-	if width > d.Rect.Width {
-		width = d.Rect.Width
-	}
-	bounds := gfx.Rect{
-		X: d.Rect.X + d.Rect.Width - width, Y: d.Rect.Y,
-		Width: width, Height: itemHeight,
-	}
-
-	pagination := components.BeginPagination(d.Canvas, theme, bounds)
-	pagination.AddPrevious(m.pageIDs[0], "上一页", m.page <= 1)
-	for index, item := range m.pageItems {
-		switch {
-		case item.ellipsis:
-			pagination.AddEllipsis()
-		case item.number > 0:
-			pagination.AddPage(m.pageIDs[index+1], strconv.Itoa(item.number), item.number == m.page)
-		}
-	}
-	pagination.AddNext(m.pageIDs[8], "下一页", m.page >= m.pageCount())
-
-	if id, ok := d.Canvas.ClickTarget(); ok && m.isPageID(id) {
-		d.Canvas.AfterPaint(func() { m.choosePage(id) })
-	}
-}
-
-// isPageID reports whether id belongs to the pagination row, so a click
-// elsewhere does not reach choosePage.
-func (m *recordsModel) isPageID(id gfx.ID) bool {
-	if id == m.pageIDs[0] || id == m.pageIDs[8] {
-		return true
-	}
-	for index, item := range m.pageItems {
-		if item.number > 0 && m.pageIDs[index+1] == id {
-			return true
-		}
-	}
-	return false
-}
-
-// choosePage applies a click on one of the pagination items.
-func (m *recordsModel) choosePage(id gfx.ID) {
-	pages := m.pageCount()
-	switch id {
-	case m.pageIDs[0]:
-		if m.page > 1 {
-			m.page--
-		}
-	case m.pageIDs[8]:
-		if m.page < pages {
-			m.page++
-		}
-	default:
-		for index, item := range m.pageItems {
-			if item.number > 0 && m.pageIDs[index+1] == id {
-				m.page = item.number
-				break
-			}
-		}
-	}
-	m.page = min(max(m.page, 1), pages)
-	m.list.Select(-1)
+	return max((len(m.shown)+m.pageSize-1)/m.pageSize, 1)
 }
 
 // refilter recomputes the visible rows and the statistics.
@@ -510,7 +371,6 @@ func (m *recordsModel) refilter() {
 		}
 		return left.at.Before(right.at)
 	})
-	m.countText = "共 " + strconv.Itoa(len(m.shown)) + " 条"
 	m.page = 1
 	m.list.Select(-1)
 }

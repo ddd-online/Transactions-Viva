@@ -167,20 +167,27 @@ func TestRecordsPagination(t *testing.T) {
 
 	click(t, driver, "今天")
 	click(t, driver, "全部时间")
-	if !shows(driver, "共 12 条") {
-		t.Fatal("all time did not leave all twelve rows")
+	if !shows(driver, "共 20 条") {
+		t.Fatal("all time did not leave all twenty rows")
 	}
-	if shows(driver, "超市采购") {
+	if shows(driver, "旅行机票") {
 		t.Fatal("the first page showed a row from the second page")
 	}
 
 	click(t, driver, "下一页")
-	if !shows(driver, "超市采购") {
+	if !shows(driver, "旅行机票") {
 		t.Fatal("下一页 did not show the second page")
 	}
 	click(t, driver, "上一页")
-	if shows(driver, "超市采购") {
+	if shows(driver, "旅行机票") {
 		t.Fatal("上一页 did not return to the first page")
+	}
+
+	// The page-size Select changes how many rows one page holds.
+	click(t, driver, "每页条数")
+	click(t, driver, "30")
+	if hasControl(driver, "下一页") {
+		t.Fatal("30 per page should leave a single page for twenty rows")
 	}
 }
 

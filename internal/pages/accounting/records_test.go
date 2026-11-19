@@ -31,9 +31,6 @@ func TestRecordsRefilter(t *testing.T) {
 	if m.stats != [3]int64{100000, 451200, 0} {
 		t.Fatalf("stats = %v", m.stats)
 	}
-	if m.countText != "共 3 条" {
-		t.Fatalf("count text = %q", m.countText)
-	}
 
 	m.sortField, m.sortDesc = sortAmount, true
 	m.refilter()

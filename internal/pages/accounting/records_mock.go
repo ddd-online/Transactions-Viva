@@ -30,6 +30,15 @@ func mockRecords() []record {
 		{id: "mock-8", kind: kindExpense, category: "居住", description: "房租", tags: []string{"固定支出"}, amount: 450000, at: at(9, 10, 0)},
 		{id: "mock-9", kind: kindIncome, category: "副业", description: "兼职设计费", tags: []string{"设计"}, amount: 120000, at: at(15, 15, 20)},
 
+		{id: "mock-13", kind: kindExpense, category: "餐饮美食", description: "咖啡续杯", tags: []string{"日常"}, amount: 1800, at: at(2, 15, 0)},
+		{id: "mock-14", kind: kindExpense, category: "交通出行", description: "打车回家", tags: []string{"通勤"}, amount: 3600, at: at(3, 22, 10)},
+		{id: "mock-15", kind: kindExpense, category: "居住", description: "水费", tags: []string{"固定支出"}, amount: 6800, at: at(5, 9, 30)},
+		{id: "mock-16", kind: kindExpense, category: "学习成长", description: "书店", tags: []string{"书籍"}, amount: 9800, at: at(6, 16, 20)},
+		{id: "mock-17", kind: kindExpense, category: "餐饮美食", description: "朋友聚餐", tags: []string{"社交"}, amount: 26000, at: at(7, 19, 0)},
+		{id: "mock-18", kind: kindExpense, category: "通讯", description: "话费", tags: []string{"固定支出"}, amount: 10000, at: at(8, 11, 0)},
+		{id: "mock-19", kind: kindIncome, category: "投资收益", description: "理财收益", tags: []string{"理财"}, amount: 3250, at: at(11, 8, 30)},
+		{id: "mock-20", kind: kindExpense, category: "运动健康", description: "健身月卡", tags: []string{"健康"}, amount: 29900, at: at(13, 18, 0)},
+
 		{id: "mock-10", kind: kindExpense, category: "医疗健康", description: "体检", tags: []string{"健康"}, amount: 68000, at: at(40, 8, 0)},
 		{id: "mock-11", kind: kindIncome, category: "工资奖金", description: "年终奖", tags: []string{"奖金"}, amount: 3000000, at: at(90, 9, 0)},
 		{id: "mock-12", kind: kindExpense, category: "休闲娱乐", description: "旅行机票", tags: []string{"旅行"}, amount: 880000, at: at(400, 14, 0)},

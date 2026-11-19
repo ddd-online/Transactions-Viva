@@ -69,8 +69,9 @@ main → desktop → pages → components
 - 记账-记录页是当前唯一有真实前端的页面：工具栏 / 时间范围 / 排序 / 表格 / 分页 /
   收支统计都在 `internal/pages/accounting/records.go`，行数据来自 `records_mock.go`，
   `records_composer.go` 的「记一笔」只写内存。记录行的右键 ContextMenu 取代原「操作」列：
-  编辑、同步到其他账本、删除。底部分页用 Viva 的 `components.BeginPagination`（mock 每页
-  5 条，页码窗口最多 7 个）；接入 store 时替换 mock，不改这套布局。
+  编辑、同步到其他账本、删除。底部分页是共享组件 `internal/components/pagination.go`：
+  Viva 的 `components.BeginPagination` 与每页 15 / 30 / 50 的 `ui.Select` 组合，分页栏上方
+  不再画分割线；接入 store 时替换 mock，不改这套布局。
 - 导航是两级：一级功能项展开自己的子功能，同时收起其他一级项；没有子功能的功能（事件、日记）
   就是单独一项。页面通过 `Tabs() []string`、`Tab() int`、`SelectTab(int)` 暴露子功能，
   内容里不画 `ui.Tabs`。
