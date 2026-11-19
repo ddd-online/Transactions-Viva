@@ -115,7 +115,40 @@ func newConfig(m *Model) app.Config {
 		// A release window reads this on every paint, so the border follows the
 		// appearance toggle; a development reload host uses ClearColor here.
 		WindowBorderColor: m.windowBorderColor,
+		OnKey:             m.key,
+		OnScroll:          m.scroll,
+		TextInput:         m.textInput,
 	}
+}
+
+// key gives the records page's canvas controls (the tags multi-select) the
+// keys the page itself did not take.
+func (m *Model) key(event gfx.KeyEvent) gfx.EventResult {
+	if m.section == SectionAccounting {
+		return m.accounting.Key(event)
+	}
+	return gfx.EventResult{}
+}
+
+// scroll gives the records page's tags popup the wheel.
+func (m *Model) scroll(event gfx.ScrollEvent) gfx.EventResult {
+	if m.section == SectionAccounting {
+		return m.accounting.Scroll(event)
+	}
+	return gfx.EventResult{}
+}
+
+// textInput supplies the native editor of the tags multi-select; the page
+// answers for its ordinary TextFields before asking this provider.
+func (m *Model) textInput(ctx app.TextInputContext) *app.TextInput {
+	if m.section != SectionAccounting {
+		return nil
+	}
+	editor := m.accounting.TagsEditor(ctx.ID)
+	if editor == nil {
+		return nil
+	}
+	return &app.TextInput{Editor: editor, NavigationKeys: true}
 }
 
 // windowBorderColor is the color of the system-drawn border around the window:

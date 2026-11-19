@@ -5,7 +5,9 @@ import (
 	"strings"
 	"time"
 
+	viva "github.com/vivaui/viva/components"
 	"github.com/vivaui/viva/gfx"
+	"github.com/vivaui/viva/text"
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/domain"
@@ -34,6 +36,40 @@ type recordFields struct {
 	amount      ui.FormFieldState
 }
 
+// recordTags is the Viva multi-select behind the 标签 field, with the stable
+// identities its painted hit regions need.
+type recordTags struct {
+	tree    gfx.Tree
+	feature gfx.Scope
+	options gfx.Scope
+	removes gfx.Scope
+	input   gfx.ID
+	trigger gfx.ID
+	dismiss gfx.ID
+	scope   gfx.ID
+	state   viva.MultiSelectState
+}
+
+// newRecordTags builds the tags multi-select and its option list.
+func newRecordTags() recordTags {
+	var tags recordTags
+	tags.feature = tags.tree.Feature("record-tags")
+	tags.options = tags.tree.Sub(tags.feature, tags.tree.Name("option"))
+	tags.removes = tags.tree.Sub(tags.feature, tags.tree.Name("remove"))
+	tags.input = tags.tree.ID(tags.feature, "input")
+	tags.trigger = tags.tree.ID(tags.feature, "trigger")
+	tags.dismiss = tags.tree.ID(tags.feature, "dismiss")
+	tags.scope = tags.tree.ID(tags.feature, "scope")
+	tags.state.AllowCreate = true
+	tags.state.MatchCaseInsensitive = true
+	options := make([]viva.MultiSelectOption, len(mockTagOptions))
+	for index, tag := range mockTagOptions {
+		options[index] = viva.MultiSelectOption{Value: tag, Label: tag}
+	}
+	tags.state.SetOptions(options)
+	return tags
+}
+
 // recordDraft is the 新增记录 / 编辑记录 dialog's copy of the fields it edits.
 // It is mock too: saving writes to the page's in-memory rows, not to SQLite.
 type recordDraft struct {
@@ -49,7 +85,6 @@ type recordDraft struct {
 	mark        string
 	eventDate   string
 	date        string
-	tagsOpen    bool
 	dateOpen    bool
 	eventOpen   bool
 	dateMonth   time.Time
@@ -64,6 +99,7 @@ func (m *recordsModel) openComposer() {
 		kind: "支出",
 		date: time.Now().Format("2006-01-02"),
 	}
+	m.setTags(nil)
 }
 
 // openEdit fills the same dialog from an existing row.
@@ -83,11 +119,11 @@ func (m *recordsModel) openEdit(id string) {
 		amount:      domain.CentsToYuan(rec.amount),
 		category:    rec.category,
 		description: rec.description,
-		tags:        strings.Join(rec.tags, ", "),
 		mark:        mark,
 		eventDate:   rec.keyEventDate,
 		date:        rec.at.Format("2006-01-02"),
 	}
+	m.setTags(rec.tags)
 }
 
 // composerView declares the create/edit dialog while it is open.
@@ -136,13 +172,9 @@ func (m *recordsModel) composerView(c ui.C) {
 					ui.TextField(c, &m.draft.category, "分类", "选择或输入分类")
 				})
 				m.formField(c, &m.fields.tags, "标签", func() {
-					m.tagsField(c)
+					m.multiSelect(c)
 				})
 			})
-
-			if m.draft.tagsOpen {
-				m.tagsPanel(c)
-			}
 
 			ui.Row(c).Gap(12).Children(func() {
 				m.formField(c, &m.fields.mark, "标记", func() {
@@ -205,7 +237,7 @@ func (m *recordsModel) openDatePicker() {
 		m.draft.dateOpen = false
 		return
 	}
-	m.draft.dateOpen, m.draft.eventOpen, m.draft.tagsOpen = true, false, false
+	m.draft.dateOpen, m.draft.eventOpen = true, false
 	m.draft.dateMonth = monthOf(m.draft.date)
 }
 
@@ -215,7 +247,7 @@ func (m *recordsModel) openEventPicker() {
 		m.draft.eventOpen = false
 		return
 	}
-	m.draft.eventOpen, m.draft.dateOpen, m.draft.tagsOpen = true, false, false
+	m.draft.eventOpen, m.draft.dateOpen = true, false
 	m.draft.eventMonth = monthOf(m.draft.eventDate)
 }
 
@@ -289,96 +321,80 @@ func (m *recordsModel) calendar(c ui.C, month *time.Time, value *string, open *b
 	})
 }
 
-// tagsField is the composer's multi-select 标签 control: chips in a bordered
-// field, with a popover of the available tags.
-func (m *recordsModel) tagsField(c ui.C) {
-	theme := c.Theme()
-	tags := splitTags(m.draft.tags)
-	field := ui.Row(c).Height(32).FillWidth().Border(1, theme.Input).
-		Radius(theme.Metrics.RadiusControl).Background(theme.Background).
-		PadX(8).Gap(6).Items(ui.Center).Hit(ui.ID(c), "标签").
-		Hover(ui.Look{}.Background(theme.Hover)).
-		Focus(ui.Look{}.Ring(2, theme.Ring))
-	field.Children(func() {
-		if len(tags) == 0 {
-			ui.Text(c, "选择一个或多个标签").FontSize(13).Muted()
-		}
-		for _, tag := range tags {
-			ui.Text(c, tag).FontSize(12).PadSides(1, 6, 1, 6).
-				Radius(4).Background(theme.Muted)
-		}
-		ui.Spacer(c)
-		ui.Icon(c, icons.ChevronDown).Size(14, 14).Color(theme.MutedForeground)
-	})
-	if field.Clicked() {
-		m.draft.tagsOpen = !m.draft.tagsOpen
-		if m.draft.tagsOpen {
-			m.draft.dateOpen, m.draft.eventOpen = false, false
-		}
-	}
-}
-
-// tagsPanel lists the available tags in two columns while the tags field is
-// open. It stays open for several choices and closes on 完成 or the field.
-func (m *recordsModel) tagsPanel(c ui.C) {
-	theme := c.Theme()
-	tags := splitTags(m.draft.tags)
-	ui.Column(c).Width(288).Pad(8).Gap(6).
-		Border(1, theme.Border).Radius(theme.Metrics.RadiusSurface).
-		Background(theme.Popover).Shadow(gfx.ShadowSM).Children(func() {
-		ui.Grid(c, 128).Width(272).Gap(2).Children(func() {
-			for _, tag := range mockTagOptions {
-				selected := hasTag(tags, tag)
-				row := ui.Row(c).Height(28).FillWidth().PadX(6).Gap(6).
-					Items(ui.Center).Hit(ui.ID(c), tag).
-					Hover(ui.Look{}.Background(theme.Hover))
-				row.Children(func() {
-					if selected {
-						ui.Text(c, "✓").FontSize(11).Color(theme.Primary)
-					} else {
-						ui.Spacer(c).Width(12)
-					}
-					ui.Text(c, tag).FontSize(13)
-				})
-				if row.Clicked() {
-					m.draft.tags = toggleTag(tags, tag, !selected)
-				}
-			}
+// multiSelect paints Viva's multi-select in the 标签 field and routes its
+// pointer choices back into the state and the draft's tag string.
+func (m *recordsModel) multiSelect(c ui.C) {
+	ui.Slot(c).FillWidth().Height(c.Theme().Metrics.ControlHeight).Draw(func(d *ui.DrawContext) {
+		viva.PaintMultiSelect(d.Canvas, *d.Theme, d.Rect, &m.tags.state, viva.MultiSelectOptions{
+			InputID: m.tags.input, TriggerID: m.tags.trigger, DismissID: m.tags.dismiss, Scope: m.tags.scope,
+			OptionIDs: m.tags.options, RemoveIDs: m.tags.removes,
+			Label: "标签", Placeholder: "选择一个或多个标签",
+			EmptyLabel: "没有匹配项", CreatePrefix: "创建：",
+			Viewport: m.bounds, Layer: 20, MaxRows: 7,
 		})
-		ui.Row(c).Justify(ui.End).Children(func() {
-			if ui.Button(c, "完成").Ghost().Clicked() {
-				m.draft.tagsOpen = false
+		switch {
+		case d.Canvas.Clicked(m.tags.input):
+			m.tags.state.Open = true
+		case d.Canvas.Clicked(m.tags.trigger):
+			m.tags.state.Open = !m.tags.state.Open
+		case d.Canvas.Clicked(m.tags.dismiss):
+			m.tags.state.Open = false
+		default:
+			if index, ok := d.Canvas.ClickedIn(m.tags.options); ok {
+				m.tags.state.Choose(index)
 			}
-		})
+			if index, ok := d.Canvas.ClickedIn(m.tags.removes); ok {
+				m.tags.state.Remove(index)
+			}
+		}
+		m.syncTags()
 	})
 }
 
-// hasTag reports whether tags contains name.
-func hasTag(tags []string, name string) bool {
-	for _, tag := range tags {
-		if tag == name {
-			return true
-		}
-	}
-	return false
+// syncTags copies the multi-select's values into the draft's tag field.
+func (m *recordsModel) syncTags() {
+	m.draft.tags = strings.Join(m.tags.state.Values(), ", ")
 }
 
-// toggleTag adds or removes one tag and returns the comma-separated field value.
-func toggleTag(tags []string, name string, on bool) string {
-	if on {
-		if !hasTag(tags, name) {
-			tags = append(tags, name)
-		}
-	} else {
-		kept := tags[:0]
-		for _, tag := range tags {
-			if tag != name {
-				kept = append(kept, tag)
-			}
-		}
-		tags = kept
+// setTags replaces the multi-select's values when a dialog opens or a template
+// is applied.
+func (m *recordsModel) setTags(values []string) {
+	m.tags.state.Query = text.Editor{}
+	m.tags.state.Open = false
+	m.tags.state.SetValues(values)
+	m.syncTags()
+}
+
+// tagsEditor is the native editor of the tags query while the field is
+// focused, for Config.TextInput.
+func (m *recordsModel) tagsEditor(id gfx.ID) *text.Editor {
+	if !m.draft.open || id != m.tags.input {
+		return nil
 	}
-	return strings.Join(tags, ", ")
+	return &m.tags.state.Query
+}
+
+// Key routes the tags popup's navigation keys and returns the words typed into
+// it; Config.OnKey reaches this through the accounting page.
+func (m *recordsModel) Key(event gfx.KeyEvent) gfx.EventResult {
+	if !m.draft.open {
+		return gfx.EventResult{}
+	}
+	if event.Target != m.tags.input &&
+		(!m.tags.state.Open || event.Key != gfx.KeyEscape && event.Key != gfx.KeyTab) {
+		return gfx.EventResult{}
+	}
+	result := m.tags.state.Key(event)
+	m.syncTags()
+	return result
+}
+
+// Scroll moves the tags popup while it is open.
+func (m *recordsModel) Scroll(event gfx.ScrollEvent) gfx.EventResult {
+	if !m.draft.open || !m.tags.state.Open || !m.tags.state.Wheel(event) {
+		return gfx.EventResult{}
+	}
+	return gfx.EventResult{Handled: true, Repaint: true}
 }
 
 // templateIDs are the choices of the 模板 Select, in the form's model order.
@@ -411,7 +427,7 @@ func (m *recordsModel) applyTemplate() {
 		m.draft.kind = kindLabel(template.kind)
 		m.draft.category = template.category
 		m.draft.description = template.description
-		m.draft.tags = strings.Join(template.tags, ", ")
+		m.setTags(template.tags)
 		return
 	}
 }
@@ -430,7 +446,7 @@ func (m *recordsModel) saveTemplate() {
 		kind:        kindValue(m.draft.kind),
 		category:    category,
 		description: strings.TrimSpace(m.draft.description),
-		tags:        splitTags(m.draft.tags),
+		tags:        append([]string(nil), m.tags.state.Values()...),
 	}
 	m.templates = append(m.templates, template)
 	m.draft.templateID = template.id
@@ -467,7 +483,7 @@ func (m *recordsModel) saveDraft() {
 	}
 	at := time.Date(day.Year(), day.Month(), day.Day(), 12, 0, 0, 0, time.Local)
 	kind := kindValue(m.draft.kind)
-	tags := splitTags(m.draft.tags)
+	tags := append([]string(nil), m.tags.state.Values()...)
 	description := strings.TrimSpace(m.draft.description)
 
 	notice := "已记一笔"
@@ -557,19 +573,4 @@ func (m *recordsModel) syncTo(id, target string) {
 		description = rec.category
 	}
 	m.notice = "「" + description + "」已同步到「" + target + "」（mock）"
-}
-
-// splitTags reads the comma-separated tag field, accepting the Chinese comma
-// and the enumeration comma as well.
-func splitTags(value string) []string {
-	parts := strings.FieldsFunc(value, func(r rune) bool {
-		return r == ',' || r == '，' || r == '、'
-	})
-	tags := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if tag := strings.TrimSpace(part); tag != "" {
-			tags = append(tags, tag)
-		}
-	}
-	return tags
 }

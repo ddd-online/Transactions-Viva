@@ -127,15 +127,23 @@ func TestComposerTemplateAndMarks(t *testing.T) {
 	}
 }
 
-func TestTagToggle(t *testing.T) {
-	if got := toggleTag([]string{"日常"}, "同事", true); got != "日常, 同事" {
-		t.Fatalf("add tag = %q", got)
+func TestRecordTagsMultiSelect(t *testing.T) {
+	m := newRecordsModel()
+	m.openComposer()
+	for index, choice := range m.tags.state.Choices() {
+		if choice.Value == "日常" {
+			m.tags.state.Choose(index)
+			break
+		}
 	}
-	if got := toggleTag([]string{"日常", "同事"}, "日常", false); got != "同事" {
-		t.Fatalf("remove tag = %q", got)
+	m.syncTags()
+	if m.draft.tags != "日常" {
+		t.Fatalf("chosen tags = %q", m.draft.tags)
 	}
-	if !hasTag([]string{"日常", "同事"}, "同事") || hasTag([]string{"日常"}, "旅行") {
-		t.Fatal("hasTag reported the wrong membership")
+	m.tags.state.Remove(0)
+	m.syncTags()
+	if m.draft.tags != "" {
+		t.Fatalf("removed tags = %q", m.draft.tags)
 	}
 }
 
@@ -167,18 +175,5 @@ func TestOutlierColorMatchesTheOldProject(t *testing.T) {
 	}
 	if got := outlierColor(gfx.DarkTheme()); got != gfx.RGB24(0xfbbf24) {
 		t.Errorf("dark outlier color = %v", got)
-	}
-}
-
-func TestSplitTags(t *testing.T) {
-	tags := splitTags(" 日常, 同事，周末、家庭 ")
-	want := []string{"日常", "同事", "周末", "家庭"}
-	if len(tags) != len(want) {
-		t.Fatalf("tags = %v", tags)
-	}
-	for index, tag := range want {
-		if tags[index] != tag {
-			t.Fatalf("tags = %v, want %v", tags, want)
-		}
 	}
 }

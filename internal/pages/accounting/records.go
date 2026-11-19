@@ -99,7 +99,9 @@ type recordsModel struct {
 	sortMenu  bool
 	draft     recordDraft
 	fields    recordFields
+	tags      recordTags
 	templates []recordTemplate
+	bounds    gfx.Rect
 
 	notice        string
 	deletingID    string
@@ -111,6 +113,7 @@ type recordsModel struct {
 func newRecordsModel() *recordsModel {
 	m := &recordsModel{
 		records:   mockRecords(),
+		tags:      newRecordTags(),
 		templates: mockTemplates(),
 		rangeMode: rangeToday,
 		sortField: sortDate,
@@ -124,6 +127,7 @@ func newRecordsModel() *recordsModel {
 
 // View declares the records page.
 func (m *recordsModel) View(c ui.C) {
+	m.bounds = c.Bounds()
 	ui.Column(c).Fill().Children(func() {
 		m.toolbar(c)
 		ui.Divider(c)
