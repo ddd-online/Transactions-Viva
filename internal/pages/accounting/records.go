@@ -250,10 +250,7 @@ func (m *recordsModel) row(r ui.ListRow) {
 		r.Element.Background(theme.Hover)
 	}
 
-	ui.Column(r.C).Width(recordDateWidth).Children(func() {
-		ui.Text(r.C, rec.at.Format("01-02")).FontSize(13)
-		ui.Text(r.C, rec.at.Format("15:04")).FontSize(11).Muted()
-	})
+	ui.Text(r.C, rec.at.Format("01-02")).Width(recordDateWidth).FontSize(13).Ellipsis()
 
 	color := kindColor(*theme, rec.kind)
 	ui.Text(r.C, kindLabel(rec.kind)).Width(recordTypeWidth).FontSize(12).
