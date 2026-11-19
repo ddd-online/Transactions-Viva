@@ -50,6 +50,13 @@ func (m *Model) Tabs() []string { return tabLabels[:] }
 // Tab is the index of the chosen sub-function.
 func (m *Model) Tab() int { return int(m.tab) }
 
+// CloseOverlays closes the floating panels of the chosen screen. The shell calls
+// it when the user leaves the sub-function under them, so a picker does not
+// follow the user to another screen.
+func (m *Model) CloseOverlays() {
+	m.records.CloseOverlays()
+}
+
 // SelectTab chooses a sub-function by index.
 func (m *Model) SelectTab(index int) {
 	if index >= 0 && index < len(tabs) {

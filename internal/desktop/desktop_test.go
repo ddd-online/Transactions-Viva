@@ -452,6 +452,21 @@ func TestRecordsEmptyState(t *testing.T) {
 	}
 }
 
+// TestRecordPanelsCloseOnNavigation checks a picker does not follow the user to
+// another screen.
+func TestRecordPanelsCloseOnNavigation(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, time.Now().Format("2006-01-02"))
+	if !hasControl(driver, "关闭日期选择") {
+		t.Fatal("the range panel did not open")
+	}
+	click(t, driver, "分析")
+	click(t, driver, "记录")
+	if hasControl(driver, "关闭日期选择") {
+		t.Fatal("the range panel followed the user to another screen")
+	}
+}
+
 // TestRecordsSortMenu checks the sort sits beside 记一笔 and opens its menu
 // there.
 func TestRecordsSortMenu(t *testing.T) {

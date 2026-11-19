@@ -73,8 +73,19 @@ func (m *Model) drawSidebar(d *ui.DrawContext) {
 	}
 }
 
-// selectNav applies a click on one of the sidebar's identities.
+// selectNav applies a click on one of the sidebar's identities, and closes the
+// floating panels of the screen it leaves, so a picker does not follow the user
+// to another section or sub-function.
 func (m *Model) selectNav(id gfx.ID) {
+	section, tab := m.section, m.pageTab(m.section)
+	m.applyNav(id)
+	if m.section != section || m.pageTab(m.section) != tab {
+		m.closeOverlays(section)
+	}
+}
+
+// applyNav applies a click on one of the sidebar's identities.
+func (m *Model) applyNav(id gfx.ID) {
 	if id == m.navSettingsID {
 		m.section = SectionSettings
 		m.expandedOpen = false

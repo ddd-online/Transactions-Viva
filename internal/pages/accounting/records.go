@@ -346,6 +346,15 @@ func (m *recordsModel) paintEmptyActions(d *ui.DrawContext, ids [emptyActionCoun
 	}
 }
 
+// CloseOverlays closes the panels this page floats over itself: the range
+// picker, the composer's date panels and the tag picker.
+func (m *recordsModel) CloseOverlays() {
+	m.rangePick.Open = false
+	m.datePick.Open = false
+	m.eventPick.Open = false
+	m.tags.state.Open = false
+}
+
 // lastMonth shows the whole previous month.
 func (m *recordsModel) lastMonth() {
 	now := time.Now()

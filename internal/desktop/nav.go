@@ -84,6 +84,23 @@ func (m *Model) pageTab(section Section) int {
 	return 0
 }
 
+// closeOverlays closes the floating panels of the section the user is leaving. A
+// page that floats a picker or a popup over itself implements CloseOverlays.
+func (m *Model) closeOverlays(section Section) {
+	var page any
+	switch section {
+	case SectionAccounting:
+		page = m.accounting
+	case SectionStock:
+		page = m.stock
+	case SectionTodo:
+		page = m.todo
+	}
+	if closer, ok := page.(interface{ CloseOverlays() }); ok {
+		closer.CloseOverlays()
+	}
+}
+
 // selectTab chooses a section's sub-function.
 func (m *Model) selectTab(section Section, index int) {
 	switch section {

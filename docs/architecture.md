@@ -98,6 +98,9 @@ main → desktop → pages → components
   编辑、同步到其他账本、删除。底部分页是 `internal/components/pagination`：
   每页 15 / 30 / 50 的 `selectbox.Select` 在 Viva 分页左侧，「共 N 条」在右侧，三者同属
   一个自定义分页组件；分页栏上方不再画分割线。接入 store 时替换 mock，不改这套布局。
+- 页面自己浮起来的层（选择器面板、标签弹层）在切走分区 / 子功能时由外壳收起：页面实现
+  `CloseOverlays()`，`internal/desktop` 的 `selectNav` 在离开前调用它，浮层不会跟着用户
+  跑到另一个页面上。
 - 导航是两级：一级功能项展开自己的子功能，同时收起其他一级项；没有子功能的功能（事件、日记）
   就是单独一项。页面通过 `Tabs() []string`、`Tab() int`、`SelectTab(int)` 暴露子功能，
   内容里不画 `ui.Tabs`。
