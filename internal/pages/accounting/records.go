@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vivaui/viva/components"
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
@@ -76,7 +77,7 @@ var rangeChoices = [...]struct {
 // section exists, so its filters and scroll survive a section switch.
 type recordsModel struct {
 	records []record
-	shown   []record // the rows the current range leaves, already sorted
+	shown   []record // every row the current range leaves, already sorted
 
 	stats [3]int64 // 收入 / 支出 / 转账, within the visible rows
 
@@ -85,10 +86,28 @@ type recordsModel struct {
 	sortDesc  bool
 	countText string
 
+	// page is the 1-based page of the table; pageSize is the mock page size.
+	// pageStart is where the current page begins in shown, set by table.
+	page      int
+	pageSize  int
+	pageStart int
+
 	list      ui.ListState
 	rangeMenu bool
 	sortMenu  bool
 	draft     recordDraft
+
+	// The pagination component paints its own hits, so the page names its
+	// items in the page tree once per paint: previous, seven page slots, next.
+	pageIDs   [9]gfx.ID
+	pageItems [7]pageItem
+}
+
+// pageItem is one slot of the pagination row: a page number, an ellipsis, or
+// an unused slot when there are fewer than seven pages.
+type pageItem struct {
+	number   int
+	ellipsis bool
 }
 
 // newRecordsModel returns the page on 今天, newest first, with the mock rows
@@ -99,6 +118,8 @@ func newRecordsModel() *recordsModel {
 		rangeMode: rangeToday,
 		sortField: sortDate,
 		sortDesc:  true,
+		page:      1,
+		pageSize:  5,
 	}
 	m.refilter()
 	return m
@@ -110,6 +131,10 @@ func (m *recordsModel) View(c ui.C) {
 		m.toolbar(c)
 		ui.Divider(c)
 		m.table(c)
+		if len(m.shown) > 0 {
+			ui.Divider(c)
+			m.pager(c)
+		}
 		ui.Divider(c)
 		m.footer(c)
 	})
@@ -181,14 +206,16 @@ func (m *recordsModel) table(c ui.C) {
 			m.empty(c)
 			return
 		}
-		ui.List(c, &m.list, len(m.shown), m.row).Label("记录").Grow(1)
+		m.pageStart = (m.page - 1) * m.pageSize
+		end := min(m.pageStart+m.pageSize, len(m.shown))
+		ui.List(c, &m.list, end-m.pageStart, m.row).Label("记录").Grow(1)
 	})
 }
 
 // row declares one record: date and time, type, category, tags, description and
 // the signed amount.
 func (m *recordsModel) row(r ui.ListRow) {
-	rec := &m.shown[r.Index]
+	rec := &m.shown[m.pageStart+r.Index]
 	theme := r.C.Theme()
 	r.Element.Height(48).PadX(18).Gap(12).Items(ui.Center).
 		Hover(ui.Look{}.Background(theme.Hover))
@@ -237,8 +264,6 @@ func (m *recordsModel) footer(c ui.C) {
 		m.stat(c, "收入", m.stats[0], kindColor(*theme, kindIncome))
 		m.stat(c, "支出", m.stats[1], kindColor(*theme, kindExpense))
 		m.stat(c, "转账", m.stats[2], kindColor(*theme, kindTransfer))
-		ui.Spacer(c)
-		ui.Text(c, m.countText).FontSize(11).Muted()
 	})
 }
 
@@ -248,6 +273,156 @@ func (m *recordsModel) stat(c ui.C, label string, cents int64, color gfx.Color) 
 		ui.Text(c, domain.CentsToYuan(cents)).FontSize(12).
 			Weight(gfx.WeightMedium).Color(color)
 	})
+}
+
+// pager is the row under the table: the total on the left and Viva's
+// pagination component on the right.
+func (m *recordsModel) pager(c ui.C) {
+	ui.Row(c).Height(48).FillWidth().PadX(18).Gap(12).Items(ui.Center).Children(func() {
+		ui.Text(c, m.countText).FontSize(12).Muted()
+		ui.Spacer(c)
+		// The component paints its own hit regions, so their identities are
+		// named here, before the slot that paints it.
+		for index := range m.pageIDs {
+			m.pageIDs[index] = ui.ID(c)
+		}
+		m.buildPageItems()
+		ui.Slot(c).Width(480).Height(32).Draw(m.drawPagination)
+	})
+}
+
+// pageCount is how many pages the current rows take.
+func (m *recordsModel) pageCount() int {
+	if len(m.shown) == 0 || m.pageSize <= 0 {
+		return 1
+	}
+	pages := (len(m.shown) + m.pageSize - 1) / m.pageSize
+	if pages < 1 {
+		pages = 1
+	}
+	return pages
+}
+
+// buildPageItems fills the seven pagination slots: every page when they fit,
+// otherwise the first and last page with an ellipsis and a window around the
+// current one.
+func (m *recordsModel) buildPageItems() {
+	m.pageItems = [7]pageItem{}
+	total := m.pageCount()
+	if total <= len(m.pageItems) {
+		for number := 1; number <= total; number++ {
+			m.pageItems[number-1].number = number
+		}
+		return
+	}
+	switch {
+	case m.page <= 4:
+		for index := 0; index < 5; index++ {
+			m.pageItems[index].number = index + 1
+		}
+		m.pageItems[5].ellipsis = true
+		m.pageItems[6].number = total
+	case m.page >= total-3:
+		m.pageItems[0].number = 1
+		m.pageItems[1].ellipsis = true
+		for index := 0; index < 5; index++ {
+			m.pageItems[2+index].number = total - 4 + index
+		}
+	default:
+		m.pageItems[0].number = 1
+		m.pageItems[1].ellipsis = true
+		m.pageItems[2].number = m.page - 1
+		m.pageItems[3].number = m.page
+		m.pageItems[4].number = m.page + 1
+		m.pageItems[5].ellipsis = true
+		m.pageItems[6].number = total
+	}
+}
+
+// drawPagination paints Viva's pagination component against the right edge of
+// its slot and turns a click into a page change.
+func (m *recordsModel) drawPagination(d *ui.DrawContext) {
+	theme := *d.Theme
+	metrics := theme.Metrics
+	itemHeight := min(metrics.ControlHeight, d.Rect.Height)
+	edge := metrics.GapItem
+	inner := metrics.GapItem * 1.25
+	gap := metrics.GapItem * 0.75
+	spacing := metrics.GapItem / 2
+
+	previousWidth := edge + 16 + gap +
+		d.Canvas.TextWidthWeight("上一页", metrics.FontSizeM, gfx.WeightMedium) + inner
+	nextWidth := edge + 16 + gap +
+		d.Canvas.TextWidthWeight("下一页", metrics.FontSizeM, gfx.WeightMedium) + inner
+	items := 0
+	for _, item := range m.pageItems {
+		if item.number > 0 || item.ellipsis {
+			items++
+		}
+	}
+	width := previousWidth + nextWidth + float32(items)*itemHeight +
+		float32(items+1)*spacing
+	if width > d.Rect.Width {
+		width = d.Rect.Width
+	}
+	bounds := gfx.Rect{
+		X: d.Rect.X + d.Rect.Width - width, Y: d.Rect.Y,
+		Width: width, Height: itemHeight,
+	}
+
+	pagination := components.BeginPagination(d.Canvas, theme, bounds)
+	pagination.AddPrevious(m.pageIDs[0], "上一页", m.page <= 1)
+	for index, item := range m.pageItems {
+		switch {
+		case item.ellipsis:
+			pagination.AddEllipsis()
+		case item.number > 0:
+			pagination.AddPage(m.pageIDs[index+1], strconv.Itoa(item.number), item.number == m.page)
+		}
+	}
+	pagination.AddNext(m.pageIDs[8], "下一页", m.page >= m.pageCount())
+
+	if id, ok := d.Canvas.ClickTarget(); ok && m.isPageID(id) {
+		d.Canvas.AfterPaint(func() { m.choosePage(id) })
+	}
+}
+
+// isPageID reports whether id belongs to the pagination row, so a click
+// elsewhere does not reach choosePage.
+func (m *recordsModel) isPageID(id gfx.ID) bool {
+	if id == m.pageIDs[0] || id == m.pageIDs[8] {
+		return true
+	}
+	for index, item := range m.pageItems {
+		if item.number > 0 && m.pageIDs[index+1] == id {
+			return true
+		}
+	}
+	return false
+}
+
+// choosePage applies a click on one of the pagination items.
+func (m *recordsModel) choosePage(id gfx.ID) {
+	pages := m.pageCount()
+	switch id {
+	case m.pageIDs[0]:
+		if m.page > 1 {
+			m.page--
+		}
+	case m.pageIDs[8]:
+		if m.page < pages {
+			m.page++
+		}
+	default:
+		for index, item := range m.pageItems {
+			if item.number > 0 && m.pageIDs[index+1] == id {
+				m.page = item.number
+				break
+			}
+		}
+	}
+	m.page = min(max(m.page, 1), pages)
+	m.list.Select(-1)
 }
 
 // refilter recomputes the visible rows and the statistics.
@@ -291,6 +466,7 @@ func (m *recordsModel) refilter() {
 		return left.at.Before(right.at)
 	})
 	m.countText = "共 " + strconv.Itoa(len(m.shown)) + " 条"
+	m.page = 1
 	m.list.Select(-1)
 }
 

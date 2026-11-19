@@ -109,6 +109,31 @@ func TestRecordsComposer(t *testing.T) {
 	})
 }
 
+func TestRecordsPagination(t *testing.T) {
+	driver, _ := open(t)
+	if !shows(driver, "共 5 条") {
+		t.Fatal("the pager did not show the today count")
+	}
+
+	click(t, driver, "今天")
+	click(t, driver, "全部时间")
+	if !shows(driver, "共 12 条") {
+		t.Fatal("all time did not leave all twelve rows")
+	}
+	if shows(driver, "超市采购") {
+		t.Fatal("the first page showed a row from the second page")
+	}
+
+	click(t, driver, "下一页")
+	if !shows(driver, "超市采购") {
+		t.Fatal("下一页 did not show the second page")
+	}
+	click(t, driver, "上一页")
+	if shows(driver, "超市采购") {
+		t.Fatal("上一页 did not return to the first page")
+	}
+}
+
 func TestSidebarExpandsOneSectionAtATime(t *testing.T) {
 	driver, _ := open(t)
 
