@@ -141,15 +141,15 @@ func TestSettingsCategoriesSwitchThePage(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "应用设置")
 
-	for _, name := range []string{"通用设置", "功能开关", "数据", "日记配置", "关于软件"} {
+	for _, name := range []string{"通用设置", "功能开关", "数据备份", "日记配置", "关于软件"} {
 		if !hasControl(driver, name) {
 			t.Fatalf("settings list has no %q entry", name)
 		}
 	}
 
-	click(t, driver, "数据")
+	click(t, driver, "数据备份")
 	if !shows(driver, "手动备份") || !shows(driver, "从备份恢复") {
-		t.Fatal("数据 did not show its settings rows")
+		t.Fatal("数据备份 did not show its settings rows")
 	}
 
 	click(t, driver, "关于软件")

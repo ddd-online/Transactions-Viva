@@ -97,7 +97,7 @@ internal/store/
 
 - 驱动：`modernc.org/sqlite`（纯 Go，无 cgo；motty 也用它）。
 - 打开时只做 `PRAGMA quick_check`；`integrity_check` 只属于备份 / 恢复两个显式动作。
-- 迁移失败不静默建新库；库损坏时报告并引导「设置 → 数据 → 从备份恢复」。
+- 迁移失败不静默建新库；库损坏时报告并引导「设置 → 数据备份 → 从备份恢复」。
 - 写入用事务；金额、价格、时间、日期的单位见 `domain` 的包文档。
 
 ## 待记录的决策

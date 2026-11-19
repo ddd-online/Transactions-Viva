@@ -80,7 +80,7 @@ var sections = [...]section{
 	},
 	{
 		tab:   tabData,
-		title: "数据",
+		title: "数据备份",
 		note:  "打开工作空间、手动备份、每日自动备份，以及从备份恢复（恢复后重启）。",
 		rows: []setting{
 			{"最近工作空间", "最近打开的本地工作空间，可直接切换。"},
