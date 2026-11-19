@@ -88,7 +88,9 @@ main → desktop → pages → components
   标签用 Viva 的 `components.PaintMultiSelect`。MultiSelect 需要宿主路由：`Config.OnKey` /
   `OnScroll` 交给 `MultiSelectState.Key/Wheel`，`Config.TextInput` 把聚焦的输入接到
   `MultiSelectState.Query`。
-  工具栏的时间范围是共享的 `components.DateRangePicker`（旧工程 `TimeRangePicker`）：日 / 月 / 年
+  没有记录时用 Viva 的 `components.Empty`（图标 + 标题 + 说明，居中在表格区），
+  下面挂旧工程空态的三个按钮：上月 / 今年 / 记一笔。
+  工具栏的时间范围是共享的 `datepicker.Picker`（旧工程 `TimeRangePicker`）：日 / 月 / 年
   三个粒度、前后翻一个周期、浮层里的月历 / 月份格 / 年份格与快捷区间（今天 / 近 7 天 / 本周 /
   本月 / 上月；月粒度每月 / 近 6 个月 / 今年；年粒度今年 / 去年），左端「今天」把粒度收回日、
   区间收回今天。范围两端都是本地 `YYYY-MM-DD`，按日包含地过滤记录。

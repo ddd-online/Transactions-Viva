@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	viva "github.com/vivaui/viva/components"
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
@@ -280,28 +281,83 @@ func (m *recordsModel) row(r ui.ListRow) {
 	})
 }
 
-// empty is what the content area says when the time range matches nothing.
+// emptyActions are the buttons the empty state offers, in order.
+const emptyActionCount = 3
+
+// emptyActions are their labels: the last one is the primary action.
+var emptyActions = [emptyActionCount]string{"上月", "今年", "记一笔"}
+
+// empty is what the content area says when the time range matches nothing: the
+// theme's empty state, with the actions the old page offered underneath it.
 func (m *recordsModel) empty(c ui.C) {
-	now := time.Now()
-	ui.Column(c).Grow(1).FillWidth().Center().Gap(6).Children(func() {
-		ui.Text(c, "今天还没有记录").FontSize(16).Bold()
-		ui.Text(c, "换个时间范围，或直接记一笔。").FontSize(13).Muted()
-		ui.Row(c).Gap(8).Children(func() {
-			if ui.Button(c, "上月").Secondary().Clicked() {
-				first := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local).AddDate(0, -1, 0)
-				m.setRange(first.Format(dateLayout), first.AddDate(0, 1, -1).Format(dateLayout),
-					datepicker.ByMonth)
-			}
-			if ui.Button(c, "今年").Secondary().Clicked() {
-				m.setRange(time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.Local).Format(dateLayout),
-					time.Date(now.Year(), 12, 31, 0, 0, 0, 0, time.Local).Format(dateLayout),
-					datepicker.ByYear)
-			}
-			if ui.Button(c, "记一笔").Clicked() {
-				m.openComposer()
-			}
+	theme := c.Theme()
+	var ids [emptyActionCount]gfx.ID
+	for index := range ids {
+		ids[index] = ui.ID(c)
+	}
+	row := viva.BeginButton(nil, *theme, gfx.ID{}, gfx.Rect{}).BoundsHeight()
+	ui.Slot(c).Grow(1).FillWidth().Draw(func(d *ui.DrawContext) {
+		content := viva.Empty(d.Canvas, *d.Theme, d.Rect, viva.EmptyData{
+			Media:         viva.EmptyMediaIcon,
+			Icon:          icons.Wallet,
+			Title:         "今天还没有记录",
+			Description:   "换个时间范围，或直接记一笔。",
+			ContentHeight: row,
 		})
+		m.paintEmptyActions(d, ids, content)
 	})
+}
+
+// paintEmptyActions paints the empty state's buttons into the row the native
+// empty state reserved, and applies a press on them after the paint.
+func (m *recordsModel) paintEmptyActions(d *ui.DrawContext, ids [emptyActionCount]gfx.ID, content gfx.Rect) {
+	if content.Width <= 0 || content.Height <= 0 {
+		return
+	}
+	theme := *d.Theme
+	metrics := theme.Metrics
+	var widths [emptyActionCount]float32
+	total := float32(0)
+	for index, label := range emptyActions {
+		widths[index] = viva.BeginButton(d.Canvas, theme, ids[index], content).
+			SizeToFit(label).BoundsWidth()
+		total += widths[index]
+	}
+	total += float32(emptyActionCount-1) * metrics.GapItem
+	x := content.X + max((content.Width-total)/2, 0)
+	for index, label := range emptyActions {
+		button := viva.BeginButton(d.Canvas, theme, ids[index], gfx.Rect{
+			X: x, Y: content.Y, Width: widths[index], Height: content.Height,
+		})
+		if index == emptyActionCount-1 {
+			button.Default(label)
+		} else {
+			button.Secondary(label)
+		}
+		x += widths[index] + metrics.GapItem
+	}
+	switch {
+	case d.Canvas.Clicked(ids[0]):
+		d.Canvas.AfterPaint(m.lastMonth)
+	case d.Canvas.Clicked(ids[1]):
+		d.Canvas.AfterPaint(m.thisYear)
+	case d.Canvas.Clicked(ids[2]):
+		d.Canvas.AfterPaint(m.openComposer)
+	}
+}
+
+// lastMonth shows the whole previous month.
+func (m *recordsModel) lastMonth() {
+	now := time.Now()
+	first := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local).AddDate(0, -1, 0)
+	m.setRange(first.Format(dateLayout), first.AddDate(0, 1, -1).Format(dateLayout), datepicker.ByMonth)
+}
+
+// thisYear shows the whole current year.
+func (m *recordsModel) thisYear() {
+	now := time.Now()
+	m.setRange(time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.Local).Format(dateLayout),
+		time.Date(now.Year(), 12, 31, 0, 0, 0, 0, time.Local).Format(dateLayout), datepicker.ByYear)
 }
 
 // footer is the records' 收入 / 支出 / 转账 summary and the visible row count.

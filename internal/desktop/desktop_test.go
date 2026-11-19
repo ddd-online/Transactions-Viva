@@ -429,6 +429,29 @@ func TestRecordsRowContextMenu(t *testing.T) {
 	}
 }
 
+// TestRecordsEmptyState checks the empty state is the theme's, with the old
+// page's actions under it.
+func TestRecordsEmptyState(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, time.Now().Format("2006-01-02"))
+	click(t, driver, "年")
+	click(t, driver, time.Now().Format("2006"))
+	click(t, driver, "2024 年") // the start of a range
+	click(t, driver, "2024 年") // and its end
+	if !shows(driver, "今天还没有记录") {
+		t.Fatal("a range without records showed no empty state")
+	}
+	for _, action := range []string{"上月", "今年", "记一笔"} {
+		if !hasControl(driver, action) {
+			t.Fatalf("the empty state has no %q", action)
+		}
+	}
+	click(t, driver, "上月")
+	if shows(driver, "今天还没有记录") {
+		t.Fatal("上月 did not leave the empty state")
+	}
+}
+
 // TestRecordsSortMenu checks the sort sits beside 记一笔 and opens its menu
 // there.
 func TestRecordsSortMenu(t *testing.T) {
