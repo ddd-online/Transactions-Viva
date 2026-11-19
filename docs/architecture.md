@@ -117,11 +117,16 @@ main → desktop → pages → components
     `Fill: true` 撑满字段列，`CloseOnPick: true` 选完即收起。
   日期算术（月长、整周、按粒度对齐 / 翻页）与快捷区间都在这个文件里，纯函数、用 UTC 上的
   `time.Time` 做公历运算，不碰时区与夏令时。
-- **只用原生样式**：触发器统一是 `ui.Button(值).Outline().Icon(Clock)`，表单里加 `.FillWidth()`；面板的日和周由 Viva 的 `components.Calendar` 画（标题、箭头、星期、格子连同选中 /
-  区间 / 今天 / 灰格都是它自己的样式）；月份格、年份格、前后十年箭头和快捷区间用
-  `components.BeginButton` 的 `Ghost` / `Default` / `Secondary` / `Link` / `Icon` 变体；浮层表面
-  取 `components.PopupRecipe` 的填充、描边、圆角与阴影。这里不写颜色、字号或固定像素尺寸：
-  尺寸从 `c.Theme().Metrics` 和 `components.Calendar` 自己的布局推出来。
+- **只用原生样式**：触发器统一是 `ui.Button(值).Outline().Icon(Clock)`，表单里加 `.FillWidth()`；
+  工具栏不给宽度靠内容，而是给一个固定宽度——按三种粒度最长的范围文本
+  （`YYYY-MM-DD ~ YYYY-MM-DD` / `YYYY-MM ~ YYYY-MM` / `YYYY ~ YYYY`）量出来的那个宽度，
+  所以换粒度、拉范围时字段不会变宽变窄。
+- 三种粒度共用一套格子：日、月、年都自己排成网格，每格交给 `components.BeginButton` 画——
+  端点 `Default`（实心主色）、区间内 `Secondary`、今天 `Outline`（描边）、其余 `Ghost`；
+  「日」的状态因此与「月 / 年」是同一套外观。标题、星期行、前后箭头也走同一套原生控件
+  （`Icon` 变体的 `Ghost` 按钮 + `LabelCenter` 的标题样式），浮层表面取
+  `components.PopupRecipe` 的填充、描边、圆角与阴影。这里不写颜色、字号或固定像素尺寸：
+  尺寸从 `c.Theme().Metrics` 与 `components.BeginButton` 的度量推出来。
 - 面板仍画在画布上（`gfx.Canvas` + `HitWithOptions`）而不是 `ui.Popover`：Viva v0.6.5 里
   Popover 在 `ui.Modal` 内能画出来却收不到点击（hit 层被判给弹窗），见下面的「框架缺口」。
   `PushLayer(20)`，与标签多选同一层：弹窗有自己的合成层，面板必须在其上才看得见、点得着。

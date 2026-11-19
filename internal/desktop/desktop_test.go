@@ -353,6 +353,30 @@ func TestRecordDatePicker(t *testing.T) {
 	}
 }
 
+// TestTimeRangePickerKeepsItsFieldWidth checks the trigger has one width at
+// every grain, sized for the widest range text, so the toolbar does not reflow
+// when the range or the grain changes.
+func TestTimeRangePickerKeepsItsFieldWidth(t *testing.T) {
+	driver, _ := open(t)
+	settle(t, driver)
+	day, ok := controlBounds(driver, time.Now().Format("2006-01-02"))
+	if !ok {
+		t.Fatal("the range field is missing")
+	}
+	click(t, driver, time.Now().Format("2006-01-02"))
+	click(t, driver, "月")
+	month, ok := controlBounds(driver, time.Now().Format("2006-01"))
+	if !ok {
+		t.Fatal("the month field is missing")
+	}
+	if day.Width != month.Width {
+		t.Fatalf("the field changed width with the grain: %v -> %v", day.Width, month.Width)
+	}
+	if day.Width < 180 {
+		t.Fatalf("the field is too narrow for a range: %v", day.Width)
+	}
+}
+
 // TestTimeRangePicker drives the toolbar's range picker: its presets, its
 // period arrows and the grain choice.
 func TestTimeRangePicker(t *testing.T) {
