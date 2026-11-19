@@ -35,13 +35,6 @@ func TestRecordsRefilter(t *testing.T) {
 		t.Fatalf("count text = %q", m.countText)
 	}
 
-	m.query = "房"
-	m.refilter()
-	if len(m.shown) != 1 || m.shown[0].id != "c" {
-		t.Fatalf("search left %v", m.shown)
-	}
-
-	m.query = ""
 	m.kind = kindIncome
 	m.refilter()
 	if len(m.shown) != 1 || m.shown[0].id != "b" {

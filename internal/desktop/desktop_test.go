@@ -106,20 +106,6 @@ func TestRecordsFilterSearchAndComposer(t *testing.T) {
 		}
 	})
 
-	t.Run("search filters the rows", func(t *testing.T) {
-		driver, _ := open(t)
-		click(t, driver, "搜索记录")
-		if err := driver.Type("早餐"); err != nil {
-			t.Fatal(err)
-		}
-		if !shows(driver, "早餐 · 豆浆油条") {
-			t.Fatal("the search hid the matching row")
-		}
-		if shows(driver, "午餐 · 公司楼下") {
-			t.Fatal("the search left a row that does not match")
-		}
-	})
-
 	t.Run("the composer saves a mock row", func(t *testing.T) {
 		driver, _ := open(t)
 		click(t, driver, "记一笔")

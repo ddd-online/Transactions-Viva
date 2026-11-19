@@ -1,5 +1,5 @@
 // The 记录 screen of the 记账 section. Its layout follows the reference
-// application's hosts page: a search toolbar, a row of filter chips, then the
+// application's hosts page: a toolbar, a row of filter chips, then the
 // scrolling content, all inside the workspace card.
 //
 // The data is mock for now (records_mock.go): filtering, sorting and adding a
@@ -83,15 +83,14 @@ var rangeChoices = [...]struct {
 }
 
 // recordsModel is the 记录 screen's state. The shell owns it for as long as the
-// section exists, so the search, filters and scroll survive a section switch.
+// section exists, so the filters and scroll survive a section switch.
 type recordsModel struct {
 	records []record
 	shown   []record // the rows the current filters leave, already sorted
 
-	counts [4]int   // 全部 / 支出 / 收入 / 转账, within the time range and search
+	counts [4]int   // 全部 / 支出 / 收入 / 转账, within the time range
 	stats  [3]int64 // 收入 / 支出 / 转账, within the visible rows
 
-	query     string
 	kind      string // "" means every type
 	rangeMode rangeMode
 	sortField sortField
@@ -131,15 +130,10 @@ func (m *recordsModel) View(c ui.C) {
 	m.composerView(c)
 }
 
-// toolbar is the search and the page actions, as the reference hosts page has
-// its search field on the left and its actions on the right.
+// toolbar is the page's actions, laid out like the reference hosts page: the
+// time range and sort on the left, the primary action on the right.
 func (m *recordsModel) toolbar(c ui.C) {
 	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(10).Items(ui.Center).Children(func() {
-		if ui.TextField(c, &m.query, "搜索记录", "搜索描述、分类或标签").
-			Basis(360).Shrink(1).MinWidth(200).Changed() {
-			m.refilter()
-		}
-
 		rangeButton := ui.Button(c, rangeLabel(m.rangeMode)).Outline()
 		if rangeButton.Clicked() {
 			m.rangeMenu = !m.rangeMenu
@@ -184,7 +178,7 @@ func (m *recordsModel) sortItem(menu *ui.MenuItems, label string, field sortFiel
 }
 
 // filters is the row under the toolbar: one chip per transaction type, with the
-// number of rows the time range and search leave, and the range in words.
+// number of rows the time range leaves, and the range in words.
 func (m *recordsModel) filters(c ui.C) {
 	theme := c.Theme()
 	ui.Row(c).Height(44).FillWidth().PadX(18).Gap(6).Items(ui.Center).Children(func() {
@@ -278,7 +272,7 @@ func (m *recordsModel) empty(c ui.C) {
 		ui.Text(c, "没有匹配的记录").FontSize(16).Bold()
 		ui.Text(c, "换个时间范围或筛选条件，也可以直接记一笔。").FontSize(13).Muted()
 		if ui.Button(c, "清除筛选").Outline().Clicked() {
-			m.query, m.kind, m.rangeMode = "", "", rangeToday
+			m.kind, m.rangeMode = "", rangeToday
 			m.refilter()
 		}
 	})
@@ -307,16 +301,12 @@ func (m *recordsModel) stat(c ui.C, label string, cents int64, color gfx.Color) 
 // refilter recomputes the visible rows, the chip counts and the statistics.
 func (m *recordsModel) refilter() {
 	start := m.rangeStart(time.Now())
-	query := strings.ToLower(strings.TrimSpace(m.query))
 
 	m.shown = m.shown[:0]
 	m.counts = [4]int{}
 	m.stats = [3]int64{}
 	for _, rec := range m.records {
 		if !start.IsZero() && rec.at.Before(start) {
-			continue
-		}
-		if query != "" && !rec.matches(query) {
 			continue
 		}
 		m.counts[0]++
@@ -403,19 +393,6 @@ func rangeLabel(mode rangeMode) string {
 		}
 	}
 	return ""
-}
-
-func (r record) matches(query string) bool {
-	if strings.Contains(strings.ToLower(r.description), query) ||
-		strings.Contains(strings.ToLower(r.category), query) {
-		return true
-	}
-	for _, tag := range r.tags {
-		if strings.Contains(strings.ToLower(tag), query) {
-			return true
-		}
-	}
-	return strings.Contains(strings.ToLower(kindLabel(r.kind)), query)
 }
 
 func (r record) signedAmount() string {
