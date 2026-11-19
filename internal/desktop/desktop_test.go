@@ -91,7 +91,17 @@ func TestSubFunctionTabs(t *testing.T) {
 	}
 }
 
-func TestRecordsComposer(t *testing.T) {
+func TestRecordsPage(t *testing.T) {
+	t.Run("marks show an outlier and a linked event", func(t *testing.T) {
+		driver, _ := open(t)
+		if !shows(driver, "离群值") {
+			t.Fatal("the outlier mark is missing")
+		}
+		if !shows(driver, "★") {
+			t.Fatal("the linked-event mark is missing")
+		}
+	})
+
 	t.Run("saves a mock row", func(t *testing.T) {
 		driver, _ := open(t)
 		click(t, driver, "记一笔")

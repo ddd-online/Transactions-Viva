@@ -8,15 +8,16 @@ import "time"
 // with the tr_query path when internal/store lands.
 func mockRecords() []record {
 	now := time.Now()
+	today := now.Format("2006-01-02")
 	at := func(daysAgo, hour, minute int) time.Time {
 		day := now.AddDate(0, 0, -daysAgo)
 		return time.Date(day.Year(), day.Month(), day.Day(), hour, minute, 0, 0, time.Local)
 	}
 	return []record{
 		{id: "mock-1", kind: kindExpense, category: "餐饮美食", description: "早餐 · 豆浆油条", tags: []string{"日常"}, amount: 1200, at: at(0, 8, 40)},
-		{id: "mock-2", kind: kindExpense, category: "餐饮美食", description: "午餐 · 公司楼下", tags: []string{"日常", "同事"}, amount: 3200, at: at(0, 12, 10)},
+		{id: "mock-2", kind: kindExpense, category: "餐饮美食", description: "午餐 · 公司楼下", tags: []string{"日常", "同事"}, amount: 3200, at: at(0, 12, 10), keyEventDate: today},
 		{id: "mock-3", kind: kindExpense, category: "交通出行", description: "地铁通勤", tags: []string{"通勤"}, amount: 400, at: at(0, 18, 35)},
-		{id: "mock-4", kind: kindIncome, category: "工资奖金", description: "工资到账", tags: []string{"月薪"}, amount: 1850000, at: at(0, 20, 5)},
+		{id: "mock-4", kind: kindIncome, category: "工资奖金", description: "工资到账", tags: []string{"月薪"}, amount: 1850000, at: at(0, 20, 5), outlier: true},
 		{id: "mock-5", kind: kindTransfer, category: "账户转账", description: "转入储蓄账户", tags: []string{"储蓄"}, amount: 500000, at: at(0, 21, 10)},
 
 		{id: "mock-6", kind: kindExpense, category: "日用百货", description: "超市采购", tags: []string{"家庭"}, amount: 12680, at: at(1, 9, 20)},

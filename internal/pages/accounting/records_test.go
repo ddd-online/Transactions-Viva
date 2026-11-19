@@ -63,6 +63,15 @@ func TestTypeColorsMatchTheOldProject(t *testing.T) {
 	}
 }
 
+func TestOutlierColorMatchesTheOldProject(t *testing.T) {
+	if got := outlierColor(gfx.LightTheme()); got != gfx.RGB24(0xd97706) {
+		t.Errorf("light outlier color = %v", got)
+	}
+	if got := outlierColor(gfx.DarkTheme()); got != gfx.RGB24(0xfbbf24) {
+		t.Errorf("dark outlier color = %v", got)
+	}
+}
+
 func TestSplitTags(t *testing.T) {
 	tags := splitTags(" 日常, 同事，周末、家庭 ")
 	want := []string{"日常", "同事", "周末", "家庭"}

@@ -32,19 +32,22 @@ const (
 	recordTypeWidth     = float32(64)
 	recordCategoryWidth = float32(112)
 	recordTagsWidth     = float32(180)
+	recordMarksWidth    = float32(92)
 	recordAmountWidth   = float32(120)
 )
 
 // record is one row of the mock table. The store's TransactionRecord plus its
 // tag rows becomes this shape once the data is real.
 type record struct {
-	id          string
-	kind        string
-	category    string
-	description string
-	tags        []string
-	amount      int64 // 分
-	at          time.Time
+	id           string
+	kind         string
+	category     string
+	description  string
+	tags         []string
+	amount       int64 // 分
+	at           time.Time
+	outlier      bool
+	keyEventDate string // 关联的事件日期（空串 = 不关联）
 }
 
 type rangeMode uint8
@@ -199,6 +202,7 @@ func (m *recordsModel) table(c ui.C) {
 			ui.Text(c, "分类").Width(recordCategoryWidth).FontSize(11).Muted()
 			ui.Text(c, "标签").Width(recordTagsWidth).FontSize(11).Muted()
 			ui.Text(c, "描述").Grow(1).FontSize(11).Muted()
+			ui.Text(c, "标记").Width(recordMarksWidth).TextCenter().FontSize(11).Muted()
 			ui.Text(c, "金额").Width(recordAmountWidth).TextEnd().FontSize(11).Muted()
 		})
 		ui.Divider(c)
@@ -241,6 +245,17 @@ func (m *recordsModel) row(r ui.ListRow) {
 		description = "-"
 	}
 	ui.Text(r.C, description).Grow(1).FontSize(13).Ellipsis()
+	ui.Row(r.C).Width(recordMarksWidth).Items(ui.Center).Justify(ui.Center).Gap(6).
+		Children(func() {
+			if rec.outlier {
+				mark := outlierColor(*theme)
+				ui.Text(r.C, "离群值").FontSize(11).Weight(gfx.WeightMedium).Color(mark).
+					Background(mark.WithAlpha(0.12)).PadSides(1, 6, 1, 6).Radius(4)
+			}
+			if rec.keyEventDate != "" {
+				ui.Text(r.C, "★").FontSize(12).Color(outlierColor(*theme))
+			}
+		})
 	ui.Text(r.C, rec.signedAmount()).Width(recordAmountWidth).TextEnd().
 		FontSize(13).Weight(gfx.WeightMedium).Color(color)
 }
@@ -538,7 +553,16 @@ var (
 	incomeDark    = gfx.RGB24(0x4ade80)
 	expenseDark   = gfx.RGB24(0xf87171)
 	transferDark  = gfx.RGB24(0x60a5fa)
+	outlierLight  = gfx.RGB24(0xd97706)
+	outlierDark   = gfx.RGB24(0xfbbf24)
 )
+
+func outlierColor(theme gfx.Theme) gfx.Color {
+	if theme.Background.Red < 0.5 {
+		return outlierDark
+	}
+	return outlierLight
+}
 
 func kindColor(theme gfx.Theme, kind string) gfx.Color {
 	dark := theme.Background.Red < 0.5
