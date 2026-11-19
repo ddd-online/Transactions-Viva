@@ -23,6 +23,22 @@ func open(t *testing.T) (*app.Driver, *Model) {
 	return driver, model
 }
 
+// clickContains presses the middle of the first control whose name contains
+// want, for a control whose name is its value.
+func clickContains(t *testing.T, driver *app.Driver, want string) {
+	t.Helper()
+	for _, hit := range driver.Snapshot().Hits {
+		if strings.Contains(hit.Label, want) && !hit.IsLabel {
+			b := hit.Bounds
+			if err := driver.Click(b.X+b.Width/2, b.Y+b.Height/2); err != nil {
+				t.Fatal(err)
+			}
+			return
+		}
+	}
+	t.Fatalf("no control containing %q on screen", want)
+}
+
 // click presses the middle of the control with the given name, as a user would.
 func click(t *testing.T, driver *app.Driver, name string) {
 	t.Helper()
@@ -307,7 +323,7 @@ func TestTimeRangePicker(t *testing.T) {
 	driver, _ := open(t)
 	settle(t, driver)
 	still := labelBoundsOf(t, driver, "记录")
-	click(t, driver, "选择时间范围")
+	click(t, driver, time.Now().Format("2006-01-02"))
 	if !hasControl(driver, "关闭日期选择") {
 		t.Fatal("the range panel did not open")
 	}
@@ -324,7 +340,7 @@ func TestTimeRangePicker(t *testing.T) {
 		t.Fatal("上一周期 did not move the range")
 	}
 
-	click(t, driver, "选择时间范围")
+	clickContains(t, driver, " ~ ")
 	click(t, driver, "月")
 	if !shows(driver, time.Now().Format("2006-01")) {
 		t.Fatal("the 月 grain did not show the month in the field")
@@ -360,9 +376,9 @@ func TestRecordsPagination(t *testing.T) {
 	}
 
 	// Six months of records is more than one page of fifteen.
-	click(t, driver, "选择时间范围")
+	click(t, driver, time.Now().Format("2006-01-02"))
 	click(t, driver, "月")
-	click(t, driver, "选择时间范围")
+	click(t, driver, time.Now().Format("2006-01"))
 	click(t, driver, "近 6 个月")
 	if !shows(driver, "共 19 条") {
 		t.Fatal("近 6 个月 did not leave nineteen rows")

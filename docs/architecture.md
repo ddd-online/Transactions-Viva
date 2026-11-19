@@ -32,6 +32,12 @@ main → desktop → pages → components
 - `desktop` 是唯一知道窗口、标题栏和页面切换的地方；页面模型由它长期持有，切页不丢状态。
 - `config` 不依赖 UI；设置页通过依赖注入拿到读写配置的能力（落地时补）。
 
+**自定义组件不设样式。** `internal/components` 里的组件只用原生外观：`ui` 控件本来的样子、
+`components` 的 recipe（`BeginButton` / `Calendar` / `PopupRecipe` / `Select` …）和
+`c.Theme()` 的 `Metrics` / 颜色。不写字号、颜色、圆角、阴影常量，也不给控件固定像素尺寸——
+尺寸和留白从主题度量与原生组件的布局里来；需要在画布上画浮层时，同样只调用 recipe 的
+`Paint` 或取它的度量。
+
 ## 包与旧工程对照
 
 | 新包 / 文件 | 职责 | 旧工程来源 |
@@ -100,14 +106,20 @@ main → desktop → pages → components
 ## 时间选择器（internal/components/datepicker.go）
 
 - 一个组件两种用法：`DateRangePicker`（工具栏：粒度分段 + 前后周期箭头 + 值字段 + 浮层）和
-  `DateField`（表单：可输入的日期框 + 日历按钮 + 浮层）。两者共用同一块面板，笔刷、日期算术
-  （月长、整周、按粒度对齐 / 翻页）与快捷区间都在这个文件里，纯函数、用 UTC 上的 `time.Time`
+  `DateField`（表单：可输入的日期框 + 日历按钮 + 浮层）。两者共用同一块面板；日期算术
+  （月长、整周、按粒度对齐 / 翻页）与快捷区间在这个文件里，纯函数、用 UTC 上的 `time.Time`
   做公历运算，不碰时区与夏令时。
-- 面板是**自己画**的（`gfx.Canvas` + `HitWithOptions`），不是 `ui.Popover`：Viva v0.6.5 里
+- **只用原生样式**：触发器是 `ui.Button(...).Outline().Icon(...)`（工具栏）和 `ui.TextField`
+  （表单）；面板的日和周由 Viva 的 `components.Calendar` 画（标题、箭头、星期、格子连同选中 /
+  区间 / 今天 / 灰格都是它自己的样式）；月份格、年份格、前后十年箭头和快捷区间用
+  `components.BeginButton` 的 `Ghost` / `Default` / `Secondary` / `Link` / `Icon` 变体；浮层表面
+  取 `components.PopupRecipe` 的填充、描边、圆角与阴影。这里不写颜色、字号或固定像素尺寸：
+  尺寸从 `c.Theme().Metrics` 和 `components.Calendar` 自己的布局推出来。
+- 面板仍画在画布上（`gfx.Canvas` + `HitWithOptions`）而不是 `ui.Popover`：Viva v0.6.5 里
   Popover 在 `ui.Modal` 内能画出来却收不到点击（hit 层被判给弹窗），见下面的「框架缺口」。
-  画的时候 `PushLayer(20)`，与标签多选同一层：弹窗有自己的合成层，面板必须在其上才看得见、
-  点得着。外部点击由一个覆盖页面的背景 hit 关闭（`PassPrimary/PassSecondary`，与旧工程的
-  文档级 pointerdown 一致：关闭的同时那次点击照常落到下面的控件上）。
+  `PushLayer(20)`，与标签多选同一层：弹窗有自己的合成层，面板必须在其上才看得见、点得着。
+  外部点击由一个覆盖页面的背景 hit 关闭（`PassPrimary/PassSecondary`，与旧工程的文档级
+  pointerdown 一致：关闭的同时那次点击照常落到下面的控件上）。
 - 面板不占布局：它画在触发控件的 `DrawOver` 里，打开、翻页、选日期都不会让页面或弹窗重新排版。
 
 ## 框架缺口（Viva v0.6.5）

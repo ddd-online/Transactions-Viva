@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"time"
 
+	viva "github.com/vivaui/viva/components"
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
@@ -36,36 +37,29 @@ func (grain DateGrain) Name() string {
 	return "日"
 }
 
-// dateGrains are the grain choices, in the order the old picker showed them.
+// dateGrains are the grain choices, in the old picker's order.
 var dateGrains = [...]DateGrain{DateByDay, DateByMonth, DateByYear}
 
-// The panel is the old project's `.ui-time__panel`: a 280 px card with 34 x 30
-// day cells, the period arrows in its header and the presets in a row at the
-// bottom.
+// dateWeekdays are the day grid's columns; the week starts on Monday.
+var dateWeekdays = [calendarColumns]string{"一", "二", "三", "四", "五", "六", "日"}
+
 const (
-	datePanelWidth    float32 = 280
-	datePanelPadding  float32 = 12
-	dateCellWidth     float32 = 34
-	dateCellHeight    float32 = 30
-	dateCellGap       float32 = 2
-	dateBlockGap      float32 = 8
-	dateHeaderHeight  float32 = 26
-	dateWeekdayHeight float32 = 18
-	datePresetHeight  float32 = 26
-	datePresetCount           = 5
-	datePanelGap      float32 = 4
+	// calendarColumns is the day grid's column count, as components.Calendar's.
+	calendarColumns = 7
+	// calendarRows is how many weeks the day grid always shows, so the panel does
+	// not change height with the month.
+	calendarRows = 6
+	// datePresetCount is the most shortcuts a grain offers.
+	datePresetCount = 5
 	// datePanelLayer puts the panel over the page and over a dialog's surface: a
 	// dialog paints on a layer of its own, so a panel painted inside one only
 	// shows and only takes presses above it. The tag picker uses the same layer.
 	datePanelLayer uint16 = 20
 )
 
-// dateWeekdays are the columns of the day grid; the week starts on Monday.
-var dateWeekdays = [7]string{"一", "二", "三", "四", "五", "六", "日"}
-
 // DatePickerState is one picker's own state: whether its panel is open, the
-// month the panel shows, and the identities the painted panel is hit by. Keep it
-// in the page's model, one per picker; build it with NewDatePickerState.
+// month it shows, and the identities the painted panel is hit by. Keep it in the
+// page's model, one per picker; build it with NewDatePickerState.
 type DatePickerState struct {
 	// Open says whether the panel is showing.
 	Open bool
@@ -78,6 +72,7 @@ type DatePickerState struct {
 	prev    gfx.ID
 	next    gfx.ID
 	presets [datePresetCount]gfx.ID
+	days    [calendarRows * calendarColumns]viva.CalendarDay
 }
 
 // NewDatePickerState builds a picker's state and the identities of its cells.
@@ -130,7 +125,8 @@ func DateField(c ui.C, state *DatePickerState, value *string, spec DatePickerSpe
 }
 
 // DateRangePicker is a toolbar's time range: the 日 / 月 / 年 choice, the period
-// arrows, the value field, and the panel under it.
+// arrows, the value, and the panel under it. It is built from the theme's own
+// controls, so it looks like the buttons beside it.
 func DateRangePicker(c ui.C, state *DatePickerState, spec DatePickerSpec) {
 	state.bind(c)
 	theme := c.Theme()
@@ -148,40 +144,18 @@ func DateRangePicker(c ui.C, state *DatePickerState, spec DatePickerSpec) {
 				}
 			}
 		}
-		if state.shiftButton(c, "上一周期", icons.ChevronLeft).Clicked() {
+		if ui.Button(c, "上一周期").Ghost().Icon(icons.ChevronLeft).IconOnly().Clicked() {
 			state.shift(spec, -1)
 		}
-		border := theme.Input
-		if state.Open {
-			border = theme.Primary
-		}
-		field := ui.Row(c).Height(metrics.ControlHeight).MinWidth(190).
-			PadX(metrics.PadControlX).Gap(6).Items(ui.Center).
-			Border(1, border).Radius(metrics.RadiusControl).Background(theme.Background).
-			Hit(ui.ID(c), spec.Label).Hover(ui.Look{}.Border(theme.Primary))
-		field.Children(func() {
-			ui.Icon(c, icons.Clock).Width(14).Height(14).Color(theme.MutedForeground)
-			ui.Text(c, rangeText(spec.Start, spec.End, spec.Grain)).
-				FontSize(metrics.FontSizeS).Mono().Ellipsis()
-		})
+		field := ui.Button(c, rangeText(spec.Start, spec.End, spec.Grain)).
+			Outline().Icon(icons.Clock)
 		if field.Clicked() {
 			state.toggle(spec.Start)
 		}
 		field.DrawOver(func(d *ui.DrawContext) { state.paint(d, spec, d.Rect) })
-		if state.shiftButton(c, "下一周期", icons.ChevronRight).Clicked() {
+		if ui.Button(c, "下一周期").Ghost().Icon(icons.ChevronRight).IconOnly().Clicked() {
 			state.shift(spec, 1)
 		}
-	})
-}
-
-// shiftButton declares one of the arrows that move the range a whole period.
-func (state *DatePickerState) shiftButton(c ui.C, label string, icon gfx.Icon) ui.Box {
-	theme := c.Theme()
-	metrics := theme.Metrics
-	return ui.Row(c).Height(metrics.ControlHeight).Width(28).
-		Radius(metrics.RadiusControl).Center().Hit(ui.ID(c), label).
-		Hover(ui.Look{}.Background(theme.Hover)).Children(func() {
-		ui.Icon(c, icon).Width(14).Height(14).Color(theme.MutedForeground)
 	})
 }
 
@@ -215,205 +189,182 @@ func (state *DatePickerState) shift(spec DatePickerSpec, direction int) {
 	spec.OnRange(start, end)
 }
 
+// layout is where the panel's blocks go, measured from the theme and from
+// components.Calendar's own grid.
+type layout struct {
+	bounds   gfx.Rect // the panel surface
+	calendar gfx.Rect // where components.Calendar is asked to paint
+	caption  gfx.Rect // the month or decade title between the arrows
+	grid     gfx.Rect // where the month or year cells go
+	cell     gfx.Rect // one day cell, as the calendar sizes it
+	rowStep  float32  // a day cell plus the gap under it
+	presets  gfx.Rect // the shortcuts row
+}
+
 // paint draws the panel under its trigger and applies a press on it.
 func (state *DatePickerState) paint(d *ui.DrawContext, spec DatePickerSpec, anchor gfx.Rect) {
 	if !state.Open {
 		return
 	}
 	canvas, theme := d.Canvas, *d.Theme
-	bounds := gfx.Rect{
-		X:      min(anchor.X, max(spec.Viewport.Right()-datePanelWidth, 0)),
-		Y:      anchor.Y + anchor.Height + datePanelGap,
-		Width:  datePanelWidth,
-		Height: datePanelHeight(spec.Grain),
-	}
+	state.fillDays(spec)
+	place := state.measure(canvas, theme, spec, anchor)
 	// The panel floats over a dialog's own layer. A press anywhere else closes it;
-	// the panel's hits are declared after that backdrop, so they win over it.
+	// the panel's own hits are declared after that backdrop, so they win over it.
 	canvas.PushLayer(datePanelLayer)
 	defer canvas.PopLayer()
-	// A press outside the panel closes it and still reaches what it landed on,
-	// as the old picker's document listener left the click to the page.
 	canvas.HitWithOptions(state.dismiss, spec.Viewport, "关闭日期选择", gfx.HitOptions{
 		Role: gfx.RoleButton, SkipFocus: true, Backdrop: true,
 		PassPrimary: true, PassSecondary: true,
 	})
-	canvas.Elevate(bounds, theme.Metrics.RadiusSurface, gfx.ShadowMD)
-	canvas.Rounded(bounds, theme.Metrics.RadiusSurface, theme.Popover)
-	canvas.RoundedOutline(bounds, theme.Metrics.RadiusSurface, 1, theme.Border)
 
-	inner := bounds.Inset(gfx.All(datePanelPadding))
-	header, inner := inner.CutTop(dateHeaderHeight)
-	state.paintHeader(canvas, &theme, spec, header)
-	_, inner = inner.CutTop(dateBlockGap)
-	grid, inner := inner.CutTop(dateGridHeight(spec.Grain))
-	state.paintGrid(canvas, &theme, spec, grid)
-	_, inner = inner.CutTop(dateBlockGap)
-	divider, inner := inner.CutTop(1)
-	canvas.Fill(divider, theme.Border)
-	_, inner = inner.CutTop(dateBlockGap)
-	state.paintPresets(canvas, &theme, spec, inner)
+	// The surface is the framework's popup look, so the panel matches a menu.
+	look := viva.PopupRecipe(theme)
+	canvas.Elevate(place.bounds, look.Radius, look.Shadow)
+	canvas.Rounded(place.bounds, look.Radius, look.Fill)
+	canvas.RoundedOutline(place.bounds, look.Radius, 1, look.Border)
+
+	if spec.Grain == DateByDay {
+		viva.BeginCalendar(canvas, theme, place.calendar, viva.CalendarOptions{
+			MonthTitle:    monthTitle(state.visibleMonth()),
+			Weekdays:      dateWeekdays,
+			Days:          state.days[:],
+			PreviousID:    state.prev,
+			NextID:        state.next,
+			PreviousLabel: "上个月",
+			NextLabel:     "下个月",
+		}).Paint()
+	} else {
+		state.paintPeriods(canvas, theme, spec, place)
+	}
+	state.paintPresets(canvas, theme, spec, place)
 	state.handle(d, spec)
 }
 
-// paintHeader paints the period title between its two arrows.
-func (state *DatePickerState) paintHeader(canvas *gfx.Canvas, theme *gfx.Theme, spec DatePickerSpec, bounds gfx.Rect) {
+// fillDays is the calendar's month snapshot: the six weeks around the visible
+// month, with the range and today marked for it to paint.
+func (state *DatePickerState) fillDays(spec DatePickerSpec) {
 	visible := state.visibleMonth()
-	title := ""
-	switch spec.Grain {
-	case DateByMonth:
-		title = strconv.Itoa(visible.Year()) + " 年"
-	case DateByYear:
-		title = strconv.Itoa(state.decade()) + " – " + strconv.Itoa(state.decade()+9)
-	default:
-		title = strconv.Itoa(visible.Year()) + " 年 " + strconv.Itoa(int(visible.Month())) + " 月"
-	}
-	canvas.LabelCenter(title, bounds, gfx.TextStyle{
-		Size: theme.Metrics.FontSizeM, Weight: gfx.WeightMedium, Color: theme.PopoverForeground,
-	})
-	state.paintArrow(canvas, theme, state.prev, bounds, icons.ChevronLeft, state.stepLabel(spec, -1))
-	state.paintArrow(canvas, theme, state.next, bounds, icons.ChevronRight, state.stepLabel(spec, 1))
-}
-
-// stepLabel is what a header arrow is called for the grain it steps.
-func (state *DatePickerState) stepLabel(spec DatePickerSpec, direction int) string {
-	switch spec.Grain {
-	case DateByMonth:
-		if direction < 0 {
-			return "上一年"
-		}
-		return "下一年"
-	case DateByYear:
-		if direction < 0 {
-			return "上一个十年"
-		}
-		return "下一个十年"
-	}
-	if direction < 0 {
-		return "上个月"
-	}
-	return "下个月"
-}
-
-// paintArrow paints one header arrow at an end of bounds.
-func (state *DatePickerState) paintArrow(canvas *gfx.Canvas, theme *gfx.Theme, id gfx.ID,
-	bounds gfx.Rect, icon gfx.Icon, label string) {
-	arrow := gfx.Rect{X: bounds.X, Y: bounds.Y, Width: dateCellWidth, Height: bounds.Height}
-	if id == state.next {
-		arrow.X = bounds.Right() - dateCellWidth
-	}
-	if canvas.Hovered() == id {
-		canvas.Rounded(arrow, theme.Metrics.RadiusControl, theme.Hover)
-	}
-	canvas.DrawIcon(icon, arrow.Centered(14, 14), theme.MutedForeground)
-	canvas.HitWithOptions(id, arrow, label, gfx.HitOptions{Role: gfx.RoleButton})
-}
-
-// paintGrid paints the day cells, the months or the decade of the grain.
-func (state *DatePickerState) paintGrid(canvas *gfx.Canvas, theme *gfx.Theme, spec DatePickerSpec, bounds gfx.Rect) {
-	if spec.Grain == DateByDay {
-		weekdays, rest := bounds.CutTop(dateWeekdayHeight)
-		for column, name := range dateWeekdays {
-			cell := gfx.Rect{
-				X: weekdays.X + float32(column)*(dateCellWidth+dateCellGap),
-				Y: weekdays.Y, Width: dateCellWidth, Height: weekdays.Height,
-			}
-			canvas.LabelCenter(name, cell, gfx.TextStyle{
-				Size: theme.Metrics.FontSizeS, Color: theme.MutedForeground,
-			})
-		}
-		bounds = rest
-	}
-	columns, rows := gridShape(spec.Grain)
-	width := (bounds.Width - float32(columns-1)*dateCellGap) / float32(columns)
+	start := state.gridStart(visible)
 	today := dateText(time.Now())
+	for index := range state.days {
+		day := start.AddDate(0, 0, index)
+		date := dateText(day)
+		state.days[index] = viva.CalendarDay{
+			ID:          state.cells.At(index),
+			Label:       strconv.Itoa(day.Day()),
+			Value:       date,
+			Hint:        date,
+			Outside:     day.Month() != visible.Month(),
+			Today:       date == today,
+			Selected:    date == spec.Start && date == spec.End,
+			RangeStart:  date == spec.Start && date != spec.End,
+			RangeEnd:    date == spec.End && date != spec.Start,
+			RangeMiddle: spec.Start != "" && spec.End != "" && date > spec.Start && date < spec.End,
+			Disabled:    spec.MaxDate != "" && date > spec.MaxDate,
+		}
+	}
+}
+
+// measure works out where each block of the panel goes. The day grid is the
+// reference: components.Calendar decides the cell size and the room around it,
+// and the panel takes the width the calendar and the shortcuts need.
+func (state *DatePickerState) measure(canvas *gfx.Canvas, theme gfx.Theme, spec DatePickerSpec, anchor gfx.Rect) layout {
+	metrics := theme.Metrics
+	scratch := viva.BeginCalendar(nil, theme, gfx.Rect{Width: 4096}, viva.CalendarOptions{Days: state.days[:]})
+	cell := scratch.DayBounds(0)
+	rowStep := scratch.DayBounds(calendarColumns).Y - cell.Y
+	side := cell.X - scratch.Bounds().X
+	width := 2*side + float32(calendarColumns)*cell.Width
+
+	presetsHeight := viva.BeginButton(nil, theme, gfx.ID{}, gfx.Rect{}).Small().BoundsHeight()
+	presetsWidth := float32(0)
+	for _, preset := range datePresets(spec.Grain, spec.CloseOnPick) {
+		if preset.label == "" {
+			break
+		}
+		presetsWidth += viva.BeginButton(canvas, theme, gfx.ID{}, gfx.Rect{Width: 4096, Height: presetsHeight}).
+			Small().SizeToFit(preset.label).BoundsWidth()
+		presetsWidth += metrics.GapItem
+	}
+	presetsWidth -= metrics.GapItem
+	width = max(width, presetsWidth+2*side)
+
+	bounds := gfx.Rect{
+		X:      min(anchor.X, max(spec.Viewport.Right()-width, 0)),
+		Y:      anchor.Y + anchor.Height + metrics.GapItem,
+		Width:  width,
+		Height: scratch.Bounds().Height + metrics.GapItem + presetsHeight + side,
+	}
+	inner := bounds.Inset(gfx.All(side))
+	return layout{
+		bounds:   bounds,
+		calendar: gfx.Rect{X: inner.X, Y: inner.Y, Width: inner.Width},
+		caption:  gfx.Rect{X: inner.X, Y: inner.Y, Width: inner.Width, Height: cell.Height},
+		grid:     gfx.Rect{X: inner.X, Y: inner.Y + rowStep, Width: inner.Width},
+		cell:     cell,
+		rowStep:  rowStep,
+		presets:  gfx.Rect{X: inner.X, Y: bounds.Bottom() - side - presetsHeight, Width: inner.Width, Height: presetsHeight},
+	}
+}
+
+// paintPeriods paints the month or year cells of a coarse grain, with the title
+// and arrows the calendar paints for days.
+func (state *DatePickerState) paintPeriods(canvas *gfx.Canvas, theme gfx.Theme, spec DatePickerSpec, place layout) {
+	metrics := theme.Metrics
 	visible := state.visibleMonth()
+	title := strconv.Itoa(visible.Year()) + " 年"
+	columns, rows := 3, 4
+	if spec.Grain == DateByYear {
+		title = strconv.Itoa(state.decade()) + " – " + strconv.Itoa(state.decade()+9)
+		columns, rows = 2, 5
+	}
+	viva.BeginButton(canvas, theme, state.prev, gfx.Rect{X: place.caption.X, Y: place.caption.Y, Width: place.cell.Width, Height: place.caption.Height}).
+		Icon().WithIcon(icons.ChevronLeft).Ghost("上一年")
+	viva.BeginButton(canvas, theme, state.next, gfx.Rect{X: place.caption.Right() - place.cell.Width, Y: place.caption.Y, Width: place.cell.Width, Height: place.caption.Height}).
+		Icon().WithIcon(icons.ChevronRight).Ghost("下一年")
+	canvas.LabelCenter(title, gfx.Rect{
+		X: place.caption.X + place.cell.Width, Y: place.caption.Y,
+		Width: place.caption.Width - 2*place.cell.Width, Height: place.caption.Height,
+	}, gfx.TextStyle{Size: metrics.FontSizeM, Weight: gfx.WeightMedium, Color: theme.Foreground})
+
+	width := (place.grid.Width - float32(columns-1)*metrics.GapItem) / float32(columns)
 	for row := 0; row < rows; row++ {
 		for column := 0; column < columns; column++ {
 			index := row*columns + column
 			cell := gfx.Rect{
-				X:     bounds.X + float32(column)*(width+dateCellGap),
-				Y:     bounds.Y + float32(row)*(dateCellHeight+dateCellGap),
-				Width: width, Height: dateCellHeight,
+				X:      place.grid.X + float32(column)*(width+metrics.GapItem),
+				Y:      place.grid.Y + float32(row)*place.rowStep,
+				Width:  width,
+				Height: place.cell.Height,
 			}
-			state.paintCell(canvas, theme, spec, cell, index, visible, today)
+			from, to, label := state.cellValue(spec.Grain, index, visible)
+			button := viva.BeginButton(canvas, theme, state.cells.At(index), cell)
+			switch {
+			case from == spec.Start || to == spec.End:
+				button.Default(label)
+			case spec.Start != "" && spec.End != "" && from > spec.Start && to < spec.End:
+				button.Secondary(label)
+			default:
+				button.Ghost(label)
+			}
 		}
 	}
 }
 
-// paintCell paints one cell of the grid and names it for the pointer.
-func (state *DatePickerState) paintCell(canvas *gfx.Canvas, theme *gfx.Theme, spec DatePickerSpec,
-	cell gfx.Rect, index int, visible time.Time, today string) {
-	from, to, label := state.cellValue(spec.Grain, index, visible)
-	style := gfx.TextStyle{Size: theme.Metrics.FontSizeS, Color: theme.PopoverForeground}
-	selected := from == spec.Start || to == spec.End
-	inRange := spec.Start != "" && spec.End != "" && from > spec.Start && to < spec.End
-	disabled := spec.MaxDate != "" && to > spec.MaxDate
-	circleRadius := theme.Metrics.RadiusControl
-	switch {
-	case disabled:
-		style.Color = theme.MutedForeground.WithAlpha(0.5)
-	case selected:
-		canvas.Rounded(cell, circleRadius, theme.Primary)
-		style.Color, style.Weight = theme.PrimaryForeground, gfx.WeightMedium
-	case inRange:
-		canvas.Rounded(cell, circleRadius, theme.Primary.WithAlpha(0.12))
-		style.Color = theme.Primary
-	case canvas.Hovered() == state.cells.At(index):
-		canvas.Rounded(cell, circleRadius, theme.Hover)
-	}
-	if !selected && !inRange && !disabled && spec.Grain == DateByDay && from == today {
-		canvas.RoundedOutline(cell, circleRadius, 1, theme.Primary)
-	}
-	if spec.Grain == DateByDay && !state.inVisibleMonth(from, visible) {
-		if !selected {
-			style.Color = theme.MutedForeground
-		}
-	}
-	canvas.LabelCenter(label, cell, style)
-	canvas.HitWithOptions(state.cells.At(index), cell, label, gfx.HitOptions{
-		Role: gfx.RoleButton, Disabled: disabled, Selected: selected, Value: from,
-	})
-}
-
-// cellValue is the day, month or year cell index stands for, as the range it
-// picks and the text it shows.
-func (state *DatePickerState) cellValue(grain DateGrain, index int, visible time.Time) (string, string, string) {
-	switch grain {
-	case DateByMonth:
-		from, to := monthSpan(visible.Year(), time.Month(index+1))
-		return from, to, strconv.Itoa(index+1) + " 月"
-	case DateByYear:
-		from, to := yearSpan(state.decade() + index)
-		return from, to, strconv.Itoa(state.decade()+index) + " 年"
-	}
-	day := state.gridStart(visible).AddDate(0, 0, index)
-	date := dateText(day)
-	return date, date, strconv.Itoa(day.Day())
-}
-
-// paintPresets paints the shortcuts under the grid.
-func (state *DatePickerState) paintPresets(canvas *gfx.Canvas, theme *gfx.Theme, spec DatePickerSpec, bounds gfx.Rect) {
-	presets := datePresets(spec.Grain, spec.CloseOnPick)
-	x := bounds.X
-	for index, preset := range presets {
+// paintPresets paints the shortcuts under the grid as the theme's link buttons.
+func (state *DatePickerState) paintPresets(canvas *gfx.Canvas, theme gfx.Theme, spec DatePickerSpec, place layout) {
+	x := place.presets.X
+	for index, preset := range datePresets(spec.Grain, spec.CloseOnPick) {
 		if preset.label == "" {
 			break
 		}
-		width := canvas.TextWidthWeight(preset.label, theme.Metrics.FontSizeS, gfx.WeightRegular) + 12
-		cell := gfx.Rect{X: x, Y: bounds.Y, Width: width, Height: bounds.Height}
-		active := spec.Start == preset.from && spec.End == preset.to
-		style := gfx.TextStyle{Size: theme.Metrics.FontSizeS, Color: theme.Primary}
-		switch {
-		case active:
-			canvas.Rounded(cell, theme.Metrics.RadiusControl, theme.Primary.WithAlpha(0.12))
-		case canvas.Hovered() == state.presets[index]:
-			canvas.Rounded(cell, theme.Metrics.RadiusControl, theme.Hover)
-		}
-		canvas.LabelCenter(preset.label, cell, style)
-		canvas.HitWithOptions(state.presets[index], cell, preset.label, gfx.HitOptions{
-			Role: gfx.RoleButton, Selected: active,
-		})
-		x += width + dateBlockGap
+		button := viva.BeginButton(canvas, theme, state.presets[index], gfx.Rect{
+			X: x, Y: place.presets.Y, Width: place.presets.Width, Height: place.presets.Height,
+		}).Small().SizeToFit(preset.label)
+		width := button.BoundsWidth()
+		button.Link(preset.label)
+		x += width + theme.Metrics.GapItem
 	}
 }
 
@@ -505,6 +456,22 @@ func (state *DatePickerState) pickRange(spec DatePickerSpec, from, to string) {
 	spec.OnRange(start, end)
 }
 
+// cellValue is the day, month or year cell index stands for, as the range it
+// picks and the text it shows.
+func (state *DatePickerState) cellValue(grain DateGrain, index int, visible time.Time) (string, string, string) {
+	switch grain {
+	case DateByMonth:
+		from, to := monthSpan(visible.Year(), time.Month(index+1))
+		return from, to, strconv.Itoa(index+1) + " 月"
+	case DateByYear:
+		from, to := yearSpan(state.decade() + index)
+		return from, to, strconv.Itoa(state.decade()+index) + " 年"
+	}
+	day := state.gridStart(visible).AddDate(0, 0, index)
+	date := dateText(day)
+	return date, date, strconv.Itoa(day.Day())
+}
+
 // visibleMonth is the month the panel shows, or this month before it was set.
 func (state *DatePickerState) visibleMonth() time.Time {
 	if state.Visible.IsZero() || state.Visible.Year() < 2 {
@@ -524,41 +491,9 @@ func (state *DatePickerState) gridStart(visible time.Time) time.Time {
 	return visible.AddDate(0, 0, -offset)
 }
 
-// inVisibleMonth reports whether a date belongs to the month the grid shows.
-func (state *DatePickerState) inVisibleMonth(value string, visible time.Time) bool {
-	day, ok := parseDate(value)
-	return ok && day.Year() == visible.Year() && day.Month() == visible.Month()
-}
-
-// gridShape is how many columns and rows a grain's grid has.
-func gridShape(grain DateGrain) (columns, rows int) {
-	switch grain {
-	case DateByMonth:
-		return 3, 4
-	case DateByYear:
-		return 2, 5
-	}
-	return 7, 6
-}
-
-// dateGridHeight is the height of one grain's grid, weekdays included.
-func dateGridHeight(grain DateGrain) float32 {
-	_, rows := gridShape(grain)
-	return float32(rows)*(dateCellHeight+dateCellGap) - dateCellGap + weekdayHeight(grain)
-}
-
-// weekdayHeight is the header row above the day grid.
-func weekdayHeight(grain DateGrain) float32 {
-	if grain == DateByDay {
-		return dateWeekdayHeight
-	}
-	return 0
-}
-
-// datePanelHeight is the whole panel's height for a grain.
-func datePanelHeight(grain DateGrain) float32 {
-	return 2*datePanelPadding + dateHeaderHeight + dateBlockGap + dateGridHeight(grain) +
-		dateBlockGap + 1 + dateBlockGap + datePresetHeight
+// monthTitle is the calendar's caption for the visible month.
+func monthTitle(visible time.Time) string {
+	return strconv.Itoa(visible.Year()) + " 年 " + strconv.Itoa(int(visible.Month())) + " 月"
 }
 
 // datePreset is one shortcut under the grid: its label and the range it picks.
@@ -690,9 +625,6 @@ func normalizeRange(start, end string, grain DateGrain) (string, string) {
 	default:
 		start, _ = yearSpan(from.Year())
 		_, end = yearSpan(to.Year())
-	}
-	if start > end {
-		return start, end
 	}
 	return start, end
 }

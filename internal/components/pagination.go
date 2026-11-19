@@ -57,29 +57,30 @@ func Pagination(c ui.C, spec PaginationSpec) {
 	page := min(max(spec.Page, 1), pages)
 	items := paginationItems(page, pages)
 
+	metrics := c.Theme().Metrics
 	size := pageSize
-	ui.Row(c).Height(48).FillWidth().PadX(18).Gap(10).Items(ui.Center).Children(func() {
+	ui.Row(c).Height(metrics.ControlHeight + metrics.PadSurface).FillWidth().
+		PadX(metrics.PadSurface).Gap(metrics.GapItem).Items(ui.Center).Children(func() {
 		ui.Spacer(c)
-		ui.Text(c, "每页").FontSize(12).Muted()
+		ui.Text(c, "每页").FontSize(metrics.FontSizeS).Muted()
 		selectBox := Select(c, &size, sizes, strconv.Itoa).Label("每页条数")
-		selectBox.Width(84)
 		if selectBox.Changed() && spec.OnPageSize != nil {
 			spec.OnPageSize(size)
 		}
-		ui.Text(c, "条").FontSize(12).Muted()
+		ui.Text(c, "条").FontSize(metrics.FontSizeS).Muted()
 
 		// Viva's pagination paints its own hits; name them before the slot.
 		var ids [paginationSlots + 2]gfx.ID
 		for index := range ids {
 			ids[index] = ui.ID(c)
 		}
-		height := c.Theme().Metrics.ControlHeight
+		height := metrics.ControlHeight
 		width := paginationWidth(c.Canvas(), c.Theme().Metrics, items, height)
 		ui.Slot(c).Width(width).Height(height).Draw(func(d *ui.DrawContext) {
 			drawPagination(d, spec, ids, items, page, pages)
 		})
 
-		ui.Text(c, "共 "+strconv.Itoa(total)+" 条").FontSize(12).Muted()
+		ui.Text(c, "共 "+strconv.Itoa(total)+" 条").FontSize(metrics.FontSizeS).Muted()
 	})
 }
 

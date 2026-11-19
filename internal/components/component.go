@@ -14,8 +14,9 @@ import (
 // content has not been migrated yet. It names what will live there, so the
 // scaffold never pretends to hold data.
 func Pending(c ui.C, title, note string) {
-	ui.Column(c).Grow(1).FillWidth().Pad(24).Gap(8).Center().Children(func() {
-		ui.Text(c, title).FontSize(16).Bold().TextCenter()
-		ui.Paragraph(c, note, 4).Muted().TextCenter().MaxWidth(560)
+	metrics := c.Theme().Metrics
+	ui.Column(c).Grow(1).FillWidth().Pad(metrics.PadSurface * 2).Gap(metrics.GapItem).Center().Children(func() {
+		ui.Text(c, title).FontSize(metrics.FontSizeL).Bold().TextCenter()
+		ui.Paragraph(c, note, 4).Muted().TextCenter()
 	})
 }
