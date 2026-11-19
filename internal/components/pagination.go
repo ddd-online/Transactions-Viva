@@ -33,8 +33,9 @@ type paginationItem struct {
 	ellipsis bool
 }
 
-// Pagination is the shared bottom bar for a paginated list: the total on the
-// left, a page-size Select, and Viva's pagination component on the right.
+// Pagination is the shared bottom bar for a paginated list: the page-size
+// Select on the left of Viva's pagination component, and the total on its
+// right.
 //
 // It paints Viva's components.BeginPagination through a Slot, naming the
 // component's hit regions in the page before the slot is declared. A click is
@@ -58,7 +59,7 @@ func Pagination(c ui.C, spec PaginationSpec) {
 
 	size := pageSize
 	ui.Row(c).Height(48).FillWidth().PadX(18).Gap(10).Items(ui.Center).Children(func() {
-		ui.Text(c, "共 "+strconv.Itoa(total)+" 条").FontSize(12).Muted()
+		ui.Spacer(c)
 		ui.Text(c, "每页").FontSize(12).Muted()
 		selectBox := ui.Select(c, &size, sizes, strconv.Itoa).Label("每页条数")
 		selectBox.Width(84)
@@ -66,16 +67,19 @@ func Pagination(c ui.C, spec PaginationSpec) {
 			spec.OnPageSize(size)
 		}
 		ui.Text(c, "条").FontSize(12).Muted()
-		ui.Spacer(c)
 
 		// Viva's pagination paints its own hits; name them before the slot.
 		var ids [paginationSlots + 2]gfx.ID
 		for index := range ids {
 			ids[index] = ui.ID(c)
 		}
-		ui.Slot(c).Grow(1).Height(32).Draw(func(d *ui.DrawContext) {
+		height := c.Theme().Metrics.ControlHeight
+		width := paginationWidth(c.Canvas(), c.Theme().Metrics, items, height)
+		ui.Slot(c).Width(width).Height(height).Draw(func(d *ui.DrawContext) {
 			drawPagination(d, spec, ids, items, page, pages)
 		})
+
+		ui.Text(c, "共 "+strconv.Itoa(total)+" 条").FontSize(12).Muted()
 	})
 }
 
@@ -114,33 +118,36 @@ func paginationItems(page, pages int) [paginationSlots]paginationItem {
 	return items
 }
 
-// drawPagination paints Viva's pagination against the right edge of its slot
-// and turns a click into a page change through the caller's OnPage.
-func drawPagination(d *ui.DrawContext, spec PaginationSpec, ids [paginationSlots + 2]gfx.ID,
-	items [paginationSlots]paginationItem, page, pages int) {
-	theme := *d.Theme
-	metrics := theme.Metrics
-	itemHeight := min(metrics.ControlHeight, d.Rect.Height)
+// paginationWidth measures Viva's pagination row: the previous and next
+// buttons, the page squares and the gaps Viva places between them.
+func paginationWidth(canvas *gfx.Canvas, metrics gfx.Metrics,
+	items [paginationSlots]paginationItem, itemHeight float32) float32 {
 	edge := metrics.GapItem
 	inner := metrics.GapItem * 1.25
 	gap := metrics.GapItem * 0.75
 	spacing := metrics.GapItem / 2
-
 	previousWidth := edge + 16 + gap +
-		d.Canvas.TextWidthWeight("上一页", metrics.FontSizeM, gfx.WeightMedium) + inner
+		canvas.TextWidthWeight("上一页", metrics.FontSizeM, gfx.WeightMedium) + inner
 	nextWidth := edge + 16 + gap +
-		d.Canvas.TextWidthWeight("下一页", metrics.FontSizeM, gfx.WeightMedium) + inner
+		canvas.TextWidthWeight("下一页", metrics.FontSizeM, gfx.WeightMedium) + inner
 	count := 0
 	for _, item := range items {
 		if item.number > 0 || item.ellipsis {
 			count++
 		}
 	}
-	width := previousWidth + nextWidth + float32(count)*itemHeight +
+	return previousWidth + nextWidth + float32(count)*itemHeight +
 		float32(count+1)*spacing
-	if width > d.Rect.Width {
-		width = d.Rect.Width
-	}
+}
+
+// drawPagination paints Viva's pagination in its slot and turns a click into a
+// page change through the caller's OnPage.
+func drawPagination(d *ui.DrawContext, spec PaginationSpec, ids [paginationSlots + 2]gfx.ID,
+	items [paginationSlots]paginationItem, page, pages int) {
+	theme := *d.Theme
+	metrics := theme.Metrics
+	itemHeight := min(metrics.ControlHeight, d.Rect.Height)
+	width := min(paginationWidth(d.Canvas, metrics, items, itemHeight), d.Rect.Width)
 	bounds := gfx.Rect{
 		X: d.Rect.X + d.Rect.Width - width, Y: d.Rect.Y,
 		Width: width, Height: itemHeight,

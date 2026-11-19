@@ -70,8 +70,8 @@ main → desktop → pages → components
   收支统计都在 `internal/pages/accounting/records.go`，行数据来自 `records_mock.go`，
   `records_composer.go` 的「记一笔」只写内存。记录行的右键 ContextMenu 取代原「操作」列：
   编辑、同步到其他账本、删除。底部分页是共享组件 `internal/components/pagination.go`：
-  Viva 的 `components.BeginPagination` 与每页 15 / 30 / 50 的 `ui.Select` 组合，分页栏上方
-  不再画分割线；接入 store 时替换 mock，不改这套布局。
+  每页 15 / 30 / 50 的 `ui.Select` 在 Viva 分页左侧，「共 N 条」在右侧，三者同属一个自定义
+  分页组件；分页栏上方不再画分割线。接入 store 时替换 mock，不改这套布局。
 - 导航是两级：一级功能项展开自己的子功能，同时收起其他一级项；没有子功能的功能（事件、日记）
   就是单独一项。页面通过 `Tabs() []string`、`Tab() int`、`SelectTab(int)` 暴露子功能，
   内容里不画 `ui.Tabs`。
