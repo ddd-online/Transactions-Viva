@@ -50,31 +50,13 @@ type record struct {
 	keyEventDate string // 关联的事件日期（空串 = 不关联）
 }
 
-type rangeMode uint8
-
-const (
-	rangeToday rangeMode = iota
-	rangeMonth
-	rangeYear
-	rangeAll
-)
-
+// sortField is the column the table is ordered by.
 type sortField uint8
 
 const (
 	sortDate sortField = iota
 	sortAmount
 )
-
-var rangeChoices = [...]struct {
-	label string
-	mode  rangeMode
-}{
-	{"今天", rangeToday},
-	{"本月", rangeMonth},
-	{"今年", rangeYear},
-	{"全部时间", rangeAll},
-}
 
 // recordsModel is the 记录 screen's state. The shell owns it for as long as the
 // section exists, so its filters and scroll survive a section switch.
@@ -84,9 +66,15 @@ type recordsModel struct {
 
 	stats [3]int64 // 收入 / 支出 / 转账, within the visible rows
 
-	rangeMode rangeMode
-	sortField sortField
-	sortDesc  bool
+	// rangeStart and rangeEnd are the visible time range as local dates, both
+	// ends included; rangeGrain is the unit the picker chooses them in.
+	rangeStart string
+	rangeEnd   string
+	rangeGrain components.DateGrain
+	// rangeStale says a range picked in a painted panel still has to be filtered.
+	rangeStale bool
+	sortField  sortField
+	sortDesc   bool
 
 	// page is the 1-based page of the table; pageSize is the mock page size.
 	// pageStart is where the current page begins in shown, set by table.
@@ -95,13 +83,15 @@ type recordsModel struct {
 	pageStart int
 
 	list      ui.ListState
-	rangeMenu bool
 	sortMenu  bool
 	draft     recordDraft
 	fields    recordFields
 	tags      recordTags
 	templates []recordTemplate
 	bounds    gfx.Rect
+	datePick  components.DatePickerState
+	eventPick components.DatePickerState
+	rangePick components.DatePickerState
 
 	// categoryList is the 分类 Select's choices, rebuilt each paint into the same
 	// slice (see categoryNames).
@@ -116,14 +106,19 @@ type recordsModel struct {
 // already filtered.
 func newRecordsModel() *recordsModel {
 	m := &recordsModel{
-		records:   mockRecords(),
-		tags:      newRecordTags(),
-		templates: mockTemplates(),
-		rangeMode: rangeToday,
-		sortField: sortDate,
-		sortDesc:  true,
-		page:      1,
-		pageSize:  15,
+		records:    mockRecords(),
+		tags:       newRecordTags(),
+		templates:  mockTemplates(),
+		rangeStart: todayDate(),
+		rangeEnd:   todayDate(),
+		rangeGrain: components.DateByDay,
+		sortField:  sortDate,
+		sortDesc:   true,
+		page:       1,
+		pageSize:   15,
+		datePick:   components.NewDatePickerState(),
+		eventPick:  components.NewDatePickerState(),
+		rangePick:  components.NewDatePickerState(),
 	}
 	m.refilter()
 	return m
@@ -132,6 +127,10 @@ func newRecordsModel() *recordsModel {
 // View declares the records page.
 func (m *recordsModel) View(c ui.C) {
 	m.bounds = c.Bounds()
+	if m.rangeStale {
+		m.rangeStale = false
+		m.refilter()
+	}
 	ui.Column(c).Fill().Children(func() {
 		m.toolbar(c)
 		ui.Divider(c)
@@ -150,19 +149,18 @@ func (m *recordsModel) View(c ui.C) {
 // time range and sort on the left, the primary action on the right.
 func (m *recordsModel) toolbar(c ui.C) {
 	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(10).Items(ui.Center).Children(func() {
-		rangeButton := ui.Button(c, rangeLabel(m.rangeMode)).Outline()
-		if rangeButton.Clicked() {
-			m.rangeMenu = !m.rangeMenu
+		if ui.Button(c, "今天").Outline().Clicked() {
+			m.setRange(todayDate(), todayDate(), components.DateByDay)
 		}
-		ui.Menu(c, rangeButton, &m.rangeMenu, func(menu *ui.MenuItems) {
-			for _, choice := range rangeChoices {
-				item := menu.Item(choice.label)
-				item.Checked(m.rangeMode == choice.mode)
-				if item.Clicked() {
-					m.rangeMode = choice.mode
-					m.refilter()
-				}
-			}
+		components.DateRangePicker(c, &m.rangePick, components.DatePickerSpec{
+			Label: "选择时间范围", Start: m.rangeStart, End: m.rangeEnd,
+			Grain: m.rangeGrain, Grains: true, Viewport: m.bounds,
+			OnGrain: func(grain components.DateGrain) {
+				m.rangeGrain, m.rangeStale = grain, true
+			},
+			OnRange: func(start, end string) {
+				m.rangeStart, m.rangeEnd, m.rangeStale = start, end, true
+			},
 		})
 
 		sortButton := ui.Button(c, "排序").Outline()
@@ -284,13 +282,25 @@ func (m *recordsModel) row(r ui.ListRow) {
 
 // empty is what the content area says when the time range matches nothing.
 func (m *recordsModel) empty(c ui.C) {
+	now := time.Now()
 	ui.Column(c).Grow(1).FillWidth().Center().Gap(6).Children(func() {
-		ui.Text(c, "当前时间范围内没有记录").FontSize(16).Bold()
-		ui.Text(c, "换个时间范围，也可以直接记一笔。").FontSize(13).Muted()
-		if ui.Button(c, "查看全部时间").Outline().Clicked() {
-			m.rangeMode = rangeAll
-			m.refilter()
-		}
+		ui.Text(c, "今天还没有记录").FontSize(16).Bold()
+		ui.Text(c, "换个时间范围，或直接记一笔。").FontSize(13).Muted()
+		ui.Row(c).Gap(8).Children(func() {
+			if ui.Button(c, "上月").Secondary().Clicked() {
+				first := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local).AddDate(0, -1, 0)
+				m.setRange(first.Format(dateLayout), first.AddDate(0, 1, -1).Format(dateLayout),
+					components.DateByMonth)
+			}
+			if ui.Button(c, "今年").Secondary().Clicked() {
+				m.setRange(time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.Local).Format(dateLayout),
+					time.Date(now.Year(), 12, 31, 0, 0, 0, 0, time.Local).Format(dateLayout),
+					components.DateByYear)
+			}
+			if ui.Button(c, "记一笔").Clicked() {
+				m.openComposer()
+			}
+		})
 	})
 }
 
@@ -343,13 +353,16 @@ func (m *recordsModel) pageCount() int {
 
 // refilter recomputes the visible rows and the statistics.
 func (m *recordsModel) refilter() {
-	start := m.rangeStart(time.Now())
 
 	m.notice = ""
 	m.shown = m.shown[:0]
 	m.stats = [3]int64{}
 	for _, rec := range m.records {
-		if !start.IsZero() && rec.at.Before(start) {
+		day := rec.at.Format(dateLayout)
+		if m.rangeStart != "" && day < m.rangeStart {
+			continue
+		}
+		if m.rangeEnd != "" && day > m.rangeEnd {
 			continue
 		}
 		m.shown = append(m.shown, rec)
@@ -386,27 +399,17 @@ func (m *recordsModel) refilter() {
 	m.list.Select(-1)
 }
 
-// rangeStart is the first instant the chosen range includes; the zero time
-// means no lower bound.
-func (m *recordsModel) rangeStart(now time.Time) time.Time {
-	switch m.rangeMode {
-	case rangeToday:
-		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
-	case rangeMonth:
-		return time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
-	case rangeYear:
-		return time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.Local)
-	}
-	return time.Time{}
-}
+// dateLayout is the local YYYY-MM-DD form the page compares its dates in.
+const dateLayout = "2006-01-02"
 
-func rangeLabel(mode rangeMode) string {
-	for _, choice := range rangeChoices {
-		if choice.mode == mode {
-			return choice.label
-		}
-	}
-	return ""
+// todayDate is today as the page's ranges hold it.
+func todayDate() string { return time.Now().Format(dateLayout) }
+
+// setRange applies a new visible range from a control of the page and
+// recomputes the table at once.
+func (m *recordsModel) setRange(start, end string, grain components.DateGrain) {
+	m.rangeStart, m.rangeEnd, m.rangeGrain = start, end, grain
+	m.refilter()
 }
 
 func (r record) signedAmount() string {

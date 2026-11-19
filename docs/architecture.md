@@ -70,12 +70,17 @@ main → desktop → pages → components
   收支统计都在 `internal/pages/accounting/records.go`，行数据来自 `records_mock.go`，
   `records_composer.go` 的「新增记录 / 编辑记录」弹窗只写内存：模板、日期、类型、分类、
   标签、标记、关联事件日期、描述与金额按旧工程 `record-composer.tsx` 排列，模板也是 mock；
-  每个字段用 `ui.FormField`（标题 + 控件的标准表单节奏），日期/事件日期是弹窗内展开的月历，
+  每个字段用 `ui.FormField`（标题 + 控件的标准表单节奏），日期/事件日期用共享的
+  `components.DateField`（可输入的日期框 + 浮在弹窗上的月历面板，见下面的「时间选择器」），
   分类是单选下拉（`components.Select`，候选取当前「类型」下的分类；换类型时已选分类留在
   候选末尾，旧工程的 AutoComplete 也是把值留在框里），
   标签用 Viva 的 `components.PaintMultiSelect`。MultiSelect 需要宿主路由：`Config.OnKey` /
   `OnScroll` 交给 `MultiSelectState.Key/Wheel`，`Config.TextInput` 把聚焦的输入接到
   `MultiSelectState.Query`。
+  工具栏的时间范围是共享的 `components.DateRangePicker`（旧工程 `TimeRangePicker`）：日 / 月 / 年
+  三个粒度、前后翻一个周期、浮层里的月历 / 月份格 / 年份格与快捷区间（今天 / 近 7 天 / 本周 /
+  本月 / 上月；月粒度每月 / 近 6 个月 / 今年；年粒度今年 / 去年），左端「今天」把粒度收回日、
+  区间收回今天。范围两端都是本地 `YYYY-MM-DD`，按日包含地过滤记录。
   记录行的右键 ContextMenu 取代原「操作」列：
   编辑、同步到其他账本、删除。底部分页是共享组件 `internal/components/pagination.go`：
   每页 15 / 30 / 50 的 `components.Select` 在 Viva 分页左侧，「共 N 条」在右侧，三者同属
@@ -92,6 +97,19 @@ main → desktop → pages → components
 - 真实窗口只用于人工验收（IME、焦点丢失、窗口管理器关闭、高分屏）。日常验证用
   `app.NewDriver`，见 `internal/desktop/desktop_test.go`。
 
+## 时间选择器（internal/components/datepicker.go）
+
+- 一个组件两种用法：`DateRangePicker`（工具栏：粒度分段 + 前后周期箭头 + 值字段 + 浮层）和
+  `DateField`（表单：可输入的日期框 + 日历按钮 + 浮层）。两者共用同一块面板，笔刷、日期算术
+  （月长、整周、按粒度对齐 / 翻页）与快捷区间都在这个文件里，纯函数、用 UTC 上的 `time.Time`
+  做公历运算，不碰时区与夏令时。
+- 面板是**自己画**的（`gfx.Canvas` + `HitWithOptions`），不是 `ui.Popover`：Viva v0.6.5 里
+  Popover 在 `ui.Modal` 内能画出来却收不到点击（hit 层被判给弹窗），见下面的「框架缺口」。
+  画的时候 `PushLayer(20)`，与标签多选同一层：弹窗有自己的合成层，面板必须在其上才看得见、
+  点得着。外部点击由一个覆盖页面的背景 hit 关闭（`PassPrimary/PassSecondary`，与旧工程的
+  文档级 pointerdown 一致：关闭的同时那次点击照常落到下面的控件上）。
+- 面板不占布局：它画在触发控件的 `DrawOver` 里，打开、翻页、选日期都不会让页面或弹窗重新排版。
+
 ## 框架缺口（Viva v0.6.5）
 
 - **Select 的下拉动画没收尾。** `ui` 画一个打开的下拉时用自己的 `gfx.Canvas.BeginPresence`
@@ -105,6 +123,10 @@ main → desktop → pages → components
   （回归测试：`internal/desktop` 的 `TestRecordMarkSelectKeepsTheDialogStill`）。
 - 同类问题：`ui` 里凡是「用 `BeginPresence` 开、由调用方 `End`」的组件，放进弹窗都要
   检查是否漏了收尾；漏了就会由弹窗的 `EndPresence` 误收，位移落到弹窗内容上。
+- **`ui.Modal` 里的 `ui.Popover` 收不到点击。** 弹窗给自己的内容开了焦点陷阱，Popover 的层
+  虽然画在上面（`HitTest` 也能找到它的 hit），普通点击仍被判给弹窗里的控件，面板里什么都
+  点不动（右键菜单、Select 的下拉不受影响：它们不走 Popover 这条路径）。所以日期面板是
+  用画布自己画的（见「时间选择器」），与标签多选同一套做法。
 
 ## 存储设计（下一步）
 

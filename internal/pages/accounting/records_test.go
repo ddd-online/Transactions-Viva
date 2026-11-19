@@ -16,9 +16,10 @@ func TestRecordsRefilter(t *testing.T) {
 			{id: "b", kind: kindIncome, description: "工资", category: "工资奖金", tags: []string{"月薪"}, amount: 100000, at: now.Add(-2 * time.Hour)},
 			{id: "c", kind: kindExpense, description: "房租", category: "居住", tags: []string{"固定支出"}, amount: 450000, at: now.Add(-3 * time.Hour)},
 		},
-		rangeMode: rangeAll,
-		sortField: sortDate,
-		sortDesc:  true,
+		rangeStart: "2000-01-01",
+		rangeEnd:   "2100-01-01",
+		sortField:  sortDate,
+		sortDesc:   true,
 	}
 	m.refilter()
 
@@ -41,7 +42,7 @@ func TestRecordsRefilter(t *testing.T) {
 
 func TestRecordActions(t *testing.T) {
 	m := newRecordsModel()
-	m.rangeMode = rangeAll
+	m.rangeStart, m.rangeEnd = "2000-01-01", "2100-01-01"
 	m.refilter()
 	if len(m.shown) < 2 {
 		t.Fatalf("shown = %d, want at least 2", len(m.shown))

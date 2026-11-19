@@ -12,7 +12,6 @@ import (
 
 	"transactions/internal/components"
 	"transactions/internal/domain"
-	"transactions/internal/icons"
 )
 
 // kindLabels is the order of the type choice in the draft dialog; the record's
@@ -82,10 +81,6 @@ type recordDraft struct {
 	mark        string
 	eventDate   string
 	date        string
-	dateOpen    bool
-	eventOpen   bool
-	dateMonth   time.Time
-	eventMonth  time.Time
 	err         string
 }
 
@@ -96,6 +91,7 @@ func (m *recordsModel) openComposer() {
 		kind: "支出",
 		date: time.Now().Format("2006-01-02"),
 	}
+	m.datePick.Open, m.eventPick.Open = false, false
 	m.setTags(nil)
 }
 
@@ -150,19 +146,13 @@ func (m *recordsModel) composerView(c ui.C) {
 
 			ui.Row(c).Gap(12).Children(func() {
 				m.formField(c, &m.fields.date, "日期", func() {
-					if ui.TextField(c, &m.draft.date, "日期", "YYYY-MM-DD").
-						Action(icons.Calendar, "打开日期选择").ActionClicked() {
-						m.openDatePicker()
-					}
+					components.DateField(c, &m.datePick, &m.draft.date, m.dateSpec(
+						"日期", "打开日期选择", "YYYY-MM-DD", &m.draft.date))
 				})
 				m.formField(c, &m.fields.kind, "类型", func() {
 					ui.Choice(c, &m.draft.kind, kindLabels, nil).Grow(1)
 				})
 			})
-
-			if m.draft.dateOpen {
-				m.calendar(c, &m.draft.dateMonth, &m.draft.date, &m.draft.dateOpen)
-			}
 
 			ui.Row(c).Gap(12).Children(func() {
 				m.formField(c, &m.fields.category, "分类", func() {
@@ -179,16 +169,10 @@ func (m *recordsModel) composerView(c ui.C) {
 					components.Select(c, &m.draft.mark, markLabels, nil).Placeholder("选择标记")
 				})
 				m.formField(c, &m.fields.eventDate, "关联事件日期", func() {
-					if ui.TextField(c, &m.draft.eventDate, "关联事件日期", "请选择日期").
-						Action(icons.Calendar, "打开事件日期选择").ActionClicked() {
-						m.openEventPicker()
-					}
+					components.DateField(c, &m.eventPick, &m.draft.eventDate, m.dateSpec(
+						"关联事件日期", "打开事件日期选择", "请选择日期", &m.draft.eventDate))
 				})
 			})
-
-			if m.draft.eventOpen {
-				m.calendar(c, &m.draft.eventMonth, &m.draft.eventDate, &m.draft.eventOpen)
-			}
 
 			m.wideFormField(c, &m.fields.description, "描述", func() {
 				ui.TextField(c, &m.draft.description, "描述", "描述消费内容")
@@ -229,94 +213,14 @@ func (m *recordsModel) wideFormField(c ui.C, state *ui.FormFieldState, label str
 	ui.FormField(c, state, label).FillWidth().Height(formFieldHeight).Children(body)
 }
 
-// openDatePicker prepares the calendar for the record date.
-func (m *recordsModel) openDatePicker() {
-	if m.draft.dateOpen {
-		m.draft.dateOpen = false
-		return
+// dateSpec is the composer's single-day picker: a DateField that writes the day
+// it is given back into value and closes, as the old form's DatePicker did.
+func (m *recordsModel) dateSpec(label, action, placeholder string, value *string) components.DatePickerSpec {
+	return components.DatePickerSpec{
+		Label: label, ActionLabel: action, Placeholder: placeholder,
+		Viewport: m.bounds, CloseOnPick: true,
+		OnRange: func(start, _ string) { *value = start },
 	}
-	m.draft.dateOpen, m.draft.eventOpen = true, false
-	m.draft.dateMonth = monthOf(m.draft.date)
-}
-
-// openEventPicker prepares the calendar for the linked event date.
-func (m *recordsModel) openEventPicker() {
-	if m.draft.eventOpen {
-		m.draft.eventOpen = false
-		return
-	}
-	m.draft.eventOpen, m.draft.dateOpen = true, false
-	m.draft.eventMonth = monthOf(m.draft.eventDate)
-}
-
-// monthOf returns the first day of value's month, or of today when value is
-// empty or malformed.
-func monthOf(value string) time.Time {
-	day, err := time.ParseInLocation("2006-01-02", strings.TrimSpace(value), time.Local)
-	if err != nil {
-		day = time.Now()
-	}
-	return time.Date(day.Year(), day.Month(), 1, 0, 0, 0, 0, time.Local)
-}
-
-// calendar paints one month inside a popover and applies a day (or a month
-// step) back to the form. It is built from ordinary page buttons rather than a
-// slot-painted component, so its rows stay clickable inside the popover.
-func (m *recordsModel) calendar(c ui.C, month *time.Time, value *string, open *bool) {
-	first := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, time.Local)
-	if month.IsZero() {
-		first = monthOf(*value)
-		*month = first
-	}
-	offset := (int(first.Weekday()) + 6) % 7 // Monday is the first column
-	start := first.AddDate(0, 0, -offset)
-	theme := c.Theme()
-	today := time.Now().Format("2006-01-02")
-
-	ui.Column(c).Width(288).Pad(8).Gap(4).
-		Border(1, theme.Border).Radius(theme.Metrics.RadiusSurface).
-		Background(theme.Popover).Shadow(gfx.ShadowSM).Children(func() {
-		ui.Row(c).Height(28).Gap(4).Children(func() {
-			if ui.Button(c, "‹").Ghost().Width(28).Clicked() {
-				*month = first.AddDate(0, -1, 0)
-			}
-			ui.Text(c, first.Format("2006 年 1 月")).Grow(1).TextCenter().
-				FontSize(13).Weight(gfx.WeightMedium)
-			if ui.Button(c, "›").Ghost().Width(28).Clicked() {
-				*month = first.AddDate(0, 1, 0)
-			}
-		})
-		ui.Row(c).Gap(0).Children(func() {
-			for _, weekday := range [7]string{"一", "二", "三", "四", "五", "六", "日"} {
-				ui.Text(c, weekday).Width(34).TextCenter().FontSize(11).Muted()
-			}
-		})
-		for week := 0; week < 6; week++ {
-			ui.Row(c.KeyInt(week)).Gap(0).Children(func() {
-				for column := 0; column < 7; column++ {
-					day := start.AddDate(0, 0, week*7+column)
-					date := day.Format("2006-01-02")
-					selected := date == *value
-					c.Key(date)
-					dayButton := ui.Button(c, strconv.Itoa(day.Day())).Ghost().
-						Width(34).Height(28)
-					if day.Month() != first.Month() {
-						dayButton.Color(theme.MutedForeground)
-					}
-					if date == today {
-						dayButton.Border(1, theme.Primary)
-					}
-					if selected {
-						dayButton.Background(theme.Selection).Color(theme.SelectionForeground)
-					}
-					if dayButton.Clicked() {
-						*value = date
-						*open = false
-					}
-				}
-			})
-		}
-	})
 }
 
 // multiSelect paints Viva's multi-select in the 标签 field and routes its
@@ -390,6 +294,10 @@ func (m *recordsModel) tagsEditor(id gfx.ID) *text.Editor {
 func (m *recordsModel) Key(event gfx.KeyEvent) gfx.EventResult {
 	if !m.draft.open {
 		return gfx.EventResult{}
+	}
+	if event.Key == gfx.KeyEscape && (m.datePick.Open || m.eventPick.Open) {
+		m.datePick.Open, m.eventPick.Open = false, false
+		return gfx.EventResult{Handled: true, Repaint: true}
 	}
 	if event.Target != m.tags.input &&
 		(!m.tags.state.Open || event.Key != gfx.KeyEscape && event.Key != gfx.KeyTab) {

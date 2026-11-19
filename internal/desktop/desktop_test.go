@@ -79,6 +79,24 @@ func shows(driver *app.Driver, want string) bool {
 	return false
 }
 
+// settle lets the window's motion finish, as a user waiting a moment would.
+func settle(t *testing.T, driver *app.Driver) {
+	t.Helper()
+	if err := driver.Advance(300 * time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// labelBoundsOf is where a text sits, failing when the page does not paint it.
+func labelBoundsOf(t *testing.T, driver *app.Driver, value string) gfx.Rect {
+	t.Helper()
+	bounds, ok := labelBounds(driver, value)
+	if !ok {
+		t.Fatalf("no text %q on screen", value)
+	}
+	return bounds
+}
+
 // labelBounds is where the page paints a text, for a test that checks a control
 // did not move it.
 func labelBounds(driver *app.Driver, value string) (gfx.Rect, bool) {
@@ -259,14 +277,57 @@ func TestRecordMarkSelectKeepsTheDialogStill(t *testing.T) {
 	}
 }
 
+// TestRecordDatePicker drives the composer's date panel: it opens over the
+// form, floats without moving it, writes the picked day and closes.
 func TestRecordDatePicker(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "记一笔")
+	settle(t, driver)
+	still := labelBoundsOf(t, driver, "取消")
 	click(t, driver, "打开日期选择")
+	if !hasControl(driver, "关闭日期选择") {
+		t.Fatal("the date panel did not open")
+	}
+	if moved := labelBoundsOf(t, driver, "取消"); moved != still {
+		t.Fatalf("opening the panel moved the form: %v -> %v", still, moved)
+	}
 	click(t, driver, "15")
 	want := time.Now().Format("2006-01") + "-15"
 	if !shows(driver, want) {
 		t.Fatalf("the date picker did not write %s", want)
+	}
+	if hasControl(driver, "关闭日期选择") {
+		t.Fatal("picking a day left the panel open")
+	}
+}
+
+// TestTimeRangePicker drives the toolbar's range picker: its presets, its
+// period arrows and the grain choice.
+func TestTimeRangePicker(t *testing.T) {
+	driver, _ := open(t)
+	settle(t, driver)
+	still := labelBoundsOf(t, driver, "记录")
+	click(t, driver, "选择时间范围")
+	if !hasControl(driver, "关闭日期选择") {
+		t.Fatal("the range panel did not open")
+	}
+	if moved := labelBoundsOf(t, driver, "记录"); moved != still {
+		t.Fatalf("opening the range panel moved the page: %v -> %v", still, moved)
+	}
+	click(t, driver, "近 7 天")
+	if !shows(driver, "共 11 条") {
+		t.Fatal("近 7 天 did not leave the week's rows")
+	}
+
+	click(t, driver, "上一周期")
+	if shows(driver, "共 11 条") {
+		t.Fatal("上一周期 did not move the range")
+	}
+
+	click(t, driver, "选择时间范围")
+	click(t, driver, "月")
+	if !shows(driver, time.Now().Format("2006-01")) {
+		t.Fatal("the 月 grain did not show the month in the field")
 	}
 }
 
@@ -298,21 +359,24 @@ func TestRecordsPagination(t *testing.T) {
 		t.Fatal("the pager did not show the today count")
 	}
 
-	click(t, driver, "今天")
-	click(t, driver, "全部时间")
-	if !shows(driver, "共 20 条") {
-		t.Fatal("all time did not leave all twenty rows")
+	// Six months of records is more than one page of fifteen.
+	click(t, driver, "选择时间范围")
+	click(t, driver, "月")
+	click(t, driver, "选择时间范围")
+	click(t, driver, "近 6 个月")
+	if !shows(driver, "共 19 条") {
+		t.Fatal("近 6 个月 did not leave nineteen rows")
 	}
-	if shows(driver, "旅行机票") {
+	if shows(driver, "年终奖") {
 		t.Fatal("the first page showed a row from the second page")
 	}
 
 	click(t, driver, "下一页")
-	if !shows(driver, "旅行机票") {
+	if !shows(driver, "年终奖") {
 		t.Fatal("下一页 did not show the second page")
 	}
 	click(t, driver, "上一页")
-	if shows(driver, "旅行机票") {
+	if shows(driver, "年终奖") {
 		t.Fatal("上一页 did not return to the first page")
 	}
 
