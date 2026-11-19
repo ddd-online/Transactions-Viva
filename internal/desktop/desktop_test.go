@@ -79,6 +79,17 @@ func shows(driver *app.Driver, want string) bool {
 	return false
 }
 
+// labelBounds is where the page paints a text, for a test that checks a control
+// did not move it.
+func labelBounds(driver *app.Driver, value string) (gfx.Rect, bool) {
+	for _, label := range driver.Snapshot().Labels {
+		if label.Value == value {
+			return label.Bounds, true
+		}
+	}
+	return gfx.Rect{}, false
+}
+
 func hasControl(driver *app.Driver, name string) bool {
 	for _, hit := range driver.Snapshot().Hits {
 		if hit.Label == name && !hit.IsLabel {
@@ -164,6 +175,32 @@ func TestRecordTagsMultiSelect(t *testing.T) {
 	click(t, driver, "日常")
 	if !shows(driver, "日常") {
 		t.Fatal("the chosen tag is not shown")
+	}
+}
+
+// TestRecordMarkSelectKeepsTheDialogStill guards the framework gap recorded in
+// docs/architecture.md: the open list of a Select must not drag the dialog's
+// fields along with its own slide.
+func TestRecordMarkSelectKeepsTheDialogStill(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "记一笔")
+	if err := driver.Advance(300 * time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+	before, ok := labelBounds(driver, "取消")
+	if !ok {
+		t.Fatal("the dialog has no 取消")
+	}
+	click(t, driver, "选择标记")
+	if !hasControl(driver, "离群值") {
+		t.Fatal("the mark select did not open its options")
+	}
+	if after, _ := labelBounds(driver, "取消"); after != before {
+		t.Fatalf("opening 标记 moved the dialog: 取消 %v -> %v", before, after)
+	}
+	click(t, driver, "离群值")
+	if hasControl(driver, "离群值") {
+		t.Fatal("choosing a mark left its list open")
 	}
 }
 

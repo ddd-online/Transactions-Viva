@@ -10,6 +10,7 @@ import (
 	"github.com/vivaui/viva/text"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
 )
@@ -134,7 +135,7 @@ func (m *recordsModel) composerView(c ui.C) {
 		ui.Column(c).FillWidth().Gap(14).Children(func() {
 			m.wideFormField(c, &m.fields.template, "模板", func() {
 				ui.Row(c).Gap(8).Children(func() {
-					if ui.Select(c, &m.draft.templateID, m.templateIDs(), m.templateName).
+					if components.Select(c, &m.draft.templateID, m.templateIDs(), m.templateName).
 						Placeholder("选择模板").Grow(1).Changed() {
 						m.applyTemplate()
 					}
@@ -174,7 +175,7 @@ func (m *recordsModel) composerView(c ui.C) {
 
 			ui.Row(c).Gap(12).Children(func() {
 				m.formField(c, &m.fields.mark, "标记", func() {
-					ui.Select(c, &m.draft.mark, markLabels, nil).Placeholder("选择标记")
+					components.Select(c, &m.draft.mark, markLabels, nil).Placeholder("选择标记")
 				})
 				m.formField(c, &m.fields.eventDate, "关联事件日期", func() {
 					if ui.TextField(c, &m.draft.eventDate, "关联事件日期", "请选择日期").

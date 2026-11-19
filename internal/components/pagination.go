@@ -61,7 +61,7 @@ func Pagination(c ui.C, spec PaginationSpec) {
 	ui.Row(c).Height(48).FillWidth().PadX(18).Gap(10).Items(ui.Center).Children(func() {
 		ui.Spacer(c)
 		ui.Text(c, "每页").FontSize(12).Muted()
-		selectBox := ui.Select(c, &size, sizes, strconv.Itoa).Label("每页条数")
+		selectBox := Select(c, &size, sizes, strconv.Itoa).Label("每页条数")
 		selectBox.Width(84)
 		if selectBox.Changed() && spec.OnPageSize != nil {
 			spec.OnPageSize(size)

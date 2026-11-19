@@ -76,8 +76,8 @@ main → desktop → pages → components
   `MultiSelectState.Query`。
   记录行的右键 ContextMenu 取代原「操作」列：
   编辑、同步到其他账本、删除。底部分页是共享组件 `internal/components/pagination.go`：
-  每页 15 / 30 / 50 的 `ui.Select` 在 Viva 分页左侧，「共 N 条」在右侧，三者同属一个自定义
-  分页组件；分页栏上方不再画分割线。接入 store 时替换 mock，不改这套布局。
+  每页 15 / 30 / 50 的 `components.Select` 在 Viva 分页左侧，「共 N 条」在右侧，三者同属
+  一个自定义分页组件；分页栏上方不再画分割线。接入 store 时替换 mock，不改这套布局。
 - 导航是两级：一级功能项展开自己的子功能，同时收起其他一级项；没有子功能的功能（事件、日记）
   就是单独一项。页面通过 `Tabs() []string`、`Tab() int`、`SelectTab(int)` 暴露子功能，
   内容里不画 `ui.Tabs`。
@@ -89,6 +89,20 @@ main → desktop → pages → components
   `ui.Effect`，结果通过 `Take` 在窗口线程落到模型。
 - 真实窗口只用于人工验收（IME、焦点丢失、窗口管理器关闭、高分屏）。日常验证用
   `app.NewDriver`，见 `internal/desktop/desktop_test.go`。
+
+## 框架缺口（Viva v0.6.5）
+
+- **Select 的下拉动画没收尾。** `ui` 画一个打开的下拉时用自己的 `gfx.Canvas.BeginPresence`
+  起了入场的组（`slide-in-from-*-2`，8px），却没有结束它；同一帧里之后第一个
+  `EndPresence`——也就是弹窗在自己 `End` 里做的那一次——会把这个组收掉，并把下拉的
+  8px 位移应用到「下拉之后画的所有东西」上。表现是：在弹窗里点开任意 Select，弹窗中
+  该字段以下的标题、控件、底部按钮会先整体跳 8px，再在 100ms 里弹回。
+  本仓库的 `internal/components/select.go` 提供了 `components.Select`：它在
+  `DrawOver` 里（外壳把 Select 自己画完之后）补上那次 `EndPresence`，位移只留给下拉
+  本身，弹窗不再抖。`ui.Select` 在本工程里一律走这个包装；等框架自己收尾后删掉即可
+  （回归测试：`internal/desktop` 的 `TestRecordMarkSelectKeepsTheDialogStill`）。
+- 同类问题：`ui` 里凡是「用 `BeginPresence` 开、由调用方 `End`」的组件，放进弹窗都要
+  检查是否漏了收尾；漏了就会由弹窗的 `EndPresence` 误收，位移落到弹窗内容上。
 
 ## 存储设计（下一步）
 
