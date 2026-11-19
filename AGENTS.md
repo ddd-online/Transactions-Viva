@@ -102,6 +102,25 @@ go test ./... -count=1              # 无窗口驱动测试 + 领域单测
 `internal/desktop/desktop_test.go`），不要为了看一眼界面就开真实窗口；需要截图或
 布局检查时用 `building-with-viva` skill 里的 headless 协议。
 
+## 提交
+
+**每完成一次修改就提交一次。** 不要把多组改动留在工作区里等下一轮，也不要把不相关的
+改动塞进同一个提交。
+
+```sh
+gofmt -l . && go vet ./... && viva vet && go test ./... -count=1
+git status --short                  # 只应有本次要提交的文件
+git add -A && git commit -m "feat(scope): 中文摘要"
+```
+
+- 提交信息沿用旧工程的 `type(scope): 中文摘要`：`feat`、`fix`、`style`、`docs`、
+  `refactor`、`test`、`chore`。
+- 一个提交只做一件事；初始化、迁移阶段、布局调整各算一件。
+- 截图、文档等产物与对应改动一起提交，不单独留下未跟踪文件。
+- `build/`、`*.exe` 已在 `.gitignore`；参考目录 `D:\github\{viva,motty,Transactions}`
+  在本仓库之外，绝不 `git add` 它们。
+- 每轮工作结束前 `git status --short` 必须为空。
+
 ## Viva 速查
 
 下面是 Viva 的写作方式。框架版本以 `go.mod` 为准（v0.6.5）；页面代码如果不确定某个
