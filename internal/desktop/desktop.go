@@ -148,7 +148,7 @@ func (m *Model) textInput(ctx app.TextInputContext) *app.TextInput {
 	if editor == nil {
 		return nil
 	}
-	return &app.TextInput{Editor: editor, NavigationKeys: true}
+	return &app.TextInput{Editor: editor}
 }
 
 // windowBorderColor is the color of the system-drawn border around the window:

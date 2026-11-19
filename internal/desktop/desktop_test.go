@@ -55,6 +55,21 @@ func rightClickText(t *testing.T, driver *app.Driver, want string) {
 	t.Fatalf("no text %q on screen", want)
 }
 
+func clickRole(t *testing.T, driver *app.Driver, label string, role gfx.Role) {
+	t.Helper()
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label != label || hit.Role != role {
+			continue
+		}
+		b := hit.Bounds
+		if err := driver.Click(b.X+b.Width/2, b.Y+b.Height/2); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	t.Fatalf("no %s named %q on screen", role, label)
+}
+
 func shows(driver *app.Driver, want string) bool {
 	for _, label := range driver.Snapshot().Labels {
 		if strings.Contains(label.Value, want) {
@@ -137,6 +152,19 @@ func TestRecordsPage(t *testing.T) {
 			t.Fatal("the composer did not add its row")
 		}
 	})
+}
+
+func TestRecordTagsMultiSelect(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "记一笔")
+	clickRole(t, driver, "标签", gfx.RoleCombobox)
+	if !hasControl(driver, "日常") {
+		t.Fatal("the tags multi-select did not open its options")
+	}
+	click(t, driver, "日常")
+	if !shows(driver, "日常") {
+		t.Fatal("the chosen tag is not shown")
+	}
 }
 
 func TestRecordDatePicker(t *testing.T) {

@@ -56,10 +56,6 @@ func newRecordTags() recordTags {
 	tags.feature = tags.tree.Feature("record-tags")
 	tags.options = tags.tree.Sub(tags.feature, tags.tree.Name("option"))
 	tags.removes = tags.tree.Sub(tags.feature, tags.tree.Name("remove"))
-	tags.input = tags.tree.ID(tags.feature, "input")
-	tags.trigger = tags.tree.ID(tags.feature, "trigger")
-	tags.dismiss = tags.tree.ID(tags.feature, "dismiss")
-	tags.scope = tags.tree.ID(tags.feature, "scope")
 	tags.state.AllowCreate = true
 	tags.state.MatchCaseInsensitive = true
 	options := make([]viva.MultiSelectOption, len(mockTagOptions))
@@ -324,30 +320,40 @@ func (m *recordsModel) calendar(c ui.C, month *time.Time, value *string, open *b
 // multiSelect paints Viva's multi-select in the 标签 field and routes its
 // pointer choices back into the state and the draft's tag string.
 func (m *recordsModel) multiSelect(c ui.C) {
+	// These four are focus and input identities, so they come from the page's
+	// tree (ui.ID) rather than the component's option scopes.
+	m.tags.input = ui.ID(c)
+	m.tags.trigger = ui.ID(c)
+	m.tags.dismiss = ui.ID(c)
+	m.tags.scope = ui.ID(c)
 	ui.Slot(c).FillWidth().Height(c.Theme().Metrics.ControlHeight).Draw(func(d *ui.DrawContext) {
 		viva.PaintMultiSelect(d.Canvas, *d.Theme, d.Rect, &m.tags.state, viva.MultiSelectOptions{
 			InputID: m.tags.input, TriggerID: m.tags.trigger, DismissID: m.tags.dismiss, Scope: m.tags.scope,
 			OptionIDs: m.tags.options, RemoveIDs: m.tags.removes,
 			Label: "标签", Placeholder: "选择一个或多个标签",
 			EmptyLabel: "没有匹配项", CreatePrefix: "创建：",
-			Viewport: m.bounds, Layer: 20, MaxRows: 7,
+			Viewport: m.bounds, Layer: 6, MaxRows: 7,
 		})
+		changed := false
 		switch {
 		case d.Canvas.Clicked(m.tags.input):
-			m.tags.state.Open = true
+			m.tags.state.Open, changed = true, true
 		case d.Canvas.Clicked(m.tags.trigger):
-			m.tags.state.Open = !m.tags.state.Open
+			m.tags.state.Open, changed = !m.tags.state.Open, true
 		case d.Canvas.Clicked(m.tags.dismiss):
-			m.tags.state.Open = false
+			m.tags.state.Open, changed = false, true
 		default:
 			if index, ok := d.Canvas.ClickedIn(m.tags.options); ok {
-				m.tags.state.Choose(index)
+				changed = m.tags.state.Choose(index) || changed
 			}
 			if index, ok := d.Canvas.ClickedIn(m.tags.removes); ok {
-				m.tags.state.Remove(index)
+				changed = m.tags.state.Remove(index) || changed
 			}
 		}
 		m.syncTags()
+		if changed {
+			d.Canvas.RequestFrame()
+		}
 	})
 }
 
@@ -359,7 +365,8 @@ func (m *recordsModel) syncTags() {
 // setTags replaces the multi-select's values when a dialog opens or a template
 // is applied.
 func (m *recordsModel) setTags(values []string) {
-	m.tags.state.Query = text.Editor{}
+	query := &m.tags.state.Query
+	query.ReplaceRange(text.Range{Start: 0, End: query.RuneCount()}, "")
 	m.tags.state.Open = false
 	m.tags.state.SetValues(values)
 	m.syncTags()
