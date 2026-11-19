@@ -3,6 +3,7 @@ package desktop
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vivaui/viva/app"
 	"github.com/vivaui/viva/gfx"
@@ -136,6 +137,17 @@ func TestRecordsPage(t *testing.T) {
 			t.Fatal("the composer did not add its row")
 		}
 	})
+}
+
+func TestRecordDatePicker(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "记一笔")
+	click(t, driver, "打开日期选择")
+	click(t, driver, "15")
+	want := time.Now().Format("2006-01") + "-15"
+	if !shows(driver, want) {
+		t.Fatalf("the date picker did not write %s", want)
+	}
 }
 
 func TestRecordsRowContextMenu(t *testing.T) {

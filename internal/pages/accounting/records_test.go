@@ -127,6 +127,18 @@ func TestComposerTemplateAndMarks(t *testing.T) {
 	}
 }
 
+func TestTagToggle(t *testing.T) {
+	if got := toggleTag([]string{"日常"}, "同事", true); got != "日常, 同事" {
+		t.Fatalf("add tag = %q", got)
+	}
+	if got := toggleTag([]string{"日常", "同事"}, "日常", false); got != "同事" {
+		t.Fatalf("remove tag = %q", got)
+	}
+	if !hasTag([]string{"日常", "同事"}, "同事") || hasTag([]string{"日常"}, "旅行") {
+		t.Fatal("hasTag reported the wrong membership")
+	}
+}
+
 func TestTypeColorsMatchTheOldProject(t *testing.T) {
 	light, dark := gfx.LightTheme(), gfx.DarkTheme()
 	cases := []struct {

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/domain"
@@ -34,6 +35,11 @@ type recordDraft struct {
 	mark        string
 	eventDate   string
 	date        string
+	tagsOpen    bool
+	dateOpen    bool
+	eventOpen   bool
+	dateMonth   time.Time
+	eventMonth  time.Time
 	err         string
 }
 
@@ -98,30 +104,48 @@ func (m *recordsModel) composerView(c ui.C) {
 
 			ui.Row(c).Gap(12).Children(func() {
 				m.field(c, "日期", func() {
-					ui.TextField(c, &m.draft.date, "日期", "YYYY-MM-DD").Icon(icons.Calendar)
+					if ui.TextField(c, &m.draft.date, "日期", "YYYY-MM-DD").
+						Action(icons.Calendar, "打开日期选择").ActionClicked() {
+						m.openDatePicker()
+					}
 				})
 				m.field(c, "类型", func() {
 					ui.Choice(c, &m.draft.kind, kindLabels, nil).Grow(1)
 				})
 			})
 
+			if m.draft.dateOpen {
+				m.calendar(c, &m.draft.dateMonth, &m.draft.date, &m.draft.dateOpen)
+			}
+
 			ui.Row(c).Gap(12).Children(func() {
 				m.field(c, "分类", func() {
 					ui.TextField(c, &m.draft.category, "分类", "选择或输入分类")
 				})
 				m.field(c, "标签", func() {
-					ui.TextField(c, &m.draft.tags, "标签", "选择一个或多个标签")
+					m.tagsField(c)
 				})
 			})
+
+			if m.draft.tagsOpen {
+				m.tagsPanel(c)
+			}
 
 			ui.Row(c).Gap(12).Children(func() {
 				m.field(c, "标记", func() {
 					ui.Select(c, &m.draft.mark, markLabels, nil).Placeholder("选择标记")
 				})
 				m.field(c, "关联事件日期", func() {
-					ui.TextField(c, &m.draft.eventDate, "关联事件日期", "请选择日期").Icon(icons.Calendar)
+					if ui.TextField(c, &m.draft.eventDate, "关联事件日期", "请选择日期").
+						Action(icons.Calendar, "打开事件日期选择").ActionClicked() {
+						m.openEventPicker()
+					}
 				})
 			})
+
+			if m.draft.eventOpen {
+				m.calendar(c, &m.draft.eventMonth, &m.draft.eventDate, &m.draft.eventOpen)
+			}
 
 			m.wideField(c, "描述", func() {
 				ui.TextField(c, &m.draft.description, "描述", "描述消费内容")
@@ -145,9 +169,11 @@ func (m *recordsModel) composerView(c ui.C) {
 	})
 }
 
-// field declares one half of a two-column form row.
+// field declares one half of a two-column form row. Basis(0) makes both
+// halves share the row equally instead of letting the wider control (a date
+// field beside a segmented Choice, say) take more than its share.
 func (m *recordsModel) field(c ui.C, label string, body func()) {
-	ui.Column(c).Grow(1).Gap(6).Children(func() {
+	ui.Column(c).Grow(1).Basis(0).Gap(6).Children(func() {
 		ui.Text(c, label).FontSize(12).Muted()
 		body()
 	})
@@ -159,6 +185,188 @@ func (m *recordsModel) wideField(c ui.C, label string, body func()) {
 		ui.Text(c, label).FontSize(12).Muted()
 		body()
 	})
+}
+
+// openDatePicker prepares the calendar for the record date.
+func (m *recordsModel) openDatePicker() {
+	if m.draft.dateOpen {
+		m.draft.dateOpen = false
+		return
+	}
+	m.draft.dateOpen, m.draft.eventOpen, m.draft.tagsOpen = true, false, false
+	m.draft.dateMonth = monthOf(m.draft.date)
+}
+
+// openEventPicker prepares the calendar for the linked event date.
+func (m *recordsModel) openEventPicker() {
+	if m.draft.eventOpen {
+		m.draft.eventOpen = false
+		return
+	}
+	m.draft.eventOpen, m.draft.dateOpen, m.draft.tagsOpen = true, false, false
+	m.draft.eventMonth = monthOf(m.draft.eventDate)
+}
+
+// monthOf returns the first day of value's month, or of today when value is
+// empty or malformed.
+func monthOf(value string) time.Time {
+	day, err := time.ParseInLocation("2006-01-02", strings.TrimSpace(value), time.Local)
+	if err != nil {
+		day = time.Now()
+	}
+	return time.Date(day.Year(), day.Month(), 1, 0, 0, 0, 0, time.Local)
+}
+
+// calendar paints one month inside a popover and applies a day (or a month
+// step) back to the form. It is built from ordinary page buttons rather than a
+// slot-painted component, so its rows stay clickable inside the popover.
+func (m *recordsModel) calendar(c ui.C, month *time.Time, value *string, open *bool) {
+	first := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, time.Local)
+	if month.IsZero() {
+		first = monthOf(*value)
+		*month = first
+	}
+	offset := (int(first.Weekday()) + 6) % 7 // Monday is the first column
+	start := first.AddDate(0, 0, -offset)
+	theme := c.Theme()
+	today := time.Now().Format("2006-01-02")
+
+	ui.Column(c).Width(288).Pad(8).Gap(4).
+		Border(1, theme.Border).Radius(theme.Metrics.RadiusSurface).
+		Background(theme.Popover).Shadow(gfx.ShadowSM).Children(func() {
+		ui.Row(c).Height(28).Gap(4).Children(func() {
+			if ui.Button(c, "‹").Ghost().Width(28).Clicked() {
+				*month = first.AddDate(0, -1, 0)
+			}
+			ui.Text(c, first.Format("2006 年 1 月")).Grow(1).TextCenter().
+				FontSize(13).Weight(gfx.WeightMedium)
+			if ui.Button(c, "›").Ghost().Width(28).Clicked() {
+				*month = first.AddDate(0, 1, 0)
+			}
+		})
+		ui.Row(c).Gap(0).Children(func() {
+			for _, weekday := range [7]string{"一", "二", "三", "四", "五", "六", "日"} {
+				ui.Text(c, weekday).Width(34).TextCenter().FontSize(11).Muted()
+			}
+		})
+		for week := 0; week < 6; week++ {
+			ui.Row(c.KeyInt(week)).Gap(0).Children(func() {
+				for column := 0; column < 7; column++ {
+					day := start.AddDate(0, 0, week*7+column)
+					date := day.Format("2006-01-02")
+					selected := date == *value
+					c.Key(date)
+					dayButton := ui.Button(c, strconv.Itoa(day.Day())).Ghost().
+						Width(34).Height(28)
+					if day.Month() != first.Month() {
+						dayButton.Color(theme.MutedForeground)
+					}
+					if date == today {
+						dayButton.Border(1, theme.Primary)
+					}
+					if selected {
+						dayButton.Background(theme.Selection).Color(theme.SelectionForeground)
+					}
+					if dayButton.Clicked() {
+						*value = date
+						*open = false
+					}
+				}
+			})
+		}
+	})
+}
+
+// tagsField is the composer's multi-select 标签 control: chips in a bordered
+// field, with a popover of the available tags.
+func (m *recordsModel) tagsField(c ui.C) {
+	theme := c.Theme()
+	tags := splitTags(m.draft.tags)
+	field := ui.Row(c).Height(32).FillWidth().Border(1, theme.Input).
+		Radius(theme.Metrics.RadiusControl).Background(theme.Background).
+		PadX(8).Gap(6).Items(ui.Center).Hit(ui.ID(c), "标签").
+		Hover(ui.Look{}.Background(theme.Hover)).
+		Focus(ui.Look{}.Ring(2, theme.Ring))
+	field.Children(func() {
+		if len(tags) == 0 {
+			ui.Text(c, "选择一个或多个标签").FontSize(13).Muted()
+		}
+		for _, tag := range tags {
+			ui.Text(c, tag).FontSize(12).PadSides(1, 6, 1, 6).
+				Radius(4).Background(theme.Muted)
+		}
+		ui.Spacer(c)
+		ui.Icon(c, icons.ChevronDown).Size(14, 14).Color(theme.MutedForeground)
+	})
+	if field.Clicked() {
+		m.draft.tagsOpen = !m.draft.tagsOpen
+		if m.draft.tagsOpen {
+			m.draft.dateOpen, m.draft.eventOpen = false, false
+		}
+	}
+}
+
+// tagsPanel lists the available tags in two columns while the tags field is
+// open. It stays open for several choices and closes on 完成 or the field.
+func (m *recordsModel) tagsPanel(c ui.C) {
+	theme := c.Theme()
+	tags := splitTags(m.draft.tags)
+	ui.Column(c).Width(288).Pad(8).Gap(6).
+		Border(1, theme.Border).Radius(theme.Metrics.RadiusSurface).
+		Background(theme.Popover).Shadow(gfx.ShadowSM).Children(func() {
+		ui.Grid(c, 128).Width(272).Gap(2).Children(func() {
+			for _, tag := range mockTagOptions {
+				selected := hasTag(tags, tag)
+				row := ui.Row(c).Height(28).FillWidth().PadX(6).Gap(6).
+					Items(ui.Center).Hit(ui.ID(c), tag).
+					Hover(ui.Look{}.Background(theme.Hover))
+				row.Children(func() {
+					if selected {
+						ui.Text(c, "✓").FontSize(11).Color(theme.Primary)
+					} else {
+						ui.Spacer(c).Width(12)
+					}
+					ui.Text(c, tag).FontSize(13)
+				})
+				if row.Clicked() {
+					m.draft.tags = toggleTag(tags, tag, !selected)
+				}
+			}
+		})
+		ui.Row(c).Justify(ui.End).Children(func() {
+			if ui.Button(c, "完成").Ghost().Clicked() {
+				m.draft.tagsOpen = false
+			}
+		})
+	})
+}
+
+// hasTag reports whether tags contains name.
+func hasTag(tags []string, name string) bool {
+	for _, tag := range tags {
+		if tag == name {
+			return true
+		}
+	}
+	return false
+}
+
+// toggleTag adds or removes one tag and returns the comma-separated field value.
+func toggleTag(tags []string, name string, on bool) string {
+	if on {
+		if !hasTag(tags, name) {
+			tags = append(tags, name)
+		}
+	} else {
+		kept := tags[:0]
+		for _, tag := range tags {
+			if tag != name {
+				kept = append(kept, tag)
+			}
+		}
+		tags = kept
+	}
+	return strings.Join(tags, ", ")
 }
 
 // templateIDs are the choices of the 模板 Select, in the form's model order.

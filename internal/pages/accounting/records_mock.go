@@ -7,6 +7,13 @@ import "time"
 // reports the chosen target instead of adding a second copy to this table.
 var mockSyncTargets = [...]string{"家庭账本", "旅行账本"}
 
+// mockTagOptions are the tags the composer's 标签 picker offers. The real app
+// filters them by category and type.
+var mockTagOptions = [...]string{
+	"日常", "同事", "通勤", "家庭", "周末", "固定支出", "设计",
+	"健康", "旅行", "社交", "书籍", "理财", "月薪", "储蓄",
+}
+
 // recordTemplate is one entry of the composer's 模板 Select. The real app reads
 // them from the workspace; these are mock rows for the form.
 type recordTemplate struct {

@@ -36,6 +36,19 @@ var Calendar = gfx.Icon{
 	},
 }
 
+// chevron-down is a compiled vector icon.
+var ChevronDown = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(6.0, 9.0),
+		gfx.LineTo(12.0, 15.0),
+		gfx.LineTo(18.0, 9.0),
+	},
+}
+
 // diary is a compiled vector icon.
 var Diary = gfx.Icon{
 	ViewBox: 24.0,
