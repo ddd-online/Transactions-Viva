@@ -146,8 +146,8 @@ func (m *recordsModel) View(c ui.C) {
 	m.deleteView(c)
 }
 
-// toolbar is the page's actions, laid out like the reference hosts page: the
-// time range and sort on the left, the primary action on the right.
+// toolbar is the page's actions, laid out like the old page's filter bar: the
+// time range on the left, and the sort beside the primary action on the right.
 func (m *recordsModel) toolbar(c ui.C) {
 	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(10).Items(ui.Center).Children(func() {
 		if ui.Button(c, "今天").Outline().Clicked() {
@@ -164,6 +164,7 @@ func (m *recordsModel) toolbar(c ui.C) {
 			},
 		})
 
+		ui.Spacer(c)
 		sortButton := ui.Button(c, "排序").Outline()
 		if sortButton.Clicked() {
 			m.sortMenu = !m.sortMenu
@@ -174,8 +175,6 @@ func (m *recordsModel) toolbar(c ui.C) {
 			m.sortItem(menu, "金额：从高到低", sortAmount, true)
 			m.sortItem(menu, "金额：从低到高", sortAmount, false)
 		})
-
-		ui.Spacer(c)
 		if ui.Button(c, "记一笔").Icon(icons.Plus).Clicked() {
 			m.openComposer()
 		}

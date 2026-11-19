@@ -429,6 +429,28 @@ func TestRecordsRowContextMenu(t *testing.T) {
 	}
 }
 
+// TestRecordsSortMenu checks the sort sits beside 记一笔 and opens its menu
+// there.
+func TestRecordsSortMenu(t *testing.T) {
+	driver, _ := open(t)
+	sort, ok := controlBounds(driver, "排序")
+	create, found := controlBounds(driver, "记一笔")
+	if !ok || !found {
+		t.Fatal("the toolbar has no 排序 beside 记一笔")
+	}
+	if sort.X > create.X {
+		t.Fatalf("排序 is not left of 记一笔: %v, %v", sort.X, create.X)
+	}
+	click(t, driver, "排序")
+	if !hasControl(driver, "金额：从高到低") {
+		t.Fatal("the sort menu did not open")
+	}
+	click(t, driver, "金额：从高到低")
+	if hasControl(driver, "金额：从高到低") {
+		t.Fatal("choosing a sort left the menu open")
+	}
+}
+
 func TestRecordsPagination(t *testing.T) {
 	driver, _ := open(t)
 	if !shows(driver, "共 5 条") {
