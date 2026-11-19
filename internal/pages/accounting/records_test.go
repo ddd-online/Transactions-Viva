@@ -3,6 +3,8 @@ package accounting
 import (
 	"testing"
 	"time"
+
+	"github.com/vivaui/viva/gfx"
 )
 
 func TestRecordsRefilter(t *testing.T) {
@@ -46,6 +48,28 @@ func TestRecordsRefilter(t *testing.T) {
 	m.refilter()
 	if m.shown[0].id != "c" {
 		t.Fatalf("amount sort first row = %q, want c", m.shown[0].id)
+	}
+}
+
+func TestTypeColorsMatchTheOldProject(t *testing.T) {
+	light, dark := gfx.LightTheme(), gfx.DarkTheme()
+	cases := []struct {
+		name  string
+		theme gfx.Theme
+		kind  string
+		want  gfx.Color
+	}{
+		{"light income", light, kindIncome, gfx.RGB24(0x16a34a)},
+		{"light expense", light, kindExpense, gfx.RGB24(0xdc2626)},
+		{"light transfer", light, kindTransfer, gfx.RGB24(0x3b82f6)},
+		{"dark income", dark, kindIncome, gfx.RGB24(0x4ade80)},
+		{"dark expense", dark, kindExpense, gfx.RGB24(0xf87171)},
+		{"dark transfer", dark, kindTransfer, gfx.RGB24(0x60a5fa)},
+	}
+	for _, test := range cases {
+		if got := kindColor(test.theme, test.kind); got != test.want {
+			t.Errorf("%s = %v, want %v", test.name, got, test.want)
+		}
 	}
 }
 
