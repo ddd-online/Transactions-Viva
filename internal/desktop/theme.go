@@ -9,8 +9,18 @@ import "github.com/vivaui/viva/gfx"
 // c.Theme(), so when that palette is migrated this is the one place to override
 // tokens — do not hardcode colors in pages.
 func newTheme(dark bool) gfx.Theme {
+	theme := gfx.LightTheme()
 	if dark {
-		return gfx.DarkTheme()
+		theme = gfx.DarkTheme()
 	}
-	return gfx.LightTheme()
+	// Viva paints the hover of menu and popup rows with Accent. The stock token
+	// sits almost on the Popover color (#f5f5f5 on #ffffff, #262626 on #171717),
+	// so the highlight is technically there but reads as no hover at all. Keep
+	// the neutral hue and deepen it one step.
+	if dark {
+		theme.Accent = gfx.RGB(46, 46, 46)
+	} else {
+		theme.Accent = gfx.RGB(236, 236, 236)
+	}
+	return theme
 }
