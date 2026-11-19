@@ -1,6 +1,7 @@
 // Package components holds the UI pieces shared by more than one page: the
-// pending/empty state and, as the migration goes on, the settings row, page
-// header, table cells and dialog shells.
+// pending/empty state, and later the page header and table cells. A piece only
+// one page uses belongs in that page's controls subpackage instead
+// (internal/pages/<page>/controls).
 //
 // A component here is an ordinary page function — func Name(c ui.C, ...) ui.Box
 // — and never owns a ui.C, Box or goroutine past the paint.

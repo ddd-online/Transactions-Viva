@@ -15,9 +15,9 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
-	"transactions/internal/components"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
+	"transactions/internal/pages/accounting/controls"
 )
 
 const (
@@ -70,7 +70,7 @@ type recordsModel struct {
 	// ends included; rangeGrain is the unit the picker chooses them in.
 	rangeStart string
 	rangeEnd   string
-	rangeGrain components.DateGrain
+	rangeGrain controls.DateGrain
 	// rangeStale says a range picked in a painted panel still has to be filtered.
 	rangeStale bool
 	sortField  sortField
@@ -89,9 +89,9 @@ type recordsModel struct {
 	tags      recordTags
 	templates []recordTemplate
 	bounds    gfx.Rect
-	datePick  components.DatePickerState
-	eventPick components.DatePickerState
-	rangePick components.DatePickerState
+	datePick  controls.DatePickerState
+	eventPick controls.DatePickerState
+	rangePick controls.DatePickerState
 
 	// categoryList is the 分类 Select's choices, rebuilt each paint into the same
 	// slice (see categoryNames).
@@ -111,14 +111,14 @@ func newRecordsModel() *recordsModel {
 		templates:  mockTemplates(),
 		rangeStart: todayDate(),
 		rangeEnd:   todayDate(),
-		rangeGrain: components.DateByDay,
+		rangeGrain: controls.DateByDay,
 		sortField:  sortDate,
 		sortDesc:   true,
 		page:       1,
 		pageSize:   15,
-		datePick:   components.NewDatePickerState(),
-		eventPick:  components.NewDatePickerState(),
-		rangePick:  components.NewDatePickerState(),
+		datePick:   controls.NewDatePickerState(),
+		eventPick:  controls.NewDatePickerState(),
+		rangePick:  controls.NewDatePickerState(),
 	}
 	m.refilter()
 	return m
@@ -150,12 +150,12 @@ func (m *recordsModel) View(c ui.C) {
 func (m *recordsModel) toolbar(c ui.C) {
 	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(10).Items(ui.Center).Children(func() {
 		if ui.Button(c, "今天").Outline().Clicked() {
-			m.setRange(todayDate(), todayDate(), components.DateByDay)
+			m.setRange(todayDate(), todayDate(), controls.DateByDay)
 		}
-		components.DatePicker(c, &m.rangePick, components.DatePickerSpec{
+		controls.DatePicker(c, &m.rangePick, controls.DatePickerSpec{
 			Label: "选择时间范围", Start: m.rangeStart, End: m.rangeEnd,
 			Grain: m.rangeGrain, Grains: true, Periods: true, Viewport: m.bounds,
-			OnGrain: func(grain components.DateGrain) {
+			OnGrain: func(grain controls.DateGrain) {
 				m.rangeGrain, m.rangeStale = grain, true
 			},
 			OnRange: func(start, end string) {
@@ -290,12 +290,12 @@ func (m *recordsModel) empty(c ui.C) {
 			if ui.Button(c, "上月").Secondary().Clicked() {
 				first := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local).AddDate(0, -1, 0)
 				m.setRange(first.Format(dateLayout), first.AddDate(0, 1, -1).Format(dateLayout),
-					components.DateByMonth)
+					controls.DateByMonth)
 			}
 			if ui.Button(c, "今年").Secondary().Clicked() {
 				m.setRange(time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.Local).Format(dateLayout),
 					time.Date(now.Year(), 12, 31, 0, 0, 0, 0, time.Local).Format(dateLayout),
-					components.DateByYear)
+					controls.DateByYear)
 			}
 			if ui.Button(c, "记一笔").Clicked() {
 				m.openComposer()
@@ -328,7 +328,7 @@ func (m *recordsModel) stat(c ui.C, label string, cents int64, color gfx.Color) 
 
 // pager is the shared pagination bar: total, page-size select and Viva pages.
 func (m *recordsModel) pager(c ui.C) {
-	components.Pagination(c, components.PaginationSpec{
+	controls.Pagination(c, controls.PaginationSpec{
 		Total:    len(m.shown),
 		Page:     m.page,
 		PageSize: m.pageSize,
@@ -407,7 +407,7 @@ func todayDate() string { return time.Now().Format(dateLayout) }
 
 // setRange applies a new visible range from a control of the page and
 // recomputes the table at once.
-func (m *recordsModel) setRange(start, end string, grain components.DateGrain) {
+func (m *recordsModel) setRange(start, end string, grain controls.DateGrain) {
 	m.rangeStart, m.rangeEnd, m.rangeGrain = start, end, grain
 	m.refilter()
 }

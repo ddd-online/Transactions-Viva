@@ -18,16 +18,16 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 - 记账-记录页已迁移前端：工具栏、时间范围、排序、表格、分页、收支统计与
   新增 / 编辑记录弹窗都在。弹窗照旧工程 `record-composer.tsx` 排列模板、日期、类型、分类、
   标签、标记、关联事件日期、描述与金额；字段用 `ui.FormField`，日期与关联事件日期用共享的
-  `components.DatePicker`（同一个组件，参数关掉粒度分段与前后周期，见
-  `internal/components/datepicker.go`），
+  `controls.DatePicker`（同一个组件，参数关掉粒度分段与前后周期，见
+  `internal/pages/accounting/controls/datepicker.go`），
   分类是单选下拉（候选取当前类型下的分类），
   标签用 Viva 的 `components.PaintMultiSelect`（`MultiSelectState`），
-  下拉一律用本工程的 `components.Select`（`internal/components/select.go`：Viva v0.6.5
+  下拉一律用本工程的 `controls.Select`（`internal/pages/accounting/controls/select.go`：Viva v0.6.5
   的 Select 不收下拉动画的组，弹窗里会把下面的字段带得抖一下，见 `docs/architecture.md`
   的「框架缺口」）。
   记录行右键打开 ContextMenu（编辑 / 同步到其他账本 / 删除）。行数据、模板与保存都只在
-  内存里。工具栏的时间范围用同一个 `components.DatePicker`（打开 `Grains` / `Periods`：日 / 月 / 年
-  粒度、前后周期、快捷区间，浮层面板不占布局）；共享分页栏在 `internal/components/pagination.go`：
+  内存里。工具栏的时间范围用同一个 `controls.DatePicker`（打开 `Grains` / `Periods`：日 / 月 / 年
+  粒度、前后周期、快捷区间，浮层面板不占布局）；分页栏在 `internal/pages/accounting/controls/pagination.go`：
   每页 15 / 30 / 50 的 Select 在 Viva 分页左侧，「共 N 条」在右侧，三者是一个自定义组件。
 - 原来的 `viva init` 示例（计数页）已移除；根目录 `main.go` 现在是真实入口。
 - SQLite 存储、配置持久化尚未接入；其余页面的真实内容也还没迁移（见下面的迁移顺序）。
@@ -51,7 +51,8 @@ main.go                  真实入口：只做 log.Fatal(desktop.Run())
 internal/desktop/        应用外壳：窗口、自绘标题栏、Sidebar 导航、底栏、设置页、主题
 internal/icons/          由 SVG 编译出的矢量图标（viva icons）
 internal/pages/          各功能页：accounting、stock、todo、events、diary、settings
-internal/components/     跨页复用的 UI 片段：占位空态、设置卡片 / 设置行、分页栏
+internal/components/     真正跨页复用的 UI 片段：占位空态
+internal/pages/*/controls/  只属于某个页面的组件（日期选择器、Select 包装、分页栏、设置卡片 / 行）
 internal/domain/         纯领域规则与数据形状：金额、记录、账本、事件、日记、待办、股票
 internal/config/         应用配置的形状与默认值（~/.tr.json，旧工程 shared/types/config.ts）
 internal/store/          SQLite 工作空间与 DAO 的位置（目前只有包文档）

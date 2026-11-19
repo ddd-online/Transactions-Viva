@@ -1,4 +1,4 @@
-package components
+package controls
 
 import "github.com/vivaui/viva/ui"
 

@@ -11,7 +11,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
-	"transactions/internal/components"
+	"transactions/internal/pages/settings/controls"
 )
 
 type tab uint8
@@ -181,13 +181,13 @@ func (m *Model) page(c ui.C, entry section) {
 					LineHeight(34).MarginBottom(8)
 				ui.Paragraph(c, entry.note, 3).FontSize(theme.Metrics.FontSizeM).
 					Muted().LineHeight(20).MarginBottom(24)
-				components.SettingsGroup(c, "", func() {
+				controls.Group(c, "", func() {
 					for index := range entry.rows {
 						if index > 0 {
 							ui.Divider(c)
 						}
 						c.KeyInt(index)
-						components.SettingsRow(c, entry.rows[index].title, entry.rows[index].note,
+						controls.Row(c, entry.rows[index].title, entry.rows[index].note,
 							func() {
 								// The row's control arrives with the section's
 								// migration stage; until then it reports that the
