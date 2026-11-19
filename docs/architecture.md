@@ -12,7 +12,7 @@ main.go                    入口：只做 log.Fatal(desktop.Run())
   └─ internal/desktop            外壳：窗口、标题栏、导航、底栏、设置页、主题
        ├─ internal/pages/*       功能页：accounting / stock / todo / events / diary / settings
        │    ├─ internal/pages/*/controls   只属于该页面的组件
-       │    ├─ internal/components   跨页 UI 片段
+       │    ├─ internal/components/*      可复用的自定义组件（datepicker / pagination / selectbox）
        │    └─ internal/domain       纯领域规则与数据形状
        ├─ internal/config        应用配置形状与默认值
        └─ internal/store         SQLite 工作空间与 DAO（尚未实现）
@@ -52,8 +52,11 @@ main → desktop → pages → components
 | `internal/pages/events` | 事件画廊、图片、实况照片 | `src/pages/event*` |
 | `internal/pages/diary` | 日记树、正文、导入导出 | `src/pages/diary*` |
 | `internal/pages/settings` | 设置页五个分区 | `src/pages/settings*` |
-| `internal/components` | 真正跨页复用的片段：目前只有占位空态（后续的 page header、table cell 等） | `src/components` |
-| `internal/pages/<page>/controls` | 只属于某一个页面的组件：记录页的日期选择器、Select 包装、分页栏；设置页的分组卡片 / 设置行 | 旧工程同页目录下的组件 |
+| `internal/components` | 可复用的片段：占位空态（后续的 page header、table cell 等） | `src/components` |
+| `internal/components/datepicker` | 日期 / 时间范围选择器（工具栏与表单同一组件） | `src/components/time-range-picker.tsx`、antd DatePicker |
+| `internal/components/pagination` | 分页栏：页大小 Select + Viva 分页 + 总数 | `src/components/pagination.tsx` |
+| `internal/components/selectbox` | `ui.Select` 的包装，补上框架漏收的动画组 | — |
+| `internal/pages/<page>/controls` | 只属于某一个页面的组件：目前是设置页的分组卡片 / 设置行 | 旧工程同页目录下的组件 |
 | `internal/domain` | 金额、模型、常量、股票费用、统计、图表规则 | `shared/domain` |
 | `internal/config` | `AppConfig`、`FeatureFlags`、默认值 | `shared/types/config.ts`、`electron/config.ts` |
 | `internal/store` | SQLite 打开 / 迁移 / DAO | `electron/db`、`electron/services` 的持久化部分 |
@@ -80,7 +83,7 @@ main → desktop → pages → components
   标签、标记、关联事件日期、描述与金额按旧工程 `record-composer.tsx` 排列，模板也是 mock；
   每个字段用 `ui.FormField`（标题 + 控件的标准表单节奏），日期/事件日期用共享的
   `components.DateField`（可输入的日期框 + 浮在弹窗上的月历面板，见下面的「时间选择器」），
-  分类是单选下拉（`controls.Select`，候选取当前「类型」下的分类；换类型时已选分类留在
+  分类是单选下拉（`selectbox.Select`，候选取当前「类型」下的分类；换类型时已选分类留在
   候选末尾，旧工程的 AutoComplete 也是把值留在框里），
   标签用 Viva 的 `components.PaintMultiSelect`。MultiSelect 需要宿主路由：`Config.OnKey` /
   `OnScroll` 交给 `MultiSelectState.Key/Wheel`，`Config.TextInput` 把聚焦的输入接到
@@ -90,16 +93,16 @@ main → desktop → pages → components
   本月 / 上月；月粒度每月 / 近 6 个月 / 今年；年粒度今年 / 去年），左端「今天」把粒度收回日、
   区间收回今天。范围两端都是本地 `YYYY-MM-DD`，按日包含地过滤记录。
   记录行的右键 ContextMenu 取代原「操作」列：
-  编辑、同步到其他账本、删除。底部分页是 `internal/pages/accounting/controls/pagination.go`：
-  每页 15 / 30 / 50 的 `controls.Select` 在 Viva 分页左侧，「共 N 条」在右侧，三者同属
+  编辑、同步到其他账本、删除。底部分页是 `internal/components/pagination`：
+  每页 15 / 30 / 50 的 `selectbox.Select` 在 Viva 分页左侧，「共 N 条」在右侧，三者同属
   一个自定义分页组件；分页栏上方不再画分割线。接入 store 时替换 mock，不改这套布局。
 - 导航是两级：一级功能项展开自己的子功能，同时收起其他一级项；没有子功能的功能（事件、日记）
   就是单独一项。页面通过 `Tabs() []string`、`Tab() int`、`SelectTab(int)` 暴露子功能，
   内容里不画 `ui.Tabs`。
-- 组件按归属放：只有某一个页面用的组件放在该页面的 `controls` 子包里（例如
-  `internal/pages/accounting/controls` 的 `DatePicker` / `Select` / `Pagination`、
-  `internal/pages/settings/controls` 的 `Group` / `Row`）；第二个页面也要用时才上移到
-  `internal/components`。
+- 组件按归属放：可复用的组件放在 `internal/components` 自己的子包里（`datepicker`、
+  `pagination`、`selectbox`，包名即组件名，导出名不再重复包名）；只有某一个页面用的组件
+  才放在该页面的 `controls` 子包里（例如 `internal/pages/settings/controls` 的 `Group` /
+  `Row`）。
 - 一个页面是一个持有自己状态的类型：`type Model struct{...}`、`New() *Model`、`View(c ui.C)`。
   状态由外壳长期持有；切换导航只是换 `View`，不重建模型。
 - `View` 只读模型、不修改状态；点击在控件声明处改状态（Viva 的 immediate-mode 规则）。
@@ -109,7 +112,7 @@ main → desktop → pages → components
 - 真实窗口只用于人工验收（IME、焦点丢失、窗口管理器关闭、高分屏）。日常验证用
   `app.NewDriver`，见 `internal/desktop/desktop_test.go`。
 
-## 时间选择器（internal/pages/accounting/controls/datepicker.go）
+## 时间选择器（internal/components/datepicker）
 
 - 只有一个组件 `DatePicker(c, state, spec)`，外观由参数决定：
   - 工具栏的时间范围：`Grains: true`（日 / 月 / 年分段）+ `Periods: true`（前后一个周期的箭头）。
@@ -141,7 +144,7 @@ main → desktop → pages → components
   `EndPresence`——也就是弹窗在自己 `End` 里做的那一次——会把这个组收掉，并把下拉的
   8px 位移应用到「下拉之后画的所有东西」上。表现是：在弹窗里点开任意 Select，弹窗中
   该字段以下的标题、控件、底部按钮会先整体跳 8px，再在 100ms 里弹回。
-  本仓库的 `internal/pages/accounting/controls/select.go` 提供了 `controls.Select`：它在
+  本仓库的 `internal/components/selectbox` 提供了 `selectbox.Select`：它在
   `DrawOver` 里（外壳把 Select 自己画完之后）补上那次 `EndPresence`，位移只留给下拉
   本身，弹窗不再抖。`ui.Select` 在本工程里一律走这个包装；等框架自己收尾后删掉即可
   （回归测试：`internal/desktop` 的 `TestRecordMarkSelectKeepsTheDialogStill`）。

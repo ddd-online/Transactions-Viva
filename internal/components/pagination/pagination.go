@@ -1,4 +1,6 @@
-package controls
+// Package pagination is the bar under a paginated list: the page-size Select,
+// Viva's page chooser and the total, laid out from the theme's metrics.
+package pagination
 
 import (
 	"strconv"
@@ -6,18 +8,20 @@ import (
 	viva "github.com/vivaui/viva/components"
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
+
+	"transactions/internal/components/selectbox"
 )
 
 // paginationSlots is the widest page window Viva's pagination shows before it
 // falls back to an ellipsis.
 const paginationSlots = 7
 
-// PaginationSpec is one page of a list: what is shown, where it is, and what to
+// Spec is one page of a list: what is shown, where it is, and what to
 // do when the user moves to another page or changes the page size.
 //
 // Page is 1-based. PageSizes defaults to 15, 30 and 50 when empty; PageSize
 // should be one of them.
-type PaginationSpec struct {
+type Spec struct {
 	Total      int
 	Page       int
 	PageSize   int
@@ -33,14 +37,14 @@ type paginationItem struct {
 	ellipsis bool
 }
 
-// Pagination is the shared bottom bar for a paginated list: the page-size
+// Bar is the shared bottom bar for a paginated list: the page-size
 // Select on the left of Viva's pagination component, and the total on its
 // right.
 //
 // It paints Viva's components.BeginPagination through a Slot, naming the
 // component's hit regions in the page before the slot is declared. A click is
 // applied after the paint, through the caller's OnPage.
-func Pagination(c ui.C, spec PaginationSpec) {
+func Bar(c ui.C, spec Spec) {
 	sizes := spec.PageSizes
 	if len(sizes) == 0 {
 		sizes = []int{15, 30, 50}
@@ -63,7 +67,7 @@ func Pagination(c ui.C, spec PaginationSpec) {
 		PadX(metrics.PadSurface).Gap(metrics.GapItem).Items(ui.Center).Children(func() {
 		ui.Spacer(c)
 		ui.Text(c, "每页").FontSize(metrics.FontSizeS).Muted()
-		selectBox := Select(c, &size, sizes, strconv.Itoa).Label("每页条数")
+		selectBox := selectbox.Select(c, &size, sizes, strconv.Itoa).Label("每页条数")
 		if selectBox.Changed() && spec.OnPageSize != nil {
 			spec.OnPageSize(size)
 		}
@@ -143,7 +147,7 @@ func paginationWidth(canvas *gfx.Canvas, metrics gfx.Metrics,
 
 // drawPagination paints Viva's pagination in its slot and turns a click into a
 // page change through the caller's OnPage.
-func drawPagination(d *ui.DrawContext, spec PaginationSpec, ids [paginationSlots + 2]gfx.ID,
+func drawPagination(d *ui.DrawContext, spec Spec, ids [paginationSlots + 2]gfx.ID,
 	items [paginationSlots]paginationItem, page, pages int) {
 	theme := *d.Theme
 	metrics := theme.Metrics

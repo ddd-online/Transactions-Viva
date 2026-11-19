@@ -10,8 +10,9 @@ import (
 	"github.com/vivaui/viva/text"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/datepicker"
+	"transactions/internal/components/selectbox"
 	"transactions/internal/domain"
-	"transactions/internal/pages/accounting/controls"
 )
 
 // kindLabels is the order of the type choice in the draft dialog; the record's
@@ -131,7 +132,7 @@ func (m *recordsModel) composerView(c ui.C) {
 		ui.Column(c).FillWidth().Gap(14).Children(func() {
 			m.wideFormField(c, &m.fields.template, "模板", func() {
 				ui.Row(c).Gap(8).Children(func() {
-					if controls.Select(c, &m.draft.templateID, m.templateIDs(), m.templateName).
+					if selectbox.Select(c, &m.draft.templateID, m.templateIDs(), m.templateName).
 						Placeholder("选择模板").Grow(1).Changed() {
 						m.applyTemplate()
 					}
@@ -146,7 +147,7 @@ func (m *recordsModel) composerView(c ui.C) {
 
 			ui.Row(c).Gap(12).Children(func() {
 				m.formField(c, &m.fields.date, "日期", func() {
-					controls.DatePicker(c, &m.datePick,
+					datepicker.Picker(c, &m.datePick,
 						m.dateSpec("日期", "YYYY-MM-DD", &m.draft.date))
 				})
 				m.formField(c, &m.fields.kind, "类型", func() {
@@ -156,7 +157,7 @@ func (m *recordsModel) composerView(c ui.C) {
 
 			ui.Row(c).Gap(12).Children(func() {
 				m.formField(c, &m.fields.category, "分类", func() {
-					controls.Select(c, &m.draft.category, m.categoryNames(), nil).
+					selectbox.Select(c, &m.draft.category, m.categoryNames(), nil).
 						Placeholder("选择分类").Label("分类")
 				})
 				m.formField(c, &m.fields.tags, "标签", func() {
@@ -166,10 +167,10 @@ func (m *recordsModel) composerView(c ui.C) {
 
 			ui.Row(c).Gap(12).Children(func() {
 				m.formField(c, &m.fields.mark, "标记", func() {
-					controls.Select(c, &m.draft.mark, markLabels, nil).Placeholder("选择标记")
+					selectbox.Select(c, &m.draft.mark, markLabels, nil).Placeholder("选择标记")
 				})
 				m.formField(c, &m.fields.eventDate, "关联事件日期", func() {
-					controls.DatePicker(c, &m.eventPick,
+					datepicker.Picker(c, &m.eventPick,
 						m.dateSpec("关联事件日期", "请选择日期", &m.draft.eventDate))
 				})
 			})
@@ -216,10 +217,10 @@ func (m *recordsModel) wideFormField(c ui.C, state *ui.FormFieldState, label str
 // dateSpec is the composer's single-day picker: the same DatePicker as the
 // toolbar's range, fixed to days, with no grain choice and no period arrows, and
 // it writes the day it is given back into value and closes.
-func (m *recordsModel) dateSpec(label, placeholder string, value *string) controls.DatePickerSpec {
-	return controls.DatePickerSpec{
+func (m *recordsModel) dateSpec(label, placeholder string, value *string) datepicker.Spec {
+	return datepicker.Spec{
 		Label: label, Placeholder: placeholder, Start: *value,
-		Grain: controls.DateByDay, Fill: true, CloseOnPick: true,
+		Grain: datepicker.ByDay, Fill: true, CloseOnPick: true,
 		Viewport: m.bounds,
 		OnRange:  func(start, _ string) { *value = start },
 	}

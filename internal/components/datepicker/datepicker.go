@@ -1,4 +1,8 @@
-package controls
+// Package datepicker is the app's date field and range picker: a trigger that
+// shows the value next to a clock, and the panel under it with a day grid, a
+// month grid or a decade of years. The parameters decide its chrome, so a
+// toolbar's range and a form's single date are the same component.
+package datepicker
 
 import (
 	"strconv"
@@ -14,31 +18,31 @@ import (
 // dateLayout is the local calendar date form the whole app stores dates in.
 const dateLayout = "2006-01-02"
 
-// DateGrain is the unit a date range is picked in: a day, a month or a year.
-type DateGrain uint8
+// Grain is the unit a date range is picked in: a day, a month or a year.
+type Grain uint8
 
 const (
-	// DateByDay picks single days.
-	DateByDay DateGrain = iota
-	// DateByMonth picks whole months and shows the panel as twelve cells.
-	DateByMonth
-	// DateByYear picks whole years and shows the panel as a decade.
-	DateByYear
+	// ByDay picks single days.
+	ByDay Grain = iota
+	// ByMonth picks whole months and shows the panel as twelve cells.
+	ByMonth
+	// ByYear picks whole years and shows the panel as a decade.
+	ByYear
 )
 
 // Name is the grain's caption in the picker's 日 / 月 / 年 choice.
-func (grain DateGrain) Name() string {
+func (grain Grain) Name() string {
 	switch grain {
-	case DateByMonth:
+	case ByMonth:
 		return "月"
-	case DateByYear:
+	case ByYear:
 		return "年"
 	}
 	return "日"
 }
 
 // dateGrains are the grain choices, in the old picker's order.
-var dateGrains = [...]DateGrain{DateByDay, DateByMonth, DateByYear}
+var dateGrains = [...]Grain{ByDay, ByMonth, ByYear}
 
 // dateWeekdays are the day grid's columns; the week starts on Monday.
 var dateWeekdays = [gridColumns]string{"一", "二", "三", "四", "五", "六", "日"}
@@ -57,10 +61,10 @@ const (
 	datePanelLayer uint16 = 20
 )
 
-// DatePickerState is one picker's own state: whether its panel is open, the
+// State is one picker's own state: whether its panel is open, the
 // month it shows, and the identities the painted panel is hit by. Keep it in the
-// page's model, one per picker; build it with NewDatePickerState.
-type DatePickerState struct {
+// page's model, one per picker; build it with NewState.
+type State struct {
 	// Open says whether the panel is showing.
 	Open bool
 	// Visible is the first day of the month the day grid shows.
@@ -74,16 +78,16 @@ type DatePickerState struct {
 	presets [datePresetCount]gfx.ID
 }
 
-// NewDatePickerState builds a picker's state and the identities of its cells.
-func NewDatePickerState() DatePickerState {
-	var state DatePickerState
+// NewState builds a picker's state and the identities of its cells.
+func NewState() State {
+	var state State
 	feature := state.tree.Feature("date-picker")
 	state.cells = state.tree.Sub(feature, state.tree.Name("cell"))
 	return state
 }
 
-// DatePickerSpec is what one picker shows and what a pick does.
-type DatePickerSpec struct {
+// Spec is what one picker shows and what a pick does.
+type Spec struct {
 	// Label names the control for assistive technology.
 	Label string
 	// Start and End are the chosen range as local YYYY-MM-DD dates; End is empty
@@ -92,8 +96,8 @@ type DatePickerSpec struct {
 	// Grain is the unit the range is picked in. Grains shows the 日 / 月 / 年
 	// choice, so the user can change it; Periods shows the arrows that move the
 	// range a whole period. A form's single date leaves both off and keeps Grain
-	// at DateByDay, so it is one field and one month grid.
-	Grain   DateGrain
+	// at ByDay, so it is one field and one month grid.
+	Grain   Grain
 	Grains  bool
 	Periods bool
 	// Fill stretches the trigger to its container, for a form's field row.
@@ -108,24 +112,24 @@ type DatePickerSpec struct {
 	// single-date field does.
 	CloseOnPick bool
 	// OnGrain and OnRange receive what the user picks.
-	OnGrain func(grain DateGrain)
+	OnGrain func(grain Grain)
 	OnRange func(start, end string)
 }
 
-// DatePicker is a date field: the value, a clock icon, and the panel under it.
+// Picker is a date field: the value, a clock icon, and the panel under it.
 // The parameters decide its chrome: a toolbar's range shows the 日 / 月 / 年
 // choice and the period arrows, a form's single date shows neither.
 //
 // It is built from the theme's own controls, so it looks like the buttons
 // beside it.
-func DatePicker(c ui.C, state *DatePickerState, spec DatePickerSpec) {
+func Picker(c ui.C, state *State, spec Spec) {
 	state.bind(c)
 	theme := c.Theme()
 	metrics := theme.Metrics
 	ui.Row(c).Gap(metrics.GapItem).Items(ui.Center).Children(func() {
 		if spec.Grains {
 			grain := spec.Grain
-			if ui.Choice(c, &grain, dateGrains[:], DateGrain.Name).Changed() {
+			if ui.Choice(c, &grain, dateGrains[:], Grain.Name).Changed() {
 				start, end := normalizeRange(spec.Start, spec.End, grain)
 				if spec.OnRange != nil && (start != spec.Start || end != spec.End) {
 					spec.OnRange(start, end)
@@ -175,7 +179,7 @@ func fieldWidth(canvas *gfx.Canvas, theme *gfx.Theme) float32 {
 }
 
 // bind names the panel's hit identities for this paint.
-func (state *DatePickerState) bind(c ui.C) {
+func (state *State) bind(c ui.C) {
 	state.dismiss = ui.ID(c)
 	state.prev = ui.ID(c)
 	state.next = ui.ID(c)
@@ -185,7 +189,7 @@ func (state *DatePickerState) bind(c ui.C) {
 }
 
 // toggle opens or closes the panel, showing the month of the chosen date.
-func (state *DatePickerState) toggle(value string) {
+func (state *State) toggle(value string) {
 	state.Open = !state.Open
 	if state.Open {
 		state.Visible = monthOf(value)
@@ -193,7 +197,7 @@ func (state *DatePickerState) toggle(value string) {
 }
 
 // shift moves the range one period of its grain back or forward.
-func (state *DatePickerState) shift(spec DatePickerSpec, direction int) {
+func (state *State) shift(spec Spec, direction int) {
 	if spec.Start == "" || spec.End == "" || spec.OnRange == nil {
 		return
 	}
@@ -217,7 +221,7 @@ type layout struct {
 }
 
 // paint draws the panel under its trigger and applies a press on it.
-func (state *DatePickerState) paint(d *ui.DrawContext, spec DatePickerSpec, anchor gfx.Rect) {
+func (state *State) paint(d *ui.DrawContext, spec Spec, anchor gfx.Rect) {
 	if !state.Open {
 		return
 	}
@@ -246,14 +250,14 @@ func (state *DatePickerState) paint(d *ui.DrawContext, spec DatePickerSpec, anch
 
 // measure works out where each block of the panel goes, from the theme's button
 // and text metrics.
-func (state *DatePickerState) measure(canvas *gfx.Canvas, theme gfx.Theme, spec DatePickerSpec, anchor gfx.Rect) layout {
+func (state *State) measure(canvas *gfx.Canvas, theme gfx.Theme, spec Spec, anchor gfx.Rect) layout {
 	metrics := theme.Metrics
 	cell := viva.BeginButton(nil, theme, gfx.ID{}, gfx.Rect{}).BoundsHeight()
 	gap := metrics.GapItem
 	rowStep := cell + gap
 	_, rows := gridShape(spec.Grain)
 	gridHeight := float32(rows)*rowStep - gap
-	if spec.Grain == DateByDay {
+	if spec.Grain == ByDay {
 		gridHeight += metrics.FontSizeS + gap // the weekday row
 	}
 
@@ -290,13 +294,13 @@ func (state *DatePickerState) measure(canvas *gfx.Canvas, theme gfx.Theme, spec 
 }
 
 // paintCaption paints the period title between the two arrows every grain has.
-func (state *DatePickerState) paintCaption(canvas *gfx.Canvas, theme gfx.Theme, spec DatePickerSpec, place layout) {
+func (state *State) paintCaption(canvas *gfx.Canvas, theme gfx.Theme, spec Spec, place layout) {
 	visible := state.visibleMonth()
 	title, previous, next := "", "上个月", "下个月"
 	switch spec.Grain {
-	case DateByMonth:
+	case ByMonth:
 		title, previous, next = strconv.Itoa(visible.Year())+" 年", "上一年", "下一年"
-	case DateByYear:
+	case ByYear:
 		title = strconv.Itoa(state.decade()) + " – " + strconv.Itoa(state.decade()+9)
 		previous, next = "上一个十年", "下一个十年"
 	default:
@@ -318,12 +322,12 @@ func (state *DatePickerState) paintCaption(canvas *gfx.Canvas, theme gfx.Theme, 
 // paintGrid paints the one grid of the grain: days under their weekdays, or the
 // months, or the decade. Every cell is the theme's button recipe, so the three
 // grains share one look and one set of states.
-func (state *DatePickerState) paintGrid(canvas *gfx.Canvas, theme gfx.Theme, spec DatePickerSpec, place layout) {
+func (state *State) paintGrid(canvas *gfx.Canvas, theme gfx.Theme, spec Spec, place layout) {
 	metrics := theme.Metrics
 	columns, rows := gridShape(spec.Grain)
 	cellWidth := (place.grid.Width - float32(columns-1)*place.gap) / float32(columns)
 	top := place.grid.Y
-	if spec.Grain == DateByDay {
+	if spec.Grain == ByDay {
 		weekdays := gfx.Rect{X: place.grid.X, Y: top, Width: place.grid.Width, Height: metrics.FontSizeS + place.gap}
 		for column, name := range dateWeekdays {
 			cell := gfx.Rect{
@@ -354,7 +358,7 @@ func (state *DatePickerState) paintGrid(canvas *gfx.Canvas, theme gfx.Theme, spe
 
 // paintCell paints one cell as the theme's button: filled for the ends of the
 // range, muted inside it, bordered for today, plain otherwise.
-func (state *DatePickerState) paintCell(canvas *gfx.Canvas, theme gfx.Theme, spec DatePickerSpec,
+func (state *State) paintCell(canvas *gfx.Canvas, theme gfx.Theme, spec Spec,
 	cell gfx.Rect, index int, from, to, label, today string) {
 	button := viva.BeginButton(canvas, theme, state.cells.At(index), cell)
 	switch {
@@ -364,7 +368,7 @@ func (state *DatePickerState) paintCell(canvas *gfx.Canvas, theme gfx.Theme, spe
 		button.Default(label)
 	case spec.Start != "" && spec.End != "" && from > spec.Start && to < spec.End:
 		button.Secondary(label)
-	case spec.Grain == DateByDay && from == today:
+	case spec.Grain == ByDay && from == today:
 		button.Outline(label)
 	default:
 		button.Ghost(label)
@@ -372,7 +376,7 @@ func (state *DatePickerState) paintCell(canvas *gfx.Canvas, theme gfx.Theme, spe
 }
 
 // paintPresets paints the shortcuts under the grid as the theme's link buttons.
-func (state *DatePickerState) paintPresets(canvas *gfx.Canvas, theme gfx.Theme, spec DatePickerSpec, place layout) {
+func (state *State) paintPresets(canvas *gfx.Canvas, theme gfx.Theme, spec Spec, place layout) {
 	x := place.presets.X
 	for index, preset := range datePresets(spec.Grain, spec.CloseOnPick) {
 		if preset.label == "" {
@@ -388,7 +392,7 @@ func (state *DatePickerState) paintPresets(canvas *gfx.Canvas, theme gfx.Theme, 
 }
 
 // handle applies the press this paint delivered, if any.
-func (state *DatePickerState) handle(d *ui.DrawContext, spec DatePickerSpec) {
+func (state *State) handle(d *ui.DrawContext, spec Spec) {
 	canvas := d.Canvas
 	changed := false
 	switch {
@@ -421,12 +425,12 @@ func (state *DatePickerState) handle(d *ui.DrawContext, spec DatePickerSpec) {
 }
 
 // step moves the panel one period of the grain.
-func (state *DatePickerState) step(spec DatePickerSpec, direction int) {
+func (state *State) step(spec Spec, direction int) {
 	visible := state.visibleMonth()
 	switch spec.Grain {
-	case DateByMonth:
+	case ByMonth:
 		state.Visible = visible.AddDate(direction, 0, 0)
-	case DateByYear:
+	case ByYear:
 		state.Visible = visible.AddDate(direction*10, 0, 0)
 	default:
 		state.Visible = visible.AddDate(0, direction, 0)
@@ -434,10 +438,10 @@ func (state *DatePickerState) step(spec DatePickerSpec, direction int) {
 }
 
 // pickCell applies a press on one cell of the grid.
-func (state *DatePickerState) pickCell(spec DatePickerSpec, index int) {
+func (state *State) pickCell(spec Spec, index int) {
 	visible := state.visibleMonth()
 	from, to, _ := state.cellValue(spec.Grain, index, visible)
-	if spec.Grain == DateByDay {
+	if spec.Grain == ByDay {
 		day, ok := parseDate(from)
 		if ok && (day.Month() != visible.Month() || day.Year() != visible.Year()) {
 			state.Visible = monthOf(from)
@@ -448,7 +452,7 @@ func (state *DatePickerState) pickCell(spec DatePickerSpec, index int) {
 
 // pickPreset applies a shortcut: it always names both ends, and a form's field
 // takes the day it starts on and closes.
-func (state *DatePickerState) pickPreset(spec DatePickerSpec, from, to string) {
+func (state *State) pickPreset(spec Spec, from, to string) {
 	if spec.OnRange == nil {
 		return
 	}
@@ -462,7 +466,7 @@ func (state *DatePickerState) pickPreset(spec DatePickerSpec, from, to string) {
 
 // pickRange applies a picked period: a form's field takes it and closes, a range
 // takes it as the first end, turns it around, or starts a new range with it.
-func (state *DatePickerState) pickRange(spec DatePickerSpec, from, to string) {
+func (state *State) pickRange(spec Spec, from, to string) {
 	if spec.OnRange == nil {
 		return
 	}
@@ -477,12 +481,12 @@ func (state *DatePickerState) pickRange(spec DatePickerSpec, from, to string) {
 
 // cellValue is the day, month or year cell index stands for, as the range it
 // picks and the text it shows.
-func (state *DatePickerState) cellValue(grain DateGrain, index int, visible time.Time) (string, string, string) {
+func (state *State) cellValue(grain Grain, index int, visible time.Time) (string, string, string) {
 	switch grain {
-	case DateByMonth:
+	case ByMonth:
 		from, to := monthSpan(visible.Year(), time.Month(index+1))
 		return from, to, strconv.Itoa(index+1) + " 月"
-	case DateByYear:
+	case ByYear:
 		from, to := yearSpan(state.decade() + index)
 		return from, to, strconv.Itoa(state.decade()+index) + " 年"
 	}
@@ -492,7 +496,7 @@ func (state *DatePickerState) cellValue(grain DateGrain, index int, visible time
 }
 
 // visibleMonth is the month the panel shows, or this month before it was set.
-func (state *DatePickerState) visibleMonth() time.Time {
+func (state *State) visibleMonth() time.Time {
 	if state.Visible.IsZero() || state.Visible.Year() < 2 {
 		return monthOf("")
 	}
@@ -500,23 +504,23 @@ func (state *DatePickerState) visibleMonth() time.Time {
 }
 
 // decade is the first year of the ten the year grid shows.
-func (state *DatePickerState) decade() int {
+func (state *State) decade() int {
 	return state.visibleMonth().Year() / 10 * 10
 }
 
 // gridShape is how many columns and rows a grain's grid has.
-func gridShape(grain DateGrain) (columns, rows int) {
+func gridShape(grain Grain) (columns, rows int) {
 	switch grain {
-	case DateByMonth:
+	case ByMonth:
 		return 3, 4
-	case DateByYear:
+	case ByYear:
 		return 2, 5
 	}
 	return gridColumns, gridRows
 }
 
 // gridStart is the Monday of the first week the month's grid shows.
-func (state *DatePickerState) gridStart(visible time.Time) time.Time {
+func (state *State) gridStart(visible time.Time) time.Time {
 	offset := (int(visible.Weekday()) + 6) % 7
 	return visible.AddDate(0, 0, -offset)
 }
@@ -528,7 +532,7 @@ type datePreset struct {
 
 // datePresets are the shortcuts of a grain, as the old picker offered them. A
 // field that picks one day offers 今天 alone.
-func datePresets(grain DateGrain, single bool) [datePresetCount]datePreset {
+func datePresets(grain Grain, single bool) [datePresetCount]datePreset {
 	var presets [datePresetCount]datePreset
 	today := dateText(time.Now())
 	now, ok := parseDate(today)
@@ -543,7 +547,7 @@ func datePresets(grain DateGrain, single bool) [datePresetCount]datePreset {
 		return presets
 	}
 	switch grain {
-	case DateByMonth:
+	case ByMonth:
 		from, to := monthSpan(now.Year(), now.Month())
 		set(0, "本月", from, to)
 		previous := now.AddDate(0, -1, 0)
@@ -555,7 +559,7 @@ func datePresets(grain DateGrain, single bool) [datePresetCount]datePreset {
 		set(2, "近 6 个月", from, to)
 		from, to = yearSpan(now.Year())
 		set(3, "今年", from, to)
-	case DateByYear:
+	case ByYear:
 		from, to := yearSpan(now.Year())
 		set(0, "今年", from, to)
 		from, to = yearSpan(now.Year() - 1)
@@ -634,8 +638,8 @@ func weekBounds(day string) (string, string) {
 
 // normalizeRange snaps both ends of a range to the grain; a range that does not
 // survive the snap is left as it was.
-func normalizeRange(start, end string, grain DateGrain) (string, string) {
-	if grain == DateByDay || start == "" || end == "" {
+func normalizeRange(start, end string, grain Grain) (string, string) {
+	if grain == ByDay || start == "" || end == "" {
 		return start, end
 	}
 	from, fromOK := parseDate(start)
@@ -644,7 +648,7 @@ func normalizeRange(start, end string, grain DateGrain) (string, string) {
 		return start, end
 	}
 	switch grain {
-	case DateByMonth:
+	case ByMonth:
 		start, _ = monthSpan(from.Year(), from.Month())
 		_, end = monthSpan(to.Year(), to.Month())
 	default:
@@ -656,15 +660,15 @@ func normalizeRange(start, end string, grain DateGrain) (string, string) {
 
 // shiftPeriod moves a range one period of its grain: whole weeks for a range of
 // exactly seven days, single days otherwise.
-func shiftPeriod(start, end string, grain DateGrain, direction int) (string, string) {
+func shiftPeriod(start, end string, grain Grain, direction int) (string, string) {
 	switch grain {
-	case DateByMonth, DateByYear:
+	case ByMonth, ByYear:
 		from, fromOK := parseDate(start)
 		to, toOK := parseDate(end)
 		if !fromOK || !toOK {
 			return start, end
 		}
-		if grain == DateByMonth {
+		if grain == ByMonth {
 			movedFrom := from.AddDate(0, direction, 0)
 			movedTo := to.AddDate(0, direction, 0)
 			start, _ = monthSpan(movedFrom.Year(), movedFrom.Month())
@@ -690,7 +694,7 @@ func shiftPeriod(start, end string, grain DateGrain, direction int) (string, str
 // triggerText is what the field shows: the picked value, or the placeholder
 // while nothing is chosen. A range still waiting for its second end ends with a
 // tilde; a single-date field always shows one day.
-func triggerText(spec DatePickerSpec) string {
+func triggerText(spec Spec) string {
 	if spec.Start == "" {
 		if spec.Placeholder != "" {
 			return spec.Placeholder
@@ -712,15 +716,15 @@ func triggerText(spec DatePickerSpec) string {
 }
 
 // valueLabel is one end of the range at the grain's precision.
-func valueLabel(value string, grain DateGrain) string {
+func valueLabel(value string, grain Grain) string {
 	day, ok := parseDate(value)
 	if !ok {
 		return value
 	}
 	switch grain {
-	case DateByMonth:
+	case ByMonth:
 		return day.Format("2006-01")
-	case DateByYear:
+	case ByYear:
 		return strconv.Itoa(day.Year())
 	}
 	return value

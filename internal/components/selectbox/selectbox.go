@@ -1,4 +1,5 @@
-package controls
+// Package selectbox wraps ui.Select for the application.
+package selectbox
 
 import "github.com/vivaui/viva/ui"
 
