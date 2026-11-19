@@ -153,7 +153,7 @@ func TestSettingsCategoriesSwitchThePage(t *testing.T) {
 	}
 
 	click(t, driver, "关于软件")
-	if !shows(driver, "第三方许可") {
+	if !shows(driver, "检查更新") {
 		t.Fatal("关于软件 did not show its settings rows")
 	}
 }

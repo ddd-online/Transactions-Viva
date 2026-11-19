@@ -102,12 +102,11 @@ var sections = [...]section{
 	{
 		tab:   tabAbout,
 		title: "关于软件",
-		note:  "版本、检查更新、下载与安装，以及第三方许可。",
+		note:  "版本、检查更新，以及下载与安装。",
 		rows: []setting{
 			{"版本", "当前安装的 Transactions 版本。"},
 			{"检查更新", "手动检查更新，或让应用定期检查。"},
 			{"GitHub", "项目主页与问题反馈。"},
-			{"第三方许可", "Viva、Lucide 等组件的许可与来源。"},
 		},
 	},
 }
