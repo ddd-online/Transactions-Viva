@@ -13,10 +13,11 @@ import (
 // any control without this component guessing.
 func SettingsGroup(c ui.C, title string, rows func()) {
 	theme := c.Theme()
+	metrics := theme.Metrics
 	ui.Column(c).FillWidth().Children(func() {
 		if title != "" {
-			ui.Text(c, title).FontSize(theme.Metrics.FontSizeM).Bold().
-				LineHeight(22).MarginSides(0, 4, 6, 4)
+			ui.Text(c, title).FontSize(metrics.FontSizeM).Bold().
+				MarginBottom(metrics.GapItem)
 		}
 		ui.Column(c).FillWidth().Background(theme.Card).
 			Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).
@@ -28,22 +29,21 @@ func SettingsGroup(c ui.C, title string, rows func()) {
 // the left, the control on the right. A nil control leaves the row as a name
 // and explanation only.
 //
-// The row is a normal settings row's 64 high and grows when an explanation
-// needs more than the two lines it is limited to.
+// The row is two control heights tall and grows when an explanation needs more
+// than the two lines it is limited to.
 func SettingsRow(c ui.C, title, description string, control func()) {
 	theme := c.Theme()
-	ui.Row(c).MinHeight(64).Shrink(0).PadX(18).Gap(24).Items(ui.Center).Children(func() {
+	metrics := theme.Metrics
+	ui.Row(c).MinHeight(metrics.ControlHeight * 2).Shrink(0).PadX(metrics.PadSurface).
+		Gap(metrics.GapItem * 2).Items(ui.Center).Children(func() {
 		ui.Column(c).Grow(1).Children(func() {
-			ui.Text(c, title).FontSize(theme.Metrics.FontSizeM).
-				Weight(gfx.WeightMedium).LineHeight(21)
+			ui.Text(c, title).FontSize(metrics.FontSizeM).Weight(gfx.WeightMedium)
 			if description != "" {
-				ui.Paragraph(c, description, 2).FontSize(theme.Metrics.FontSizeS).
-					Muted().LineHeight(15).MarginTop(1)
+				ui.Paragraph(c, description, 2).FontSize(metrics.FontSizeS).Muted()
 			}
 		})
 		if control != nil {
-			ui.Row(c).Height(34).Shrink(0).Items(ui.Center).Justify(ui.End).
-				Children(control)
+			ui.Row(c).Shrink(0).Items(ui.Center).Justify(ui.End).Children(control)
 		}
 	})
 }
