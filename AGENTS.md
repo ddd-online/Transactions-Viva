@@ -18,6 +18,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 - 记账-记录页已迁移前端：工具栏、时间范围、排序、表格、分页、收支统计与
   新增 / 编辑记录弹窗都在。弹窗照旧工程 `record-composer.tsx` 排列模板、日期、类型、分类、
   标签、标记、关联事件日期、描述与金额；字段用 `ui.FormField`，日期用日历面板选择，
+  分类是单选下拉（候选取当前类型下的分类），
   标签用 Viva 的 `components.PaintMultiSelect`（`MultiSelectState`），
   下拉一律用本工程的 `components.Select`（`internal/components/select.go`：Viva v0.6.5
   的 Select 不收下拉动画的组，弹窗里会把下面的字段带得抖一下，见 `docs/architecture.md`

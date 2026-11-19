@@ -166,7 +166,8 @@ func (m *recordsModel) composerView(c ui.C) {
 
 			ui.Row(c).Gap(12).Children(func() {
 				m.formField(c, &m.fields.category, "分类", func() {
-					ui.TextField(c, &m.draft.category, "分类", "选择或输入分类")
+					components.Select(c, &m.draft.category, m.categoryNames(), nil).
+						Placeholder("选择分类").Label("分类")
 				})
 				m.formField(c, &m.fields.tags, "标签", func() {
 					m.multiSelect(c)
@@ -405,6 +406,35 @@ func (m *recordsModel) Scroll(event gfx.ScrollEvent) gfx.EventResult {
 		return gfx.EventResult{}
 	}
 	return gfx.EventResult{Handled: true, Repaint: true}
+}
+
+// categoryNames is the 分类 Select's choices for the draft's type: the mock
+// categories of that type, in the old app's order, plus a category the draft
+// already carries from another type. The old form's autocomplete kept its text
+// when the type changed, so a category is never blanked from under the user, and
+// the Select needs it among the choices to keep showing it.
+func (m *recordsModel) categoryNames() []string {
+	kind := kindValue(m.draft.kind)
+	names := m.categoryList[:0]
+	for _, category := range mockCategories {
+		if category.kind == kind {
+			names = append(names, category.name)
+		}
+	}
+	if current := m.draft.category; current != "" {
+		known := false
+		for _, name := range names {
+			if name == current {
+				known = true
+				break
+			}
+		}
+		if !known {
+			names = append(names, current)
+		}
+	}
+	m.categoryList = names
+	return names
 }
 
 // templateIDs are the choices of the 模板 Select, in the form's model order.

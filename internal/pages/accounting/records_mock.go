@@ -7,6 +7,39 @@ import "time"
 // reports the chosen target instead of adding a second copy to this table.
 var mockSyncTargets = [...]string{"家庭账本", "旅行账本"}
 
+// mockCategory is one 分类 of the composer's 分类 Select: its name and the type
+// it belongs to.
+type mockCategory struct {
+	name string
+	kind string
+}
+
+// mockCategories are the default categories of the old app
+// (electron/services/category.ts, DEFAULT_DATA), in its order. The real app reads
+// the workspace's own categories, which include the ones the user added; until
+// the store lands these are the only choices.
+var mockCategories = [...]mockCategory{
+	{name: "餐饮美食", kind: kindExpense},
+	{name: "购物消费", kind: kindExpense},
+	{name: "交通出行", kind: kindExpense},
+	{name: "生活缴费", kind: kindExpense},
+	{name: "贷款还款", kind: kindExpense},
+	{name: "医疗健康", kind: kindExpense},
+	{name: "娱乐休闲", kind: kindExpense},
+	{name: "人情往来", kind: kindExpense},
+	{name: "教育学习", kind: kindExpense},
+	{name: "工资奖金", kind: kindIncome},
+	{name: "补贴补助", kind: kindIncome},
+	{name: "退税退款", kind: kindIncome},
+	{name: "二手转卖", kind: kindIncome},
+	{name: "彩票收入", kind: kindIncome},
+	{name: "投资理财", kind: kindIncome},
+	{name: "借贷借款", kind: kindIncome},
+	{name: "红包转账", kind: kindIncome},
+	{name: "五险一金", kind: kindTransfer},
+	{name: "税费党费", kind: kindTransfer},
+}
+
 // mockTagOptions are the tags the composer's 标签 picker offers. The real app
 // filters them by category and type.
 var mockTagOptions = [...]string{
@@ -51,21 +84,21 @@ func mockRecords() []record {
 		{id: "mock-2", kind: kindExpense, category: "餐饮美食", description: "午餐 · 公司楼下", tags: []string{"日常", "同事"}, amount: 3200, at: at(0, 12, 10), keyEventDate: today},
 		{id: "mock-3", kind: kindExpense, category: "交通出行", description: "地铁通勤", tags: []string{"通勤"}, amount: 400, at: at(0, 18, 35)},
 		{id: "mock-4", kind: kindIncome, category: "工资奖金", description: "工资到账", tags: []string{"月薪"}, amount: 1850000, at: at(0, 20, 5), outlier: true},
-		{id: "mock-5", kind: kindTransfer, category: "账户转账", description: "转入储蓄账户", tags: []string{"储蓄"}, amount: 500000, at: at(0, 21, 10)},
+		{id: "mock-5", kind: kindTransfer, category: "五险一金", description: "社保代扣", tags: []string{"固定支出"}, amount: 500000, at: at(0, 21, 10)},
 
-		{id: "mock-6", kind: kindExpense, category: "日用百货", description: "超市采购", tags: []string{"家庭"}, amount: 12680, at: at(1, 9, 20)},
-		{id: "mock-7", kind: kindExpense, category: "休闲娱乐", description: "电影票", tags: []string{"周末"}, amount: 8000, at: at(4, 19, 30)},
-		{id: "mock-8", kind: kindExpense, category: "居住", description: "房租", tags: []string{"固定支出"}, amount: 450000, at: at(9, 10, 0)},
-		{id: "mock-9", kind: kindIncome, category: "副业", description: "兼职设计费", tags: []string{"设计"}, amount: 120000, at: at(15, 15, 20)},
+		{id: "mock-6", kind: kindExpense, category: "购物消费", description: "超市采购", tags: []string{"家庭"}, amount: 12680, at: at(1, 9, 20)},
+		{id: "mock-7", kind: kindExpense, category: "娱乐休闲", description: "电影票", tags: []string{"周末"}, amount: 8000, at: at(4, 19, 30)},
+		{id: "mock-8", kind: kindExpense, category: "生活缴费", description: "房租", tags: []string{"固定支出"}, amount: 450000, at: at(9, 10, 0)},
+		{id: "mock-9", kind: kindIncome, category: "二手转卖", description: "转卖旧相机", tags: []string{"日常"}, amount: 120000, at: at(15, 15, 20)},
 
 		{id: "mock-13", kind: kindExpense, category: "餐饮美食", description: "咖啡续杯", tags: []string{"日常"}, amount: 1800, at: at(2, 15, 0)},
 		{id: "mock-14", kind: kindExpense, category: "交通出行", description: "打车回家", tags: []string{"通勤"}, amount: 3600, at: at(3, 22, 10)},
-		{id: "mock-15", kind: kindExpense, category: "居住", description: "水费", tags: []string{"固定支出"}, amount: 6800, at: at(5, 9, 30)},
-		{id: "mock-16", kind: kindExpense, category: "学习成长", description: "书店", tags: []string{"书籍"}, amount: 9800, at: at(6, 16, 20)},
+		{id: "mock-15", kind: kindExpense, category: "生活缴费", description: "水费", tags: []string{"固定支出"}, amount: 6800, at: at(5, 9, 30)},
+		{id: "mock-16", kind: kindExpense, category: "教育学习", description: "书店", tags: []string{"书籍"}, amount: 9800, at: at(6, 16, 20)},
 		{id: "mock-17", kind: kindExpense, category: "餐饮美食", description: "朋友聚餐", tags: []string{"社交"}, amount: 26000, at: at(7, 19, 0)},
-		{id: "mock-18", kind: kindExpense, category: "通讯", description: "话费", tags: []string{"固定支出"}, amount: 10000, at: at(8, 11, 0)},
-		{id: "mock-19", kind: kindIncome, category: "投资收益", description: "理财收益", tags: []string{"理财"}, amount: 3250, at: at(11, 8, 30)},
-		{id: "mock-20", kind: kindExpense, category: "运动健康", description: "健身月卡", tags: []string{"健康"}, amount: 29900, at: at(13, 18, 0)},
+		{id: "mock-18", kind: kindExpense, category: "生活缴费", description: "话费", tags: []string{"固定支出"}, amount: 10000, at: at(8, 11, 0)},
+		{id: "mock-19", kind: kindIncome, category: "投资理财", description: "理财收益", tags: []string{"理财"}, amount: 3250, at: at(11, 8, 30)},
+		{id: "mock-20", kind: kindExpense, category: "医疗健康", description: "健身月卡", tags: []string{"健康"}, amount: 29900, at: at(13, 18, 0)},
 
 		{id: "mock-10", kind: kindExpense, category: "医疗健康", description: "体检", tags: []string{"健康"}, amount: 68000, at: at(40, 8, 0)},
 		{id: "mock-11", kind: kindIncome, category: "工资奖金", description: "年终奖", tags: []string{"奖金"}, amount: 3000000, at: at(90, 9, 0)},

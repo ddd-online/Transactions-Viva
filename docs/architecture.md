@@ -71,6 +71,8 @@ main → desktop → pages → components
   `records_composer.go` 的「新增记录 / 编辑记录」弹窗只写内存：模板、日期、类型、分类、
   标签、标记、关联事件日期、描述与金额按旧工程 `record-composer.tsx` 排列，模板也是 mock；
   每个字段用 `ui.FormField`（标题 + 控件的标准表单节奏），日期/事件日期是弹窗内展开的月历，
+  分类是单选下拉（`components.Select`，候选取当前「类型」下的分类；换类型时已选分类留在
+  候选末尾，旧工程的 AutoComplete 也是把值留在框里），
   标签用 Viva 的 `components.PaintMultiSelect`。MultiSelect 需要宿主路由：`Config.OnKey` /
   `OnScroll` 交给 `MultiSelectState.Key/Wheel`，`Config.TextInput` 把聚焦的输入接到
   `MultiSelectState.Query`。

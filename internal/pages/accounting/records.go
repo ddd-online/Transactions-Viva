@@ -103,6 +103,10 @@ type recordsModel struct {
 	templates []recordTemplate
 	bounds    gfx.Rect
 
+	// categoryList is the 分类 Select's choices, rebuilt each paint into the same
+	// slice (see categoryNames).
+	categoryList []string
+
 	notice        string
 	deletingID    string
 	deleteConfirm bool

@@ -90,6 +90,30 @@ func labelBounds(driver *app.Driver, value string) (gfx.Rect, bool) {
 	return gfx.Rect{}, false
 }
 
+// controlBounds is where a control named for assistive technology sits, for a
+// test that checks what it shows.
+func controlBounds(driver *app.Driver, name string) (gfx.Rect, bool) {
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == name {
+			return hit.Bounds, true
+		}
+	}
+	return gfx.Rect{}, false
+}
+
+// showsIn reports whether the text is painted inside a rectangle.
+func showsIn(driver *app.Driver, value string, within gfx.Rect) bool {
+	for _, label := range driver.Snapshot().Labels {
+		b := label.Bounds
+		if label.Value != value || b.X < within.X || b.Y < within.Y ||
+			b.X+b.Width > within.X+within.Width || b.Y+b.Height > within.Y+within.Height {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
 func hasControl(driver *app.Driver, name string) bool {
 	for _, hit := range driver.Snapshot().Hits {
 		if hit.Label == name && !hit.IsLabel {
@@ -155,14 +179,45 @@ func TestRecordsPage(t *testing.T) {
 			t.Fatal(err)
 		}
 		click(t, driver, "分类")
-		if err := driver.Type("测试分类"); err != nil {
-			t.Fatal(err)
-		}
+		click(t, driver, "娱乐休闲")
 		click(t, driver, "保存")
-		if !shows(driver, "测试分类") {
+		if !shows(driver, "-88.50") {
 			t.Fatal("the composer did not add its row")
 		}
 	})
+}
+
+// TestRecordCategorySelect checks the 分类 field is a single choice among the
+// categories of the chosen type, and that a category already chosen survives a
+// change of type.
+func TestRecordCategorySelect(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "记一笔")
+	click(t, driver, "分类")
+	if !hasControl(driver, "餐饮美食") {
+		t.Fatal("the 分类 list offers no 支出 category")
+	}
+	if hasControl(driver, "工资奖金") {
+		t.Fatal("the 分类 list offered an 收入 category under 支出")
+	}
+	click(t, driver, "餐饮美食")
+	field, ok := controlBounds(driver, "分类")
+	if !ok || !showsIn(driver, "餐饮美食", field) {
+		t.Fatal("the chosen category is not shown in the field")
+	}
+
+	click(t, driver, "收入")
+	field, _ = controlBounds(driver, "分类")
+	if !showsIn(driver, "餐饮美食", field) {
+		t.Fatal("changing the type blanked the chosen category")
+	}
+	click(t, driver, "分类")
+	if !hasControl(driver, "工资奖金") {
+		t.Fatal("the 分类 list offers no 收入 category")
+	}
+	if !hasControl(driver, "餐饮美食") {
+		t.Fatal("the kept category is missing from the list")
+	}
 }
 
 func TestRecordTagsMultiSelect(t *testing.T) {
