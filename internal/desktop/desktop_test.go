@@ -158,6 +158,22 @@ func TestSettingsCategoriesSwitchThePage(t *testing.T) {
 	}
 }
 
+func TestWindowBorderFollowsTheme(t *testing.T) {
+	model := New()
+	config := newConfig(model)
+	if config.WindowBorderColor == nil {
+		t.Fatal("the window has no border color")
+	}
+	light := config.WindowBorderColor()
+	if light != config.ClearColor {
+		t.Fatalf("border %v does not match the cleared edge %v", light, config.ClearColor)
+	}
+	model.toggleTheme()
+	if dark := config.WindowBorderColor(); dark == light {
+		t.Fatal("the window border did not follow the appearance toggle")
+	}
+}
+
 func TestSettingsPageAndThemeToggle(t *testing.T) {
 	driver, model := open(t)
 

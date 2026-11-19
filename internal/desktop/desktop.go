@@ -93,7 +93,12 @@ func Run() error {
 // newConfig is the one place the native window is described. Tests build the
 // same window without opening one.
 func newConfig(m *Model) app.Config {
-	clear := m.theme.Background
+	// The window's edge is the chrome around the content: the title bar and
+	// footer above and below, the navigation rail at the left and the content at
+	// the right. Windows 11 composites its border around a custom-titlebar
+	// window against the desktop, so the border has to name the surface it meets
+	// or the desktop shows through as a white seam.
+	edge := m.theme.CardElevated
 	return app.Config{
 		Title:  "Transactions",
 		Width:  1500,
@@ -107,10 +112,25 @@ func newConfig(m *Model) app.Config {
 		// callback, so it falls back to ClearColor to pick the button ink; a
 		// clear color from the light theme keeps those buttons visible there.
 		WindowControls: m.windowControls,
-		ClearColor: app.Color{
-			Red: float64(clear.Red), Green: float64(clear.Green),
-			Blue: float64(clear.Blue), Alpha: float64(clear.Alpha),
-		},
+		ClearColor:     windowColor(edge),
+		// A release window reads this on every paint, so the border follows the
+		// appearance toggle; a development reload host uses ClearColor here.
+		WindowBorderColor: m.windowBorderColor,
+	}
+}
+
+// windowBorderColor is the color of the system-drawn border around the window:
+// the chrome surface the window's own edge is painted with, so the border does
+// not read as a white ring (ClearColor's default) in either appearance.
+func (m *Model) windowBorderColor() app.Color {
+	return windowColor(m.theme.CardElevated)
+}
+
+// windowColor converts a theme color to the window config's color type.
+func windowColor(color gfx.Color) app.Color {
+	return app.Color{
+		Red: float64(color.Red), Green: float64(color.Green),
+		Blue: float64(color.Blue), Alpha: float64(color.Alpha),
 	}
 }
 
