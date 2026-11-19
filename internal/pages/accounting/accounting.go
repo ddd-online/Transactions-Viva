@@ -33,11 +33,14 @@ var notes = [...]string{
 // Model is the 记账 page's state. The chosen tab is the section's second-level
 // selection; the shell's Sidebar draws and changes it.
 type Model struct {
-	tab tab
+	tab     tab
+	records *recordsModel
 }
 
 // New returns the default page (记录).
-func New() *Model { return &Model{} }
+func New() *Model {
+	return &Model{records: newRecordsModel()}
+}
 
 // Tabs are the section's second-level navigation entries.
 func (m *Model) Tabs() []string { return tabLabels[:] }
@@ -52,7 +55,12 @@ func (m *Model) SelectTab(index int) {
 	}
 }
 
-// View declares the page.
+// View declares the page. The 记录 frontend is migrated with mock data; the
+// other tabs keep the honest pending state until their stage.
 func (m *Model) View(c ui.C) {
+	if m.tab == tabRecords {
+		m.records.View(c)
+		return
+	}
 	components.Pending(c, tabLabels[m.tab], notes[m.tab])
 }

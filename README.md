@@ -5,11 +5,14 @@
 
 ## 当前状态
 
-项目正在从 Electron + React 迁移到 **Viva + Go**。这一轮只搭结构：
+项目正在从 Electron + React 迁移到 **Viva + Go**。外壳与记账-记录页的前端已经搭起：
 
 - 入口是根目录 `main.go`，已可运行窗口外壳（自绘标题栏、Viva Sidebar 导航、底栏、设置页、
   浅色 / 深色主题）。
-- 六个功能页已有 Sidebar 导航和占位空态；子功能作为 Sidebar 二级项（点击一级项展开、其他收起），真实内容尚未迁移。
+- 记账-记录页有工具栏、类型筛选、时间范围、搜索、排序、表格和收支统计；「记一笔」打开
+  一个可用的 mock 对话框。数据来自 `internal/pages/accounting/records_mock.go`，只在内存里。
+- 其余功能页仍是 Sidebar 导航 + 占位空态；子功能作为 Sidebar 二级项（点击一级项展开、
+  其他收起）。
 - `internal/domain` 已放入核心数据形状与金额换算；SQLite 存储、配置持久化还没开始。
 - `viva init` 的计数示例已移除。
 

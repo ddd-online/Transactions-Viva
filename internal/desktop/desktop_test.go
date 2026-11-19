@@ -56,7 +56,7 @@ func hasControl(driver *app.Driver, name string) bool {
 
 func TestNavigationSwitchesSections(t *testing.T) {
 	driver, _ := open(t)
-	if !shows(driver, "记录表格") {
+	if !shows(driver, "记一笔") {
 		t.Fatal("the accounting page is not the one shown first")
 	}
 
@@ -64,7 +64,7 @@ func TestNavigationSwitchesSections(t *testing.T) {
 	if !shows(driver, "资金账户") {
 		t.Fatal("股票 did not show the stock account screen")
 	}
-	if shows(driver, "记录表格") {
+	if shows(driver, "记一笔") {
 		t.Fatal("股票 left the accounting screen on screen")
 	}
 
@@ -89,6 +89,52 @@ func TestSubFunctionTabs(t *testing.T) {
 	if !shows(driver, "分类与标签") {
 		t.Fatal("the 标签 tab did not show its screen")
 	}
+}
+
+func TestRecordsFilterSearchAndComposer(t *testing.T) {
+	t.Run("type chips filter the rows", func(t *testing.T) {
+		driver, _ := open(t)
+		if !shows(driver, "早餐 · 豆浆油条") {
+			t.Fatal("the records page did not show its mock rows")
+		}
+		click(t, driver, "收入")
+		if !shows(driver, "工资到账") {
+			t.Fatal("收入 did not leave the income row")
+		}
+		if shows(driver, "早餐 · 豆浆油条") {
+			t.Fatal("收入 did not hide the expense rows")
+		}
+	})
+
+	t.Run("search filters the rows", func(t *testing.T) {
+		driver, _ := open(t)
+		click(t, driver, "搜索记录")
+		if err := driver.Type("早餐"); err != nil {
+			t.Fatal(err)
+		}
+		if !shows(driver, "早餐 · 豆浆油条") {
+			t.Fatal("the search hid the matching row")
+		}
+		if shows(driver, "午餐 · 公司楼下") {
+			t.Fatal("the search left a row that does not match")
+		}
+	})
+
+	t.Run("the composer saves a mock row", func(t *testing.T) {
+		driver, _ := open(t)
+		click(t, driver, "记一笔")
+		if err := driver.Type("88.50"); err != nil {
+			t.Fatal(err)
+		}
+		click(t, driver, "分类")
+		if err := driver.Type("测试分类"); err != nil {
+			t.Fatal(err)
+		}
+		click(t, driver, "保存")
+		if !shows(driver, "测试分类") {
+			t.Fatal("the composer did not add its row")
+		}
+	})
 }
 
 func TestSidebarExpandsOneSectionAtATime(t *testing.T) {
@@ -132,7 +178,7 @@ func TestSidebarExpandsOneSectionAtATime(t *testing.T) {
 	if !hasControl(driver, "分析") {
 		t.Fatal("记账 did not expand again")
 	}
-	if !shows(driver, "记录表格") {
+	if !shows(driver, "记一笔") {
 		t.Fatal("记账 did not return to its selected sub-function")
 	}
 }
@@ -193,7 +239,7 @@ func TestSettingsPageAndThemeToggle(t *testing.T) {
 	// Settings is a section like any other: another section replaces it, and
 	// the chosen settings section stays for the next visit.
 	click(t, driver, "记账")
-	if !shows(driver, "记录表格") {
+	if !shows(driver, "记一笔") {
 		t.Fatal("记账 did not replace the settings page")
 	}
 	if model.section != SectionAccounting {

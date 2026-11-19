@@ -39,7 +39,7 @@ main → desktop → pages → components
 | `main.go` | 入口 | `src/main.tsx` + `electron/main.ts` 的启动部分 |
 | `internal/desktop` | 窗口、标题栏、导航、底栏 | `src/App.tsx`、`src/app-shell.tsx`、`src/app-view.ts` |
 | `internal/desktop/theme.go` | 主题选择：Viva 原生浅色 / 深色（旧配色暂不迁移） | `gfx.LightTheme` / `gfx.DarkTheme`；旧配色见 `DESIGN.md`、`src/theme` |
-| `internal/pages/accounting` | 记录 / 分析 / 标签 / 模板 | `src/pages/records*`、`charts*`、`category-tag*`、`template*` |
+| `internal/pages/accounting` | 记录（mock 前端）/ 分析 / 标签 / 模板 | `src/pages/records*`、`charts*`、`category-tag*`、`template*` |
 | `internal/pages/stock` | 账户 / 持仓 / 记录 / 心得 / 统计 / 天梯 / 设置 | `src/pages/stock*` |
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
 | `internal/pages/events` | 事件画廊、图片、实况照片 | `src/pages/event*` |
@@ -66,6 +66,9 @@ main → desktop → pages → components
   「设置行」是标题 / 说明在左、控件在右的 64px 行。尺寸与分组方式对齐 motty 的设置页
   （208px 分区列、760px 阅读列、32px 页边距），进入设置时左侧主导航保持可见，选中状态由
   `desktop.Model.section` 持有。
+- 记账-记录页是当前唯一有真实前端的页面：工具栏 / 类型筛选 / 时间范围 / 搜索 / 排序 / 表格 /
+  收支统计都在 `internal/pages/accounting/records.go`，行数据来自 `records_mock.go`，
+  `records_composer.go` 的「记一笔」只写内存。接入 store 时替换 mock，不改这套布局。
 - 导航是两级：一级功能项展开自己的子功能，同时收起其他一级项；没有子功能的功能（事件、日记）
   就是单独一项。页面通过 `Tabs() []string`、`Tab() int`、`SelectTab(int)` 暴露子功能，
   内容里不画 `ui.Tabs`。
