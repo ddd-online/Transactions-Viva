@@ -1,0 +1,7 @@
+The line icons under svg/ come from Lucide static v0.469.0
+(https://lucide.dev), which is ISC licensed. They are compiled to Go by
+`viva icons`; the SVG sources are the editable form and the generated
+icons.go must not be edited by hand.
+
+Parameters: viewBox 24, stroke-width 2, round caps and joins. The sidebar
+draws them at 16x16, the same size and source version Motty uses.

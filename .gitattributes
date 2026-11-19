@@ -1,0 +1,6 @@
+# Keep every text file LF in the repository and in the working tree, on every
+# platform: Go, Markdown and the generated icon sources are all LF.
+* text=auto eol=lf
+
+# Binary assets: PNG screenshots are stored untouched.
+*.png binary
