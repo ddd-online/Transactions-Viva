@@ -27,9 +27,6 @@ func TestRecordsRefilter(t *testing.T) {
 	if m.shown[0].id != "a" {
 		t.Fatalf("newest first: first row = %q", m.shown[0].id)
 	}
-	if m.counts != [4]int{3, 2, 1, 0} {
-		t.Fatalf("counts = %v, want [3 2 1 0]", m.counts)
-	}
 	if m.stats != [3]int64{100000, 451200, 0} {
 		t.Fatalf("stats = %v", m.stats)
 	}
@@ -37,13 +34,6 @@ func TestRecordsRefilter(t *testing.T) {
 		t.Fatalf("count text = %q", m.countText)
 	}
 
-	m.kind = kindIncome
-	m.refilter()
-	if len(m.shown) != 1 || m.shown[0].id != "b" {
-		t.Fatalf("type filter left %v", m.shown)
-	}
-
-	m.kind = ""
 	m.sortField, m.sortDesc = sortAmount, true
 	m.refilter()
 	if m.shown[0].id != "c" {

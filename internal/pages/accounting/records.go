@@ -62,16 +62,6 @@ const (
 	sortAmount
 )
 
-var typeChoices = [...]struct {
-	label string
-	kind  string
-}{
-	{"全部", ""},
-	{"支出", kindExpense},
-	{"收入", kindIncome},
-	{"转账", kindTransfer},
-}
-
 var rangeChoices = [...]struct {
 	label string
 	mode  rangeMode
@@ -83,15 +73,13 @@ var rangeChoices = [...]struct {
 }
 
 // recordsModel is the 记录 screen's state. The shell owns it for as long as the
-// section exists, so the filters and scroll survive a section switch.
+// section exists, so its filters and scroll survive a section switch.
 type recordsModel struct {
 	records []record
-	shown   []record // the rows the current filters leave, already sorted
+	shown   []record // the rows the current range leaves, already sorted
 
-	counts [4]int   // 全部 / 支出 / 收入 / 转账, within the time range
-	stats  [3]int64 // 收入 / 支出 / 转账, within the visible rows
+	stats [3]int64 // 收入 / 支出 / 转账, within the visible rows
 
-	kind      string // "" means every type
 	rangeMode rangeMode
 	sortField sortField
 	sortDesc  bool
@@ -120,8 +108,6 @@ func newRecordsModel() *recordsModel {
 func (m *recordsModel) View(c ui.C) {
 	ui.Column(c).Fill().Children(func() {
 		m.toolbar(c)
-		ui.Divider(c)
-		m.filters(c)
 		ui.Divider(c)
 		m.table(c)
 		ui.Divider(c)
@@ -175,40 +161,6 @@ func (m *recordsModel) sortItem(menu *ui.MenuItems, label string, field sortFiel
 		m.sortField, m.sortDesc = field, desc
 		m.refilter()
 	}
-}
-
-// filters is the row under the toolbar: one chip per transaction type, with the
-// number of rows the time range leaves, and the range in words.
-func (m *recordsModel) filters(c ui.C) {
-	theme := c.Theme()
-	ui.Row(c).Height(44).FillWidth().PadX(18).Gap(6).Items(ui.Center).Children(func() {
-		for index, choice := range typeChoices {
-			selected := m.kind == choice.kind
-			c.KeyInt(index)
-			chip := ui.Row(c).Height(28).Shrink(0).PadX(10).Gap(6).
-				Items(ui.Center).Radius(999)
-			if selected {
-				chip = chip.Background(theme.Accent)
-			}
-			chip = chip.HitWith(ui.ID(c), choice.label,
-				gfx.HitOptions{Role: gfx.RoleRadio, Selected: selected}).
-				Hover(ui.Look{}.Background(theme.Hover))
-			foreground := theme.MutedForeground
-			if selected {
-				foreground = theme.AccentForeground
-			}
-			chip.Children(func() {
-				ui.Text(c, choice.label).FontSize(12).Weight(gfx.WeightMedium).Color(foreground)
-				ui.Text(c, strconv.Itoa(m.counts[index])).FontSize(11).Color(theme.MutedForeground)
-			})
-			if chip.Clicked() {
-				m.kind = choice.kind
-				m.refilter()
-			}
-		}
-		ui.Spacer(c)
-		ui.Text(c, m.rangeSummary(time.Now())).FontSize(11).Muted()
-	})
 }
 
 // table is the column header and the scrolling rows.
@@ -266,13 +218,13 @@ func (m *recordsModel) row(r ui.ListRow) {
 		FontSize(13).Weight(gfx.WeightMedium).Color(color)
 }
 
-// empty is what the content area says when the filters match nothing.
+// empty is what the content area says when the time range matches nothing.
 func (m *recordsModel) empty(c ui.C) {
 	ui.Column(c).Grow(1).FillWidth().Center().Gap(6).Children(func() {
-		ui.Text(c, "没有匹配的记录").FontSize(16).Bold()
-		ui.Text(c, "换个时间范围或筛选条件，也可以直接记一笔。").FontSize(13).Muted()
-		if ui.Button(c, "清除筛选").Outline().Clicked() {
-			m.kind, m.rangeMode = "", rangeToday
+		ui.Text(c, "当前时间范围内没有记录").FontSize(16).Bold()
+		ui.Text(c, "换个时间范围，也可以直接记一笔。").FontSize(13).Muted()
+		if ui.Button(c, "查看全部时间").Outline().Clicked() {
+			m.rangeMode = rangeAll
 			m.refilter()
 		}
 	})
@@ -298,27 +250,14 @@ func (m *recordsModel) stat(c ui.C, label string, cents int64, color gfx.Color) 
 	})
 }
 
-// refilter recomputes the visible rows, the chip counts and the statistics.
+// refilter recomputes the visible rows and the statistics.
 func (m *recordsModel) refilter() {
 	start := m.rangeStart(time.Now())
 
 	m.shown = m.shown[:0]
-	m.counts = [4]int{}
 	m.stats = [3]int64{}
 	for _, rec := range m.records {
 		if !start.IsZero() && rec.at.Before(start) {
-			continue
-		}
-		m.counts[0]++
-		switch rec.kind {
-		case kindExpense:
-			m.counts[1]++
-		case kindIncome:
-			m.counts[2]++
-		case kindTransfer:
-			m.counts[3]++
-		}
-		if m.kind != "" && rec.kind != m.kind {
 			continue
 		}
 		m.shown = append(m.shown, rec)
@@ -367,23 +306,6 @@ func (m *recordsModel) rangeStart(now time.Time) time.Time {
 		return time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.Local)
 	}
 	return time.Time{}
-}
-
-// rangeSummary names the chosen range and the number of rows it leaves.
-func (m *recordsModel) rangeSummary(now time.Time) string {
-	var label string
-	switch m.rangeMode {
-	case rangeToday:
-		label = now.Format("2006-01-02")
-	case rangeMonth:
-		start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
-		label = start.Format("2006-01-02") + " 至 " + start.AddDate(0, 1, -1).Format("2006-01-02")
-	case rangeYear:
-		label = strconv.Itoa(now.Year()) + " 年"
-	default:
-		label = "全部时间"
-	}
-	return label + " · " + m.countText
 }
 
 func rangeLabel(mode rangeMode) string {

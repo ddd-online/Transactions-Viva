@@ -91,22 +91,8 @@ func TestSubFunctionTabs(t *testing.T) {
 	}
 }
 
-func TestRecordsFilterSearchAndComposer(t *testing.T) {
-	t.Run("type chips filter the rows", func(t *testing.T) {
-		driver, _ := open(t)
-		if !shows(driver, "早餐 · 豆浆油条") {
-			t.Fatal("the records page did not show its mock rows")
-		}
-		click(t, driver, "收入")
-		if !shows(driver, "工资到账") {
-			t.Fatal("收入 did not leave the income row")
-		}
-		if shows(driver, "早餐 · 豆浆油条") {
-			t.Fatal("收入 did not hide the expense rows")
-		}
-	})
-
-	t.Run("the composer saves a mock row", func(t *testing.T) {
+func TestRecordsComposer(t *testing.T) {
+	t.Run("saves a mock row", func(t *testing.T) {
 		driver, _ := open(t)
 		click(t, driver, "记一笔")
 		if err := driver.Type("88.50"); err != nil {
