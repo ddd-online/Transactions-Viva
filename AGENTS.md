@@ -51,6 +51,8 @@ main.go                  真实入口：只做 log.Fatal(desktop.Run())
 internal/desktop/        应用外壳：窗口、自绘标题栏、Sidebar 导航、底栏、设置页、主题
 internal/icons/          由 SVG 编译出的矢量图标（viva icons）
 internal/pages/          各功能页：accounting、stock、todo、events、diary、settings
+  accounting/records/    记录页本身（表格 / 工具栏 / 分页 / 空态 / 行操作）
+  accounting/records/composer/  新增 / 编辑记录弹窗
 internal/components/     可复用的 UI：占位空态，以及 datepicker / pagination / selectbox 子包
 internal/pages/settings/controls/  只属于设置页的分组卡片 / 设置行
 internal/domain/         纯领域规则与数据形状：金额、记录、账本、事件、日记、待办、股票

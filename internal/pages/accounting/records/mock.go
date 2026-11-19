@@ -1,6 +1,10 @@
-package accounting
+package records
 
-import "time"
+import (
+	"time"
+
+	"transactions/internal/pages/accounting/records/composer"
+)
 
 // mockSyncTargets are the other ledgers a row can be copied to. The real app
 // reads them from the workspace; the mock has no ledger switcher, so syncing
@@ -47,24 +51,13 @@ var mockTagOptions = [...]string{
 	"健康", "旅行", "社交", "书籍", "理财", "月薪", "储蓄",
 }
 
-// recordTemplate is one entry of the composer's 模板 Select. The real app reads
-// them from the workspace; these are mock rows for the form.
-type recordTemplate struct {
-	id          string
-	name        string
-	kind        string
-	category    string
-	description string
-	tags        []string
-}
-
-// mockTemplates returns the templates the composer starts with. Saving a new
+// mockTemplates returns the templates the dialog starts with. Saving a new
 // template appends to the page's copy for the rest of the run.
-func mockTemplates() []recordTemplate {
-	return []recordTemplate{
-		{id: "tpl-lunch", name: "午餐 · 餐饮美食", kind: kindExpense, category: "餐饮美食", description: "午餐", tags: []string{"日常"}},
-		{id: "tpl-commute", name: "地铁通勤 · 交通出行", kind: kindExpense, category: "交通出行", description: "地铁通勤", tags: []string{"通勤"}},
-		{id: "tpl-salary", name: "工资到账 · 工资奖金", kind: kindIncome, category: "工资奖金", description: "工资到账", tags: []string{"月薪"}},
+func mockTemplates() []composer.Template {
+	return []composer.Template{
+		{ID: "tpl-lunch", Name: "午餐 · 餐饮美食", Kind: "支出", Category: "餐饮美食", Description: "午餐", Tags: []string{"日常"}},
+		{ID: "tpl-commute", Name: "地铁通勤 · 交通出行", Kind: "支出", Category: "交通出行", Description: "地铁通勤", Tags: []string{"通勤"}},
+		{ID: "tpl-salary", Name: "工资到账 · 工资奖金", Kind: "收入", Category: "工资奖金", Description: "工资到账", Tags: []string{"月薪"}},
 	}
 }
 

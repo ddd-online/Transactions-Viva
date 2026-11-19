@@ -1,4 +1,4 @@
-package accounting
+package records
 
 import (
 	"strings"
@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/vivaui/viva/gfx"
+
+	"transactions/internal/pages/accounting/records/composer"
 )
 
 func TestRecordsRefilter(t *testing.T) {
 	now := time.Now()
-	m := &recordsModel{
+	m := &Model{
 		records: []record{
 			{id: "a", kind: kindExpense, description: "早餐", category: "餐饮", tags: []string{"日常"}, amount: 1200, at: now.Add(-time.Hour)},
 			{id: "b", kind: kindIncome, description: "工资", category: "工资奖金", tags: []string{"月薪"}, amount: 100000, at: now.Add(-2 * time.Hour)},
@@ -41,25 +43,33 @@ func TestRecordsRefilter(t *testing.T) {
 }
 
 func TestRecordActions(t *testing.T) {
-	m := newRecordsModel()
+	m := New()
 	m.rangeStart, m.rangeEnd = "2000-01-01", "2100-01-01"
 	m.refilter()
 	if len(m.shown) < 2 {
 		t.Fatalf("shown = %d, want at least 2", len(m.shown))
 	}
 	id := m.shown[1].id
+	rec := m.find(id)
+	if rec == nil {
+		t.Fatalf("the page has no row %q", id)
+	}
 
-	m.openEdit(id)
-	if m.draft.editingID != id {
-		t.Fatalf("editing ID = %q, want %q", m.draft.editingID, id)
+	amount := rec.amount
+	if err := m.saveDraft(composer.Draft{
+		EditingID:   id,
+		Kind:        kindLabel(rec.kind),
+		Amount:      "99.99",
+		Category:    rec.category,
+		Description: "改过的描述",
+		Tags:        rec.tags,
+		Outlier:     rec.outlier,
+		Date:        rec.at.Format(dateLayout),
+	}); err != nil {
+		t.Fatalf("editing failed: %v", err)
 	}
-	if m.draft.amount == "" || m.draft.category == "" {
-		t.Fatalf("the edit dialog was not filled: %+v", m.draft)
-	}
-	m.draft.amount = "99.99"
-	m.draft.description = "改过的描述"
-	m.saveDraft()
-	if rec := m.find(id); rec == nil || rec.description != "改过的描述" || rec.amount != 9999 {
+	rec = m.find(id)
+	if rec == nil || rec.description != "改过的描述" || rec.amount != 9999 || rec.amount == amount {
 		t.Fatalf("edit saved %+v", rec)
 	}
 	if m.notice != "记录已更新" {
@@ -84,67 +94,71 @@ func TestRecordActions(t *testing.T) {
 	}
 }
 
-func TestComposerTemplateAndMarks(t *testing.T) {
-	m := newRecordsModel()
-	m.openComposer()
-	m.draft.templateID = "tpl-lunch"
-	m.applyTemplate()
-	if m.draft.kind != "支出" || m.draft.category != "餐饮美食" ||
-		m.draft.description != "午餐" || m.draft.tags != "日常" {
-		t.Fatalf("template did not fill the draft: %+v", m.draft)
+func TestSaveDraftValidates(t *testing.T) {
+	m := New()
+	before := len(m.records)
+	cases := []struct {
+		name  string
+		draft composer.Draft
+		want  string
+	}{
+		{"no category", composer.Draft{Amount: "1", Date: "2026-01-02"}, "请填写分类"},
+		{"bad amount", composer.Draft{Category: "餐饮美食", Amount: "x", Date: "2026-01-02"}, "金额格式不正确"},
+		{"zero amount", composer.Draft{Category: "餐饮美食", Amount: "0", Date: "2026-01-02"}, "金额需要大于 0"},
+		{"bad date", composer.Draft{Category: "餐饮美食", Amount: "1", Date: "2026-13-40"}, "日期格式应为 YYYY-MM-DD"},
+		{"bad event date", composer.Draft{Category: "餐饮美食", Amount: "1", Date: "2026-01-02", EventDate: "x"}, "关联事件日期格式应为 YYYY-MM-DD"},
 	}
-
-	m.openEdit("mock-4")
-	if m.draft.mark != "离群值" {
-		t.Fatalf("edit mark = %q, want 离群值", m.draft.mark)
-	}
-	if rec := m.find("mock-2"); rec != nil {
-		m.openEdit("mock-2")
-		if m.draft.eventDate != rec.keyEventDate {
-			t.Fatalf("edit event date = %q, want %q", m.draft.eventDate, rec.keyEventDate)
+	for _, test := range cases {
+		err := m.saveDraft(test.draft)
+		if err == nil || err.Error() != test.want {
+			t.Errorf("%s: error = %v, want %q", test.name, err, test.want)
 		}
 	}
-
-	before := len(m.templates)
-	m.openComposer()
-	m.draft.category = "测试"
-	m.saveTemplate()
-	if len(m.templates) != before+1 {
-		t.Fatalf("templates = %d, want %d", len(m.templates), before+1)
-	}
-	if m.draft.templateID == "" || m.draft.templateMsg != "模板已保存" {
-		t.Fatalf("saving a template left %+v", m.draft)
+	if len(m.records) != before {
+		t.Fatalf("a rejected draft wrote a row")
 	}
 
-	m.openComposer()
-	m.draft.amount = "1.00"
-	m.draft.category = "测试"
-	m.draft.mark = "离群值"
-	m.draft.eventDate = time.Now().AddDate(0, 0, -1).Format("2006-01-02")
-	m.saveDraft()
+	if err := m.saveDraft(composer.Draft{
+		Kind: "支出", Amount: "12.00", Category: "餐饮美食",
+		Date: "2026-01-02", EventDate: "2026-01-01", Outlier: true, Tags: []string{"日常"},
+	}); err != nil {
+		t.Fatalf("a valid draft failed: %v", err)
+	}
 	last := m.records[len(m.records)-1]
-	if !last.outlier || last.keyEventDate != m.draft.eventDate {
-		t.Fatalf("saved marks = outlier %v, event %q", last.outlier, last.keyEventDate)
+	if last.amount != 1200 || last.category != "餐饮美食" || !last.outlier ||
+		last.keyEventDate != "2026-01-01" || len(last.tags) != 1 {
+		t.Fatalf("saved row = %+v", last)
 	}
 }
 
-func TestRecordTagsMultiSelect(t *testing.T) {
-	m := newRecordsModel()
-	m.openComposer()
-	for index, choice := range m.tags.state.Choices() {
-		if choice.Value == "日常" {
-			m.tags.state.Choose(index)
-			break
+func TestSaveTemplate(t *testing.T) {
+	m := New()
+	before := len(m.templates)
+	template := m.saveTemplate(composer.Template{
+		Name: "支出 · 测试", Kind: "支出", Category: "测试", Description: "测试",
+	})
+	if template.ID == "" {
+		t.Fatal("the stored template has no id")
+	}
+	if len(m.templates) != before+1 {
+		t.Fatalf("templates = %d, want %d", len(m.templates), before+1)
+	}
+}
+
+func TestCategoryNamesFollowTheType(t *testing.T) {
+	m := New()
+	expense := m.categoryNames("支出", "")
+	if len(expense) == 0 || expense[0] != "餐饮美食" {
+		t.Fatalf("支出 categories = %v", expense)
+	}
+	for _, name := range expense {
+		if name == "工资奖金" {
+			t.Fatal("an income category leaked into 支出")
 		}
 	}
-	m.syncTags()
-	if m.draft.tags != "日常" {
-		t.Fatalf("chosen tags = %q", m.draft.tags)
-	}
-	m.tags.state.Remove(0)
-	m.syncTags()
-	if m.draft.tags != "" {
-		t.Fatalf("removed tags = %q", m.draft.tags)
+	kept := m.categoryNames("收入", "餐饮美食")
+	if len(kept) == 0 || kept[len(kept)-1] != "餐饮美食" {
+		t.Fatalf("the kept category is missing: %v", kept)
 	}
 }
 

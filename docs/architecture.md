@@ -46,7 +46,9 @@ main → desktop → pages → components
 | `main.go` | 入口 | `src/main.tsx` + `electron/main.ts` 的启动部分 |
 | `internal/desktop` | 窗口、标题栏、导航、底栏 | `src/App.tsx`、`src/app-shell.tsx`、`src/app-view.ts` |
 | `internal/desktop/theme.go` | 主题选择：Viva 原生浅色 / 深色（旧配色暂不迁移） | `gfx.LightTheme` / `gfx.DarkTheme`；旧配色见 `DESIGN.md`、`src/theme` |
-| `internal/pages/accounting` | 记录（mock 前端）/ 分析 / 标签 / 模板 | `src/pages/records*`、`charts*`、`category-tag*`、`template*` |
+| `internal/pages/accounting` | 记账分区的四个子功能（记录 / 分析 / 标签 / 模板） | `src/pages/records*`、`charts*`、`category-tag*`、`template*` |
+| `internal/pages/accounting/records` | 记录页：工具栏、表格、分页、统计、空态、行操作 | `src/pages/records.tsx`、`records-table.tsx` |
+| `internal/pages/accounting/records/composer` | 新增 / 编辑记录弹窗（草稿、标签多选、日期选择器） | `src/pages/record-composer.tsx` |
 | `internal/pages/stock` | 账户 / 持仓 / 记录 / 心得 / 统计 / 天梯 / 设置 | `src/pages/stock*` |
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
 | `internal/pages/events` | 事件画廊、图片、实况照片 | `src/pages/event*` |
@@ -78,8 +80,8 @@ main → desktop → pages → components
   （208px 分区列、760px 阅读列、32px 页边距），进入设置时左侧主导航保持可见，选中状态由
   `desktop.Model.section` 持有。
 - 记账-记录页是当前唯一有真实前端的页面：工具栏 / 时间范围 / 排序 / 表格 / 分页 /
-  收支统计都在 `internal/pages/accounting/records.go`，行数据来自 `records_mock.go`，
-  `records_composer.go` 的「新增记录 / 编辑记录」弹窗只写内存：模板、日期、类型、分类、
+  收支统计都在 `internal/pages/accounting/records`，行数据来自同包的 `mock.go`，
+  子包 `records/composer` 的「新增记录 / 编辑记录」弹窗只写内存：模板、日期、类型、分类、
   标签、标记、关联事件日期、描述与金额按旧工程 `record-composer.tsx` 排列，模板也是 mock；
   每个字段用 `ui.FormField`（标题 + 控件的标准表单节奏），日期/事件日期用共享的
   `components.DateField`（可输入的日期框 + 浮在弹窗上的月历面板，见下面的「时间选择器」），

@@ -9,7 +9,9 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/text"
 	"github.com/vivaui/viva/ui"
+
 	"transactions/internal/components"
+	"transactions/internal/pages/accounting/records"
 )
 
 type tab uint8
@@ -36,12 +38,12 @@ var notes = [...]string{
 // selection; the shell's Sidebar draws and changes it.
 type Model struct {
 	tab     tab
-	records *recordsModel
+	records *records.Model
 }
 
 // New returns the default page (记录).
 func New() *Model {
-	return &Model{records: newRecordsModel()}
+	return &Model{records: records.New()}
 }
 
 // Tabs are the section's second-level navigation entries.
@@ -95,7 +97,7 @@ func (m *Model) Scroll(event gfx.ScrollEvent) gfx.EventResult {
 // focus, for Config.TextInput.
 func (m *Model) TagsEditor(id gfx.ID) *text.Editor {
 	if m.tab == tabRecords {
-		return m.records.tagsEditor(id)
+		return m.records.TagsEditor(id)
 	}
 	return nil
 }

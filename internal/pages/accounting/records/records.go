@@ -1,11 +1,11 @@
-// The 记录 screen of the 记账 section. Its layout follows the reference
-// application's hosts page: a toolbar, a row of filter chips, then the
-// scrolling content, all inside the workspace card.
+// Package records is the 记录 screen of the 记账 section: the toolbar, the table,
+// its pager and statistics, and the dialog a record is written in (the composer
+// subpackage). Its layout follows the reference application's hosts page.
 //
-// The data is mock for now (records_mock.go): filtering, sorting and adding a
-// record work on the in-memory slice only. When internal/store lands, refilter
-// becomes a tr_query and the mock file goes away.
-package accounting
+// The data is mock for now (mock.go): filtering, sorting and adding a record
+// work on the in-memory slice only. When internal/store lands, refilter becomes a
+// tr_query and the mock file goes away.
+package records
 
 import (
 	"sort"
@@ -20,6 +20,7 @@ import (
 	"transactions/internal/components/pagination"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
+	"transactions/internal/pages/accounting/records/composer"
 )
 
 const (
@@ -60,9 +61,9 @@ const (
 	sortAmount
 )
 
-// recordsModel is the 记录 screen's state. The shell owns it for as long as the
-// section exists, so its filters and scroll survive a section switch.
-type recordsModel struct {
+// Model is the 记录 screen's state. The shell owns it for as long as the section
+// exists, so its filters and scroll survive a section switch.
+type Model struct {
 	records []record
 	shown   []record // every row the current range leaves, already sorted
 
@@ -86,13 +87,10 @@ type recordsModel struct {
 
 	list      ui.ListState
 	sortMenu  bool
-	draft     recordDraft
-	fields    recordFields
-	tags      recordTags
-	templates []recordTemplate
+	templates []composer.Template
+	form      composer.State
+	formSpec  composer.Spec
 	bounds    gfx.Rect
-	datePick  datepicker.State
-	eventPick datepicker.State
 	rangePick datepicker.State
 
 	// categoryList is the 分类 Select's choices, rebuilt each paint into the same
@@ -104,12 +102,11 @@ type recordsModel struct {
 	deleteConfirm bool
 }
 
-// newRecordsModel returns the page on 今天, newest first, with the mock rows
-// already filtered.
-func newRecordsModel() *recordsModel {
-	m := &recordsModel{
+// New returns the page on 今天, newest first, with the mock rows already
+// filtered.
+func New() *Model {
+	m := &Model{
 		records:    mockRecords(),
-		tags:       newRecordTags(),
 		templates:  mockTemplates(),
 		rangeStart: todayDate(),
 		rangeEnd:   todayDate(),
@@ -118,16 +115,22 @@ func newRecordsModel() *recordsModel {
 		sortDesc:   true,
 		page:       1,
 		pageSize:   15,
-		datePick:   datepicker.NewState(),
-		eventPick:  datepicker.NewState(),
+		form:       composer.New(),
 		rangePick:  datepicker.NewState(),
+	}
+	m.formSpec = composer.Spec{
+		Categories: m.categoryNames,
+		TagOptions: m.tagOptions,
+		Templates:  m.templateList,
+		OnSave:     m.saveDraft,
+		OnTemplate: m.saveTemplate,
 	}
 	m.refilter()
 	return m
 }
 
 // View declares the records page.
-func (m *recordsModel) View(c ui.C) {
+func (m *Model) View(c ui.C) {
 	m.bounds = c.Bounds()
 	if m.rangeStale {
 		m.rangeStale = false
@@ -143,13 +146,13 @@ func (m *recordsModel) View(c ui.C) {
 		ui.Divider(c)
 		m.footer(c)
 	})
-	m.composerView(c)
+	m.form.View(c, m.formSpec)
 	m.deleteView(c)
 }
 
 // toolbar is the page's actions, laid out like the old page's filter bar: the
 // time range on the left, and the sort beside the primary action on the right.
-func (m *recordsModel) toolbar(c ui.C) {
+func (m *Model) toolbar(c ui.C) {
 	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(10).Items(ui.Center).Children(func() {
 		if ui.Button(c, "今天").Outline().Clicked() {
 			m.setRange(todayDate(), todayDate(), datepicker.ByDay)
@@ -183,7 +186,7 @@ func (m *recordsModel) toolbar(c ui.C) {
 }
 
 // sortItem declares one choice of the sort menu and applies it when chosen.
-func (m *recordsModel) sortItem(menu *ui.MenuItems, label string, field sortField, desc bool) {
+func (m *Model) sortItem(menu *ui.MenuItems, label string, field sortField, desc bool) {
 	item := menu.Item(label)
 	item.Checked(m.sortField == field && m.sortDesc == desc)
 	if item.Clicked() {
@@ -193,7 +196,7 @@ func (m *recordsModel) sortItem(menu *ui.MenuItems, label string, field sortFiel
 }
 
 // table is the column header and the scrolling rows.
-func (m *recordsModel) table(c ui.C) {
+func (m *Model) table(c ui.C) {
 	theme := c.Theme()
 	ui.Column(c).Grow(1).FillWidth().Children(func() {
 		ui.Row(c).Height(34).FillWidth().PadX(18).Gap(12).Items(ui.Center).
@@ -220,7 +223,7 @@ func (m *recordsModel) table(c ui.C) {
 
 // row declares one record: date and time, type, category, tags, description and
 // the signed amount.
-func (m *recordsModel) row(r ui.ListRow) {
+func (m *Model) row(r ui.ListRow) {
 	rec := &m.shown[m.pageStart+r.Index]
 	theme := r.C.Theme()
 	r.Element.Height(48).PadX(18).Gap(12).Items(ui.Center).
@@ -289,7 +292,7 @@ var emptyActions = [emptyActionCount]string{"上月", "今年", "记一笔"}
 
 // empty is what the content area says when the time range matches nothing: the
 // theme's empty state, with the actions the old page offered underneath it.
-func (m *recordsModel) empty(c ui.C) {
+func (m *Model) empty(c ui.C) {
 	theme := c.Theme()
 	var ids [emptyActionCount]gfx.ID
 	for index := range ids {
@@ -310,7 +313,7 @@ func (m *recordsModel) empty(c ui.C) {
 
 // paintEmptyActions paints the empty state's buttons into the row the native
 // empty state reserved, and applies a press on them after the paint.
-func (m *recordsModel) paintEmptyActions(d *ui.DrawContext, ids [emptyActionCount]gfx.ID, content gfx.Rect) {
+func (m *Model) paintEmptyActions(d *ui.DrawContext, ids [emptyActionCount]gfx.ID, content gfx.Rect) {
 	if content.Width <= 0 || content.Height <= 0 {
 		return
 	}
@@ -346,31 +349,29 @@ func (m *recordsModel) paintEmptyActions(d *ui.DrawContext, ids [emptyActionCoun
 	}
 }
 
-// CloseOverlays closes the panels this page floats over itself: the range
-// picker, the composer's date panels and the tag picker.
-func (m *recordsModel) CloseOverlays() {
+// CloseOverlays closes the panels this page floats over itself: the range picker
+// and the composer with everything it floats.
+func (m *Model) CloseOverlays() {
 	m.rangePick.Open = false
-	m.datePick.Open = false
-	m.eventPick.Open = false
-	m.tags.state.Open = false
+	m.form.Close()
 }
 
 // lastMonth shows the whole previous month.
-func (m *recordsModel) lastMonth() {
+func (m *Model) lastMonth() {
 	now := time.Now()
 	first := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local).AddDate(0, -1, 0)
 	m.setRange(first.Format(dateLayout), first.AddDate(0, 1, -1).Format(dateLayout), datepicker.ByMonth)
 }
 
 // thisYear shows the whole current year.
-func (m *recordsModel) thisYear() {
+func (m *Model) thisYear() {
 	now := time.Now()
 	m.setRange(time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.Local).Format(dateLayout),
 		time.Date(now.Year(), 12, 31, 0, 0, 0, 0, time.Local).Format(dateLayout), datepicker.ByYear)
 }
 
 // footer is the records' 收入 / 支出 / 转账 summary and the visible row count.
-func (m *recordsModel) footer(c ui.C) {
+func (m *Model) footer(c ui.C) {
 	theme := c.Theme()
 	ui.Row(c).Height(40).FillWidth().PadX(18).Gap(24).Items(ui.Center).Children(func() {
 		m.stat(c, "收入", m.stats[0], kindColor(*theme, kindIncome))
@@ -383,7 +384,7 @@ func (m *recordsModel) footer(c ui.C) {
 	})
 }
 
-func (m *recordsModel) stat(c ui.C, label string, cents int64, color gfx.Color) {
+func (m *Model) stat(c ui.C, label string, cents int64, color gfx.Color) {
 	ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
 		ui.Text(c, label).FontSize(11).Muted()
 		ui.Text(c, domain.CentsToYuan(cents)).FontSize(12).
@@ -392,7 +393,7 @@ func (m *recordsModel) stat(c ui.C, label string, cents int64, color gfx.Color) 
 }
 
 // pager is the shared pagination bar: total, page-size select and Viva pages.
-func (m *recordsModel) pager(c ui.C) {
+func (m *Model) pager(c ui.C) {
 	pagination.Bar(c, pagination.Spec{
 		Total:    len(m.shown),
 		Page:     m.page,
@@ -409,7 +410,7 @@ func (m *recordsModel) pager(c ui.C) {
 }
 
 // pageCount is how many pages the current rows take.
-func (m *recordsModel) pageCount() int {
+func (m *Model) pageCount() int {
 	if len(m.shown) == 0 || m.pageSize <= 0 {
 		return 1
 	}
@@ -417,7 +418,7 @@ func (m *recordsModel) pageCount() int {
 }
 
 // refilter recomputes the visible rows and the statistics.
-func (m *recordsModel) refilter() {
+func (m *Model) refilter() {
 
 	m.notice = ""
 	m.shown = m.shown[:0]
@@ -472,7 +473,7 @@ func todayDate() string { return time.Now().Format(dateLayout) }
 
 // setRange applies a new visible range from a control of the page and
 // recomputes the table at once.
-func (m *recordsModel) setRange(start, end string, grain datepicker.Grain) {
+func (m *Model) setRange(start, end string, grain datepicker.Grain) {
 	m.rangeStart, m.rangeEnd, m.rangeGrain = start, end, grain
 	m.refilter()
 }
