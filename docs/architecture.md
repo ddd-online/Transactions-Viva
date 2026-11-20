@@ -256,6 +256,12 @@ main → desktop → pages → components
 
 ## 框架缺口（Viva v0.6.5）
 
+- **`viva dev` 的 reload host 不转发原生文本事件。** worker 协议只带画面、指针、按键和
+  滚轮；`Config.TextInput` 和页面的 TextField 提供者不会到达宿主，所以 `viva dev` 下的
+  `ui.TextField` 有光标却无法输入（记录描述、图表名称、模板名称都一样），不是某个弹窗的
+  问题。需要输入文本时用 `go run .` / `make run` 或打包后的原生窗口；不要用 dev host 判断
+  表单输入是否可用。Viva 的 conformance 也明确记录了这一点（Native text events in
+  `viva dev`：worker protocol does not carry them）。
 - **Select 的下拉动画没收尾。** `ui` 画一个打开的下拉时用自己的 `gfx.Canvas.BeginPresence`
   起了入场的组（`slide-in-from-*-2`，8px），却没有结束它；同一帧里之后第一个
   `EndPresence`——也就是弹窗在自己 `End` 里做的那一次——会把这个组收掉，并把下拉的
