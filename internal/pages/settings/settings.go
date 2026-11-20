@@ -413,7 +413,7 @@ func (m *Model) ledgers(c ui.C, spec Spec) {
 				ui.Divider(c)
 			}
 			one := spec.Ledgers[index]
-			controls.Row(c, one.Name, one.Description, func() {
+			controls.Row(c, one.Name, describe(one.Description), func() {
 				if spec.ActiveLedger == one.ID {
 					typography.Caption(c, "当前")
 				}
@@ -617,7 +617,7 @@ func (m *Model) diaryBooks(c ui.C, spec Spec) {
 				ui.Divider(c)
 			}
 			one := spec.DiaryBooks[index]
-			controls.Row(c, one.Name, one.Description, func() {
+			controls.Row(c, one.Name, describe(one.Description), func() {
 				if spec.ActiveDiaryBook == one.ID {
 					typography.Caption(c, "当前")
 				}
@@ -822,6 +822,17 @@ func (m *Model) diaryResultRow(c ui.C, ready bool) {
 				}
 			})
 		})
+}
+
+// describe is the second line of a list row (a ledger, a diary book): its own
+// description, or a placeholder when it has none. A row without that line reads
+// as if the thing had no description to give, which is not the same as "not
+// written yet".
+func describe(text string) string {
+	if strings.TrimSpace(text) == "" {
+		return "还没有描述"
+	}
+	return text
 }
 
 // importNote names the book an import writes into.

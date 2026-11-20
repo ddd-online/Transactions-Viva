@@ -190,6 +190,11 @@ func TestSettingsDiaryBookManagement(t *testing.T) {
 	if !shows(driver, "默认日记本") {
 		t.Fatal("the seeded book is not listed")
 	}
+	// The description line is always there, like a ledger's: a book that has
+	// none says so rather than hiding the line.
+	if !shows(driver, "还没有描述") {
+		t.Fatal("a book without a description does not say so")
+	}
 	// The only book cannot be deleted: the diary page needs one to show.
 	if !hasControl(driver, "删除日记本 默认日记本") {
 		t.Fatal("the book row has no delete command")
@@ -200,9 +205,16 @@ func TestSettingsDiaryBookManagement(t *testing.T) {
 	if err := driver.Type("随笔"); err != nil {
 		t.Fatal(err)
 	}
+	click(t, driver, "描述")
+	if err := driver.Type("想到什么写什么"); err != nil {
+		t.Fatal(err)
+	}
 	click(t, driver, "创建")
 	if !hasControl(driver, "编辑日记本 随笔") {
 		t.Fatal("the created book is not in the list")
+	}
+	if !shows(driver, "想到什么写什么") {
+		t.Fatal("the created book's description is not shown")
 	}
 
 	click(t, driver, "编辑日记本 随笔")
