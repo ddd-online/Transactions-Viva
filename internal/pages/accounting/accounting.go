@@ -14,6 +14,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components"
+	"transactions/internal/pages/accounting/analysis"
 	"transactions/internal/pages/accounting/ledger"
 	"transactions/internal/pages/accounting/records"
 	"transactions/internal/pages/accounting/tags"
@@ -47,6 +48,7 @@ var notes = [...]string{
 type Model struct {
 	tab       tab
 	records   *records.Model
+	analysis  *analysis.Model
 	tags      *tags.Model
 	templates *templates.Model
 	ledgers   *ledger.Store
@@ -63,6 +65,7 @@ func New() *Model {
 	sharedTemplates := tpl.NewCache()
 	return &Model{
 		records:   records.NewWithStores(ledgers, sharedTemplates),
+		analysis:  analysis.New(ledgers),
 		tags:      tags.NewWithLedger(ledgers),
 		templates: templates.NewWithLedger(sharedTemplates, ledgers),
 		ledgers:   ledgers,
@@ -80,6 +83,7 @@ func (m *Model) SetRepository(repo repository.Repository) error {
 	if repo == nil {
 		m.ledgers.Reset(nil)
 		m.records.SetDataSource(nil, nil)
+		m.analysis.SetDataSource(nil, nil)
 		m.tags.SetDataSource(nil, nil)
 		m.templates.SetDataSource(nil, nil)
 		return nil
@@ -101,6 +105,7 @@ func (m *Model) SetRepository(repo repository.Repository) error {
 	m.ledgers.Reset(ledgers)
 	m.repo = repo
 	m.records.SetDataSource(repo, m.ledgerChanged)
+	m.analysis.SetDataSource(repo, m.ledgerChanged)
 	m.tags.SetDataSource(repo, m.ledgerChanged)
 	m.templates.SetDataSource(repo, m.ledgerChanged)
 	return nil
@@ -113,6 +118,7 @@ func (m *Model) ledgerChanged() {
 		return
 	}
 	m.records.Reload()
+	m.analysis.Reload()
 	m.tags.Reload()
 	m.templates.Reload()
 }
@@ -128,6 +134,7 @@ func (m *Model) Tab() int { return int(m.tab) }
 // follow the user to another screen.
 func (m *Model) CloseOverlays() {
 	m.records.CloseOverlays()
+	m.analysis.CloseOverlays()
 	m.tags.CloseOverlays()
 	m.templates.CloseOverlays()
 }
@@ -147,6 +154,8 @@ func (m *Model) SelectTab(index int) {
 	switch m.tab {
 	case tabRecords:
 		m.records.Reload()
+	case tabAnalysis:
+		m.analysis.Reload()
 	case tabTags:
 		m.tags.Reload()
 	case tabTemplates:
@@ -154,12 +163,13 @@ func (m *Model) SelectTab(index int) {
 	}
 }
 
-// View declares the page. The 记录, 标签 and 模板 pages read the workspace; the
-// 分析 tab keeps the honest pending state until its stage.
+// View declares the page. The four accounting pages read the workspace.
 func (m *Model) View(c ui.C) {
 	switch m.tab {
 	case tabRecords:
 		m.records.View(c)
+	case tabAnalysis:
+		m.analysis.View(c)
 	case tabTags:
 		m.tags.View(c)
 	case tabTemplates:

@@ -58,6 +58,7 @@ main → desktop → pages → components
 | `internal/pages/accounting/tags` | 标签页：账本选择、类型卡片、分类 / 标签两栏、新增 / 删除 / 拖拽排序 | `src/pages/category-tag.tsx`、`category-column.tsx`、`tag-column.tsx` |
 | `internal/pages/accounting/template` | 模板缓存与 domain 互转：按账本存放，记录弹窗与模板页共用 | `electron/services/transaction-template.ts` |
 | `internal/pages/accounting/templates` | 模板页：表格、新建 / 删除 / 拖拽排序 | `src/pages/templates.tsx`、`template-list.tsx`、`template-form.tsx` |
+| `internal/pages/accounting/analysis` | 分析页：图表列表、折线 / 饼图、曲线条件、合计 | `src/pages/charts.tsx`、`chart-*`、`antv-*-chart.tsx` |
 | `internal/pages/stock` | 账户 / 持仓 / 记录 / 心得 / 统计 / 天梯 / 设置 | `src/pages/stock*` |
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
 | `internal/pages/events` | 事件画廊、图片、实况照片 | `src/pages/event*` |
@@ -84,10 +85,11 @@ main → desktop → pages → components
   并保持单连接。已有库先跑 `PRAGMA quick_check`；新建 / 空库直接建表。打开序：目录 →
   `quick_check` → 识别 `app_meta` / 旧库 → 迁移。损坏、陌生、旧版（含股票表的 v12）与更高
   版本库都返回明确错误，不静默建空库。
-- schema v1 只建记账需要的表：`app_meta`、`ledger`、`transaction_record`、
-  `transaction_record_tag`、`category`、`tag`、`transaction_template`。列名 / 类型与旧库
-  逐列一致（金额 `_cents`、时间 `_at`、日期文本、无外键），便于导入工具直接复制；不建
-  股票 / 图表 / 事件 / 日记 / 待办表，也不建立股票与账本的关联。
+- schema v1 建记账需要的表：`app_meta`、`ledger`、`transaction_record`、
+  `transaction_record_tag`、`category`、`tag`、`transaction_template`；v2 增加 `chart`
+  （图表配置、类型、分组、预设标记与排序）。列名 / 类型与旧库逐列一致（金额 `_cents`、
+  时间 `_at`、日期文本、无外键），便于导入工具直接复制；不建股票 / 事件 / 日记 / 待办表，
+  也不建立股票与账本的关联。
 - 版本：`app_meta.schema_version` 从 1 连续递增，迁移清单在 `internal/store/migrate.go`，
   SQL 内嵌在 `internal/store/schema/`。升级已有库前 `VACUUM INTO <db>.bak`，失败不升级；
   每条迁移与版本更新同事务。新增结构时只追加迁移，不改已发布的 SQL。
@@ -103,8 +105,8 @@ main → desktop → pages → components
 - 旧库导入：`internal/store/import_old.go` 用只读连接打开旧 `transactions.db`，校验六张表，
   `-strict` 检查孤儿行，然后在新目录创建当前 schema 并单事务复制
   `ledger / category / tag / transaction_record / transaction_record_tag /
-  transaction_template`，保留 ID、时间戳、排序、JSON 标签与可空字段。CLI 是
-  `cmd/tr-import`；旧库不直接由应用打开。
+  transaction_template`，旧库有 `chart` 时也复制；保留 ID、时间戳、排序、JSON 标签与
+  可空字段。CLI 是 `cmd/tr-import`；旧库不直接由应用打开。
 
 ## 页面约定
 
@@ -199,6 +201,13 @@ main → desktop → pages → components
   toast「保存模板成功」，删除后「删除模板成功」。模板存在 `transaction_template` 表，记录页的
   「记一笔」和模板页共用同一个缓存：在模板页新建的模板马上出现在记录弹窗的模板下拉里，
   但只在它所属的账本下出现；排序写 `sort_order`。
+- 记账-分析页（`internal/pages/accounting/analysis`）：左侧图表列表（预设 / 自定义，选中、
+  删除、拖拽排序），右侧是图表头、画布、曲线配置与合计栏。折线图按账本的 `chart.granularity`
+  分月 / 年聚合，曲线条件在 SQL 里按交易类型、分类、标签任意 / 全部、描述与离群值过滤；
+  饼图按交易类型 / 分类 / 标签分组，标签分组会重复计入多标签记录。预设「月度消费趋势 /
+  年度消费趋势」首次进入分析页时按账本播种，`app_meta` 留标记，删掉后不再回来；预设只能
+  删除 / 排序，自定义图表可重命名、改粒度 / 分组、增删曲线。图表配置存 `chart` 表，画布
+  与合计使用本项目的 Viva 风格自绘。
 - 页面自己浮起来的层（选择器面板、标签弹层）在切走分区 / 子功能时由外壳收起：页面实现
   `CloseOverlays()`，`internal/desktop` 的 `selectNav` 在离开前调用它，浮层不会跟着用户
   跑到另一个页面上。

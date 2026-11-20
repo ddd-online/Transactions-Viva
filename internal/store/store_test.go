@@ -50,7 +50,7 @@ func TestOpenCreatesSchemaAndReopens(t *testing.T) {
 		t.Fatalf("schema version = %d, exists=%v, err=%v", version, exists, err)
 	}
 	db := workspace.db
-	for _, table := range []string{"app_meta", "ledger", "transaction_record", "transaction_record_tag", "category", "tag", "transaction_template"} {
+	for _, table := range []string{"app_meta", "ledger", "transaction_record", "transaction_record_tag", "category", "tag", "transaction_template", "chart"} {
 		ok, err := tableExists(db, table)
 		if err != nil || !ok {
 			t.Fatalf("table %s missing: %v", table, err)
@@ -332,31 +332,33 @@ func TestMigrationBackupRollbackAndVersionChecks(t *testing.T) {
 
 	bad := []migration{
 		{version: 1, name: "init", sql: initSchema},
-		{version: 2, name: "broken", sql: "CREATE TABLE broken (id INTEGER); INSERT INTO missing VALUES (1);"},
+		{version: 2, name: "chart", sql: chartSchema},
+		{version: 3, name: "broken", sql: "CREATE TABLE broken (id INTEGER); INSERT INTO missing VALUES (1);"},
 	}
-	if err := applyMigrations(workspace.db, path, bad, 1); err == nil {
+	if err := applyMigrations(workspace.db, path, bad, 2); err == nil {
 		t.Fatal("broken migration succeeded")
 	}
 	version, _, err := schemaVersion(workspace.db)
-	if err != nil || version != 1 {
+	if err != nil || version != 2 {
 		t.Fatalf("version after rollback = %d, err=%v", version, err)
 	}
 
 	upgrade := []migration{
 		{version: 1, name: "init", sql: initSchema},
-		{version: 2, name: "ledger_note", sql: "ALTER TABLE ledger ADD COLUMN note TEXT NOT NULL DEFAULT '';"},
+		{version: 2, name: "chart", sql: chartSchema},
+		{version: 3, name: "ledger_note", sql: "ALTER TABLE ledger ADD COLUMN note TEXT NOT NULL DEFAULT '';"},
 	}
-	if err := applyMigrations(workspace.db, path, upgrade, 1); err != nil {
+	if err := applyMigrations(workspace.db, path, upgrade, 2); err != nil {
 		t.Fatalf("upgrade: %v", err)
 	}
 	if _, err := os.Stat(path + ".bak"); err != nil {
 		t.Fatalf("upgrade backup: %v", err)
 	}
 	version, _, err = schemaVersion(workspace.db)
-	if err != nil || version != 2 {
+	if err != nil || version != 3 {
 		t.Fatalf("version after upgrade = %d, err=%v", version, err)
 	}
-	if err := applyMigrations(workspace.db, path, upgrade, 3); !errors.Is(err, ErrVersionTooNew) {
+	if err := applyMigrations(workspace.db, path, upgrade, 4); !errors.Is(err, ErrVersionTooNew) {
 		t.Fatalf("version too new error = %v", err)
 	}
 }

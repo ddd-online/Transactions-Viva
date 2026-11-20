@@ -232,7 +232,7 @@ func TestNavigationSwitchesSections(t *testing.T) {
 func TestSubFunctionTabs(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "分析")
-	if !shows(driver, "分组合计") {
+	if !shows(driver, "曲线合计") || !hasControl(driver, "新增图表") {
 		t.Fatal("the 分析 tab did not show its screen")
 	}
 	click(t, driver, "标签")
@@ -1311,4 +1311,74 @@ func TestRecordsSyncSubmenuHover(t *testing.T) {
 		}
 	}
 	t.Fatal("the sync submenu item has no hover fill")
+}
+
+// TestAnalysisPage drives the 分析 screen: the two presets, the line canvas and
+// summary, and creating a custom pie chart through the dialog.
+func TestAnalysisPage(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "分析")
+	if !shows(driver, "月度消费趋势") || !shows(driver, "曲线合计") {
+		t.Fatal("the analysis presets or summary are missing")
+	}
+	if !hasControl(driver, "新增图表") {
+		t.Fatal("the analysis toolbar has no 新增图表")
+	}
+	click(t, driver, "年度消费趋势")
+	if !shows(driver, "年度消费趋势") {
+		t.Fatal("selecting the yearly preset did not show it")
+	}
+
+	click(t, driver, "新增图表")
+	click(t, driver, "图表名称")
+	if err := driver.Type("支出构成"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "饼图")
+	click(t, driver, "创建")
+	if !shows(driver, "支出构成") || !shows(driver, "分组合计") {
+		t.Fatal("the pie chart was not created or selected")
+	}
+	if !hasControl(driver, "删除图表 支出构成") {
+		t.Fatal("the custom chart is not in the rail")
+	}
+	click(t, driver, "删除图表 支出构成")
+	click(t, driver, "删除")
+	if hasControl(driver, "删除图表 支出构成") {
+		t.Fatal("the custom chart was not deleted")
+	}
+}
+
+// TestAnalysisLineEditor creates a custom line chart and adds a filtered curve
+// through the line dialog.
+func TestAnalysisLineEditor(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "分析")
+	click(t, driver, "新增图表")
+	click(t, driver, "图表名称")
+	if err := driver.Type("餐饮趋势"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "创建")
+	if !hasControl(driver, "添加曲线") {
+		t.Fatal("a custom line chart has no 添加曲线")
+	}
+	click(t, driver, "添加曲线")
+	click(t, driver, "曲线名称")
+	if err := driver.Type("餐饮"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "分类（可选）")
+	click(t, driver, "餐饮美食")
+	click(t, driver, "标签（可选，逗号分隔）")
+	if err := driver.Type("三餐"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "保存")
+	if !hasControl(driver, "删除曲线 餐饮") {
+		t.Fatal("the filtered curve was not added")
+	}
+	if !shows(driver, "三餐") {
+		t.Fatal("the curve condition is not shown")
+	}
 }

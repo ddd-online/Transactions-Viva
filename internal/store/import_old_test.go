@@ -20,6 +20,9 @@ func oldFixture(t *testing.T) string {
 	if _, err := db.Exec(initSchema); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := db.Exec(chartSchema); err != nil {
+		t.Fatal(err)
+	}
 	statements := []string{
 		"INSERT INTO ledger (id, name, description, created_at, updated_at) VALUES ('l1', '家庭账本', '', 100, 200)",
 		"INSERT INTO ledger (id, name, description, created_at, updated_at) VALUES ('l2', '旅行账本', '', 300, 400)",
@@ -30,6 +33,8 @@ func oldFixture(t *testing.T) string {
 		"INSERT INTO transaction_record_tag (ledger_id, transaction_id, tag) VALUES ('l1', 'r1', '三餐')",
 		"INSERT INTO transaction_template (template_id, ledger_id, template_name, transaction_type, category, tags, flags, description, sort_order, created_at, updated_at) " +
 			"VALUES ('t1', 'l1', '午餐', 'expense', '餐饮美食', '[\"三餐\"]', 'outlier', NULL, 0, 800, 900)",
+		"INSERT INTO chart (chart_id, ledger_id, title, granularity, chart_lines, chart_type, group_field, group_transaction_type, group_category, is_preset, sort_order, created_at, updated_at) " +
+			"VALUES ('c1', 'l1', '月度消费趋势', 'month', '[]', 'line', '', '', '', 1, 0, 1000, 1000)",
 		"INSERT INTO app_meta (key, value) VALUES ('schema_version', '12')",
 		"CREATE TABLE stock_account (id TEXT)",
 		"INSERT INTO stock_account (id) VALUES ('s1')",
@@ -50,7 +55,7 @@ func TestImportOldCopiesAccountingTables(t *testing.T) {
 		t.Fatalf("ImportOld: %v", err)
 	}
 	if report.Ledgers != 2 || report.Categories != 1 || report.Tags != 1 ||
-		report.Records != 1 || report.RecordTags != 1 || report.Templates != 1 {
+		report.Records != 1 || report.RecordTags != 1 || report.Templates != 1 || report.Charts != 1 {
 		t.Fatalf("report = %+v", report)
 	}
 	if report.SourceSchema != 12 {

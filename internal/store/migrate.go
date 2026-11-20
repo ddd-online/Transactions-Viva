@@ -14,6 +14,7 @@ import (
 var schemaFiles embed.FS
 
 var initSchema = mustReadSchema("schema/0001_init.sql")
+var chartSchema = mustReadSchema("schema/0002_chart.sql")
 
 func mustReadSchema(name string) string {
 	data, err := schemaFiles.ReadFile(name)
@@ -33,6 +34,7 @@ type migration struct {
 
 var migrations = []migration{
 	{version: 1, name: "init", sql: initSchema},
+	{version: 2, name: "chart", sql: chartSchema},
 }
 
 func targetVersion() int { return migrations[len(migrations)-1].version }
@@ -170,7 +172,7 @@ func userTableCount(db *sql.DB) (int, error) {
 func validateSchemaTables(db *sql.DB) error {
 	for _, table := range []string{
 		"app_meta", "ledger", "transaction_record", "transaction_record_tag",
-		"category", "tag", "transaction_template",
+		"category", "tag", "transaction_template", "chart",
 	} {
 		exists, err := tableExists(db, table)
 		if err != nil {

@@ -19,14 +19,15 @@ type ImportReport struct {
 	Records      int
 	RecordTags   int
 	Templates    int
+	Charts       int
 	Orphans      []string
 	SourceSchema int
 }
 
 // ImportOld copies the five accounting tables from an old application database
 // into a new workspace. The old database is opened read-only; the destination
-// must be a new directory or an empty one. The old stock/chart/event/diary/todo
-// tables are deliberately ignored.
+// must be a new directory or an empty one. The old stock/event/diary/todo
+// tables are deliberately ignored; saved charts are copied when present.
 func ImportOld(destinationDirectory, sourceDatabase string, strict bool) (ImportReport, error) {
 	var report ImportReport
 	if strings.TrimSpace(sourceDatabase) == "" {
@@ -109,6 +110,13 @@ func ImportOld(destinationDirectory, sourceDatabase string, strict bool) (Import
 		}
 		if report.Templates, err = copyTemplates(source, tx); err != nil {
 			return err
+		}
+		if hasCharts, err := tableExists(source, "chart"); err != nil {
+			return err
+		} else if hasCharts {
+			if report.Charts, err = copyCharts(source, tx); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -270,6 +278,87 @@ func copyRecords(source *sql.DB, tx *sql.Tx) (int, error) {
 			"description, flags, key_event_date, transaction_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			transactionID, ledgerID, amountCents, transactionType, category, nullable(description), nullable(flags),
 			keyEventDate, transactionAt, createdAt, updatedAt); err != nil {
+			return count, err
+		}
+		count++
+	}
+	return count, rows.Err()
+}
+
+func tableHasColumn(db *sql.DB, table, column string) (bool, error) {
+	rows, err := db.Query("PRAGMA table_info(" + table + ")")
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, kind string
+		var notNull, primaryKey int
+		var defaultValue any
+		if err := rows.Scan(&cid, &name, &kind, &notNull, &defaultValue, &primaryKey); err != nil {
+			return false, err
+		}
+		if name == column {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
+}
+
+func copyCharts(source *sql.DB, tx *sql.Tx) (int, error) {
+	// chart_type and the grouping columns were added by later old migrations;
+	// a chart table from an early workspace still imports as line charts with no
+	// grouping instead of failing the whole import.
+	optional := func(column, fallback string) (string, error) {
+		exists, err := tableHasColumn(source, "chart", column)
+		if err != nil {
+			return "", err
+		}
+		if exists {
+			return column, nil
+		}
+		return fallback + " AS " + column, nil
+	}
+	chartType, err := optional("chart_type", "'line'")
+	if err != nil {
+		return 0, err
+	}
+	groupField, err := optional("group_field", "''")
+	if err != nil {
+		return 0, err
+	}
+	groupTransactionType, err := optional("group_transaction_type", "''")
+	if err != nil {
+		return 0, err
+	}
+	groupCategory, err := optional("group_category", "''")
+	if err != nil {
+		return 0, err
+	}
+	rows, err := source.Query("SELECT chart_id, ledger_id, title, granularity, chart_lines, " + chartType + ", " +
+		groupField + ", " + groupTransactionType + ", " + groupCategory + ", is_preset, sort_order, created_at, updated_at FROM chart")
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	count := 0
+	for rows.Next() {
+		var chartID, ledgerID, title, granularity, chartLines, chartTypeValue string
+		var groupFieldValue, groupTransactionTypeValue, groupCategoryValue string
+		var isPreset, sortOrder, createdAt, updatedAt int64
+		if err := rows.Scan(&chartID, &ledgerID, &title, &granularity, &chartLines, &chartTypeValue,
+			&groupFieldValue, &groupTransactionTypeValue, &groupCategoryValue, &isPreset, &sortOrder, &createdAt, &updatedAt); err != nil {
+			return count, err
+		}
+		if chartTypeValue == "" {
+			chartTypeValue = "line"
+		}
+		if _, err := tx.Exec("INSERT INTO chart (chart_id, ledger_id, title, granularity, chart_lines, chart_type, "+
+			"group_field, group_transaction_type, group_category, is_preset, sort_order, created_at, updated_at) "+
+			"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			chartID, ledgerID, title, granularity, chartLines, chartTypeValue, groupFieldValue,
+			groupTransactionTypeValue, groupCategoryValue, isPreset, sortOrder, createdAt, updatedAt); err != nil {
 			return count, err
 		}
 		count++

@@ -33,8 +33,8 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("已导入到 %s\n", filepath.Join(*destination, "transactions.db"))
-	fmt.Printf("账本 %d，分类 %d，标签 %d，记录 %d，记录标签 %d，模板 %d\n",
-		report.Ledgers, report.Categories, report.Tags, report.Records, report.RecordTags, report.Templates)
+	fmt.Printf("账本 %d，分类 %d，标签 %d，记录 %d，记录标签 %d，模板 %d，图表 %d\n",
+		report.Ledgers, report.Categories, report.Tags, report.Records, report.RecordTags, report.Templates, report.Charts)
 	if report.SourceSchema > 0 {
 		fmt.Printf("旧库 schema 版本：%d\n", report.SourceSchema)
 	}

@@ -149,7 +149,7 @@ func quickCheck(db *sql.DB) error {
 // isOldAccountingDB recognizes the old application's database so opening it can
 // point at the import tool instead of a generic version error.
 func isOldAccountingDB(db *sql.DB) bool {
-	for _, table := range []string{"stock_account", "chart", "key_event", "diary_entry"} {
+	for _, table := range []string{"stock_account", "key_event", "diary_entry"} {
 		exists, err := tableExists(db, table)
 		if err == nil && exists {
 			return true

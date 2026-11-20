@@ -10,7 +10,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 整体迁移到 **Viva + Go**：没有 Electron、没有 Node、没有内嵌浏览器，窗口与控件由 GPU
 直接绘制。**行为、文案、交互、数据契约一律以旧工程为准，先追平再改进。**
 
-当前阶段：**外壳、配置与通用设置、记账三页与 SQLite 数据层已落地；记账三页读写工作空间；旧数据可导入；分析、股票、待办、事件、日记仍是占位。**
+当前阶段：**外壳、配置与通用设置、记账四页与 SQLite 数据层已落地；记账四页读写工作空间；旧数据可导入；股票、待办、事件、日记仍是占位。**
 
 - 入口是根目录 `main.go`：只做 `log.Fatal(desktop.Run())`，`viva.toml` 的 `package = "."`。
   开发时 `viva dev .`，一次性运行 `go run .`。
@@ -44,6 +44,12 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   分类与标签都能新增、删除（带确认弹窗）、拖拽排序，重名在弹窗里提示；数据与记录数来自
   工作空间；新建账本时播种旧工程的 19 个分类 / 57 个标签；删除分类连带其标签，删除标签
   连带记录上的标签关联。
+- 记账-分析页已迁移前端：工具栏是共享账本、分析时间范围与「新增图表」；左侧是图表列表
+  （选中 / 删除 / 拖拽排序），右侧是折线图或饼图画布、曲线配置与合计栏。内置「月度消费
+  趋势 / 年度消费趋势」两张预设（首次进分析页按账本播种，删掉后不再回来），可新增自定义
+  折线图 / 饼图、重命名、改粒度、改饼图分组、增删曲线；曲线条件支持交易类型、分类、标签
+  （任意 / 全部）、描述与离群值。图表存 `chart` 表，按账本与 `sort_order` 排序；时间范围
+  默认本年，月 / 年粒度由图表自己的 granularity 决定。
 - 记账-模板页已迁移前端：工具栏最左侧是同一个「账本」选择器，右侧是「新建模板」；主体是通到
   版心边缘的表格（拖拽把手 / 模板名称 / 交易类型 / 分类 / 标签 / 标记 / 描述 / 操作），
   行可拖拽排序、删除前确认；模板按账本存放，切账本换一整套列表；「新建模板」弹窗按旧工程校验模板名称与分类，
@@ -54,9 +60,9 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   `~/.transactions.dev.json`），逐字段归一化，写回保留未知顶层键，写入走 `.tmp` + rename。
   窗口尺寸 / 位置（关闭时保存）、工作空间、外观、关闭行为、功能开关与账本级覆盖都在里面；
   `desktop.Run` 启动时加载，设置页的改动立即写回。
-- SQLite 工作空间已落地：目录里的 `transactions.db`，schema v1 只含 `app_meta` /
+- SQLite 工作空间已落地：目录里的 `transactions.db`，schema v2 含 `app_meta` /
   `ledger` / `transaction_record` / `transaction_record_tag` / `category` / `tag` /
-  `transaction_template`（列与旧库兼容，不建股票等表）。打开时 `quick_check`、版本迁移
+  `transaction_template` / `chart`（列与旧库兼容，不建股票等表）。打开时 `quick_check`、版本迁移
   （升级前 `VACUUM INTO <db>.bak`）、拒绝损坏 / 陌生 / 旧版 / 更高版本库。空工作空间
   自动创建「默认账本」并播种默认分类标签；设置里切换工作空间先打开新库，失败保留旧库。
   没有工作空间时内容区显示「打开工作空间」门禁，设置仍可进入。
@@ -72,7 +78,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 - 原来的 `viva init` 示例（计数页）已移除；根目录 `main.go` 现在是真实入口。
 - 旧数据导入工具：`go run ./cmd/tr-import -from <旧工作空间或 transactions.db> -to <新目录>`
   只读旧库，复制账本 / 分类 / 标签 / 记录 / 记录标签 / 模板，保留 ID、时间戳、排序与空值，
-  报告孤儿行（`-strict` 中止）；旧库的股票、图表、事件、日记、待办不导入。
+  报告孤儿行（`-strict` 中止）；旧库的股票、事件、日记、待办不导入，`chart` 表有则一并复制。
 - 其余页面的真实内容还没迁移（见下面的迁移顺序）。
 
 ## 参考对象
@@ -100,6 +106,7 @@ internal/pages/          各功能页：accounting、stock、todo、events、dia
   accounting/tags/       标签页（类型卡片 / 分类与标签两栏 / 新增与删除弹窗）
   accounting/template/   模板缓存与 domain 互转（按账本存放，记录弹窗与模板页共用）
   accounting/templates/  模板页（表格 / 新建与删除弹窗 / 拖拽排序）
+  accounting/analysis/   分析页（图表列表 / 折线图 / 饼图 / 曲线条件 / 合计）
 internal/components/     可复用的 UI：占位空态，以及 datepicker / pagination / selectbox 子包
 internal/pages/settings/controls/  只属于设置页的分组卡片 / 设置行
 internal/domain/         纯领域规则与数据形状：金额、记录、账本、事件、日记、待办、股票
@@ -107,7 +114,7 @@ internal/repository/     页面使用的数据契约（接口 / 查询 / 错误�
 internal/config/         应用配置：形状、默认值、读写与归一化（~/.transactions.json）
 internal/store/          SQLite 工作空间、schema / 迁移 / 仓储 / 旧库导入
   storetest/             测试用的临时工作空间与种子数据
-  schema/                schema SQL（0001_init.sql）
+  schema/                schema SQL（0001_init.sql / 0002_chart.sql）
 cmd/tr-import/           旧工作空间导入命令
 docs/architecture.md     分层规则、旧模块到新包的映射、迁移顺序
 ```
@@ -136,10 +143,11 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
 
 1. **外壳**（已完成）：窗口、标题栏、导航、主题切换、设置页、页面骨架。
 2. **领域 + 存储**（已完成）：`internal/domain` 核心形状；`internal/store` 用
-   `modernc.org/sqlite` 打开工作空间，schema v1 与迁移、账本 / 记录 / 分类标签 / 模板仓储。
-3. **记账**：记录 / 标签 / 模板已接工作空间（记录：SQL 范围过滤 / 排序 + 内存分页；标签：
-   分类标签 CRUD / 计数 / 排序；模板：CRUD / 排序 / 记录弹窗下拉）；分析图表、
-   记录的条件筛选（标签 / 描述）还没做。
+   `modernc.org/sqlite` 打开工作空间，schema v1→v2 与迁移、账本 / 记录 / 分类标签 / 模板 /
+   图表仓储。
+3. **记账**：记录 / 分析 / 标签 / 模板已接工作空间（记录：SQL 范围过滤 / 排序 + 内存分页；
+   分析：图表持久化、折线 / 饼图 SQL 聚合、曲线条件与合计；标签：分类标签 CRUD / 计数 /
+   排序；模板：CRUD / 排序 / 记录弹窗下拉）；记录的条件筛选（标签 / 描述）还没接入列表。
 4. **待办**：卡片、四象限、六档紧急度 / 重要度、进度记录、历史。
 5. **事件与日记**：事件画廊、图片资产、实况照片；日记树、心情、导入导出。
 6. **股票**：账户、持仓、成交记录、轮次、费用算法、统计、天梯、设置。
@@ -156,8 +164,8 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
 - 配置是用户数据：生产 `~/.transactions.json`，开发 `~/.transactions.dev.json`；升级 / 降级都必须保留未知键。
 - 每个工作空间一个独立 SQLite 数据库；图片资产在工作空间 `data/assets` 下，引用相对路径。
 - 新库 schema 版本在 `app_meta.schema_version`，从 1 连续递增；迁移升级前写
-  `transactions.db.bak`。新库不建股票表，也不建立股票与账本的关联；旧库通过导入工具复制
-  记账六张表，不直接打开。
+  `transactions.db.bak`。v2 增加 `chart` 表（图表配置与排序）。新库不建股票表，也不建立
+  股票与账本的关联；旧库通过导入工具复制记账表与 chart，不直接打开。
 - 打开工作空间只做 `PRAGMA quick_check`；全量 `integrity_check` 只用于备份与恢复两个显式动作。
   库坏了就报告并引导从备份恢复，不自动修复、不静默建空库。
 - 恢复必然重启；恢复前的当前数据先另存为 `pre-restore-*`；手动备份是「库 + assets」目录，

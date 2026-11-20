@@ -53,6 +53,65 @@ type RecordEntry struct {
 	Tags   []string
 }
 
+// ChartPoint is one time bucket of one line. Time is "YYYY-MM" for a monthly
+// chart and "YYYY" for a yearly chart; missing buckets are present with 0.
+type ChartPoint struct {
+	Time   string
+	Amount int64
+}
+
+// ChartLineData is one chart curve, already aligned with the chart's labels.
+type ChartLineData struct {
+	Label           string
+	TransactionType string
+	Data            []ChartPoint
+}
+
+// ChartStatistics is the range's income / expense / transfer totals, used by the
+// analysis summary.
+type ChartStatistics struct {
+	Income   int64
+	Expense  int64
+	Transfer int64
+}
+
+// ChartQuery asks for a line chart's buckets in a local-date range.
+type ChartQuery struct {
+	LedgerID    string
+	StartDate   string
+	EndDate     string
+	Granularity string // "month" or "year"
+	Lines       []domain.ChartLine
+}
+
+// ChartPieQuery asks for a pie chart's groups in a local-date range.
+type ChartPieQuery struct {
+	LedgerID             string
+	StartDate            string
+	EndDate              string
+	GroupField           string // "transactionType", "category" or "tag"
+	GroupTransactionType string
+	GroupCategory        string
+}
+
+// ChartPieSlice is one positive group of a pie chart.
+type ChartPieSlice struct {
+	Key    string
+	Label  string
+	Amount int64
+}
+
+// ChartPieResult carries both the slices and the three empty-state counts:
+// rangeRecords is everything in the range, filteredRecords / filteredTotal are
+// after the type/category scope, and total is the slices' sum (tags may repeat).
+type ChartPieResult struct {
+	Slices          []ChartPieSlice
+	Total           int64
+	RangeRecords    int
+	FilteredRecords int
+	FilteredTotal   int64
+}
+
 // LabelSnapshot is one ledger's categories and tags with the record counts the
 // 标签 page and the composer/template forms need.
 type LabelSnapshot struct {
@@ -97,6 +156,22 @@ type Repository interface {
 	// SyncRecord copies a record and its tags to another ledger with a new id;
 	// the key-event date is not copied, as the old row action did.
 	SyncRecord(ctx context.Context, id, targetLedgerID string) error
+
+	// EnsureChartPresets seeds a ledger's two preset charts once. A marker in
+	// app_meta means a deleted preset never comes back.
+	EnsureChartPresets(ctx context.Context, ledgerID string) error
+	Charts(ctx context.Context, ledgerID string) ([]domain.Chart, error)
+	CreateChart(ctx context.Context, chart domain.Chart) (string, error)
+	// UpdateChart writes a chart's editable fields; a preset keeps its preset
+	// flag and creation time.
+	UpdateChart(ctx context.Context, chart domain.Chart) error
+	DeleteChart(ctx context.Context, chartID string) error
+	// ReorderCharts writes sort_order 0..n-1 for the given chart ids.
+	ReorderCharts(ctx context.Context, ledgerID string, ids []string) error
+	// ChartData aggregates each line into the range's month/year buckets.
+	ChartData(ctx context.Context, query ChartQuery) ([]ChartLineData, ChartStatistics, error)
+	// ChartPie aggregates one ledger range by type, category or tag.
+	ChartPie(ctx context.Context, query ChartPieQuery) (ChartPieResult, error)
 
 	Templates(ctx context.Context, ledgerID string) ([]domain.TransactionTemplate, error)
 	CreateTemplate(ctx context.Context, template domain.TransactionTemplate) (string, error)
