@@ -225,7 +225,7 @@ func TestNavigationSwitchesSections(t *testing.T) {
 	}
 
 	click(t, driver, "日记")
-	if !shows(driver, "日记目录树") {
+	if !shows(driver, "还没有日记") || !shows(driver, "今天") {
 		t.Fatal("日记 did not show the diary screen")
 	}
 }

@@ -57,12 +57,18 @@ type Model struct {
 	repo      repository.Repository
 }
 
-// New returns the empty accounting section. The three migrated pages share one
-// ledger store, so their 账本 Selectors always agree, and the records dialog and
-// the 模板 page share one template cache. desktop calls SetRepository once a
-// workspace is open.
-func New() *Model {
-	ledgers := ledger.NewStore()
+// New returns the empty accounting section over a ledger store of its own.
+func New() *Model { return NewWithLedgers(ledger.NewStore()) }
+
+// NewWithLedgers returns the section over a ledger store the shell also gives to
+// the 日记 page, so one 账本 choice is shared by every page that reads a ledger.
+// The migrated pages share one store, so their 账本 Selectors always agree, and
+// the records dialog and the 模板 page share one template cache. desktop calls
+// SetRepository once a workspace is open.
+func NewWithLedgers(ledgers *ledger.Store) *Model {
+	if ledgers == nil {
+		ledgers = ledger.NewStore()
+	}
 	sharedTemplates := tpl.NewCache()
 	return &Model{
 		records:   records.NewWithStores(ledgers, sharedTemplates),
@@ -111,6 +117,10 @@ func (m *Model) SetRepository(repo repository.Repository) error {
 	m.templates.SetDataSource(repo, m.ledgerChanged)
 	return nil
 }
+
+// LedgerStore is the shared list, for the shell to hand the 日记 page: both
+// pages then show and follow the same 账本.
+func (m *Model) LedgerStore() *ledger.Store { return m.ledgers }
 
 // Ledgers are the workspace's ledgers, in the order the selectors show them.
 // The settings page paints the same list, so a rename there is visible here.

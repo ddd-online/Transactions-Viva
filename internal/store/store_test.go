@@ -394,35 +394,34 @@ func TestMigrationBackupRollbackAndVersionChecks(t *testing.T) {
 	workspace := testWorkspace(t)
 	path := workspace.DatabasePath()
 
+	base := targetVersion()
 	bad := []migration{
 		{version: 1, name: "init", sql: initSchema},
 		{version: 2, name: "chart", sql: chartSchema},
-		{version: 3, name: "broken", sql: "CREATE TABLE broken (id INTEGER); INSERT INTO missing VALUES (1);"},
+		{version: 3, name: "diary", sql: diarySchema},
+		{version: 4, name: "broken", sql: "CREATE TABLE broken (id INTEGER); INSERT INTO missing VALUES (1);"},
 	}
-	if err := applyMigrations(workspace.db, path, bad, 2); err == nil {
+	if err := applyMigrations(workspace.db, path, bad, base); err == nil {
 		t.Fatal("broken migration succeeded")
 	}
 	version, _, err := schemaVersion(workspace.db)
-	if err != nil || version != 2 {
+	if err != nil || version != base {
 		t.Fatalf("version after rollback = %d, err=%v", version, err)
 	}
 
-	upgrade := []migration{
-		{version: 1, name: "init", sql: initSchema},
-		{version: 2, name: "chart", sql: chartSchema},
-		{version: 3, name: "ledger_note", sql: "ALTER TABLE ledger ADD COLUMN note TEXT NOT NULL DEFAULT '';"},
-	}
-	if err := applyMigrations(workspace.db, path, upgrade, 2); err != nil {
+	upgrade := append(append([]migration{}, migrations...),
+		migration{version: base + 1, name: "ledger_note", sql: "ALTER TABLE ledger ADD COLUMN note TEXT NOT NULL DEFAULT '';"})
+	if err := applyMigrations(workspace.db, path, upgrade, base); err != nil {
 		t.Fatalf("upgrade: %v", err)
 	}
 	if _, err := os.Stat(path + ".bak"); err != nil {
 		t.Fatalf("upgrade backup: %v", err)
 	}
 	version, _, err = schemaVersion(workspace.db)
-	if err != nil || version != 3 {
+	if err != nil || version != base+1 {
 		t.Fatalf("version after upgrade = %d, err=%v", version, err)
 	}
-	if err := applyMigrations(workspace.db, path, upgrade, 4); !errors.Is(err, ErrVersionTooNew) {
+	if err := applyMigrations(workspace.db, path, upgrade, base+2); !errors.Is(err, ErrVersionTooNew) {
 		t.Fatalf("version too new error = %v", err)
 	}
 }

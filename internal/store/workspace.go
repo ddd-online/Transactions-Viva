@@ -148,8 +148,13 @@ func quickCheck(db *sql.DB) error {
 
 // isOldAccountingDB recognizes the old application's database so opening it can
 // point at the import tool instead of a generic version error.
+//
+// The tables are the ones this workspace still never creates: a diary table is
+// part of the new schema since v3, so its presence says nothing about a foreign
+// database. Stock and event data are not migrated at all, so either table means
+// the file came from the old application.
 func isOldAccountingDB(db *sql.DB) bool {
-	for _, table := range []string{"stock_account", "key_event", "diary_entry"} {
+	for _, table := range []string{"stock_account", "key_event"} {
 		exists, err := tableExists(db, table)
 		if err == nil && exists {
 			return true

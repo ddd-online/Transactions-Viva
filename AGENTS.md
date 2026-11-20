@@ -10,7 +10,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 整体迁移到 **Viva + Go**：没有 Electron、没有 Node、没有内嵌浏览器，窗口与控件由 GPU
 直接绘制。**行为、文案、交互、数据契约一律以旧工程为准，先追平再改进。**
 
-当前阶段：**外壳、配置与通用设置、记账四页与 SQLite 数据层已落地；记账四页读写工作空间；旧数据可导入；股票、待办、事件、日记仍是占位。**
+当前阶段：**外壳、配置与通用设置、记账四页、日记与 SQLite 数据层已落地；记账四页与日记读写工作空间；旧数据可导入；股票、待办、事件仍是占位。**
 
 - 入口是根目录 `main.go`：只做 `log.Fatal(desktop.Run())`，`viva.toml` 的 `package = "."`。
   开发时 `viva dev .`，一次性运行 `go run .`。注意：`viva dev` 的 reload host 不转发原生
@@ -66,20 +66,32 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   标签取所选分类下的多选器（Viva `PaintMultiSelect`，与记一笔共用同一套键盘 / 滚轮 / 输入路由）。
   模板存在 `transaction_template` 表，`internal/pages/accounting/template` 只是同步绘制用的
   缓存；记录页「记一笔」的模板下拉与模板页读同一份缓存，新建的模板马上能在弹窗里选到。
+- 日记页已迁移前端：工具栏是共享账本、今天、日期字段、保存状态与「删除日记」；左栏是
+  年 → 月 → 日 的日期树（年 / 月行带篇数，日行带心情 emoji 与字数，点年份或月份展开收起），
+  右栏是当天的标题（日期 + 星期 + 字数 + 心情分段）与正文卡。正文是纯文本，心情是五个 emoji
+  加一个清除档；**自动保存**：最后一次改动后停 600ms 落库，工具栏依次显示 已保存 / 未保存 /
+  保存失败，切日期、切账本、离开页面与删除前先把草稿写完。字数按 Unicode 码点算。日记按账本
+  隔离（`(ledger_id, date)` 唯一），旧数据里的中文心情读出时映射到同一套 emoji。文字区域用
+  `ui.Field`（`ui.TextArea(c, &m.body, …)`）——字符串绑定要到字段声明时才同步，字数那一行在它
+  之前声明，只有直接读字段才能在同一个 paint 里数到刚敲的字。
+- 设置 ·「日记配置」已可用：按目录批量导入（递归扫 `YYYY-MM-DD.txt`，编码回退链
+  UTF-8 → UTF-16(BOM) → GBK → 非法字节换 `?`）与按全部 / 年 / 月导出（写 `<date>.txt`，UTF-8）。
+  文件与目录由 `internal/diary` 处理，弹目录选择器与回调在 `internal/desktop`，页面只显示结果；
+  导入后日记页重载，不用再切一次页面。
 - 用户配置已落地：`internal/config` 读写 `~/.transactions.json`（`viva dev` 期间是
   `~/.transactions.dev.json`），逐字段归一化，写回保留未知顶层键，写入走 `.tmp` + rename。
   窗口尺寸 / 位置（关闭时保存）、工作空间、外观、关闭行为、功能开关与账本级覆盖都在里面；
   `desktop.Run` 启动时加载，设置页的改动立即写回。
-- SQLite 工作空间已落地：目录里的 `transactions.db`，schema v2 含 `app_meta` /
+- SQLite 工作空间已落地：目录里的 `transactions.db`，schema v3 含 `app_meta` /
   `ledger` / `transaction_record` / `transaction_record_tag` / `category` / `tag` /
-  `transaction_template` / `chart`（列与旧库兼容，不建股票等表）。打开时 `quick_check`、版本迁移
+  `transaction_template` / `chart` / `diary_entry`（列与旧库兼容，不建股票等表）。打开时 `quick_check`、版本迁移
   （升级前 `VACUUM INTO <db>.bak`）、拒绝损坏 / 陌生 / 旧版 / 更高版本库。空工作空间
   自动创建「默认账本」并播种默认分类标签；设置里切换工作空间先打开新库，失败保留旧库。
   没有工作空间时内容区显示「打开工作空间」门禁，设置仍可进入。
 - 通用设置（除网络代理）已可用：工作空间（目录选择器，记入最近 5 条）、外观（浅色 / 深色 /
   跟随系统，标题栏的明暗开关写同一份配置，系统换色时自动重绘）、关闭行为（直接退出 /
   最小化到托盘 / 每次询问；托盘用 Viva 的 StatusItem，没有托盘时回退为退出）。功能开关会
-  立即从左侧导航移除对应分区；网络代理、数据备份与日记配置仍是占位；关于软件已可用（版本 / 构建 / 平台 / 运行时、
+  立即从左侧导航移除对应分区；网络代理与数据备份仍是占位；关于软件已可用（版本 / 构建 / 平台 / 运行时、
 复制版本信息、项目与问题反馈链接）。
 - 运行入口按模式分叉：`viva dev`（有 `VIVA_RELOAD_ADDRESS`）必须走 `app.RunCanvas`——开发
   重载 worker 只在 `RunCanvas` 里连接宿主，换成 `RunApplication` 会打开真窗口并让宿主等
@@ -118,6 +130,8 @@ internal/pages/          各功能页：accounting、stock、todo、events、dia
   accounting/template/   模板缓存与 domain 互转（按账本存放，记录弹窗与模板页共用）
   accounting/templates/  模板页（表格 / 新建与删除弹窗 / 拖拽排序）
   accounting/analysis/   分析页（图表列表 / 折线图 / 饼图 / 曲线条件 / 合计）
+  diary/                 日记页（日期树 / 正文 / 心情 / 自动保存 / 删除）
+internal/diary/          日记文件的导入导出（扫描、编码回退链、写文件），只依赖 domain 与 repository
 internal/components/     可复用的 UI：占位空态，datepicker / pagination / selectbox / semantic 子包
 internal/pages/settings/controls/  只属于设置页的分组卡片 / 设置行
 internal/domain/         纯领域规则与数据形状：金额、记录、账本、事件、日记、待办、股票
@@ -125,7 +139,7 @@ internal/repository/     页面使用的数据契约（接口 / 查询 / 错误�
 internal/config/         应用配置：形状、默认值、读写与归一化（~/.transactions.json）
 internal/store/          SQLite 工作空间、schema / 迁移 / 仓储 / 旧库导入
   storetest/             测试用的临时工作空间与种子数据
-  schema/                schema SQL（0001_init.sql / 0002_chart.sql）
+  schema/                schema SQL（0001_init.sql / 0002_chart.sql / 0003_diary.sql）
 cmd/tr-import/           旧工作空间导入命令
 docs/architecture.md     分层规则、旧模块到新包的映射、迁移顺序
 ```
@@ -160,7 +174,7 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
    分析：图表持久化、折线 / 饼图 SQL 聚合、曲线条件与合计；标签：分类标签 CRUD / 计数 /
    排序；模板：CRUD / 排序 / 记录弹窗下拉）；记录的条件筛选（标签 / 描述）还没接入列表。
 4. **待办**：卡片、四象限、六档紧急度 / 重要度、进度记录、历史。
-5. **事件与日记**：事件画廊、图片资产、实况照片；日记树、心情、导入导出。
+5. **事件**：事件画廊、图片资产、实况照片。（日记已完成：树、心情、正文、导入导出。）
 6. **股票**：账户、持仓、成交记录、轮次、费用算法、统计、天梯、设置。
 7. **设置与数据**：配置持久化、通用设置与五个功能开关、工作空间打开与旧数据导入已完成；
    网络代理、数据备份 / 恢复、更新检查还在后面。
@@ -175,7 +189,9 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
 - 配置是用户数据：生产 `~/.transactions.json`，开发 `~/.transactions.dev.json`；升级 / 降级都必须保留未知键。
 - 每个工作空间一个独立 SQLite 数据库；图片资产在工作空间 `data/assets` 下，引用相对路径。
 - 新库 schema 版本在 `app_meta.schema_version`，从 1 连续递增；迁移升级前写
-  `transactions.db.bak`。v2 增加 `chart` 表（图表配置与排序）。新库不建股票表，也不建立
+  `transactions.db.bak`。v2 增加 `chart` 表（图表配置与排序），v3 增加 `diary_entry`
+  （每账本每天一篇，`(ledger_id, date)` 唯一；旧库识别不再看 `diary_entry`，改看只有旧工程才有的
+  股票 / 事件表）。新库不建股票表，也不建立
   股票与账本的关联；旧库通过导入工具复制记账表与 chart，不直接打开。
 - 打开工作空间只做 `PRAGMA quick_check`；全量 `integrity_check` 只用于备份与恢复两个显式动作。
   库坏了就报告并引导从备份恢复，不自动修复、不静默建空库。

@@ -1,14 +1,22 @@
 package desktop
 
 import (
+	"context"
+	"errors"
 	"strings"
 
 	"github.com/vivaui/viva/app"
 
 	"transactions/internal/config"
+	diarysrv "transactions/internal/diary"
+	"transactions/internal/domain"
 	"transactions/internal/pages/settings"
 	storepkg "transactions/internal/store"
 )
+
+// errNoDiaryWorkspace is what the 日记配置 commands report while no workspace is
+// open; the section disables them, so this only guards a stale click.
+var errNoDiaryWorkspace = errors.New("还没有打开工作空间")
 
 // settingsSpec is what the settings page paints and the commands it calls. The
 // shell owns the configuration, the theme and the navigation, so every write
@@ -31,7 +39,83 @@ func (m *Model) settingsSpec() settings.Spec {
 		OnDeleteLedger:  m.deleteLedger,
 		OpenURL:         m.openExternalURL,
 		CopyText:        m.copyToClipboard,
+		ImportDiary:     m.importDiary,
+		ExportDiary:     m.exportDiary,
 	}
+}
+
+// diaryDirectory asks the user for the directory an import reads or an export
+// writes. The empty string is a dismissed picker, which is not an error.
+func (m *Model) diaryDirectory(title string) (string, error) {
+	directory, err := m.pickDirectory(title)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(directory), nil
+}
+
+// importDiary scans a picked directory and writes its diary files into the
+// ledger the 日记 page shows. The page is reloaded afterwards so the imported
+// days appear in its tree without a second visit.
+func (m *Model) importDiary() (settings.DiaryImport, error) {
+	if m.workspace == nil || m.ledgers.Active() == "" {
+		return settings.DiaryImport{}, errNoDiaryWorkspace
+	}
+	directory, err := m.diaryDirectory("选择日记导入目录")
+	if err != nil {
+		return settings.DiaryImport{}, err
+	}
+	if directory == "" {
+		return settings.DiaryImport{Canceled: true}, nil
+	}
+	result, err := diarysrv.Import(context.Background(), m.workspace, m.ledgers.Active(), directory)
+	if err != nil {
+		return settings.DiaryImport{}, err
+	}
+	m.diary.Reload()
+	m.invalidate()
+	failures := make([]string, 0, len(result.Failures))
+	for _, failure := range result.Failures {
+		failures = append(failures, failure.Date+": "+failure.Message)
+	}
+	return settings.DiaryImport{
+		Imported: result.Imported, Total: result.Total, Failures: failures,
+	}, nil
+}
+
+// exportDiary writes the shown ledger's diary to a picked directory, filtered by
+// the section's scope. period is one day of the year or month to take.
+func (m *Model) exportDiary(scope domain.DiaryExportScope, period string) (settings.DiaryExport, error) {
+	if m.workspace == nil || m.ledgers.Active() == "" {
+		return settings.DiaryExport{}, errNoDiaryWorkspace
+	}
+	directory, err := m.diaryDirectory("选择日记导出目录")
+	if err != nil {
+		return settings.DiaryExport{}, err
+	}
+	if directory == "" {
+		return settings.DiaryExport{Canceled: true}, nil
+	}
+	query := domain.DiaryExportQuery{Scope: scope}
+	if parsed, ok := domain.ParseDiaryDate(period); ok {
+		if scope != domain.DiaryScopeAll {
+			query.Year = parsed.Year()
+		}
+		if scope == domain.DiaryScopeMonth {
+			query.Month = int(parsed.Month())
+		}
+	}
+	result, err := diarysrv.Export(context.Background(), m.workspace, m.ledgers.Active(), directory, query)
+	if err != nil {
+		return settings.DiaryExport{}, err
+	}
+	failures := make([]string, 0, len(result.Failures))
+	for _, failure := range result.Failures {
+		failures = append(failures, failure.Date+": "+failure.Message)
+	}
+	return settings.DiaryExport{
+		Written: result.Written, Total: result.Total, Failures: failures,
+	}, nil
 }
 
 // openExternalURL opens a place outside the window: the About page's project

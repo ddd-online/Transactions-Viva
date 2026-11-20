@@ -15,6 +15,7 @@ var schemaFiles embed.FS
 
 var initSchema = mustReadSchema("schema/0001_init.sql")
 var chartSchema = mustReadSchema("schema/0002_chart.sql")
+var diarySchema = mustReadSchema("schema/0003_diary.sql")
 
 func mustReadSchema(name string) string {
 	data, err := schemaFiles.ReadFile(name)
@@ -35,6 +36,7 @@ type migration struct {
 var migrations = []migration{
 	{version: 1, name: "init", sql: initSchema},
 	{version: 2, name: "chart", sql: chartSchema},
+	{version: 3, name: "diary", sql: diarySchema},
 }
 
 func targetVersion() int { return migrations[len(migrations)-1].version }

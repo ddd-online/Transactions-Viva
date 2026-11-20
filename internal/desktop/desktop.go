@@ -14,6 +14,7 @@ import (
 	"transactions/internal/config"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting"
+	"transactions/internal/pages/accounting/ledger"
 	"transactions/internal/pages/diary"
 	"transactions/internal/pages/events"
 	"transactions/internal/pages/settings"
@@ -70,16 +71,22 @@ type Model struct {
 	expandedOpen bool
 
 	accounting *accounting.Model
-	stock      *stock.Model
-	todo       *todo.Model
-	events     *events.Model
-	diary      *diary.Model
-	settings   *settings.Model
+	// ledgers is the list every ledger-aware page reads: 记账 and 日记.
+	ledgers  *ledger.Store
+	stock    *stock.Model
+	todo     *todo.Model
+	events   *events.Model
+	diary    *diary.Model
+	settings *settings.Model
 
 	// workspace is the open SQLite workspace; nil means the user still has to
 	// choose one. workspaceErr is the last open failure, shown by the gate.
 	workspace    *storepkg.Workspace
 	workspaceErr string
+
+	// pickDirectory is the platform's directory chooser, for the workspace and
+	// the diary import / export; tests replace it.
+	pickDirectory func(title string) (string, error)
 }
 
 // New returns the shell with the default configuration, pinned to the light
@@ -95,19 +102,26 @@ func New() *Model {
 // NewWithConfig returns the shell over cfg and, when store is not nil, saves
 // every later change through it. The shell opens on the first enabled feature.
 func NewWithConfig(cfg config.AppConfig, store *config.Store) *Model {
+	// The 记账 pages and the 日记 page read one ledger list, so switching 账本 on
+	// either one is the same choice.
+	ledgers := ledger.NewStore()
 	m := &Model{
 		config:      cfg,
 		configStore: store,
-		accounting:  accounting.New(),
+		accounting:  accounting.NewWithLedgers(ledgers),
+		ledgers:     ledgers,
 		stock:       stock.New(),
 		todo:        todo.New(),
 		events:      events.New(),
-		diary:       diary.New(),
+		diary:       diary.New(ledgers),
 		settings:    settings.New(),
 	}
-	m.pickWorkspace = func() (string, error) {
-		return app.OpenDirectory(app.OpenDirectoryOptions{Title: "选择工作空间"})
+	// pickDirectory is the platform's directory chooser. Tests replace it, so a
+	// run never opens a real dialog; the diary import and export use it too.
+	m.pickDirectory = func(title string) (string, error) {
+		return app.OpenDirectory(app.OpenDirectoryOptions{Title: title})
 	}
+	m.pickWorkspace = func() (string, error) { return m.pickDirectory("选择工作空间") }
 	m.refreshTheme()
 	m.section = m.firstEnabledSection()
 	if m.section != SectionSettings {

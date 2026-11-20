@@ -9,11 +9,13 @@
 package settings
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/datepicker"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/typography"
 	"transactions/internal/config"
@@ -134,6 +136,29 @@ type Spec struct {
 	// CopyText puts text on the clipboard; 关于软件 uses both.
 	OpenURL  func(target string) error
 	CopyText func(value string) error
+
+	// ImportDiary and ExportDiary are 日记配置's two commands: the shell asks the
+	// user for a directory and moves the files, so the page stays free of the
+	// file system. nil means no workspace is open and the buttons are disabled.
+	ImportDiary func() (DiaryImport, error)
+	ExportDiary func(scope domain.DiaryExportScope, period string) (DiaryExport, error)
+}
+
+// DiaryImport is what one batch import did, as the section's status line reads
+// it. Canceled is the user closing the directory picker: nothing to report.
+type DiaryImport struct {
+	Canceled bool
+	Imported int
+	Total    int
+	Failures []string
+}
+
+// DiaryExport is what one export wrote. Canceled is the same closed picker.
+type DiaryExport struct {
+	Canceled bool
+	Written  int
+	Total    int
+	Failures []string
 }
 
 // appearanceOptions is the segmented 外观 control, in the old page's order.
@@ -188,6 +213,20 @@ type Model struct {
 	ledgerForm ledgerForm
 	// ledgerDelete is the confirmation for removing one ledger.
 	ledgerDelete ledgerDelete
+
+	// diary is 日记配置's own state: what an export covers, the period it
+	// picked, and the last command's status or failures.
+	diary diaryState
+}
+
+// diaryState is the 日记配置 section's draft: the export scope, the period it
+// applies to, that period's picker, and the last command's result.
+type diaryState struct {
+	scope   domain.DiaryExportScope
+	period  string
+	pick    datepicker.State
+	status  string
+	failure string
 }
 
 // ledgerForm is one ledger being created or edited. The two FormFieldStates are
@@ -280,6 +319,8 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 					m.ledgers(c, spec)
 				case tabFeatures:
 					m.features(c, spec)
+				case tabDiary:
+					m.diaryConfig(c, spec)
 				case tabAbout:
 					m.about(c, spec)
 				default:
@@ -510,6 +551,116 @@ func (m *Model) features(c ui.C, spec Spec) {
 			})
 		}
 	})
+}
+
+// diaryConfig is 日记配置: the batch import and the scoped export. Both ask the
+// shell for a directory; the section only reports what came of it, so the same
+// card explains a failed file as it explains a finished batch.
+//
+// Each command sits on the row that names it, the way 通用设置 puts 切换 beside
+// 工作空间: the icon-free buttons are quiet, and a finished batch reports itself
+// on the line under the card.
+func (m *Model) diaryConfig(c ui.C, spec Spec) {
+	theme := c.Theme()
+	ready := spec.ImportDiary != nil && spec.ExportDiary != nil
+	controls.Card(c, func() {
+		controls.Row(c, "导入日记", "按目录批量导入，文件名需为 YYYY-MM-DD.txt。", func() {
+			button := ui.Button(c, "批量导入").Secondary().Disabled(!ready)
+			if button.Clicked() {
+				m.importDiary(spec)
+			}
+		})
+		ui.Divider(c)
+		controls.Row(c, "导出日记", "存成 YYYY-MM-DD.txt，之后可以再导入。", func() {
+			button := ui.Button(c, "批量导出").Secondary().Disabled(!ready)
+			if button.Clicked() {
+				m.exportDiary(spec)
+			}
+		})
+		ui.Divider(c)
+		controls.Row(c, "导出范围", "", func() {
+			if ui.Choice(c, &m.diary.scope, domain.DiaryExportScopeNames[:],
+				domain.DiaryExportScope.Label).Changed() {
+				m.diary.status, m.diary.failure = "", ""
+				m.ensurePeriod()
+			}
+			if m.diary.scope == domain.DiaryScopeAll {
+				return
+			}
+			grain := datepicker.ByYear
+			if m.diary.scope == domain.DiaryScopeMonth {
+				grain = datepicker.ByMonth
+			}
+			datepicker.Picker(c, &m.diary.pick, datepicker.Spec{
+				Label: "导出期间", Start: m.diary.period, Grain: grain,
+				CloseOnPick: true, Viewport: c.Bounds(),
+				OnRange: func(start, _ string) {
+					m.diary.period, m.diary.status, m.diary.failure = start, "", ""
+				},
+			})
+		})
+	})
+	if m.diary.status != "" {
+		typography.Caption(c, m.diary.status).MarginTop(layout.Gap).Color(theme.MutedForeground)
+	}
+	if m.diary.failure != "" {
+		typography.CaptionParagraph(c, m.diary.failure, 4).
+			Color(theme.Danger).MarginTop(layout.Gap)
+	}
+	if !ready {
+		typography.Caption(c, "打开工作空间后才能导入 / 导出日记。").
+			MarginTop(layout.Gap).Color(theme.MutedForeground)
+	}
+}
+
+// ensurePeriod gives the export a period to start from, at the scope's grain:
+// the current year or the current month.
+func (m *Model) ensurePeriod() {
+	if m.diary.period != "" {
+		return
+	}
+	today, ok := domain.ParseDiaryDate(domain.DiaryToday())
+	if !ok {
+		return
+	}
+	m.diary.period = today.Format("2006-01-02")
+}
+
+// importDiary runs the shell's import and reports what it did.
+func (m *Model) importDiary(spec Spec) {
+	if spec.ImportDiary == nil {
+		return
+	}
+	m.diary.status, m.diary.failure = "", ""
+	result, err := spec.ImportDiary()
+	if err != nil {
+		m.diary.failure = err.Error()
+		return
+	}
+	if result.Canceled {
+		return
+	}
+	m.diary.status = fmt.Sprintf("导入 %d/%d 篇", result.Imported, result.Total)
+	m.diary.failure = strings.Join(result.Failures, "\n")
+}
+
+// exportDiary runs the shell's export for the chosen scope and period.
+func (m *Model) exportDiary(spec Spec) {
+	if spec.ExportDiary == nil {
+		return
+	}
+	m.diary.status, m.diary.failure = "", ""
+	m.ensurePeriod()
+	result, err := spec.ExportDiary(m.diary.scope, m.diary.period)
+	if err != nil {
+		m.diary.failure = err.Error()
+		return
+	}
+	if result.Canceled {
+		return
+	}
+	m.diary.status = fmt.Sprintf("导出 %d/%d 篇", result.Written, result.Total)
+	m.diary.failure = strings.Join(result.Failures, "\n")
 }
 
 // pending is a section whose controls are migrated in a later stage: each row

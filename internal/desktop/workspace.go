@@ -35,6 +35,7 @@ func (m *Model) openConfiguredWorkspace() {
 func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 	if workspace == nil {
 		m.accounting.SetRepository(nil)
+		m.diary.SetDataSource(nil)
 		if m.workspace != nil {
 			_ = m.workspace.Close()
 			m.workspace = nil
@@ -47,9 +48,12 @@ func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 		}
 		if m.workspace != nil {
 			_ = m.accounting.SetRepository(m.workspace)
+			m.diary.SetDataSource(m.workspace)
 		}
 		return err
 	}
+	// The 日记 page reads the same workspace and the same ledger list.
+	m.diary.SetDataSource(workspace)
 	previous := m.workspace
 	m.workspace = workspace
 	m.workspaceErr = ""
