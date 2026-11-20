@@ -7,9 +7,22 @@ import (
 
 	"github.com/vivaui/viva/gfx"
 
+	"transactions/internal/domain"
 	"transactions/internal/pages/accounting/records/composer"
 	tpl "transactions/internal/pages/accounting/template"
+	"transactions/internal/store/storetest"
 )
+
+func newTestModel(t *testing.T) (*Model, *storetest.Fixture) {
+	t.Helper()
+	fixture := storetest.Open(t)
+	m := New()
+	m.ledgers.Reset([]domain.Ledger{fixture.Home, fixture.Travel})
+	m.SetDataSource(fixture.Workspace, nil)
+	m.rangeStart, m.rangeEnd = "2000-01-01", "2100-01-01"
+	m.Reload()
+	return m, fixture
+}
 
 func TestRecordsRefilter(t *testing.T) {
 	now := time.Now()
@@ -133,9 +146,7 @@ func TestSortHeadersCycleAndOrder(t *testing.T) {
 }
 
 func TestRecordActions(t *testing.T) {
-	m := New()
-	m.rangeStart, m.rangeEnd = "2000-01-01", "2100-01-01"
-	m.refilter()
+	m, fixture := newTestModel(t)
 	if len(m.shown) < 2 {
 		t.Fatalf("shown = %d, want at least 2", len(m.shown))
 	}
@@ -166,8 +177,8 @@ func TestRecordActions(t *testing.T) {
 		t.Fatalf("edit notice = %q", m.notice)
 	}
 
-	m.syncTo(id, "家庭账本")
-	if !strings.Contains(m.notice, "家庭账本") {
+	m.syncTo(id, fixture.Travel.ID)
+	if !strings.Contains(m.notice, "旅行账本") {
 		t.Fatalf("sync notice = %q", m.notice)
 	}
 
@@ -185,10 +196,8 @@ func TestRecordActions(t *testing.T) {
 }
 
 func TestLedgerSelectFiltersTheTable(t *testing.T) {
-	m := New()
-	m.rangeStart, m.rangeEnd = "2000-01-01", "2100-01-01"
-	m.refilter()
-	if m.ledgerID != ledgerHome {
+	m, fixture := newTestModel(t)
+	if m.ledgerID != fixture.Home.ID {
 		t.Fatalf("the page starts on %q, want the family ledger", m.ledgerID)
 	}
 	home := len(m.shown)
@@ -196,18 +205,18 @@ func TestLedgerSelectFiltersTheTable(t *testing.T) {
 		t.Fatal("the family ledger has no rows")
 	}
 	for _, rec := range m.shown {
-		if rec.ledgerID != ledgerHome {
+		if rec.ledgerID != fixture.Home.ID {
 			t.Fatalf("row %q leaked from ledger %q", rec.id, rec.ledgerID)
 		}
 	}
 
-	m.ledgers.SetActive(ledgerTravel)
-	m.syncLedger()
+	m.ledgers.SetActive(fixture.Travel.ID)
+	m.Reload()
 	if len(m.shown) == 0 || len(m.shown) == home {
 		t.Fatalf("the travel ledger shows %d rows, the family ledger %d", len(m.shown), home)
 	}
 	for _, rec := range m.shown {
-		if rec.ledgerID != ledgerTravel {
+		if rec.ledgerID != fixture.Travel.ID {
 			t.Fatalf("row %q belongs to ledger %q", rec.id, rec.ledgerID)
 		}
 	}
@@ -229,20 +238,20 @@ func TestLedgerSelectFiltersTheTable(t *testing.T) {
 			added = &m.records[index]
 		}
 	}
-	if added == nil || added.ledgerID != ledgerTravel {
+	if added == nil || added.ledgerID != fixture.Travel.ID {
 		t.Fatalf("the new record = %+v, want the travel ledger", added)
 	}
 
 	// The family ledger still has its own rows and does not see the new one.
-	m.ledgers.SetActive(ledgerHome)
-	m.syncLedger()
+	m.ledgers.SetActive(fixture.Home.ID)
+	m.Reload()
 	if got := len(m.shown); got != home {
 		t.Fatalf("the family ledger = %d rows, want its original %d", got, home)
 	}
 }
 
 func TestSaveDraftValidates(t *testing.T) {
-	m := New()
+	m, _ := newTestModel(t)
 	before := len(m.records)
 	cases := []struct {
 		name  string
@@ -271,19 +280,27 @@ func TestSaveDraftValidates(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("a valid draft failed: %v", err)
 	}
-	last := m.records[len(m.records)-1]
-	if last.amount != 1200 || last.category != "餐饮美食" || !last.outlier ||
+	var last *record
+	for index := range m.records {
+		if m.records[index].description == "" && m.records[index].amount == 1200 {
+			last = &m.records[index]
+		}
+	}
+	if last == nil || last.category != "餐饮美食" || !last.outlier ||
 		last.keyEventDate != "2026-01-01" || len(last.tags) != 1 {
 		t.Fatalf("saved row = %+v", last)
 	}
 }
 
 func TestSaveTemplate(t *testing.T) {
-	m := New()
+	m, _ := newTestModel(t)
 	before := len(m.templates.List(m.ledgerID))
-	template := m.saveTemplate(tpl.Template{
+	template, err := m.saveTemplate(tpl.Template{
 		Name: "支出 · 测试", Kind: tpl.KindExpense, Category: "测试", Description: "测试",
 	})
+	if err != nil {
+		t.Fatalf("saveTemplate: %v", err)
+	}
 	if template.ID == "" {
 		t.Fatal("the stored template has no id")
 	}
@@ -296,7 +313,7 @@ func TestSaveTemplate(t *testing.T) {
 }
 
 func TestCategoryNamesFollowTheType(t *testing.T) {
-	m := New()
+	m, _ := newTestModel(t)
 	expense := m.categoryNames("支出", "")
 	if len(expense) == 0 || expense[0] != "餐饮美食" {
 		t.Fatalf("支出 categories = %v", expense)

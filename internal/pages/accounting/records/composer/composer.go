@@ -47,16 +47,17 @@ type Spec struct {
 	// another type: the old form's autocomplete kept its text when the type
 	// changed.
 	Categories func(kind, current string) []string
-	// TagOptions are the 标签 choices.
-	TagOptions func() []string
+	// TagOptions are the 标签 choices under a type and category; the dialog
+	// asks again when either changes.
+	TagOptions func(kind, category string) []string
 	// Templates are the 模板 choices.
 	Templates func() []tpl.Template
 	// OnSave validates and writes the draft. A non-nil error keeps the dialog
 	// open with the message under its fields.
 	OnSave func(Draft) error
 	// OnTemplate turns the dialog's repeating fields into a template; it returns
-	// the stored one, with its id, so the dialog can select it.
-	OnTemplate func(tpl.Template) tpl.Template
+	// the stored one, with its id, and an error the dialog shows.
+	OnTemplate func(tpl.Template) (tpl.Template, error)
 }
 
 // fields are the FormField scratch values, one per field; ui.FormField keeps its
@@ -100,6 +101,7 @@ type State struct {
 	mark        string
 	templateID  string
 	templateMsg string
+	templateErr string
 	err         string
 }
 
@@ -123,7 +125,7 @@ func (state *State) IsOpen() bool { return state.open }
 func (state *State) Open(draft Draft) {
 	state.open = true
 	state.draft = draft
-	state.templateID, state.templateMsg, state.err = "", "", ""
+	state.templateID, state.templateMsg, state.templateErr, state.err = "", "", "", ""
 	state.mark = ""
 	if draft.Outlier {
 		state.mark = markOutlier
@@ -142,7 +144,7 @@ func (state *State) Close() {
 
 // View declares the dialog while it is open.
 func (state *State) View(c ui.C, spec Spec) {
-	state.syncTagOptions(spec.TagOptions)
+	state.syncTagOptions(spec.TagOptions, state.draft.Kind, state.draft.Category)
 	title := "新增记录"
 	if state.draft.EditingID != "" {
 		title = "编辑记录"
@@ -226,6 +228,9 @@ func (state *State) templateField(c ui.C, spec Spec) {
 	if state.templateMsg != "" {
 		ui.Text(c, state.templateMsg).FontSize(11).Color(c.Theme().Success)
 	}
+	if state.templateErr != "" {
+		ui.Text(c, state.templateErr).FontSize(11).Color(c.Theme().Danger)
+	}
 }
 
 // formField declares one half of a two-column form row with Viva's FormField,
@@ -301,11 +306,11 @@ func (state *State) multiSelect(c ui.C, spec Spec) {
 }
 
 // syncTagOptions hands the multi-select its choices when they change.
-func (state *State) syncTagOptions(options func() []string) {
+func (state *State) syncTagOptions(options func(kind, category string) []string, kind, category string) {
 	if options == nil {
 		return
 	}
-	values := options()
+	values := options(kind, category)
 	same := len(values) == len(state.tags.values)
 	for index := range values {
 		if !same || values[index] != state.tags.values[index] {
@@ -403,7 +408,7 @@ func (state *State) saveTemplate(spec Spec) {
 	if strings.TrimSpace(state.draft.Category) == "" {
 		name = state.draft.Kind + " · 模板"
 	}
-	stored := spec.OnTemplate(tpl.Template{
+	stored, err := spec.OnTemplate(tpl.Template{
 		Name:        name,
 		Kind:        tpl.KindValue(state.draft.Kind),
 		Category:    strings.TrimSpace(state.draft.Category),
@@ -411,8 +416,12 @@ func (state *State) saveTemplate(spec Spec) {
 		Tags:        append([]string(nil), state.tags.state.Values()...),
 		Outlier:     state.mark == markOutlier,
 	})
+	if err != nil {
+		state.templateMsg, state.templateErr = "", "模板保存失败："+err.Error()
+		return
+	}
 	state.templateID = stored.ID
-	state.templateMsg = "模板已保存"
+	state.templateMsg, state.templateErr = "模板已保存", ""
 }
 
 // save validates the draft through the page and closes when it took it.

@@ -3,53 +3,55 @@ package template
 import (
 	"testing"
 
-	"transactions/internal/pages/accounting/ledger"
+	"transactions/internal/domain"
 )
 
-func TestStoreKeepsOneListPerLedger(t *testing.T) {
-	store := NewStore()
-	home := store.List(ledger.HomeID)
-	travel := store.List(ledger.TravelID)
-	if len(home) != 3 || len(travel) != 2 {
-		t.Fatalf("home = %d, travel = %d templates", len(home), len(travel))
+func TestCacheKeepsOneListPerLedger(t *testing.T) {
+	cache := NewCache()
+	cache.Set("home", []Template{{ID: "a", LedgerID: "home"}, {ID: "b", LedgerID: "home"}})
+	cache.Set("travel", []Template{{ID: "c", LedgerID: "travel"}})
+	if got := len(cache.List("home")); got != 2 {
+		t.Fatalf("home = %d", got)
 	}
-	if home[0].LedgerID != ledger.HomeID || travel[0].LedgerID != ledger.TravelID {
-		t.Fatal("a template is in the wrong ledger's list")
+	if got := len(cache.List("travel")); got != 1 {
+		t.Fatalf("travel = %d", got)
+	}
+	if got := cache.List("missing"); len(got) != 0 {
+		t.Fatalf("missing = %v", got)
+	}
+	cache.Clear()
+	if len(cache.List("home")) != 0 || len(cache.List("travel")) != 0 {
+		t.Fatal("Clear left a ledger's templates")
+	}
+}
+
+func TestDomainConversion(t *testing.T) {
+	stored := domain.TransactionTemplate{
+		TemplateID: "id", LedgerID: "ledger", TemplateName: "午餐", TransactionType: KindExpense,
+		Category: "餐饮美食", Tags: `["三餐","外卖"]`, Flags: "outlier", Description: "午餐",
+	}
+	page := FromDomain(stored)
+	if page.ID != "id" || page.Name != "午餐" || page.Kind != KindExpense || page.Category != "餐饮美食" ||
+		len(page.Tags) != 2 || !page.Outlier || page.Description != "午餐" {
+		t.Fatalf("page = %+v", page)
+	}
+	back := ToDomain(page)
+	if back.TemplateID != "id" || back.LedgerID != "ledger" || back.Tags != `["三餐","外卖"]` || back.Flags != "outlier" {
+		t.Fatalf("back = %+v", back)
 	}
 
-	added := store.Add(Template{LedgerID: ledger.TravelID, Name: "门票 · 娱乐休闲", Kind: KindExpense, Category: "娱乐休闲"})
-	if added.ID == "" {
-		t.Fatal("the stored template has no id")
+	empty := ToDomain(Template{Name: "x"})
+	if empty.Tags != "[]" || empty.Flags != "" {
+		t.Fatalf("empty = %+v", empty)
 	}
-	if got := len(store.List(ledger.TravelID)); got != len(travel)+1 {
-		t.Fatalf("travel templates = %d, want %d", got, len(travel)+1)
+	if tags := ParseTags("null"); tags != nil {
+		t.Fatalf("null tags = %v", tags)
 	}
-	if got := len(store.List(ledger.HomeID)); got != len(home) {
-		t.Fatalf("adding a travel template changed home: %d", got)
+	if tags := ParseTags("[not json"); tags != nil {
+		t.Fatalf("broken tags = %v", tags)
 	}
-
-	store.Move(ledger.TravelID, len(store.List(ledger.TravelID))-1, 0)
-	if got := store.List(ledger.TravelID)[0].ID; got != added.ID {
-		t.Fatalf("after the move: %v", store.List(ledger.TravelID))
-	}
-	if got := store.List(ledger.HomeID)[0].ID; got != "tpl-lunch" {
-		t.Fatal("moving a travel template changed the home order")
-	}
-
-	store.Delete(added.ID)
-	if got := len(store.List(ledger.TravelID)); got != len(travel) {
-		t.Fatalf("travel templates = %d, want %d", got, len(travel))
-	}
-	for _, one := range store.List(ledger.TravelID) {
-		if one.ID == added.ID {
-			t.Fatal("the deleted template is still listed")
-		}
-	}
-
-	// A template added without a ledger belongs to the family ledger.
-	fallback := store.Add(Template{Name: "测试"})
-	if fallback.LedgerID != ledger.HomeID {
-		t.Fatalf("fallback ledger = %q", fallback.LedgerID)
+	if !OutlierOf("outlier") || !OutlierOf(`{"outlier":true}`) || OutlierOf("") || OutlierOf(`{"outlier":false}`) {
+		t.Fatal("OutlierOf did not read the stored flags")
 	}
 }
 

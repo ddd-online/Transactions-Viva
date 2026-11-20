@@ -18,6 +18,7 @@ import (
 	"transactions/internal/pages/settings"
 	"transactions/internal/pages/stock"
 	"transactions/internal/pages/todo"
+	storepkg "transactions/internal/store"
 )
 
 // Version is the application version shown in the footer. A release build can
@@ -77,6 +78,11 @@ type Model struct {
 	events     *events.Model
 	diary      *diary.Model
 	settings   *settings.Model
+
+	// workspace is the open SQLite workspace; nil means the user still has to
+	// choose one. workspaceErr is the last open failure, shown by the gate.
+	workspace    *storepkg.Workspace
+	workspaceErr string
 }
 
 // New returns the shell with the default configuration, pinned to the light
@@ -131,6 +137,8 @@ func Run() error {
 	store := config.Load(config.Path(home, development))
 	model := NewWithConfig(store.Config(), store)
 	model.development = development
+	model.openConfiguredWorkspace()
+	defer model.closeWorkspace()
 	page := ui.NewPage(ui.PageConfig{Tree: &model.tree, View: model.page, Theme: &model.theme})
 	if development {
 		// `viva dev` drives the page through the reload worker inside
@@ -323,6 +331,10 @@ func (m *Model) content(c ui.C) {
 		Background(theme.Background).
 		Clip().
 		Children(func() {
+			if m.workspace == nil && m.section != SectionSettings {
+				m.workspaceGate(c)
+				return
+			}
 			switch m.section {
 			case SectionAccounting:
 				m.accounting.View(c)

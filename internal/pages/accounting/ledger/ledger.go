@@ -1,7 +1,7 @@
-// Package ledger is the 记账 section's ledger list and its shared active
-// ledger. The records, tags and templates pages all paint the same 账本 Select
-// and read the same active id while the application runs; the list is mock
-// until internal/store lands.
+// Package ledger is the 记账 section's ledger list and its shared active ledger.
+// The records, tags and templates pages all paint the same 账本 Select and read
+// the same active id while the application runs. The list is loaded from the
+// workspace by accounting.SetRepository.
 package ledger
 
 import (
@@ -9,13 +9,6 @@ import (
 
 	"transactions/internal/components/selectbox"
 	"transactions/internal/domain"
-)
-
-// The mock workspace's ledgers. A record, template and other ledger data carry
-// one of these ids.
-const (
-	HomeID   = "ledger-home"
-	TravelID = "ledger-travel"
 )
 
 // Store is the workspace's ledgers and the active one. Every accounting page
@@ -26,18 +19,34 @@ type Store struct {
 	active string
 }
 
-// NewStore returns the mock workspace: 家庭账本 and 旅行账本, with the family
-// ledger active.
-func NewStore() *Store {
-	items := []domain.Ledger{
-		{ID: HomeID, Name: "家庭账本"},
-		{ID: TravelID, Name: "旅行账本"},
+// NewStore returns an empty ledger list; accounting fills it from the
+// workspace repository.
+func NewStore() *Store { return &Store{} }
+
+// Reset replaces the list with the workspace's ledgers. The active ledger stays
+// selected when it still exists, otherwise the first ledger becomes active.
+func (s *Store) Reset(items []domain.Ledger) {
+	s.items = append(s.items[:0], items...)
+	s.ids = s.ids[:0]
+	for _, item := range s.items {
+		s.ids = append(s.ids, item.ID)
 	}
-	ids := make([]string, len(items))
-	for index, item := range items {
-		ids[index] = item.ID
+	active := s.active
+	found := false
+	for _, item := range s.items {
+		if item.ID == active {
+			found = true
+			break
+		}
 	}
-	return &Store{items: items, ids: ids, active: HomeID}
+	if found {
+		return
+	}
+	if len(s.items) == 0 {
+		s.active = ""
+		return
+	}
+	s.active = s.items[0].ID
 }
 
 // List is the ledgers in the order the selectors show them.

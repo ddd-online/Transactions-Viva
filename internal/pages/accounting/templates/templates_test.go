@@ -3,12 +3,22 @@ package templates
 import (
 	"testing"
 
-	"transactions/internal/pages/accounting/ledger"
+	"transactions/internal/domain"
 	tpl "transactions/internal/pages/accounting/template"
+	"transactions/internal/store/storetest"
 )
 
+func newTestModel(t *testing.T) (*Model, *storetest.Fixture) {
+	t.Helper()
+	fixture := storetest.Open(t)
+	m := New(tpl.NewCache())
+	m.ledgers.Reset([]domain.Ledger{fixture.Home, fixture.Travel})
+	m.SetDataSource(fixture.Workspace, nil)
+	return m, fixture
+}
+
 func TestNewDefaults(t *testing.T) {
-	m := New(tpl.NewStore())
+	m, _ := newTestModel(t)
 	if got := len(m.items()); got != 3 {
 		t.Fatalf("templates = %d, want 3", got)
 	}
@@ -21,13 +31,13 @@ func TestNewDefaults(t *testing.T) {
 	if got := len(m.categories[tpl.KindTransfer]); got != 2 {
 		t.Fatalf("transfer categories = %d, want 2", got)
 	}
-	if got := len(m.tags[tagKey(tpl.KindExpense, "餐饮美食")]); got != 4 {
-		t.Fatalf("餐饮美食 tags = %d, want 4", got)
+	if got := len(m.tags[tagKey(tpl.KindExpense, "餐饮美食")]); got != 10 {
+		t.Fatalf("餐饮美食 tags = %d, want 10", got)
 	}
 }
 
 func TestFormStartsOnExpenseAndResets(t *testing.T) {
-	m := New(tpl.NewStore())
+	m := New(tpl.NewCache())
 	m.openForm()
 	if !m.formOpen || m.form.kind != tpl.KindExpense || m.form.name != "" || m.form.category != "" {
 		t.Fatalf("the new form is %+v", m.form)
@@ -41,7 +51,7 @@ func TestFormStartsOnExpenseAndResets(t *testing.T) {
 }
 
 func TestSaveRequiresNameAndCategory(t *testing.T) {
-	m := New(tpl.NewStore())
+	m, _ := newTestModel(t)
 	m.openForm()
 	m.save()
 	if m.form.err != "模板名称不能为空" {
@@ -76,7 +86,7 @@ func TestSaveRequiresNameAndCategory(t *testing.T) {
 }
 
 func TestKindAndCategoryClearTheirDependants(t *testing.T) {
-	m := New(tpl.NewStore())
+	m := New(tpl.NewCache())
 	m.openForm()
 	m.form.category, m.form.tags, m.form.err = "餐饮美食", []string{"咖啡"}, "x"
 	m.changeKind()
@@ -94,12 +104,12 @@ func TestKindAndCategoryClearTheirDependants(t *testing.T) {
 }
 
 func TestTagSelectionFollowsTheCategory(t *testing.T) {
-	m := New(tpl.NewStore())
+	m, _ := newTestModel(t)
 	m.openForm()
 	m.form.category = "餐饮美食"
 	m.syncTagOptions()
-	if got := len(m.tagSelect.state.Choices()); got != 4 {
-		t.Fatalf("餐饮美食 choices = %d, want 4", got)
+	if got := len(m.tagSelect.state.Choices()); got != 10 {
+		t.Fatalf("餐饮美食 choices = %d, want 10", got)
 	}
 	m.tagSelect.state.SetValues([]string{"咖啡", "外卖"})
 	m.syncTags()
@@ -120,7 +130,7 @@ func TestTagSelectionFollowsTheCategory(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	m := New(tpl.NewStore())
+	m, _ := newTestModel(t)
 	before := len(m.items())
 	one := m.items()[0]
 	m.askDelete(one)
@@ -139,7 +149,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestListReorderMovesTheStore(t *testing.T) {
-	m := New(tpl.NewStore())
+	m, _ := newTestModel(t)
 	first := m.items()[0]
 	m.list.Reorder([]int{0}, 2)
 	if got := m.items()[1].ID; got != first.ID {
@@ -148,7 +158,7 @@ func TestListReorderMovesTheStore(t *testing.T) {
 }
 
 func TestCloseOverlays(t *testing.T) {
-	m := New(tpl.NewStore())
+	m := New(tpl.NewCache())
 	m.formOpen, m.deleteOpen, m.form.err = true, true, "x"
 	m.CloseOverlays()
 	if m.formOpen || m.deleteOpen || m.form.err != "" {
@@ -157,27 +167,27 @@ func TestCloseOverlays(t *testing.T) {
 }
 
 func TestLedgerSwitchShowsItsTemplates(t *testing.T) {
-	m := New(tpl.NewStore())
+	m, fixture := newTestModel(t)
 	if got := len(m.items()); got != 3 {
 		t.Fatalf("family templates = %d, want 3", got)
 	}
-	m.ledgers.SetActive(ledger.TravelID)
-	m.syncLedger()
+	m.ledgers.SetActive(fixture.Travel.ID)
+	m.Reload()
 	items := m.items()
-	if len(items) != 2 || items[0].ID != "tpl-flight" {
+	if len(items) != 2 || items[0].Name != "机票 · 交通出行" {
 		t.Fatalf("travel templates = %v", items)
 	}
-	if m.ledgerID != ledger.TravelID {
+	if m.ledgerID != fixture.Travel.ID {
 		t.Fatalf("ledger = %q", m.ledgerID)
 	}
 
-	// A template created now belongs to the travel ledger.
+	m.openForm()
 	m.form.name, m.form.category = "门票", "娱乐休闲"
 	m.save()
-	if got := m.items(); len(got) != 3 || got[2].LedgerID != ledger.TravelID {
+	if got := m.items(); len(got) != 3 || got[2].LedgerID != fixture.Travel.ID {
 		t.Fatalf("after saving: %v", got)
 	}
-	if got := m.store.List(ledger.HomeID); len(got) != 3 {
+	if got := m.cache.List(fixture.Home.ID); len(got) != 3 {
 		t.Fatalf("the family ledger = %d templates, want 3", len(got))
 	}
 }

@@ -1,10 +1,12 @@
 // Package tags is the 记账 · 标签 screen: the categories of a transaction type on
 // the left and the tags of the chosen category on the right, with add, delete
 // and drag reordering. It follows the old application's category-tag page; the
-// data is mock until internal/store lands.
+// rows come from internal/store through repository.Repository.
 package tags
 
 import (
+	"context"
+	"errors"
 	"strconv"
 	"strings"
 
@@ -13,6 +15,7 @@ import (
 
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting/ledger"
+	"transactions/internal/repository"
 )
 
 // kind is a transaction type: categories and tags belong to one of them.
@@ -35,6 +38,17 @@ func (k kind) label() string {
 		return "转账"
 	}
 	return "支出"
+}
+
+// value is the stored transaction type.
+func (k kind) value() string {
+	switch k {
+	case kindIncome:
+		return "income"
+	case kindTransfer:
+		return "transfer"
+	}
+	return "expense"
 }
 
 // color is the type's semantic hue, taken from the theme.
@@ -79,8 +93,10 @@ type Model struct {
 
 	// ledgers is the section's shared ledger list; ledgerID caches its active
 	// choice so a switch made on another page can clear the chosen category.
-	ledgers  *ledger.Store
-	ledgerID string
+	ledgers         *ledger.Store
+	ledgerID        string
+	repo            repository.Repository
+	onLedgerChanged func()
 
 	categoryList ui.ListState
 	tagList      ui.ListState
@@ -99,8 +115,8 @@ type Model struct {
 	toaster ui.Toaster
 }
 
-// New returns the 标签 page on 支出 with the mock defaults and its own ledger
-// store.
+// New returns an empty 标签 page with its own ledger store. accounting calls
+// SetDataSource once a workspace is open.
 func New() *Model { return NewWithLedger(ledger.NewStore()) }
 
 // NewWithLedger returns the page over the section's shared ledger store.
@@ -112,18 +128,6 @@ func NewWithLedger(ledgers *ledger.Store) *Model {
 	for k := range m.tags {
 		m.tags[k] = map[string][]tag{}
 	}
-	for k := range mockGroups {
-		for _, group := range mockGroups[k] {
-			m.categories[k] = append(m.categories[k], category{
-				id: m.takeID(), name: group.name, count: group.count,
-			})
-			for _, mockTag := range group.tags {
-				m.tags[k][group.name] = append(m.tags[k][group.name], tag{
-					id: m.takeID(), name: mockTag.name, count: mockTag.count,
-				})
-			}
-		}
-	}
 	m.categoryList.Key = m.categoryKey
 	m.categoryList.Label = m.categoryNameAt
 	m.categoryList.Reorder = m.moveCategory
@@ -133,14 +137,119 @@ func NewWithLedger(ledgers *ledger.Store) *Model {
 	return m
 }
 
+// SetDataSource connects the page to the workspace; Reload fills both columns.
+func (m *Model) SetDataSource(repo repository.Repository, onLedgerChanged func()) {
+	m.repo = repo
+	m.onLedgerChanged = onLedgerChanged
+	if repo == nil {
+		m.selected = ""
+		m.nextID = 0
+		for k := range m.tags {
+			m.categories[k] = nil
+			m.tags[k] = map[string][]tag{}
+		}
+		return
+	}
+	m.Reload()
+}
+
+// Reload reads all categories, tags and counts for the active ledger. The
+// chosen category survives when it still exists; a ledger switch clears it.
+func (m *Model) Reload() {
+	if m.repo == nil {
+		return
+	}
+	active := m.ledgers.Active()
+	switched := active != m.ledgerID
+	m.ledgerID = active
+	if switched {
+		m.selected = ""
+		m.categoryList.Select(-1)
+		m.tagList.Select(-1)
+		m.tagList.ScrollTo(0, ui.ListStart)
+	}
+	m.nextID = 0
+	for k := range m.tags {
+		m.categories[k] = nil
+		m.tags[k] = map[string][]tag{}
+	}
+	if active == "" {
+		return
+	}
+	snapshot, err := m.repo.Labels(context.Background(), active)
+	if err != nil {
+		m.toaster.Show("读取分类标签失败："+err.Error(), "", ui.ToastError)
+		return
+	}
+	for _, one := range snapshot.Categories {
+		k, ok := kindOf(one.TransactionType)
+		if !ok {
+			continue
+		}
+		m.categories[k] = append(m.categories[k], category{
+			id: m.takeID(), name: one.Name, count: snapshot.CategoryCounts[one.Name],
+		})
+	}
+	for _, one := range snapshot.Tags {
+		name, transactionType, ok := splitCategoryKey(one.CategoryTransactionType)
+		if !ok {
+			continue
+		}
+		k, ok := kindOf(transactionType)
+		if !ok {
+			continue
+		}
+		if m.tags[k][name] == nil {
+			m.tags[k][name] = []tag{}
+		}
+		m.tags[k][name] = append(m.tags[k][name], tag{
+			id: m.takeID(), name: one.Name, count: snapshot.TagCounts[one.Name],
+		})
+	}
+	if m.selected != "" && !m.categoryExists(m.selected) {
+		m.selected = ""
+		m.categoryList.Select(-1)
+		m.tagList.Select(-1)
+	}
+}
+
 func (m *Model) takeID() int {
 	m.nextID++
 	return m.nextID
 }
 
+// categoryExists reports whether the current type still has the category.
+func (m *Model) categoryExists(name string) bool {
+	for _, one := range m.categories[m.kind] {
+		if one.name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func kindOf(value string) (kind, bool) {
+	switch value {
+	case "expense":
+		return kindExpense, true
+	case "income":
+		return kindIncome, true
+	case "transfer":
+		return kindTransfer, true
+	}
+	return 0, false
+}
+
+func splitCategoryKey(value string) (name, transactionType string, ok bool) {
+	index := strings.LastIndex(value, ":")
+	if index <= 0 || index == len(value)-1 {
+		return "", "", false
+	}
+	return value[:index], value[index+1:], true
+}
+
 // View declares the page: the type cards, the two columns and the dialogs.
 func (m *Model) View(c ui.C) {
-	m.syncLedger()
 	ui.Column(c).Fill().Children(func() {
 		m.toolbar(c)
 		ui.Divider(c)
@@ -164,28 +273,14 @@ func (m *Model) CloseOverlays() {
 
 func (m *Model) toolbar(c ui.C) {
 	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(8).Items(ui.Center).Children(func() {
-		if ledger.Picker(c, m.ledgers) {
-			m.syncLedger()
+		if ledger.Picker(c, m.ledgers) && m.onLedgerChanged != nil {
+			m.onLedgerChanged()
 		}
 		ui.Divider(c).Height(24)
 		for _, k := range kinds {
 			m.typeCard(c, k)
 		}
 	})
-}
-
-// syncLedger adopts a ledger chosen on this page or another accounting page. A
-// switch clears the chosen category: it belongs to the ledger that was showing.
-func (m *Model) syncLedger() {
-	active := m.ledgers.Active()
-	if active == m.ledgerID {
-		return
-	}
-	m.ledgerID = active
-	m.selected = ""
-	m.categoryList.Select(-1)
-	m.tagList.Select(-1)
-	m.tagList.ScrollTo(0, ui.ListStart)
 }
 
 // typeCard is one transaction-type card: the chosen one takes its type's color
@@ -427,21 +522,44 @@ func (m *Model) tagNameAt(index int) string {
 	return tags[index].name
 }
 
-// moveCategory and moveTag apply a drag reordering; the slice order is the
-// stored order, so moving the row is all there is to persist in the mock.
+// moveCategory and moveTag apply a drag reordering and persist the new order.
 func (m *Model) moveCategory(rows []int, to int) {
 	if len(rows) == 0 {
 		return
 	}
 	categories := m.categories[m.kind]
 	m.categories[m.kind] = moveItem(categories, rows[0], to)
+	if m.repo == nil {
+		return
+	}
+	names := make([]string, len(m.categories[m.kind]))
+	for index, cat := range m.categories[m.kind] {
+		names[index] = cat.name
+	}
+	if err := m.repo.ReorderCategories(context.Background(), m.ledgerID, m.kind.value(), names); err != nil {
+		m.toaster.Show("保存分类排序失败："+err.Error(), "", ui.ToastError)
+		m.Reload()
+	}
 }
 
 func (m *Model) moveTag(rows []int, to int) {
 	if len(rows) == 0 || m.selected == "" {
 		return
 	}
+	key := m.selected + ":" + m.kind.value()
 	m.tags[m.kind][m.selected] = moveItem(m.currentTags(), rows[0], to)
+	if m.repo == nil {
+		return
+	}
+	tags := m.currentTags()
+	names := make([]string, len(tags))
+	for index, one := range tags {
+		names[index] = one.name
+	}
+	if err := m.repo.ReorderTags(context.Background(), m.ledgerID, key, names); err != nil {
+		m.toaster.Show("保存标签排序失败："+err.Error(), "", ui.ToastError)
+		m.Reload()
+	}
 }
 
 // moveItem takes the item at from out of the slice and puts it before to, where
@@ -499,11 +617,28 @@ func (m *Model) confirmCategory() {
 			return
 		}
 	}
-	m.categories[m.kind] = append(m.categories[m.kind], category{id: m.takeID(), name: name})
+	if m.repo == nil {
+		m.categoryError = "工作空间尚未打开"
+		return
+	}
+	if err := m.repo.CreateCategory(context.Background(), m.ledgerID, name, m.kind.value()); err != nil {
+		if errors.Is(err, repository.ErrDuplicate) {
+			m.categoryError = "该分类已存在"
+		} else {
+			m.categoryError = "添加分类失败：" + err.Error()
+		}
+		return
+	}
+	m.Reload()
 	m.selected = name
-	index := len(m.categories[m.kind]) - 1
-	m.categoryList.Select(index)
-	m.categoryList.ScrollIntoView(index)
+	for index, one := range m.categories[m.kind] {
+		if one.name != name {
+			continue
+		}
+		m.categoryList.Select(index)
+		m.categoryList.ScrollIntoView(index)
+		break
+	}
 	m.tagList.Select(-1)
 	m.tagList.ScrollTo(0, ui.ListStart)
 	m.closeCategoryModal()
@@ -522,8 +657,23 @@ func (m *Model) confirmTag() {
 			return
 		}
 	}
-	m.tags[m.kind][m.selected] = append(m.currentTags(), tag{id: m.takeID(), name: name})
-	m.tagList.ScrollIntoView(len(m.currentTags()) - 1)
+	if m.repo == nil {
+		m.tagError = "工作空间尚未打开"
+		return
+	}
+	key := m.selected + ":" + m.kind.value()
+	if err := m.repo.CreateTag(context.Background(), m.ledgerID, name, key); err != nil {
+		if errors.Is(err, repository.ErrDuplicate) {
+			m.tagError = "该标签已存在"
+		} else {
+			m.tagError = "添加标签失败：" + err.Error()
+		}
+		return
+	}
+	m.Reload()
+	if len(m.currentTags()) > 0 {
+		m.tagList.ScrollIntoView(len(m.currentTags()) - 1)
+	}
 	m.closeTagModal()
 	m.toaster.Show("标签已添加", "", ui.ToastSuccess)
 }
@@ -539,42 +689,37 @@ func (m *Model) askDeleteTag(name string) {
 
 // confirmDelete removes the category (with its tags) or the tag.
 func (m *Model) confirmDelete() {
+	if m.repo == nil {
+		m.deleteOpen = false
+		m.toaster.Show("工作空间尚未打开", "", ui.ToastError)
+		return
+	}
 	if m.deleteTag {
-		m.tags[m.kind][m.selected] = withoutTag(m.currentTags(), m.deleteName)
+		key := m.selected + ":" + m.kind.value()
+		if err := m.repo.DeleteTag(context.Background(), m.ledgerID, m.deleteName, key); err != nil {
+			m.deleteOpen = false
+			m.toaster.Show("删除标签失败："+err.Error(), "", ui.ToastError)
+			return
+		}
 		m.tagList.Select(-1)
+		m.Reload()
 		m.toaster.Show("标签已删除", "", ui.ToastSuccess)
 	} else {
-		m.categories[m.kind] = withoutCategory(m.categories[m.kind], m.deleteName)
-		delete(m.tags[m.kind], m.deleteName)
+		if err := m.repo.DeleteCategory(context.Background(), m.ledgerID, m.deleteName, m.kind.value()); err != nil {
+			m.deleteOpen = false
+			m.toaster.Show("删除分类失败："+err.Error(), "", ui.ToastError)
+			return
+		}
 		if m.selected == m.deleteName {
 			m.selected = ""
 			m.categoryList.Select(-1)
 			m.tagList.Select(-1)
 			m.tagList.ScrollTo(0, ui.ListStart)
 		}
+		m.Reload()
 		m.toaster.Show("分类已删除", "", ui.ToastSuccess)
 	}
 	m.deleteOpen = false
-}
-
-func withoutCategory(items []category, name string) []category {
-	for index := range items {
-		if items[index].name != name {
-			continue
-		}
-		return append(items[:index], items[index+1:]...)
-	}
-	return items
-}
-
-func withoutTag(items []tag, name string) []tag {
-	for index := range items {
-		if items[index].name != name {
-			continue
-		}
-		return append(items[:index], items[index+1:]...)
-	}
-	return items
 }
 
 // categoryModal is the 新增分类 dialog.

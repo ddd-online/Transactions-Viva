@@ -6,6 +6,9 @@
 package accounting
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/text"
 	"github.com/vivaui/viva/ui"
@@ -14,8 +17,9 @@ import (
 	"transactions/internal/pages/accounting/ledger"
 	"transactions/internal/pages/accounting/records"
 	"transactions/internal/pages/accounting/tags"
-	"transactions/internal/pages/accounting/template"
+	tpl "transactions/internal/pages/accounting/template"
 	"transactions/internal/pages/accounting/templates"
+	"transactions/internal/repository"
 )
 
 type tab uint8
@@ -45,19 +49,72 @@ type Model struct {
 	records   *records.Model
 	tags      *tags.Model
 	templates *templates.Model
+	ledgers   *ledger.Store
+	cache     *tpl.Cache
+	repo      repository.Repository
 }
 
-// New returns the default page (记录). The three migrated pages share one ledger
-// store, so their 账本 Selectors always agree, and the records dialog and the
-// 模板 page share one template store.
+// New returns the empty accounting section. The three migrated pages share one
+// ledger store, so their 账本 Selectors always agree, and the records dialog and
+// the 模板 page share one template cache. desktop calls SetRepository once a
+// workspace is open.
 func New() *Model {
 	ledgers := ledger.NewStore()
-	sharedTemplates := template.NewStore()
+	sharedTemplates := tpl.NewCache()
 	return &Model{
 		records:   records.NewWithStores(ledgers, sharedTemplates),
 		tags:      tags.NewWithLedger(ledgers),
 		templates: templates.NewWithLedger(sharedTemplates, ledgers),
+		ledgers:   ledgers,
+		cache:     sharedTemplates,
 	}
+}
+
+// SetRepository connects the section to a workspace. An empty workspace gets a
+// 「默认账本」 with the old application's default categories and tags, so the
+// records page is usable immediately. Switching to nil clears the pages.
+func (m *Model) SetRepository(repo repository.Repository) error {
+	m.CloseOverlays()
+	m.repo = nil
+	m.cache.Clear()
+	if repo == nil {
+		m.ledgers.Reset(nil)
+		m.records.SetDataSource(nil, nil)
+		m.tags.SetDataSource(nil, nil)
+		m.templates.SetDataSource(nil, nil)
+		return nil
+	}
+	ctx := context.Background()
+	ledgers, err := repo.Ledgers(ctx)
+	if err != nil {
+		return fmt.Errorf("读取账本失败：%w", err)
+	}
+	if len(ledgers) == 0 {
+		if _, err := repo.CreateLedger(ctx, "默认账本", ""); err != nil {
+			return fmt.Errorf("创建默认账本失败：%w", err)
+		}
+		ledgers, err = repo.Ledgers(ctx)
+		if err != nil {
+			return fmt.Errorf("读取账本失败：%w", err)
+		}
+	}
+	m.ledgers.Reset(ledgers)
+	m.repo = repo
+	m.records.SetDataSource(repo, m.ledgerChanged)
+	m.tags.SetDataSource(repo, m.ledgerChanged)
+	m.templates.SetDataSource(repo, m.ledgerChanged)
+	return nil
+}
+
+// ledgerChanged reloads every accounting page after the shared 账本 Selector
+// chose another ledger.
+func (m *Model) ledgerChanged() {
+	if m.repo == nil {
+		return
+	}
+	m.records.Reload()
+	m.tags.Reload()
+	m.templates.Reload()
 }
 
 // Tabs are the section's second-level navigation entries.
@@ -75,15 +132,30 @@ func (m *Model) CloseOverlays() {
 	m.templates.CloseOverlays()
 }
 
-// SelectTab chooses a sub-function by index.
+// SelectTab chooses a sub-function by index. Switching reloads the target page:
+// a tag deleted on 标签 must reach the rows on 记录, and a template saved on
+// 模板 must reach the 记一笔 dialog.
 func (m *Model) SelectTab(index int) {
-	if index >= 0 && index < len(tabs) {
-		m.tab = tabs[index]
+	if index < 0 || index >= len(tabs) {
+		return
+	}
+	changed := m.tab != tabs[index]
+	m.tab = tabs[index]
+	if !changed || m.repo == nil {
+		return
+	}
+	switch m.tab {
+	case tabRecords:
+		m.records.Reload()
+	case tabTags:
+		m.tags.Reload()
+	case tabTemplates:
+		m.templates.Reload()
 	}
 }
 
-// View declares the page. The 记录, 标签 and 模板 frontends are migrated with
-// mock data; the 分析 tab keeps the honest pending state until its stage.
+// View declares the page. The 记录, 标签 and 模板 pages read the workspace; the
+// 分析 tab keeps the honest pending state until its stage.
 func (m *Model) View(c ui.C) {
 	switch m.tab {
 	case tabRecords:

@@ -1,8 +1,12 @@
 package records
 
-import "github.com/vivaui/viva/ui"
+import (
+	"context"
 
-// find returns the mock row with id, or nil.
+	"github.com/vivaui/viva/ui"
+)
+
+// find returns the loaded row with id, or nil.
 func (m *Model) find(id string) *record {
 	for index := range m.records {
 		if m.records[index].id == id {
@@ -19,9 +23,9 @@ func (m *Model) deleteView(c ui.C) {
 	}
 	ui.ModalWith(c, &m.deleteConfirm, "删除这条消费记录？", ui.ModalSpec{
 		Width:       380,
-		Description: "删除后不会保留；当前为 mock 数据。",
+		Description: "删除后不会保留。",
 	}, func() {
-		ui.Text(c, "这条记录会从当前列表移除。").FontSize(13).Muted()
+		ui.Text(c, "这条记录会从当前账本移除。").FontSize(13).Muted()
 	}, func() {
 		if ui.Button(c, "取消").Outline().Clicked() {
 			m.deleteConfirm = false
@@ -32,31 +36,30 @@ func (m *Model) deleteView(c ui.C) {
 	})
 }
 
-// deleteRecord removes one mock row and reports it in the footer notice.
+// deleteRecord removes one stored record and reports it in the footer notice.
 func (m *Model) deleteRecord(id string) {
-	for index := range m.records {
-		if m.records[index].id != id {
-			continue
-		}
-		m.records = append(m.records[:index], m.records[index+1:]...)
-		break
-	}
 	m.deletingID, m.deleteConfirm = "", false
-	m.refilter()
+	if m.repo == nil {
+		m.notice = "工作空间尚未打开"
+		return
+	}
+	if err := m.repo.DeleteRecord(context.Background(), id); err != nil {
+		m.notice = "删除失败：" + err.Error()
+		return
+	}
+	m.Reload()
 	m.notice = "记录已删除"
 }
 
-// syncTo reports copying the row to another ledger. The mock's records already
-// carry their ledger, but writing the copy is the store's job, so this reports
-// the target instead of duplicating the row.
-func (m *Model) syncTo(id, target string) {
-	rec := m.find(id)
-	if rec == nil {
+// syncTo copies the row to another ledger through the repository.
+func (m *Model) syncTo(id, targetID string) {
+	if m.repo == nil {
+		m.notice = "工作空间尚未打开"
 		return
 	}
-	description := rec.description
-	if description == "" {
-		description = rec.category
+	if err := m.repo.SyncRecord(context.Background(), id, targetID); err != nil {
+		m.notice = "同步失败：" + err.Error()
+		return
 	}
-	m.notice = "「" + description + "」已同步到「" + target + "」（mock）"
+	m.notice = "已同步到「" + m.ledgers.Name(targetID) + "」"
 }

@@ -2,12 +2,14 @@
 // its pager and statistics, and the dialog a record is written in (the composer
 // subpackage). Its layout follows the reference application's hosts page.
 //
-// The data is mock for now (mock.go): two ledgers of records, filtered, sorted
-// and added in memory only. When internal/store lands, refilter becomes a
-// tr_query and the mock file goes away.
+// The rows come from internal/store through repository.Repository: a date
+// range is queried in SQL, then the page keeps its multi-column sorting,
+// statistics and pagination in memory.
 package records
 
 import (
+	"context"
+	"encoding/json"
 	"sort"
 	"strings"
 	"time"
@@ -23,6 +25,7 @@ import (
 	"transactions/internal/pages/accounting/ledger"
 	"transactions/internal/pages/accounting/records/composer"
 	tpl "transactions/internal/pages/accounting/template"
+	"transactions/internal/repository"
 )
 
 const (
@@ -41,8 +44,8 @@ const (
 	recordAmountWidth   = float32(120)
 )
 
-// record is one row of the mock table. The store's TransactionRecord plus its
-// tag rows becomes this shape once the data is real.
+// record is one row of the table: the store's TransactionRecord folded with
+// its tag names for painting.
 type record struct {
 	id           string
 	ledgerID     string
@@ -80,10 +83,13 @@ type Model struct {
 	stats [3]int64 // 收入 / 支出 / 转账, within the visible rows
 
 	// ledgers is the section's shared ledger list; ledgerID caches its active
-	// choice for filtering, saving and the table. A switch made on another
-	// accounting page is picked up by syncLedger at the next paint.
-	ledgers  *ledger.Store
-	ledgerID string
+	// choice for filtering, saving and the table. A switch on any accounting
+	// page runs the onLedgerChanged callback, which reloads this page.
+	ledgers         *ledger.Store
+	ledgerID        string
+	repo            repository.Repository
+	onLedgerChanged func()
+	labels          repository.LabelSnapshot
 
 	// rangeStart and rangeEnd are the visible time range as local dates, both
 	// ends included; rangeGrain is the unit the picker chooses them in.
@@ -97,43 +103,43 @@ type Model struct {
 	// unsorted until a header is clicked; each click cycles its column.
 	sorts []sortKey
 
-	// page is the 1-based page of the table; pageSize is the mock page size.
+	// page is the 1-based page of the table; pageSize is the page size.
 	// pageStart is where the current page begins in shown, set by table.
 	page      int
 	pageSize  int
 	pageStart int
 
 	list      ui.ListState
-	templates *tpl.Store
+	templates *tpl.Cache
 	form      composer.State
 	formSpec  composer.Spec
 	bounds    gfx.Rect
 	rangePick datepicker.State
 
-	// categoryList is the 分类 Select's choices, rebuilt each paint into the same
-	// slice (see categoryNames).
+	// categoryList and tagList are the composer's choices, rebuilt each paint
+	// into the same slices (see categoryNames / tagOptions).
 	categoryList []string
+	tagList      []string
 
 	notice        string
 	deletingID    string
 	deleteConfirm bool
 }
 
-// New returns the page on 今天, newest first, with the mock rows already
-// filtered and ledger and template stores of its own.
-func New() *Model { return NewWithStores(ledger.NewStore(), tpl.NewStore()) }
+// New returns an empty page with its own ledger and template stores. The
+// accounting parent calls SetDataSource once a workspace is open.
+func New() *Model { return NewWithStores(ledger.NewStore(), tpl.NewCache()) }
 
 // NewWithStores returns the page over the section's shared ledger and template
 // stores, so the 记账 pages switch the same ledger and see the same templates.
-func NewWithStores(ledgers *ledger.Store, templates *tpl.Store) *Model {
+func NewWithStores(ledgers *ledger.Store, templates *tpl.Cache) *Model {
 	if ledgers == nil {
 		ledgers = ledger.NewStore()
 	}
 	if templates == nil {
-		templates = tpl.NewStore()
+		templates = tpl.NewCache()
 	}
 	m := &Model{
-		records:    mockRecords(),
 		ledgers:    ledgers,
 		ledgerID:   ledgers.Active(),
 		templates:  templates,
@@ -156,13 +162,98 @@ func NewWithStores(ledgers *ledger.Store, templates *tpl.Store) *Model {
 	return m
 }
 
+// SetDataSource connects the page to the workspace. Reload fills the current
+// range and the composer's category/tag/template choices.
+func (m *Model) SetDataSource(repo repository.Repository, onLedgerChanged func()) {
+	m.repo = repo
+	m.onLedgerChanged = onLedgerChanged
+	if repo == nil {
+		m.records = nil
+		m.labels = repository.LabelSnapshot{}
+		m.ledgerID = ""
+		m.refilter()
+		return
+	}
+	m.Reload()
+}
+
+// Reload reads the active ledger's records in the current date range, plus the
+// labels and templates the composer needs, and rebuilds the visible page.
+func (m *Model) Reload() {
+	if m.repo == nil {
+		return
+	}
+	active := m.ledgers.Active()
+	m.ledgerID = active
+	if active == "" {
+		m.records = nil
+		m.refilter()
+		return
+	}
+	ctx := context.Background()
+	entries, err := m.repo.Records(ctx, repository.RecordQuery{
+		LedgerID: active, StartDate: m.rangeStart, EndDate: m.rangeEnd,
+	})
+	if err != nil {
+		m.records = nil
+		m.refilter()
+		m.notice = "读取记录失败：" + err.Error()
+		return
+	}
+	m.records = make([]record, 0, len(entries))
+	for _, entry := range entries {
+		m.records = append(m.records, recordFromEntry(entry))
+	}
+	notice := ""
+	if labels, err := m.repo.Labels(ctx, active); err == nil {
+		m.labels = labels
+	} else {
+		notice = "读取分类标签失败：" + err.Error()
+	}
+	if templates, err := m.repo.Templates(ctx, active); err == nil {
+		list := make([]tpl.Template, 0, len(templates))
+		for _, one := range templates {
+			list = append(list, tpl.FromDomain(one))
+		}
+		m.templates.Set(active, list)
+	}
+	m.refilter()
+	if notice != "" {
+		m.notice = notice
+	}
+}
+
+// recordFromEntry folds a stored record and its tag names into a row.
+func recordFromEntry(entry repository.RecordEntry) record {
+	outlier := false
+	if strings.HasPrefix(strings.TrimSpace(entry.Record.Flags), "{") {
+		var flags struct {
+			Outlier bool `json:"outlier"`
+		}
+		if json.Unmarshal([]byte(entry.Record.Flags), &flags) == nil {
+			outlier = flags.Outlier
+		}
+	}
+	return record{
+		id:           entry.Record.TransactionID,
+		ledgerID:     entry.Record.LedgerID,
+		kind:         entry.Record.TransactionType,
+		category:     entry.Record.Category,
+		description:  entry.Record.Description,
+		tags:         append([]string(nil), entry.Tags...),
+		amount:       entry.Record.AmountCents,
+		at:           time.Unix(entry.Record.TransactionAt, 0).In(time.Local),
+		outlier:      outlier,
+		keyEventDate: entry.Record.KeyEventDate,
+	}
+}
+
 // View declares the records page.
 func (m *Model) View(c ui.C) {
 	m.bounds = c.Bounds()
-	m.syncLedger()
 	if m.rangeStale {
 		m.rangeStale = false
-		m.refilter()
+		m.Reload()
 	}
 	ui.Column(c).Fill().Children(func() {
 		m.toolbar(c)
@@ -182,8 +273,8 @@ func (m *Model) View(c ui.C) {
 // time range on the left, and the sort beside the primary action on the right.
 func (m *Model) toolbar(c ui.C) {
 	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(8).Items(ui.Center).Children(func() {
-		if ledger.Picker(c, m.ledgers) {
-			m.syncLedger()
+		if ledger.Picker(c, m.ledgers) && m.onLedgerChanged != nil {
+			m.onLedgerChanged()
 		}
 		// The same divider the tags and templates toolbars use: the ledger
 		// selector stands apart from the page's own controls.
@@ -207,18 +298,6 @@ func (m *Model) toolbar(c ui.C) {
 			m.openComposer()
 		}
 	})
-}
-
-// syncLedger adopts a ledger chosen on this page or another accounting page. A
-// switch starts the table at its first page, as the old page did.
-func (m *Model) syncLedger() {
-	active := m.ledgers.Active()
-	if active == m.ledgerID {
-		return
-	}
-	m.ledgerID = active
-	m.page = 1
-	m.refilter()
 }
 
 // sortHeader is a column title with a square sort button beside it. The
@@ -390,7 +469,7 @@ func (m *Model) row(r ui.ListRow) {
 					continue
 				}
 				if sub.Item(target.Name).Clicked() {
-					m.syncTo(id, target.Name)
+					m.syncTo(id, target.ID)
 				}
 			}
 		})
@@ -471,6 +550,7 @@ func (m *Model) paintEmptyActions(d *ui.DrawContext, ids [emptyActionCount]gfx.I
 func (m *Model) CloseOverlays() {
 	m.rangePick.Open = false
 	m.form.Close()
+	m.deletingID, m.deleteConfirm = "", false
 }
 
 // lastMonth shows the whole previous month.
@@ -618,11 +698,12 @@ const dateLayout = "2006-01-02"
 // todayDate is today as the page's ranges hold it.
 func todayDate() string { return time.Now().Format(dateLayout) }
 
-// setRange applies a new visible range from a control of the page and
-// recomputes the table at once.
+// setRange applies a new visible range from a control of the page. The next
+// paint reloads the rows from the workspace; reloading here would query SQLite
+// while a callback is still painting.
 func (m *Model) setRange(start, end string, grain datepicker.Grain) {
 	m.rangeStart, m.rangeEnd, m.rangeGrain = start, end, grain
-	m.refilter()
+	m.rangeStale = true
 }
 
 func (r record) signedAmount() string {

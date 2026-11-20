@@ -1,6 +1,7 @@
 package desktop
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -11,17 +12,24 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/config"
+	"transactions/internal/store/storetest"
 )
 
 // open runs the shell with no window: the real painter, input and focus rules.
 func open(t *testing.T) (*app.Driver, *Model) {
 	t.Helper()
-	return openModel(t, New())
+	fixture := storetest.Open(t)
+	model := New()
+	if err := model.adoptWorkspace(fixture.Workspace); err != nil {
+		t.Fatalf("adopt workspace: %v", err)
+	}
+	return openModel(t, model)
 }
 
 // openModel is open over an already configured model.
 func openModel(t *testing.T, model *Model) (*app.Driver, *Model) {
 	t.Helper()
+	t.Cleanup(model.closeWorkspace)
 	page := ui.NewPage(ui.PageConfig{Tree: &model.tree, View: model.page, Theme: &model.theme})
 	driver, err := app.NewDriver(page.Config(newConfig(model)), nil)
 	if err != nil {
@@ -340,11 +348,12 @@ func TestTemplatesPage(t *testing.T) {
 
 	click(t, driver, "分类")
 	click(t, driver, "餐饮美食")
+	settle(t, driver)
 	clickRole(t, driver, "标签", gfx.RoleCombobox)
-	if !hasControl(driver, "咖啡") {
+	if !hasControl(driver, "外卖") {
 		t.Fatal("the tags multi-select offers no category tag")
 	}
-	click(t, driver, "咖啡")
+	click(t, driver, "外卖")
 	if err := driver.Key(gfx.KeyEscape, 0); err != nil {
 		t.Fatal(err)
 	}
@@ -369,7 +378,7 @@ func TestTemplatesPage(t *testing.T) {
 	if !ok || !showsIn(driver, "餐饮美食", field) {
 		t.Fatal("the template did not choose its category")
 	}
-	if !shows(driver, "咖啡") {
+	if !shows(driver, "外卖") {
 		t.Fatal("the template did not choose its tag")
 	}
 	click(t, driver, "取消")
@@ -554,12 +563,15 @@ func TestRecordCategorySelect(t *testing.T) {
 func TestRecordTagsMultiSelect(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "记一笔")
+	click(t, driver, "分类")
+	click(t, driver, "餐饮美食")
+	settle(t, driver)
 	clickRole(t, driver, "标签", gfx.RoleCombobox)
-	if !hasControl(driver, "日常") {
-		t.Fatal("the tags multi-select did not open its options")
+	if !hasControl(driver, "外卖") {
+		t.Fatal("the tags multi-select did not offer the category's tags")
 	}
-	click(t, driver, "日常")
-	if !shows(driver, "日常") {
+	click(t, driver, "外卖")
+	if !shows(driver, "外卖") {
 		t.Fatal("the chosen tag is not shown")
 	}
 }
@@ -1075,6 +1087,9 @@ func TestSettingsFailedWriteKeepsTheOldValue(t *testing.T) {
 func TestSettingsWorkspacePicker(t *testing.T) {
 	model := New()
 	directory := filepath.Join(t.TempDir(), "books")
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	model.pickWorkspace = func() (string, error) { return directory, nil }
 	driver, _ := openModel(t, model)
 

@@ -6,6 +6,7 @@ import (
 
 	"transactions/internal/config"
 	"transactions/internal/pages/settings"
+	storepkg "transactions/internal/store"
 )
 
 // settingsSpec is what the settings page paints and the commands it calls. The
@@ -126,8 +127,20 @@ func (m *Model) pickWorkspaceDir() error {
 		return err
 	}
 	directory = strings.TrimSpace(directory)
-	if directory == "" || directory == m.config.WorkspaceDir {
+	if directory == "" {
 		return nil
+	}
+	if m.workspace != nil && directory == m.workspace.Directory() {
+		return nil
+	}
+	workspace, err := storepkg.Open(directory)
+	if err != nil {
+		m.workspaceErr = err.Error()
+		return err
+	}
+	if err := m.adoptWorkspace(workspace); err != nil {
+		m.workspaceErr = err.Error()
+		return err
 	}
 	previousDir, previousRecent := m.config.WorkspaceDir, m.config.RecentWorkspaces
 	m.config.WorkspaceDir = directory
@@ -137,6 +150,7 @@ func (m *Model) pickWorkspaceDir() error {
 		m.config.RecentWorkspaces = previousRecent
 		return err
 	}
+	m.workspaceErr = ""
 	return nil
 }
 
@@ -160,14 +174,18 @@ func prependWorkspace(directory string, recent []string) []string {
 // workspaceLabel is the footer's workspace name: the last path element, or the
 // not-opened state.
 func (m *Model) workspaceLabel() string {
-	if m.config.WorkspaceDir == "" {
-		return "尚未打开工作空间"
+	if m.workspace != nil {
+		directory := m.workspace.Directory()
+		name := filepath.Base(directory)
+		if name == "." || name == string(filepath.Separator) {
+			return directory
+		}
+		return name
 	}
-	name := filepath.Base(m.config.WorkspaceDir)
-	if name == "." || name == string(filepath.Separator) {
-		return m.config.WorkspaceDir
+	if m.config.WorkspaceDir != "" {
+		return "工作空间未打开"
 	}
-	return name
+	return "尚未打开工作空间"
 }
 
 // persist writes the configuration through the store Run loaded. A model

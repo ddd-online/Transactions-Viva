@@ -3,11 +3,21 @@ package tags
 import (
 	"testing"
 
-	"transactions/internal/pages/accounting/ledger"
+	"transactions/internal/domain"
+	"transactions/internal/store/storetest"
 )
 
-func TestNewDefaults(t *testing.T) {
+func newTestModel(t *testing.T) (*Model, *storetest.Fixture) {
+	t.Helper()
+	fixture := storetest.Open(t)
 	m := New()
+	m.ledgers.Reset([]domain.Ledger{fixture.Home, fixture.Travel})
+	m.SetDataSource(fixture.Workspace, nil)
+	return m, fixture
+}
+
+func TestNewDefaults(t *testing.T) {
+	m, _ := newTestModel(t)
 	if m.kind != kindExpense || m.selected != "" {
 		t.Fatalf("the page starts on %v with %q chosen", m.kind, m.selected)
 	}
@@ -23,10 +33,14 @@ func TestNewDefaults(t *testing.T) {
 	if len(m.currentTags()) != 0 {
 		t.Fatal("the page starts with tags shown")
 	}
+	selectCategory(t, m, "餐饮美食")
+	if got := len(m.currentTags()); got != 10 {
+		t.Fatalf("餐饮美食 tags = %d, want 10", got)
+	}
 }
 
 func TestTypeSwitchClearsChoice(t *testing.T) {
-	m := New()
+	m, _ := newTestModel(t)
 	selectCategory(t, m, "餐饮美食")
 	m.selectKind(kindIncome)
 	if m.kind != kindIncome || m.selected != "" {
@@ -45,7 +59,7 @@ func TestTypeSwitchClearsChoice(t *testing.T) {
 }
 
 func TestAddCategory(t *testing.T) {
-	m := New()
+	m, _ := newTestModel(t)
 	m.categoryName = "餐饮美食"
 	m.confirmCategory()
 	if m.categoryError != "该分类已存在" {
@@ -69,7 +83,7 @@ func TestAddCategory(t *testing.T) {
 }
 
 func TestAddTagNeedsACategory(t *testing.T) {
-	m := New()
+	m, _ := newTestModel(t)
 	m.tagName = "洗澡"
 	m.confirmTag()
 	if len(m.tags[kindExpense]["洗澡"]) != 0 {
@@ -95,7 +109,7 @@ func TestAddTagNeedsACategory(t *testing.T) {
 }
 
 func TestDeleteCategoryRemovesItsTags(t *testing.T) {
-	m := New()
+	m, _ := newTestModel(t)
 	selectCategory(t, m, "餐饮美食")
 	if len(m.currentTags()) == 0 {
 		t.Fatal("餐饮美食 has no tags")
@@ -117,7 +131,7 @@ func TestDeleteCategoryRemovesItsTags(t *testing.T) {
 }
 
 func TestDeleteTag(t *testing.T) {
-	m := New()
+	m, _ := newTestModel(t)
 	selectCategory(t, m, "餐饮美食")
 	before := len(m.currentTags())
 	m.askDeleteTag("咖啡")
@@ -133,7 +147,7 @@ func TestDeleteTag(t *testing.T) {
 }
 
 func TestMoveCategoryAndTag(t *testing.T) {
-	m := New()
+	m, _ := newTestModel(t)
 	m.moveCategory([]int{0}, 3)
 	categories := m.categories[kindExpense]
 	if categories[2].name != "餐饮美食" {
@@ -145,13 +159,15 @@ func TestMoveCategoryAndTag(t *testing.T) {
 	}
 
 	selectCategory(t, m, "餐饮美食")
-	m.moveTag([]int{0}, 2)
 	tags := m.currentTags()
-	if tags[0].name != "外卖" || tags[1].name != "三餐" {
+	moved := tags[0].name
+	m.moveTag([]int{0}, 2)
+	tags = m.currentTags()
+	if tags[1].name != moved {
 		t.Fatalf("after the tag move: %v", tagNames(tags))
 	}
 	m.moveTag([]int{1}, 0)
-	if tags := m.currentTags(); tags[0].name != "三餐" {
+	if tags := m.currentTags(); tags[0].name != moved {
 		t.Fatalf("after moving the tag back: %v", tagNames(tags))
 	}
 }
@@ -199,14 +215,14 @@ func tagNames(tags []tag) []string {
 }
 
 func TestLedgerSwitchClearsTheChosenCategory(t *testing.T) {
-	m := New()
+	m, fixture := newTestModel(t)
 	selectCategory(t, m, "餐饮美食")
-	m.ledgers.SetActive(ledger.TravelID)
-	m.syncLedger()
+	m.ledgers.SetActive(fixture.Travel.ID)
+	m.Reload()
 	if m.selected != "" || len(m.currentTags()) != 0 {
 		t.Fatalf("after the ledger switch: selected %q, tags %v", m.selected, m.currentTags())
 	}
-	if m.ledgerID != ledger.TravelID {
+	if m.ledgerID != fixture.Travel.ID {
 		t.Fatalf("ledger = %q", m.ledgerID)
 	}
 }

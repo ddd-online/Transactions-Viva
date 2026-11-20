@@ -1,10 +1,11 @@
 // Package templates is the 记账 · 模板 screen: the ledger's record templates in a
 // table, with 新建模板, delete and drag reordering. It follows the old
-// application's templates page; the entries live in the shared mock store of
-// internal/pages/accounting/template, which the 记一笔 dialog also uses.
+// application's templates page; the rows live in internal/store and the shared
+// template cache keeps them available while the page paints.
 package templates
 
 import (
+	"context"
 	"strings"
 
 	viva "github.com/vivaui/viva/components"
@@ -16,6 +17,7 @@ import (
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting/ledger"
 	tpl "transactions/internal/pages/accounting/template"
+	"transactions/internal/repository"
 )
 
 // Table metrics: the fixed columns, the row gutter and the table's horizontal
@@ -40,13 +42,15 @@ const (
 // Model is the 模板 page's state: the shared store, the list, and the 新建模板
 // and delete dialogs.
 type Model struct {
-	store    *tpl.Store
-	ledgers  *ledger.Store
-	ledgerID string
-	list     ui.ListState
+	cache           *tpl.Cache
+	ledgers         *ledger.Store
+	ledgerID        string
+	repo            repository.Repository
+	onLedgerChanged func()
+	list            ui.ListState
 
-	// categories and tags are the form's mock choices, built once: the first is
-	// per transaction type, the second per type and category.
+	// categories and tags are the form's choices, loaded from the repository:
+	// the first is per transaction type, the second per type and category.
 	categories map[string][]string
 	tags       map[string][]string
 
@@ -99,34 +103,26 @@ type tagSelect struct {
 	values  []string // the options the state was built from
 }
 
-// New returns the 模板 page over a template store of its own.
-func New(store *tpl.Store) *Model { return NewWithLedger(store, ledger.NewStore()) }
+// New returns an empty 模板 page over a cache of its own.
+func New(cache *tpl.Cache) *Model { return NewWithLedger(cache, ledger.NewStore()) }
 
-// NewWithLedger returns the page over the section's shared template and ledger
-// stores, so its 账本 Select follows the records and tags pages.
-func NewWithLedger(store *tpl.Store, ledgers *ledger.Store) *Model {
-	if store == nil {
-		store = tpl.NewStore()
+// NewWithLedger returns the page over the section's shared template cache and
+// ledger store, so its 账本 Select follows the records and tags pages.
+func NewWithLedger(cache *tpl.Cache, ledgers *ledger.Store) *Model {
+	if cache == nil {
+		cache = tpl.NewCache()
 	}
 	if ledgers == nil {
 		ledgers = ledger.NewStore()
 	}
 	m := &Model{
-		store: store, ledgers: ledgers, ledgerID: ledgers.Active(),
+		cache: cache, ledgers: ledgers, ledgerID: ledgers.Active(),
 		categories: map[string][]string{}, tags: map[string][]string{},
 	}
 	m.tagSelect.feature = m.tagSelect.tree.Feature("template-tags")
 	m.tagSelect.options = m.tagSelect.tree.Sub(m.tagSelect.feature, m.tagSelect.tree.Name("option"))
 	m.tagSelect.removes = m.tagSelect.tree.Sub(m.tagSelect.feature, m.tagSelect.tree.Name("remove"))
 	m.tagSelect.state.MatchCaseInsensitive = true
-	for kind, groups := range mockCategories {
-		names := make([]string, len(groups))
-		for index, group := range groups {
-			names[index] = group.name
-			m.tags[tagKey(kind, group.name)] = group.tags
-		}
-		m.categories[kind] = names
-	}
 	m.list.Key = func(index int) int { return index }
 	m.list.Label = func(index int) string {
 		items := m.items()
@@ -137,15 +133,74 @@ func NewWithLedger(store *tpl.Store, ledgers *ledger.Store) *Model {
 	}
 	m.list.Reorder = func(rows []int, to int) {
 		if len(rows) > 0 {
-			m.store.Move(m.ledgerID, rows[0], to)
+			m.reorder(rows[0], to)
 		}
 	}
 	return m
 }
 
+// SetDataSource connects the page to the workspace. Reload fills the template
+// cache and the form's category/tag choices.
+func (m *Model) SetDataSource(repo repository.Repository, onLedgerChanged func()) {
+	m.repo = repo
+	m.onLedgerChanged = onLedgerChanged
+	if repo == nil {
+		m.categories = map[string][]string{}
+		m.tags = map[string][]string{}
+		m.cache.Clear()
+		return
+	}
+	m.Reload()
+}
+
+// Reload loads the active ledger's templates into the shared cache and its
+// categories/tags into the form's choices.
+func (m *Model) Reload() {
+	if m.repo == nil {
+		return
+	}
+	active := m.ledgers.Active()
+	switched := active != m.ledgerID
+	m.ledgerID = active
+	if switched {
+		m.list.Select(-1)
+		m.list.ScrollTo(0, ui.ListStart)
+	}
+	m.categories = map[string][]string{}
+	m.tags = map[string][]string{}
+	if active == "" {
+		m.cache.Clear()
+		return
+	}
+	if snapshot, err := m.repo.Labels(context.Background(), active); err == nil {
+		for _, category := range snapshot.Categories {
+			m.categories[category.TransactionType] = append(m.categories[category.TransactionType], category.Name)
+		}
+		for _, tag := range snapshot.Tags {
+			name, transactionType, ok := splitCategoryKey(tag.CategoryTransactionType)
+			if !ok {
+				continue
+			}
+			key := tagKey(transactionType, name)
+			m.tags[key] = append(m.tags[key], tag.Name)
+		}
+	} else {
+		m.toaster.Show("读取分类标签失败："+err.Error(), "", ui.ToastError)
+	}
+	templates, err := m.repo.Templates(context.Background(), active)
+	if err != nil {
+		m.toaster.Show("读取模板失败："+err.Error(), "", ui.ToastError)
+		return
+	}
+	list := make([]tpl.Template, 0, len(templates))
+	for _, one := range templates {
+		list = append(list, tpl.FromDomain(one))
+	}
+	m.cache.Set(active, list)
+}
+
 // View declares the page: the table and its dialogs.
 func (m *Model) View(c ui.C) {
-	m.syncLedger()
 	ui.Column(c).Fill().Children(func() {
 		m.toolbar(c)
 		ui.Divider(c)
@@ -165,8 +220,8 @@ func (m *Model) CloseOverlays() {
 
 func (m *Model) toolbar(c ui.C) {
 	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(8).Items(ui.Center).Children(func() {
-		if ledger.Picker(c, m.ledgers) {
-			m.syncLedger()
+		if ledger.Picker(c, m.ledgers) && m.onLedgerChanged != nil {
+			m.onLedgerChanged()
 		}
 		ui.Spacer(c)
 		if ui.Button(c, "新建模板").Icon(icons.Plus).Clicked() {
@@ -176,18 +231,35 @@ func (m *Model) toolbar(c ui.C) {
 }
 
 // items are the active ledger's templates.
-func (m *Model) items() []tpl.Template { return m.store.List(m.ledgerID) }
+func (m *Model) items() []tpl.Template { return m.cache.List(m.ledgerID) }
 
-// syncLedger adopts a ledger chosen on this page or another accounting page. The
-// list restarts at the top: another ledger has its own templates.
-func (m *Model) syncLedger() {
-	active := m.ledgers.Active()
-	if active == m.ledgerID {
+// reorder moves one row and persists the new order through the repository.
+func (m *Model) reorder(from, to int) {
+	items := append([]tpl.Template(nil), m.items()...)
+	if from < 0 || from >= len(items) || to < 0 || to > len(items) {
 		return
 	}
-	m.ledgerID = active
-	m.list.Select(-1)
-	m.list.ScrollTo(0, ui.ListStart)
+	if to > from {
+		to--
+	}
+	if to == from {
+		return
+	}
+	one := items[from]
+	items = append(items[:from], items[from+1:]...)
+	items = append(items[:to], append([]tpl.Template{one}, items[to:]...)...)
+	m.cache.Set(m.ledgerID, items)
+	if m.repo == nil {
+		return
+	}
+	ids := make([]string, len(items))
+	for index, item := range items {
+		ids[index] = item.ID
+	}
+	if err := m.repo.ReorderTemplates(context.Background(), m.ledgerID, ids); err != nil {
+		m.toaster.Show("保存模板排序失败："+err.Error(), "", ui.ToastError)
+		m.Reload()
+	}
 }
 
 // table is the fixed header over the scrolling rows; the header stays while
@@ -425,7 +497,11 @@ func (m *Model) save() {
 		m.form.err = "分类不能为空"
 		return
 	}
-	m.store.Add(tpl.Template{
+	if m.repo == nil {
+		m.form.err = "工作空间尚未打开"
+		return
+	}
+	one := tpl.ToDomain(tpl.Template{
 		LedgerID:    m.ledgerID,
 		Name:        name,
 		Kind:        m.form.kind,
@@ -434,6 +510,11 @@ func (m *Model) save() {
 		Tags:        append([]string(nil), m.form.tags...),
 		Outlier:     m.form.outlier,
 	})
+	if _, err := m.repo.CreateTemplate(context.Background(), one); err != nil {
+		m.form.err = "保存模板失败：" + err.Error()
+		return
+	}
+	m.Reload()
 	m.list.ScrollIntoView(len(m.items()) - 1)
 	m.closeForm()
 	m.toaster.Show("保存模板成功", "", ui.ToastSuccess)
@@ -444,7 +525,17 @@ func (m *Model) askDelete(one tpl.Template) {
 }
 
 func (m *Model) confirmDelete() {
-	m.store.Delete(m.deleteID)
+	if m.repo == nil {
+		m.deleteOpen = false
+		m.toaster.Show("工作空间尚未打开", "", ui.ToastError)
+		return
+	}
+	if err := m.repo.DeleteTemplate(context.Background(), m.deleteID); err != nil {
+		m.deleteOpen = false
+		m.toaster.Show("删除模板失败："+err.Error(), "", ui.ToastError)
+		return
+	}
+	m.Reload()
 	m.deleteOpen = false
 	m.toaster.Show("删除模板成功", "", ui.ToastSuccess)
 }
@@ -627,3 +718,11 @@ func (m *Model) deleteModal(c ui.C) {
 }
 
 func tagKey(kind, category string) string { return kind + "\x00" + category }
+
+func splitCategoryKey(value string) (name, transactionType string, ok bool) {
+	index := strings.LastIndex(value, ":")
+	if index <= 0 || index == len(value)-1 {
+		return "", "", false
+	}
+	return value[:index], value[index+1:], true
+}

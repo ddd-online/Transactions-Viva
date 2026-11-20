@@ -1,6 +1,8 @@
 package records
 
 import (
+	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -49,15 +51,15 @@ func (m *Model) openEdit(id string) {
 	})
 }
 
-// categoryNames is the 分类 Select's choices for a type, in the mock order, plus
-// the draft's own category when it belongs to another type: the old form's
-// autocomplete kept its text when the type changed, and the Select needs the
-// value among its choices to keep showing it.
+// categoryNames is the 分类 Select's choices for a type, plus the draft's own
+// category when it belongs to another type: the old form kept its text when the
+// type changed, and the Select needs the value among its choices.
 func (m *Model) categoryNames(kind, current string) []string {
 	names := m.categoryList[:0]
-	for _, category := range mockCategories {
-		if category.kind == kindValue(kind) {
-			names = append(names, category.name)
+	storedKind := kindValue(kind)
+	for _, category := range m.labels.Categories {
+		if category.TransactionType == storedKind {
+			names = append(names, category.Name)
 		}
 	}
 	if current != "" {
@@ -76,15 +78,33 @@ func (m *Model) categoryNames(kind, current string) []string {
 	return names
 }
 
-// tagOptions are the 标签 choices the dialog offers.
-func (m *Model) tagOptions() []string { return mockTagOptions[:] }
+// tagOptions are the 标签 choices under the draft's category and type. The
+// composer calls this again when either changes.
+func (m *Model) tagOptions(kind, category string) []string {
+	category = strings.TrimSpace(category)
+	if category == "" {
+		return nil
+	}
+	key := category + ":" + kindValue(kind)
+	values := m.tagList[:0]
+	for _, tag := range m.labels.Tags {
+		if tag.CategoryTransactionType == key {
+			values = append(values, tag.Name)
+		}
+	}
+	m.tagList = values
+	return values
+}
 
-// templateList are the 模板 choices the dialog offers.
+// templateList are the 模板 choices the dialog offers for the active ledger.
 func (m *Model) templateList() []tpl.Template { return m.templates.List(m.ledgerID) }
 
-// saveDraft validates the dialog's draft and writes one mock record; the error
-// it returns is what the dialog shows under its fields.
+// saveDraft validates the dialog's draft and writes it through the repository.
+// The error it returns is what the dialog shows under its fields.
 func (m *Model) saveDraft(draft composer.Draft) error {
+	if m.repo == nil {
+		return errDraft("工作空间尚未打开")
+	}
 	category := strings.TrimSpace(draft.Category)
 	if category == "" {
 		return errDraft("请填写分类")
@@ -107,47 +127,71 @@ func (m *Model) saveDraft(draft composer.Draft) error {
 		}
 	}
 	at := time.Date(day.Year(), day.Month(), day.Day(), 12, 0, 0, 0, time.Local)
-	kind := kindValue(draft.Kind)
-	tags := append([]string(nil), draft.Tags...)
-	description := strings.TrimSpace(draft.Description)
-
-	notice := "已记一笔"
 	if draft.EditingID != "" {
-		if rec := m.find(draft.EditingID); rec != nil {
+		if rec := m.find(draft.EditingID); rec != nil && rec.at.Format(dateLayout) == day.Format(dateLayout) {
 			// Keep the clock time when the date did not change, so editing a
 			// field does not reshuffle rows within the same day.
-			if rec.at.Format(dateLayout) == day.Format(dateLayout) {
-				at = time.Date(day.Year(), day.Month(), day.Day(), rec.at.Hour(), rec.at.Minute(), 0, 0, time.Local)
-			}
-			rec.kind, rec.category, rec.description = kind, category, description
-			rec.tags, rec.amount, rec.at = tags, amount, at
-			rec.outlier, rec.keyEventDate = draft.Outlier, eventDate
-			notice = "记录已更新"
+			at = time.Date(day.Year(), day.Month(), day.Day(), rec.at.Hour(), rec.at.Minute(), 0, 0, time.Local)
 		}
-	} else {
-		m.records = append(m.records, record{
-			id:           "mock-new-" + time.Now().Format("20060102150405.000000000"),
-			ledgerID:     m.ledgerID,
-			kind:         kind,
-			category:     category,
-			description:  description,
-			tags:         tags,
-			amount:       amount,
-			at:           at,
-			outlier:      draft.Outlier,
-			keyEventDate: eventDate,
-		})
 	}
-	m.refilter()
+	one := domain.TransactionRecord{
+		TransactionID:   draft.EditingID,
+		LedgerID:        m.ledgerID,
+		AmountCents:     amount,
+		TransactionType: kindValue(draft.Kind),
+		Category:        category,
+		Description:     strings.TrimSpace(draft.Description),
+		Flags:           recordFlags(draft.Outlier),
+		KeyEventDate:    eventDate,
+		TransactionAt:   at.Unix(),
+	}
+	notice := "已记一笔"
+	if draft.EditingID != "" {
+		err = m.repo.UpdateRecord(context.Background(), one, draft.Tags)
+		notice = "记录已更新"
+	} else {
+		_, err = m.repo.CreateRecord(context.Background(), one, draft.Tags)
+	}
+	if err != nil {
+		return errDraft("保存失败：" + err.Error())
+	}
+	m.Reload()
 	m.notice = notice
 	return nil
 }
 
-// saveTemplate stores the dialog's repeating fields as a template and returns it
-// with the id the dialog selects.
-func (m *Model) saveTemplate(one tpl.Template) tpl.Template {
+// saveTemplate stores the dialog's repeating fields as a template in the active
+// ledger and returns it with the id the dialog selects.
+func (m *Model) saveTemplate(one tpl.Template) (tpl.Template, error) {
+	if m.repo == nil {
+		return one, fmt.Errorf("工作空间尚未打开")
+	}
 	one.LedgerID = m.ledgerID
-	return m.templates.Add(one)
+	stored := tpl.ToDomain(one)
+	id, err := m.repo.CreateTemplate(context.Background(), stored)
+	if err != nil {
+		return one, err
+	}
+	one.ID = id
+	templates, err := m.repo.Templates(context.Background(), m.ledgerID)
+	if err != nil {
+		return one, err
+	}
+	list := make([]tpl.Template, 0, len(templates))
+	for _, template := range templates {
+		list = append(list, tpl.FromDomain(template))
+	}
+	m.templates.Set(m.ledgerID, list)
+	return one, nil
+}
+
+// recordFlags is the stored JSON shape the old application used for a record's
+// 离群值 mark.
+func recordFlags(outlier bool) string {
+	if outlier {
+		return `{"outlier":true}`
+	}
+	return `{"outlier":false}`
 }
 
 // errDraft is a validation failure the dialog shows.

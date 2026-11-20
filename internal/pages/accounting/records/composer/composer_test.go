@@ -56,9 +56,9 @@ func TestSaveKeepsTheDialogOpenOnError(t *testing.T) {
 func TestSaveTemplateReportsTheStoredTemplate(t *testing.T) {
 	state := New()
 	state.Open(Draft{Kind: "支出", Category: "餐饮美食", Description: "午餐", Date: "2026-01-02"})
-	state.saveTemplate(Spec{OnTemplate: func(one tpl.Template) tpl.Template {
+	state.saveTemplate(Spec{OnTemplate: func(one tpl.Template) (tpl.Template, error) {
 		one.ID = "tpl-1"
-		return one
+		return one, nil
 	}})
 	if state.templateID != "tpl-1" || state.templateMsg != "模板已保存" {
 		t.Fatalf("saving a template left %+v", state)
