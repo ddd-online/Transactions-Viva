@@ -33,30 +33,6 @@ var navSections = [...]navEntry{
 	{SectionDiary, "日记", icons.Diary},
 }
 
-// maxSectionTabs is the widest sub-function list (股票 has seven). The arrays
-// below are sized once so a paint never grows them.
-const maxSectionTabs = 8
-
-// initNavIDs names the sidebar items in the page's own identity tree. The
-// component paints them inside a Draw callback, where c.Key/ui.ID cannot name
-// anything, so the model makes the names once and reuses them for every paint.
-func (m *Model) initNavIDs() {
-	scope := m.tree.Feature("navigation")
-	for index, entry := range navSections {
-		m.navIDs[index] = m.tree.ID(scope, entry.label)
-
-		labels := m.pageTabs(entry.section)
-		if len(labels) == 0 {
-			continue
-		}
-		tabScope := m.tree.Sub(scope, m.tree.Name(entry.label))
-		for tabIndex, label := range labels {
-			m.subIDs[entry.section][tabIndex] = m.tree.ID(tabScope, label)
-		}
-	}
-	m.navSettingsID = m.tree.ID(scope, "settings")
-}
-
 // pageTabs returns the section's second-level entries, or nil for a section
 // that has none.
 func (m *Model) pageTabs(section Section) []string {
@@ -98,6 +74,37 @@ func (m *Model) closeOverlays(section Section) {
 	}
 	if closer, ok := page.(interface{ CloseOverlays() }); ok {
 		closer.CloseOverlays()
+	}
+}
+
+// openSection shows a section and, when it has sub-functions, expands its
+// second-level entries and closes the list of the section that was open.
+func (m *Model) openSection(section Section) {
+	previous, tab := m.section, m.pageTab(m.section)
+	m.section = section
+	if len(m.pageTabs(section)) > 0 {
+		// A section with sub-functions opens them and closes any other
+		// section's list; its current sub-function stays selected.
+		m.expanded, m.expandedOpen = section, true
+	} else {
+		m.expandedOpen = false
+	}
+	m.closeLeft(previous, tab)
+}
+
+// openTab shows one of the expanded section's sub-functions.
+func (m *Model) openTab(section Section, index int) {
+	previous, tab := m.section, m.pageTab(m.section)
+	m.section = section
+	m.selectTab(section, index)
+	m.closeLeft(previous, tab)
+}
+
+// closeLeft closes the floating panels of the screen the navigation leaves, so
+// a picker or popup does not follow the user to another section or sub-function.
+func (m *Model) closeLeft(previous Section, previousTab int) {
+	if m.section != previous || m.pageTab(m.section) != previousTab {
+		m.closeOverlays(previous)
 	}
 }
 

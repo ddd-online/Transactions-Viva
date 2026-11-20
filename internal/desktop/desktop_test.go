@@ -570,6 +570,35 @@ func TestSidebarExpandsOneSectionAtATime(t *testing.T) {
 	}
 }
 
+// TestSidebarSubItemsShareTheirSectionRowTrailingEdge pins the highlight of a
+// sub-function to its section row's trailing edge: the reference application
+// indents a sub-function on the leading side only, so the highlighted rows read
+// as one column instead of the sub-menu stopping short on the right.
+func TestSidebarSubItemsShareTheirSectionRowTrailingEdge(t *testing.T) {
+	driver, _ := open(t)
+	row := func(name string) gfx.Rect {
+		t.Helper()
+		for _, hit := range driver.Snapshot().Hits {
+			if hit.Label == name && hit.Role == gfx.RoleMenuItem {
+				return hit.Bounds
+			}
+		}
+		t.Fatalf("no navigation row named %q on screen", name)
+		return gfx.Rect{}
+	}
+	section := row("记账")
+	trailing := section.X + section.Width
+	for _, sub := range []string{"记录", "分析", "标签", "模板"} {
+		b := row(sub)
+		if got := b.X + b.Width; got != trailing {
+			t.Fatalf("sub-function %q ends at x=%v, its section row ends at x=%v", sub, got, trailing)
+		}
+		if b.X <= section.X {
+			t.Fatalf("sub-function %q starts at x=%v, not indented from its section row at x=%v", sub, b.X, section.X)
+		}
+	}
+}
+
 func TestSettingsCategoriesSwitchThePage(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "应用设置")

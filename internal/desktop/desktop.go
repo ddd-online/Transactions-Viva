@@ -5,7 +5,6 @@ package desktop
 
 import (
 	"github.com/vivaui/viva/app"
-	"github.com/vivaui/viva/components"
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
@@ -30,24 +29,16 @@ type Model struct {
 	dark    bool
 	theme   gfx.Theme
 
-	// tree is the page's identity tree. The sidebar items are named in it once,
-	// because Viva's Sidebar paints them inside a Draw callback.
-	tree          gfx.Tree
-	navIDs        [len(navSections)]gfx.ID
-	subIDs        [int(SectionSettings) + 1][maxSectionTabs]gfx.ID
-	navSettingsID gfx.ID
+	// tree is the page's identity tree. New names the page's feature in it so
+	// this page's identities stay out of the development reload host's scope,
+	// where its window buttons live.
+	tree gfx.Tree
 
 	// expanded is the section whose second-level entries are showing; only one
 	// section is expanded at a time. A section without sub-functions closes the
 	// open one.
 	expanded     Section
 	expandedOpen bool
-	subItems     []components.SidebarSubItem
-
-	// The sidebar is a ui.Control painted by Viva's Sidebar component. Its
-	// handlers and draw function are made once, with the model.
-	navHandlers ui.Handlers
-	drawNav     func(*ui.DrawContext)
 
 	accounting *accounting.Model
 	stock      *stock.Model
@@ -71,15 +62,11 @@ func New() *Model {
 		settings:   settings.New(),
 	}
 	m.expanded, m.expandedOpen = SectionAccounting, true
-	m.subItems = make([]components.SidebarSubItem, 0, maxSectionTabs)
 	// The development reload host names its window buttons in a tree of its
 	// own; its first feature is the buttons, at scope 2. Keep this page's
 	// identities out of that scope so a host button cannot share an identity
 	// with a sidebar control. A name-only feature shifts the page's tree by one.
 	m.tree.Feature("transactions")
-	m.initNavIDs()
-	m.navHandlers.Role = gfx.RoleGroup
-	m.drawNav = m.drawSidebar
 	return m
 }
 

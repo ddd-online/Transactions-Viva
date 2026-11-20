@@ -68,13 +68,14 @@ main → desktop → pages → components
 
 ## 页面约定
 
-- 外壳的中栏固定为「左侧 Sidebar + 右侧内容」：Sidebar 使用 Viva 的 `components.Sidebar`
-  （204px，与 motty 的 `navigationWidth` 对齐；图标 + 文字，`应用设置` 固定在底部；选中状态由
-  `desktop.Model.section` 持有）。页面只负责右侧内容，不再自己画导航。
+- 外壳的中栏固定为「左侧 Sidebar + 右侧内容」：Sidebar 是 `internal/desktop/sidebar.go` 里
+  用 `ui` 声明的导航列（204px，与 motty 的 `navigationWidth` 对齐；图标 + 文字，`应用设置`
+  固定在底部；选中状态由 `desktop.Model.section` 持有）。一级项展开自己的子功能时，子功能行
+  只缩进前缘，底色右边缘与一级项对齐（理由见「框架缺口」）。页面只负责右侧内容，
+  不再自己画导航。
 - 右侧内容是 motty 式的工作区卡片：`RadiusSurface` 圆角、1px 边框、`theme.Background`
   底色，浮在 `theme.Muted` 的窗口壳上（标题栏、底栏、导航同壳）。卡片顶部贴标题栏、
-  左侧贴导航，右侧与底栏上方各留 7px；Sidebar 自带的右分隔线用其自身底色覆盖，由卡片的
-  圆角边框充当边界。
+  左侧贴导航，右侧与底栏上方各留 7px；导航自身不画右分隔线，由卡片的圆角边框充当边界。
 - 设置是一个普通分区页，不是弹窗：左栏是分区列表，右栏是分区标题 + 分组卡片；卡片里的
   「设置行」是标题 / 说明在左、控件在右的 64px 行。尺寸与分组方式对齐 motty 的设置页
   （208px 分区列、760px 阅读列、32px 页边距），进入设置时左侧主导航保持可见，选中状态由
@@ -161,6 +162,13 @@ main → desktop → pages → components
   虽然画在上面（`HitTest` 也能找到它的 hit），普通点击仍被判给弹窗里的控件，面板里什么都
   点不动（右键菜单、Select 的下拉不受影响：它们不走 Popover 这条路径）。所以日期面板是
   用画布自己画的（见「时间选择器」），与标签多选同一套做法。
+- **`components.Sidebar` 的子菜单两侧都缩进。** `AddSubMenu` 照搬 shadcn 的 `mx-3.5` +
+  `px-2.5`：子项在右侧也比一级项再收进 24px，而接口没有宽度 / 缩进的开关；缩进本应只在
+  前缘，否则选中的子项底色比一级项短一截，右侧看起来是断的。主内容区又用卡片边框当分隔
+  线（见「页面约定」），子菜单左侧那根引导线被压成底色，两边的缩进没有视觉依据。所以导航
+  不用这个组件，改在 `internal/desktop/sidebar.go` 用 `ui` 的行声明：子项只加
+  `MarginLeft`，底色与一级项共用同一条右边缘（回归测试：`internal/desktop` 的
+  `TestSidebarSubItemsShareTheirSectionRowTrailingEdge`）。
 
 ## 存储设计（下一步）
 
