@@ -4,6 +4,10 @@
 // `viva icons`; the SVG sources are the editable form and the generated
 // icons.go must not be edited by hand.
 //
+// app-mark.svg is the application's own mark — the "Tr" glyph of the reference
+// application's AppMark — not a Lucide icon. It is filled (stroke-width 0) and
+// is drawn on the primary plate by the About page.
+//
 // Parameters: viewBox 24, stroke-width 2, round caps and joins. The sidebar
 // draws them at 16x16, the same size and source version Motty uses.
 
