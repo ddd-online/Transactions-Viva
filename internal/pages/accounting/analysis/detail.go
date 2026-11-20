@@ -20,10 +20,11 @@ import (
 // The table's columns, shared by the header row and the rows so the two always
 // agree: a name, the type it sums, the condition it matches, and its total.
 const (
-	curveNameWidth   float32 = 240
-	curveTypeWidth   float32 = 80
-	curveAmountWidth float32 = 140
-	curveActionWidth float32 = 64
+	curveNameWidth    float32 = 240
+	curveTypeWidth    float32 = 80
+	curveOutlierWidth float32 = 96
+	curveAmountWidth  float32 = 140
+	curveActionWidth  float32 = 64
 )
 
 // chartTable is the list under the plot: one row per curve that says what the
@@ -84,6 +85,9 @@ func (m *Model) curveTable(c ui.C, chart *domain.Chart) {
 		ui.Row(c).Width(curveTypeWidth).Justify(ui.Center).Children(func() {
 			typography.Caption(c, "类型")
 		})
+		ui.Row(c).Width(curveOutlierWidth).Justify(ui.Center).Children(func() {
+			typography.Caption(c, "包含离群值")
+		})
 		typography.Caption(c, "条件").Grow(1)
 		ui.Row(c).Width(curveAmountWidth).Justify(ui.End).Children(func() {
 			typography.Caption(c, "合计")
@@ -130,6 +134,13 @@ func (m *Model) curveRow(c ui.C, chart *domain.Chart, index int, line *domain.Ch
 		})
 		ui.Row(c).Width(curveTypeWidth).Justify(ui.Center).Children(func() {
 			kindChip(c, lineTypeLabel(line.TransactionType))
+		})
+		ui.Row(c).Width(curveOutlierWidth).Justify(ui.Center).Children(func() {
+			outlier := "否"
+			if line.IncludeOutlier {
+				outlier = "是"
+			}
+			typography.Body(c, outlier)
 		})
 		typography.Caption(c, conditionSummary(*line)).Grow(1).Ellipsis()
 		ui.Row(c).Width(curveAmountWidth).Justify(ui.End).Children(func() {

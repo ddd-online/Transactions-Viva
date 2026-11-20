@@ -1479,8 +1479,8 @@ func TestRecordsSyncSubmenuHover(t *testing.T) {
 func TestAnalysisPage(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "分析")
-	if !shows(driver, "月度消费趋势") || !shows(driver, "名称") {
-		t.Fatal("the analysis presets or summary are missing")
+	if !shows(driver, "月度消费趋势") || !shows(driver, "名称") || !shows(driver, "包含离群值") {
+		t.Fatal("the analysis presets or the curve table are missing")
 	}
 	if !hasControl(driver, "新增图表") {
 		t.Fatal("the analysis toolbar has no 新增图表")
