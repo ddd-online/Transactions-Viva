@@ -27,7 +27,7 @@ type navEntry struct {
 // navSections is the rail without 设置, which sits at the bottom.
 var navSections = [...]navEntry{
 	{SectionAccounting, "记账", icons.Wallet},
-	{SectionStock, "股票", icons.Stock},
+	{SectionStock, "股票", icons.ChartCandlestick},
 	{SectionTodo, "待办", icons.Todo},
 	{SectionEvents, "事件", icons.Events},
 	{SectionDiary, "日记", icons.Diary},

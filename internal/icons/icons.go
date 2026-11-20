@@ -135,6 +135,46 @@ var Calendar = gfx.Icon{
 	},
 }
 
+// chart-candlestick is a compiled vector icon.
+var ChartCandlestick = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(9.0, 5.0),
+		gfx.LineTo(9.0, 9.0),
+		gfx.MoveTo(10.0, 9.0),
+		gfx.CubicTo(10.5523, 9.0, 11.0, 9.44771, 11.0, 10.0),
+		gfx.LineTo(11.0, 14.0),
+		gfx.CubicTo(11.0, 14.5523, 10.5523, 15.0, 10.0, 15.0),
+		gfx.LineTo(8.0, 15.0),
+		gfx.CubicTo(7.44772, 15.0, 7.0, 14.5523, 7.0, 14.0),
+		gfx.LineTo(7.0, 10.0),
+		gfx.CubicTo(7.0, 9.44771, 7.44772, 9.0, 8.0, 9.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(9.0, 15.0),
+		gfx.LineTo(9.0, 17.0),
+		gfx.MoveTo(17.0, 3.0),
+		gfx.LineTo(17.0, 5.0),
+		gfx.MoveTo(18.0, 5.0),
+		gfx.CubicTo(18.5523, 5.0, 19.0, 5.44772, 19.0, 6.0),
+		gfx.LineTo(19.0, 12.0),
+		gfx.CubicTo(19.0, 12.5523, 18.5523, 13.0, 18.0, 13.0),
+		gfx.LineTo(16.0, 13.0),
+		gfx.CubicTo(15.4477, 13.0, 15.0, 12.5523, 15.0, 12.0),
+		gfx.LineTo(15.0, 6.0),
+		gfx.CubicTo(15.0, 5.44772, 15.4477, 5.0, 16.0, 5.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(17.0, 13.0),
+		gfx.LineTo(17.0, 16.0),
+		gfx.MoveTo(3.0, 3.0),
+		gfx.LineTo(3.0, 19.0),
+		gfx.CubicTo(3.0, 20.1046, 3.89543, 21.0, 5.0, 21.0),
+		gfx.LineTo(21.0, 21.0),
+	},
+}
+
 // chevron-down is a compiled vector icon.
 var ChevronDown = gfx.Icon{
 	ViewBox: 24.0,
@@ -422,24 +462,6 @@ var Settings = gfx.Icon{
 		gfx.LineTo(8.0, 14.0),
 		gfx.MoveTo(16.0, 18.0),
 		gfx.LineTo(16.0, 22.0),
-	},
-}
-
-// stock is a compiled vector icon.
-var Stock = gfx.Icon{
-	ViewBox: 24.0,
-	Stroke:  2.0,
-	Cap:     gfx.CapRound,
-	Join:    gfx.JoinRound,
-	Commands: []gfx.PathCommand{
-		gfx.MoveTo(3.0, 3.0),
-		gfx.LineTo(3.0, 19.0),
-		gfx.CubicTo(3.0, 20.1046, 3.89543, 21.0, 5.0, 21.0),
-		gfx.LineTo(21.0, 21.0),
-		gfx.MoveTo(19.0, 9.0),
-		gfx.LineTo(14.0, 14.0),
-		gfx.LineTo(10.0, 10.0),
-		gfx.LineTo(7.0, 13.0),
 	},
 }
 
