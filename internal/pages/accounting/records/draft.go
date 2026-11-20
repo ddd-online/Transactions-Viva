@@ -9,6 +9,7 @@ import (
 
 	"transactions/internal/domain"
 	"transactions/internal/pages/accounting/records/composer"
+	tpl "transactions/internal/pages/accounting/template"
 )
 
 // Key routes the dialog's canvas controls from the shell's Config.OnKey.
@@ -79,7 +80,7 @@ func (m *Model) categoryNames(kind, current string) []string {
 func (m *Model) tagOptions() []string { return mockTagOptions[:] }
 
 // templateList are the 模板 choices the dialog offers.
-func (m *Model) templateList() []composer.Template { return m.templates }
+func (m *Model) templateList() []tpl.Template { return m.templates.List() }
 
 // saveDraft validates the dialog's draft and writes one mock record; the error
 // it returns is what the dialog shows under its fields.
@@ -144,12 +145,7 @@ func (m *Model) saveDraft(draft composer.Draft) error {
 
 // saveTemplate stores the dialog's repeating fields as a template and returns it
 // with the id the dialog selects.
-func (m *Model) saveTemplate(template composer.Template) composer.Template {
-	template.ID = "tpl-new-" + time.Now().Format("20060102150405.000000000")
-	template.Tags = append([]string(nil), template.Tags...)
-	m.templates = append(m.templates, template)
-	return template
-}
+func (m *Model) saveTemplate(one tpl.Template) tpl.Template { return m.templates.Add(one) }
 
 // errDraft is a validation failure the dialog shows.
 type errDraft string

@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"transactions/internal/domain"
-	"transactions/internal/pages/accounting/records/composer"
 )
 
 // The mock workspace's ledgers. A record carries the ledger it belongs to, as
@@ -62,16 +61,6 @@ var mockCategories = [...]mockCategory{
 var mockTagOptions = [...]string{
 	"日常", "同事", "通勤", "家庭", "周末", "固定支出", "设计",
 	"健康", "旅行", "社交", "书籍", "理财", "月薪", "储蓄",
-}
-
-// mockTemplates returns the templates the dialog starts with. Saving a new
-// template appends to the page's copy for the rest of the run.
-func mockTemplates() []composer.Template {
-	return []composer.Template{
-		{ID: "tpl-lunch", Name: "午餐 · 餐饮美食", Kind: "支出", Category: "餐饮美食", Description: "午餐", Tags: []string{"日常"}},
-		{ID: "tpl-commute", Name: "地铁通勤 · 交通出行", Kind: "支出", Category: "交通出行", Description: "地铁通勤", Tags: []string{"通勤"}},
-		{ID: "tpl-salary", Name: "工资到账 · 工资奖金", Kind: "收入", Category: "工资奖金", Description: "工资到账", Tags: []string{"月薪"}},
-	}
 }
 
 // mockRecords is the 记录 page's seed while the SQLite store is not wired yet.

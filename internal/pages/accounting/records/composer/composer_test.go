@@ -3,6 +3,8 @@ package composer
 import (
 	"errors"
 	"testing"
+
+	tpl "transactions/internal/pages/accounting/template"
 )
 
 // TestTemplateAppliesToTheDraft checks a chosen template fills the repeating
@@ -10,9 +12,9 @@ import (
 func TestTemplateAppliesToTheDraft(t *testing.T) {
 	state := New()
 	state.Open(Draft{Kind: "收入", Amount: "12.00", Date: "2026-01-02"})
-	spec := Spec{Templates: func() []Template {
-		return []Template{{
-			ID: "t1", Name: "午餐", Kind: "支出", Category: "餐饮美食",
+	spec := Spec{Templates: func() []tpl.Template {
+		return []tpl.Template{{
+			ID: "t1", Name: "午餐", Kind: tpl.KindExpense, Category: "餐饮美食",
 			Description: "午餐", Tags: []string{"日常"},
 		}}
 	}}
@@ -54,9 +56,9 @@ func TestSaveKeepsTheDialogOpenOnError(t *testing.T) {
 func TestSaveTemplateReportsTheStoredTemplate(t *testing.T) {
 	state := New()
 	state.Open(Draft{Kind: "支出", Category: "餐饮美食", Description: "午餐", Date: "2026-01-02"})
-	state.saveTemplate(Spec{OnTemplate: func(template Template) Template {
-		template.ID = "tpl-1"
-		return template
+	state.saveTemplate(Spec{OnTemplate: func(one tpl.Template) tpl.Template {
+		one.ID = "tpl-1"
+		return one
 	}})
 	if state.templateID != "tpl-1" || state.templateMsg != "模板已保存" {
 		t.Fatalf("saving a template left %+v", state)

@@ -22,6 +22,7 @@ import (
 	"transactions/internal/domain"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting/records/composer"
+	tpl "transactions/internal/pages/accounting/template"
 )
 
 const (
@@ -104,7 +105,7 @@ type Model struct {
 	pageStart int
 
 	list      ui.ListState
-	templates []composer.Template
+	templates *tpl.Store
 	form      composer.State
 	formSpec  composer.Spec
 	bounds    gfx.Rect
@@ -120,12 +121,19 @@ type Model struct {
 }
 
 // New returns the page on 今天, newest first, with the mock rows already
-// filtered.
-func New() *Model {
+// filtered and a template store of its own. The accounting model uses
+// NewWithTemplates so the 模板 page and the 记一笔 dialog share one store.
+func New() *Model { return NewWithTemplates(tpl.NewStore()) }
+
+// NewWithTemplates returns the page over a shared template store.
+func NewWithTemplates(templates *tpl.Store) *Model {
+	if templates == nil {
+		templates = tpl.NewStore()
+	}
 	m := &Model{
 		records:    mockRecords(),
 		ledgers:    mockLedgers(),
-		templates:  mockTemplates(),
+		templates:  templates,
 		rangeStart: todayDate(),
 		rangeEnd:   todayDate(),
 		rangeGrain: datepicker.ByDay,

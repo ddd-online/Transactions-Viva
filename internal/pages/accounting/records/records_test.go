@@ -8,6 +8,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 
 	"transactions/internal/pages/accounting/records/composer"
+	tpl "transactions/internal/pages/accounting/template"
 )
 
 func TestRecordsRefilter(t *testing.T) {
@@ -279,15 +280,15 @@ func TestSaveDraftValidates(t *testing.T) {
 
 func TestSaveTemplate(t *testing.T) {
 	m := New()
-	before := len(m.templates)
-	template := m.saveTemplate(composer.Template{
-		Name: "支出 · 测试", Kind: "支出", Category: "测试", Description: "测试",
+	before := len(m.templates.List())
+	template := m.saveTemplate(tpl.Template{
+		Name: "支出 · 测试", Kind: tpl.KindExpense, Category: "测试", Description: "测试",
 	})
 	if template.ID == "" {
 		t.Fatal("the stored template has no id")
 	}
-	if len(m.templates) != before+1 {
-		t.Fatalf("templates = %d, want %d", len(m.templates), before+1)
+	if len(m.templates.List()) != before+1 {
+		t.Fatalf("templates = %d, want %d", len(m.templates.List()), before+1)
 	}
 }
 

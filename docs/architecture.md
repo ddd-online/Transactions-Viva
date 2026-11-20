@@ -50,6 +50,8 @@ main → desktop → pages → components
 | `internal/pages/accounting/records` | 记录页：工具栏、表格、分页、统计、空态、行操作 | `src/pages/records.tsx`、`records-table.tsx` |
 | `internal/pages/accounting/records/composer` | 新增 / 编辑记录弹窗（草稿、标签多选、日期选择器） | `src/pages/record-composer.tsx` |
 | `internal/pages/accounting/tags` | 标签页：类型卡片、分类 / 标签两栏、新增 / 删除 / 拖拽排序 | `src/pages/category-tag.tsx`、`category-column.tsx`、`tag-column.tsx` |
+| `internal/pages/accounting/template` | 模板的内存列表：记录弹窗与模板页共用 | `electron/services/transaction-template.ts` |
+| `internal/pages/accounting/templates` | 模板页：表格、新建 / 删除 / 拖拽排序 | `src/pages/templates.tsx`、`template-list.tsx`、`template-form.tsx` |
 | `internal/pages/stock` | 账户 / 持仓 / 记录 / 心得 / 统计 / 天梯 / 设置 | `src/pages/stock*` |
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
 | `internal/pages/events` | 事件画廊、图片、实况照片 | `src/pages/event*` |
@@ -91,7 +93,8 @@ main → desktop → pages → components
   比较（支出记负、收入 / 转账记正），所以降序里 -4 排在 -32 前面。两列可同时生效，
   `sorts` 的顺序就是点击顺序，先点的列是主排序。工具栏原来的「排序」菜单已移除。
   子包 `records/composer` 的「新增记录 / 编辑记录」弹窗只写内存：模板、日期、类型、分类、
-  标签、标记、关联事件日期、描述与金额按旧工程 `record-composer.tsx` 排列，模板也是 mock；
+  标签、标记、关联事件日期、描述与金额按旧工程 `record-composer.tsx` 排列；模板来自
+  `internal/pages/accounting/template` 的内存 Store，和模板页共用同一份；
   每个字段用 `ui.FormField`（标题 + 控件的标准表单节奏），日期/事件日期用共享的
   `components.DateField`（可输入的日期框 + 浮在弹窗上的月历面板，见下面的「时间选择器」），
   分类是单选下拉（`selectbox.Select`，候选取当前「类型」下的分类；换类型时已选分类留在
@@ -117,6 +120,14 @@ main → desktop → pages → components
   `Reorder` 拖拽排序；行内删除打开确认弹窗，新增分类 / 新增标签用 `ui.ModalWith`，重名分别
   提示「该分类已存在 / 该标签已存在」，成功后用 `ui.Toaster`。数据来自同包的 `mock.go`
   （旧工程的默认分类与代表性标签，计数是假的），接入 store 后替换。
+- 记账-模板页（`internal/pages/accounting/templates`，旧工程 `templates.tsx`）：工具栏只有
+  右侧的「新建模板」；主体是一张通到版心边缘的表（软灰底、固定的表头，行间发丝线），列是
+  拖拽把手、模板名称、交易类型、分类、标签、标记、描述、操作；行可拖拽排序，操作列的删除
+  按钮打开确认弹窗。`新建模板` 弹窗按旧工程的字段顺序：模板名称、交易类型（支出 / 收入 /
+  转账）、分类、标签（该分类下的多选）、描述、标记（离群值）；保存时依次校验
+  「模板名称不能为空」「分类不能为空」，成功后 toast「保存模板成功」，删除后
+  「删除模板成功」。模板放在 `internal/pages/accounting/template` 的内存 Store 里，记录页的
+  「记一笔」和模板页共用同一个：在模板页新建的模板马上出现在记录弹窗的模板下拉里。
 - 页面自己浮起来的层（选择器面板、标签弹层）在切走分区 / 子功能时由外壳收起：页面实现
   `CloseOverlays()`，`internal/desktop` 的 `selectNav` 在离开前调用它，浮层不会跟着用户
   跑到另一个页面上。

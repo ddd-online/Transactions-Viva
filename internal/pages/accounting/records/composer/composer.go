@@ -12,6 +12,7 @@ import (
 
 	"transactions/internal/components/datepicker"
 	"transactions/internal/components/selectbox"
+	tpl "transactions/internal/pages/accounting/template"
 )
 
 // kindLabels is the order of the 类型 choice; a record's stored kind is its value
@@ -39,16 +40,6 @@ type Draft struct {
 	Date        string // YYYY-MM-DD
 }
 
-// Template is one 模板 the dialog offers.
-type Template struct {
-	ID          string
-	Name        string
-	Kind        string // one of kindLabels
-	Category    string
-	Description string
-	Tags        []string
-}
-
 // Spec is what the page hands the dialog each paint.
 type Spec struct {
 	// Categories is the 分类 choices for a type, in the page's order. current is
@@ -59,13 +50,13 @@ type Spec struct {
 	// TagOptions are the 标签 choices.
 	TagOptions func() []string
 	// Templates are the 模板 choices.
-	Templates func() []Template
+	Templates func() []tpl.Template
 	// OnSave validates and writes the draft. A non-nil error keeps the dialog
 	// open with the message under its fields.
 	OnSave func(Draft) error
 	// OnTemplate turns the dialog's repeating fields into a template; it returns
 	// the stored one, with its id, so the dialog can select it.
-	OnTemplate func(Template) Template
+	OnTemplate func(tpl.Template) tpl.Template
 }
 
 // fields are the FormField scratch values, one per field; ui.FormField keeps its
@@ -390,14 +381,14 @@ func (state *State) applyTemplate(spec Spec) {
 	if spec.Templates == nil {
 		return
 	}
-	for _, template := range spec.Templates() {
-		if template.ID != state.templateID {
+	for _, entry := range spec.Templates() {
+		if entry.ID != state.templateID {
 			continue
 		}
-		state.draft.Kind = template.Kind
-		state.draft.Category = template.Category
-		state.draft.Description = template.Description
-		state.setTags(template.Tags)
+		state.draft.Kind = tpl.KindLabel(entry.Kind)
+		state.draft.Category = entry.Category
+		state.draft.Description = entry.Description
+		state.setTags(entry.Tags)
 		return
 	}
 }
@@ -412,12 +403,13 @@ func (state *State) saveTemplate(spec Spec) {
 	if strings.TrimSpace(state.draft.Category) == "" {
 		name = state.draft.Kind + " · 模板"
 	}
-	stored := spec.OnTemplate(Template{
+	stored := spec.OnTemplate(tpl.Template{
 		Name:        name,
-		Kind:        state.draft.Kind,
+		Kind:        tpl.KindValue(state.draft.Kind),
 		Category:    strings.TrimSpace(state.draft.Category),
 		Description: strings.TrimSpace(state.draft.Description),
 		Tags:        append([]string(nil), state.tags.state.Values()...),
+		Outlier:     state.mark == markOutlier,
 	})
 	state.templateID = stored.ID
 	state.templateMsg = "模板已保存"

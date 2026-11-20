@@ -223,6 +223,10 @@ func TestSubFunctionTabs(t *testing.T) {
 	if !hasControl(driver, "新增分类") || !shows(driver, "餐饮美食") {
 		t.Fatal("the 标签 tab did not show its screen")
 	}
+	click(t, driver, "模板")
+	if !hasControl(driver, "新建模板") {
+		t.Fatal("the 模板 tab did not show its screen")
+	}
 }
 
 // TestTagsPage drives the 记账 · 标签 screen: the type switch, choosing a
@@ -296,6 +300,70 @@ func TestTagsPage(t *testing.T) {
 	}
 	if !shows(driver, "选择分类查看标签") {
 		t.Fatal("deleting the chosen category did not clear the tag column")
+	}
+}
+
+// TestTemplatesPage drives the 记账 · 模板 screen: the table, the required
+// fields of 新建模板, and the template the page creates being offered by the
+// 记一笔 dialog (they share one store).
+func TestTemplatesPage(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "模板")
+	if !hasControl(driver, "新建模板") || !hasControl(driver, "删除模板 午餐 · 餐饮美食") {
+		t.Fatal("the template table is missing")
+	}
+	if !shows(driver, "模板名称") || !shows(driver, "离群值") {
+		t.Fatal("the table header or the 离群值 mark is missing")
+	}
+
+	click(t, driver, "新建模板")
+	click(t, driver, "保存")
+	if !shows(driver, "模板名称不能为空") {
+		t.Fatal("an empty name was accepted")
+	}
+	click(t, driver, "模板名称")
+	if err := driver.Type("咖啡外带"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "保存")
+	if !shows(driver, "分类不能为空") {
+		t.Fatal("a missing category was accepted")
+	}
+
+	click(t, driver, "分类")
+	click(t, driver, "餐饮美食")
+	click(t, driver, "咖啡")
+	click(t, driver, "描述")
+	if err := driver.Type("外带咖啡"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "保存")
+	if !hasControl(driver, "删除模板 咖啡外带") {
+		t.Fatal("the new template is not in the table")
+	}
+
+	// The 记一笔 dialog offers the template the page just stored.
+	click(t, driver, "记录")
+	click(t, driver, "记一笔")
+	click(t, driver, "选择模板")
+	click(t, driver, "咖啡外带")
+	if !shows(driver, "外带咖啡") {
+		t.Fatal("the template did not fill the description")
+	}
+	field, ok := controlBounds(driver, "分类")
+	if !ok || !showsIn(driver, "餐饮美食", field) {
+		t.Fatal("the template did not choose its category")
+	}
+	if !shows(driver, "咖啡") {
+		t.Fatal("the template did not choose its tag")
+	}
+	click(t, driver, "取消")
+
+	click(t, driver, "模板")
+	click(t, driver, "删除模板 咖啡外带")
+	click(t, driver, "删除")
+	if hasControl(driver, "删除模板 咖啡外带") {
+		t.Fatal("the template was not deleted")
 	}
 }
 

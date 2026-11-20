@@ -13,6 +13,8 @@ import (
 	"transactions/internal/components"
 	"transactions/internal/pages/accounting/records"
 	"transactions/internal/pages/accounting/tags"
+	"transactions/internal/pages/accounting/template"
+	"transactions/internal/pages/accounting/templates"
 )
 
 type tab uint8
@@ -38,14 +40,21 @@ var notes = [...]string{
 // Model is the 记账 page's state. The chosen tab is the section's second-level
 // selection; the shell's Sidebar draws and changes it.
 type Model struct {
-	tab     tab
-	records *records.Model
-	tags    *tags.Model
+	tab       tab
+	records   *records.Model
+	tags      *tags.Model
+	templates *templates.Model
 }
 
-// New returns the default page (记录).
+// New returns the default page (记录). The records dialog and the 模板 page
+// share one template store, so a template created on either shows in both.
 func New() *Model {
-	return &Model{records: records.New(), tags: tags.New()}
+	store := template.NewStore()
+	return &Model{
+		records:   records.NewWithTemplates(store),
+		tags:      tags.New(),
+		templates: templates.New(store),
+	}
 }
 
 // Tabs are the section's second-level navigation entries.
@@ -60,6 +69,7 @@ func (m *Model) Tab() int { return int(m.tab) }
 func (m *Model) CloseOverlays() {
 	m.records.CloseOverlays()
 	m.tags.CloseOverlays()
+	m.templates.CloseOverlays()
 }
 
 // SelectTab chooses a sub-function by index.
@@ -69,14 +79,16 @@ func (m *Model) SelectTab(index int) {
 	}
 }
 
-// View declares the page. The 记录 and 标签 frontends are migrated with mock
-// data; the other tabs keep the honest pending state until their stage.
+// View declares the page. The 记录, 标签 and 模板 frontends are migrated with
+// mock data; the 分析 tab keeps the honest pending state until its stage.
 func (m *Model) View(c ui.C) {
 	switch m.tab {
 	case tabRecords:
 		m.records.View(c)
 	case tabTags:
 		m.tags.View(c)
+	case tabTemplates:
+		m.templates.View(c)
 	default:
 		components.Pending(c, tabLabels[m.tab], notes[m.tab])
 	}
