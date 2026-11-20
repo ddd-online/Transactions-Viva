@@ -12,6 +12,7 @@ import (
 
 	"transactions/internal/components"
 	"transactions/internal/pages/accounting/records"
+	"transactions/internal/pages/accounting/tags"
 )
 
 type tab uint8
@@ -39,11 +40,12 @@ var notes = [...]string{
 type Model struct {
 	tab     tab
 	records *records.Model
+	tags    *tags.Model
 }
 
 // New returns the default page (记录).
 func New() *Model {
-	return &Model{records: records.New()}
+	return &Model{records: records.New(), tags: tags.New()}
 }
 
 // Tabs are the section's second-level navigation entries.
@@ -57,6 +59,7 @@ func (m *Model) Tab() int { return int(m.tab) }
 // follow the user to another screen.
 func (m *Model) CloseOverlays() {
 	m.records.CloseOverlays()
+	m.tags.CloseOverlays()
 }
 
 // SelectTab chooses a sub-function by index.
@@ -66,14 +69,17 @@ func (m *Model) SelectTab(index int) {
 	}
 }
 
-// View declares the page. The 记录 frontend is migrated with mock data; the
-// other tabs keep the honest pending state until their stage.
+// View declares the page. The 记录 and 标签 frontends are migrated with mock
+// data; the other tabs keep the honest pending state until their stage.
 func (m *Model) View(c ui.C) {
-	if m.tab == tabRecords {
+	switch m.tab {
+	case tabRecords:
 		m.records.View(c)
-		return
+	case tabTags:
+		m.tags.View(c)
+	default:
+		components.Pending(c, tabLabels[m.tab], notes[m.tab])
 	}
-	components.Pending(c, tabLabels[m.tab], notes[m.tab])
 }
 
 // Key routes the records page's canvas controls (the tags multi-select) from

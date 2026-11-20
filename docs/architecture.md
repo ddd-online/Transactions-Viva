@@ -49,6 +49,7 @@ main → desktop → pages → components
 | `internal/pages/accounting` | 记账分区的四个子功能（记录 / 分析 / 标签 / 模板） | `src/pages/records*`、`charts*`、`category-tag*`、`template*` |
 | `internal/pages/accounting/records` | 记录页：工具栏、表格、分页、统计、空态、行操作 | `src/pages/records.tsx`、`records-table.tsx` |
 | `internal/pages/accounting/records/composer` | 新增 / 编辑记录弹窗（草稿、标签多选、日期选择器） | `src/pages/record-composer.tsx` |
+| `internal/pages/accounting/tags` | 标签页：类型卡片、分类 / 标签两栏、新增 / 删除 / 拖拽排序 | `src/pages/category-tag.tsx`、`category-column.tsx`、`tag-column.tsx` |
 | `internal/pages/stock` | 账户 / 持仓 / 记录 / 心得 / 统计 / 天梯 / 设置 | `src/pages/stock*` |
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
 | `internal/pages/events` | 事件画廊、图片、实况照片 | `src/pages/event*` |
@@ -80,7 +81,7 @@ main → desktop → pages → components
   「设置行」是标题 / 说明在左、控件在右的 64px 行。尺寸与分组方式对齐 motty 的设置页
   （208px 分区列、760px 阅读列、32px 页边距），进入设置时左侧主导航保持可见，选中状态由
   `desktop.Model.section` 持有。
-- 记账-记录页是当前唯一有真实前端的页面：工具栏 / 时间范围 / 表头排序 / 表格 / 分页 /
+- 记账-记录页：工具栏 / 时间范围 / 表头排序 / 表格 / 分页 /
   收支统计都在 `internal/pages/accounting/records`，行数据来自同包的 `mock.go`，
   工具栏最左侧的「账本」`selectbox.Select` 在 mock 的两个账本（家庭账本 / 旅行账本）间切换：
   表格、统计与分页随当前账本过滤，新记录落到当前账本，右键的「同步到其他账本」列出其余账本。
@@ -108,6 +109,14 @@ main → desktop → pages → components
   编辑、同步到其他账本、删除。底部分页是 `internal/components/pagination`：
   每页 15 / 30 / 50 的 `selectbox.Select` 在 Viva 分页左侧，「共 N 条」在右侧，三者同属
   一个自定义分页组件；分页栏上方不再画分割线。接入 store 时替换 mock，不改这套布局。
+- 记账-标签页（`internal/pages/accounting/tags`，旧工程 `category-tag.tsx`）：工具栏是
+  支出 / 收入 / 转账三张类型卡片（选中时用该类型的语义色 + 8% 同色底）；主体是 240px 的
+  分类栏、一条竖线、剩下的标签栏。分类栏列出当前类型的分类（名称、记录数徽标、拖拽手柄、
+  删除），栏头是计数与「新增分类」；标签栏标题是所选分类名（未选时「标签」），栏头是计数与
+  「新增标签」（未选分类时禁用），列出该分类下的标签。两张列表都用 `ui.List` 的
+  `Reorder` 拖拽排序；行内删除打开确认弹窗，新增分类 / 新增标签用 `ui.ModalWith`，重名分别
+  提示「该分类已存在 / 该标签已存在」，成功后用 `ui.Toaster`。数据来自同包的 `mock.go`
+  （旧工程的默认分类与代表性标签，计数是假的），接入 store 后替换。
 - 页面自己浮起来的层（选择器面板、标签弹层）在切走分区 / 子功能时由外壳收起：页面实现
   `CloseOverlays()`，`internal/desktop` 的 `selectNav` 在离开前调用它，浮层不会跟着用户
   跑到另一个页面上。

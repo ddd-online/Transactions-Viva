@@ -220,8 +220,82 @@ func TestSubFunctionTabs(t *testing.T) {
 		t.Fatal("the 分析 tab did not show its screen")
 	}
 	click(t, driver, "标签")
-	if !shows(driver, "分类与标签") {
+	if !hasControl(driver, "新增分类") || !shows(driver, "餐饮美食") {
 		t.Fatal("the 标签 tab did not show its screen")
+	}
+}
+
+// TestTagsPage drives the 记账 · 标签 screen: the type switch, choosing a
+// category, adding a category and a tag, the duplicate check and deletions.
+func TestTagsPage(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "标签")
+	if !hasControl(driver, "新增分类") || !hasControl(driver, "新增标签") {
+		t.Fatal("the tags page has no add buttons")
+	}
+	if !shows(driver, "选择分类查看标签") {
+		t.Fatal("the tag column does not ask for a category")
+	}
+
+	click(t, driver, "餐饮美食")
+	if !shows(driver, "三餐") || !shows(driver, "外卖") {
+		t.Fatal("choosing 餐饮美食 did not show its tags")
+	}
+
+	// Another type clears the chosen category and its tags.
+	click(t, driver, "收入")
+	if !shows(driver, "选择分类查看标签") || shows(driver, "三餐") {
+		t.Fatal("switching to 收入 kept the expense category or its tags")
+	}
+
+	click(t, driver, "新增分类")
+	click(t, driver, "分类名称")
+	if err := driver.Type("宠物"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "确认")
+	if !hasControl(driver, "宠物") {
+		t.Fatal("the new category is not in the list")
+	}
+	if !shows(driver, "暂无标签") {
+		t.Fatal("the new category is not chosen")
+	}
+
+	click(t, driver, "新增标签")
+	click(t, driver, "标签名称")
+	if err := driver.Type("洗澡"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "确认")
+	if !hasControl(driver, "洗澡") {
+		t.Fatal("the new tag is not in the list")
+	}
+
+	// A duplicate category name is refused in the dialog.
+	click(t, driver, "新增分类")
+	click(t, driver, "分类名称")
+	if err := driver.Type("宠物"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "确认")
+	if !shows(driver, "该分类已存在") {
+		t.Fatal("the duplicate category was accepted")
+	}
+	click(t, driver, "取消")
+
+	click(t, driver, "删除标签 洗澡")
+	click(t, driver, "删除")
+	if hasControl(driver, "洗澡") {
+		t.Fatal("the tag was not deleted")
+	}
+
+	click(t, driver, "删除分类 宠物")
+	click(t, driver, "删除")
+	if hasControl(driver, "宠物") {
+		t.Fatal("the category was not deleted")
+	}
+	if !shows(driver, "选择分类查看标签") {
+		t.Fatal("deleting the chosen category did not clear the tag column")
 	}
 }
 

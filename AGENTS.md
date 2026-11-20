@@ -10,7 +10,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 整体迁移到 **Viva + Go**：没有 Electron、没有 Node、没有内嵌浏览器，窗口与控件由 GPU
 直接绘制。**行为、文案、交互、数据契约一律以旧工程为准，先追平再改进。**
 
-当前阶段：**外壳与记账-记录页的前端已搭起；记录页数据是 mock，其余页面只搭结构。**
+当前阶段：**外壳、记账-记录页与记账-标签页的前端已搭起；数据都是 mock，其余页面只搭结构。**
 
 - 入口是根目录 `main.go`：只做 `log.Fatal(desktop.Run())`，`viva.toml` 的 `package = "."`。
   开发时 `viva dev .`，一次性运行 `go run .`。
@@ -36,6 +36,9 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   粒度、前后周期、快捷区间，日粒度的面板标题两侧还有 `chevrons-left` / `chevrons-right`
   的整年箭头，浮层面板不占布局）；分页栏在 `internal/components/pagination`：
   每页 15 / 30 / 50 的 Select 在 Viva 分页左侧，「共 N 条」在右侧，三者是一个自定义组件。
+- 记账-标签页已迁移前端：工具栏是 支出 / 收入 / 转账 类型卡片，主体是 240px 分类栏 + 标签栏；
+  分类与标签都能新增、删除（带确认弹窗）、拖拽排序，重名在弹窗里提示；分类 / 标签的记录数、
+  默认分类与标签都在 `internal/pages/accounting/tags/mock.go`，接入 store 后替换。
 - 原来的 `viva init` 示例（计数页）已移除；根目录 `main.go` 现在是真实入口。
 - SQLite 存储、配置持久化尚未接入；其余页面的真实内容也还没迁移（见下面的迁移顺序）。
 
@@ -60,6 +63,7 @@ internal/icons/          由 SVG 编译出的矢量图标（viva icons）
 internal/pages/          各功能页：accounting、stock、todo、events、diary、settings
   accounting/records/    记录页本身（表格 / 工具栏 / 分页 / 空态 / 行操作）
   accounting/records/composer/  新增 / 编辑记录弹窗
+  accounting/tags/       标签页（类型卡片 / 分类与标签两栏 / 新增与删除弹窗）
 internal/components/     可复用的 UI：占位空态，以及 datepicker / pagination / selectbox 子包
 internal/pages/settings/controls/  只属于设置页的分组卡片 / 设置行
 internal/domain/         纯领域规则与数据形状：金额、记录、账本、事件、日记、待办、股票
@@ -90,8 +94,9 @@ goroutine；坐标与像素只交给布局，不手算 `gfx.Rect`。
 1. **外壳**（已完成）：窗口、标题栏、导航、底栏、主题切换、设置页、页面骨架。
 2. **领域 + 存储**：`internal/domain` 补全（费用、统计、图表、涨停池），`internal/store`
    用 `modernc.org/sqlite` 打开工作空间，移植 schema 与迁移，先做 `app_meta` / 账本 / 记录。
-3. **记账**：记录页前端已用 mock 数据搭起（工具栏 / 时间范围 / 表头排序 /
-   表格 / 分页 / 收支统计 / 新增与编辑弹窗）；接入 store 后替换 mock，再做记录编辑、分析图表、标签、模板。
+3. **记账**：记录页与标签页前端已用 mock 数据搭起（记录：工具栏 / 时间范围 / 表头排序 /
+   表格 / 分页 / 收支统计 / 新增与编辑弹窗；标签：类型卡片 / 分类与标签两栏 / 新增 / 删除 / 拖拽排序）；
+   接入 store 后替换 mock，再做分析图表、模板，以及标签与记录的真实关联。
 4. **待办**：卡片、四象限、六档紧急度 / 重要度、进度记录、历史。
 5. **事件与日记**：事件画廊、图片资产、实况照片；日记树、心情、导入导出。
 6. **股票**：账户、持仓、成交记录、轮次、费用算法、统计、天梯、设置。

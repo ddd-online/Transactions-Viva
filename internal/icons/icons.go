@@ -237,6 +237,52 @@ var Events = gfx.Icon{
 	},
 }
 
+// grip-vertical is a compiled vector icon.
+var GripVertical = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(10.0, 12.0),
+		gfx.CubicTo(10.0, 12.5523, 9.55229, 13.0, 9.0, 13.0),
+		gfx.CubicTo(8.44771, 13.0, 8.0, 12.5523, 8.0, 12.0),
+		gfx.CubicTo(8.0, 11.4477, 8.44771, 11.0, 9.0, 11.0),
+		gfx.CubicTo(9.55229, 11.0, 10.0, 11.4477, 10.0, 12.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(10.0, 5.0),
+		gfx.CubicTo(10.0, 5.55228, 9.55229, 6.0, 9.0, 6.0),
+		gfx.CubicTo(8.44771, 6.0, 8.0, 5.55228, 8.0, 5.0),
+		gfx.CubicTo(8.0, 4.44772, 8.44771, 4.0, 9.0, 4.0),
+		gfx.CubicTo(9.55229, 4.0, 10.0, 4.44772, 10.0, 5.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(10.0, 19.0),
+		gfx.CubicTo(10.0, 19.5523, 9.55229, 20.0, 9.0, 20.0),
+		gfx.CubicTo(8.44771, 20.0, 8.0, 19.5523, 8.0, 19.0),
+		gfx.CubicTo(8.0, 18.4477, 8.44771, 18.0, 9.0, 18.0),
+		gfx.CubicTo(9.55229, 18.0, 10.0, 18.4477, 10.0, 19.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(16.0, 12.0),
+		gfx.CubicTo(16.0, 12.5523, 15.5523, 13.0, 15.0, 13.0),
+		gfx.CubicTo(14.4477, 13.0, 14.0, 12.5523, 14.0, 12.0),
+		gfx.CubicTo(14.0, 11.4477, 14.4477, 11.0, 15.0, 11.0),
+		gfx.CubicTo(15.5523, 11.0, 16.0, 11.4477, 16.0, 12.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(16.0, 5.0),
+		gfx.CubicTo(16.0, 5.55228, 15.5523, 6.0, 15.0, 6.0),
+		gfx.CubicTo(14.4477, 6.0, 14.0, 5.55228, 14.0, 5.0),
+		gfx.CubicTo(14.0, 4.44772, 14.4477, 4.0, 15.0, 4.0),
+		gfx.CubicTo(15.5523, 4.0, 16.0, 4.44772, 16.0, 5.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(16.0, 19.0),
+		gfx.CubicTo(16.0, 19.5523, 15.5523, 20.0, 15.0, 20.0),
+		gfx.CubicTo(14.4477, 20.0, 14.0, 19.5523, 14.0, 19.0),
+		gfx.CubicTo(14.0, 18.4477, 14.4477, 18.0, 15.0, 18.0),
+		gfx.CubicTo(15.5523, 18.0, 16.0, 18.4477, 16.0, 19.0),
+		gfx.ClosePath(),
+	},
+}
+
 // moon is a compiled vector icon.
 var Moon = gfx.Icon{
 	ViewBox: 24.0,
@@ -362,6 +408,34 @@ var Todo = gfx.Icon{
 		gfx.MoveTo(9.0, 12.0),
 		gfx.LineTo(11.0, 14.0),
 		gfx.LineTo(15.0, 10.0),
+	},
+}
+
+// trash-2 is a compiled vector icon.
+var Trash2 = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(3.0, 6.0),
+		gfx.LineTo(21.0, 6.0),
+		gfx.MoveTo(19.0, 6.0),
+		gfx.LineTo(19.0, 20.0),
+		gfx.CubicTo(19.0, 21.0, 18.0, 22.0, 17.0, 22.0),
+		gfx.LineTo(7.0, 22.0),
+		gfx.CubicTo(6.0, 22.0, 5.0, 21.0, 5.0, 20.0),
+		gfx.LineTo(5.0, 6.0),
+		gfx.MoveTo(8.0, 6.0),
+		gfx.LineTo(8.0, 4.0),
+		gfx.CubicTo(8.0, 3.0, 9.0, 2.0, 10.0, 2.0),
+		gfx.LineTo(14.0, 2.0),
+		gfx.CubicTo(15.0, 2.0, 16.0, 3.0, 16.0, 4.0),
+		gfx.LineTo(16.0, 6.0),
+		gfx.MoveTo(10.0, 11.0),
+		gfx.LineTo(10.0, 17.0),
+		gfx.MoveTo(14.0, 11.0),
+		gfx.LineTo(14.0, 17.0),
 	},
 }
 
