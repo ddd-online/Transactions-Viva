@@ -4,7 +4,10 @@ go 1.26.0
 
 tool github.com/vivaui/viva/cmd/viva
 
-require github.com/vivaui/viva v0.6.5
+require (
+	github.com/vivaui/viva v0.6.5
+	modernc.org/sqlite v1.62.0
+)
 
 require (
 	github.com/dsnet/compress v0.0.0-20171208185109-cc9eb1d7ad76 // indirect
@@ -20,5 +23,4 @@ require (
 	modernc.org/libc v1.80.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
-	modernc.org/sqlite v1.62.0 // indirect
 )
