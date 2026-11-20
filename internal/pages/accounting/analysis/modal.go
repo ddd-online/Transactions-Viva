@@ -359,7 +359,7 @@ func (m *Model) modals(c ui.C) {
 			case modalCreate:
 				m.createFields(c)
 			case modalRename:
-				m.field(c, "图表名称", &m.form.title, "请输入图表名称")
+				m.primaryField(c, "图表名称", &m.form.title, "请输入图表名称")
 			case modalLine:
 				m.lineFields(c)
 			}
@@ -389,7 +389,7 @@ func (m *Model) modals(c ui.C) {
 }
 
 func (m *Model) createFields(c ui.C) {
-	m.field(c, "图表名称", &m.form.title, "例如：年度支出")
+	m.primaryField(c, "图表名称", &m.form.title, "例如：年度支出")
 	ui.Text(c, "图表类型").FontSize(c.Theme().Metrics.FontSizeS).Muted()
 	ui.Choice(c, &m.form.chartType, chartTypeLabels[:], nil)
 	if m.form.chartType == "饼图" {
@@ -418,7 +418,7 @@ func (m *Model) createFields(c ui.C) {
 }
 
 func (m *Model) lineFields(c ui.C) {
-	m.field(c, "曲线名称", &m.form.lineLabel, "例如：餐饮支出")
+	m.primaryField(c, "曲线名称", &m.form.lineLabel, "例如：餐饮支出")
 	ui.Text(c, "交易类型").FontSize(c.Theme().Metrics.FontSizeS).Muted()
 	if selectbox.Select(c, &m.form.lineKind, lineTypeLabels[:], nil).Label("交易类型").FillWidth().Changed() {
 		m.form.lineCategory = ""
@@ -455,4 +455,11 @@ func (m *Model) groupKindValue() string {
 func (m *Model) field(c ui.C, label string, value *string, placeholder string) {
 	ui.Text(c, label).FontSize(c.Theme().Metrics.FontSizeS).Muted()
 	ui.TextField(c, value, label, placeholder).FillWidth()
+}
+
+// primaryField is the first field of a dialog: it takes the keyboard as the
+// dialog appears, so the user can type the name without clicking the field.
+func (m *Model) primaryField(c ui.C, label string, value *string, placeholder string) {
+	ui.Text(c, label).FontSize(c.Theme().Metrics.FontSizeS).Muted()
+	ui.TextField(c, value, label, placeholder).FillWidth().AutoFocus()
 }

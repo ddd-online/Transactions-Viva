@@ -1330,7 +1330,7 @@ func TestAnalysisPage(t *testing.T) {
 	}
 
 	click(t, driver, "新增图表")
-	click(t, driver, "图表名称")
+	// The name field takes the keyboard with the dialog: no click is needed.
 	if err := driver.Type("支出构成"); err != nil {
 		t.Fatal(err)
 	}
@@ -1355,7 +1355,6 @@ func TestAnalysisLineEditor(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "分析")
 	click(t, driver, "新增图表")
-	click(t, driver, "图表名称")
 	if err := driver.Type("餐饮趋势"); err != nil {
 		t.Fatal(err)
 	}
