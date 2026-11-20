@@ -141,7 +141,8 @@ main → desktop → pages → components
   成功后才关闭旧库并写入 `workspaceDir` 和最近 5 条 `recentWorkspaces`；失败保留旧工作空间）、
   外观（浅色 / 深色 / 跟随系统；标题栏开关写同一个值，`app.WatchSystemAppearance` 让跟随
   系统时会重绘）、关闭行为（`OnCloseRequest`：直接退出 / 隐藏到托盘 / 弹窗询问；托盘用
-  Viva 的 `StatusItem`，没有状态区时回退为退出）；网络代理仍是占位。同一页的第二组是
+  Viva 的 `StatusItem`，没有状态区时回退为退出）。同一页的另两组是「网络代理」（独立一组，
+  仍是占位，标「暂未支持」）与
   「功能开关」（不再单独占一个导航小节），写 `features` 的全局默认；`ledgerFeatures` 的账本
   覆盖规则已在 `config` 里，但还没有接到真实账本上。关掉的分区立即从 Sidebar 消失，五个全关时落到设置。
 - 关于软件是成立的页面（对齐 motty 的关于页）：身份卡（标志、名称、一句话定位、「复制版本信息」）→「版本信息」2×2 事实网格 →「更新」一行（尚未接入，标「暂未支持」）→「项目」两张外链卡 →「界面由 Viva 绘制」尾注。事实来自 `internal/buildinfo`（`debug.ReadBuildInfo` 的提交与日期 + `runtime`，一次读取）；「复制」与「打开链接」走 `Spec` 回调外壳（`app.SetClipboardText` / `app.OpenURL`，在驱动下记录而不碰真实系统）。

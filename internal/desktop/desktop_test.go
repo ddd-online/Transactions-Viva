@@ -913,7 +913,7 @@ func TestSettingsCategoriesSwitchThePage(t *testing.T) {
 	if hasControl(driver, "功能开关") {
 		t.Fatal("功能开关 is still a section of the settings rail")
 	}
-	for _, name := range []string{"常规", "功能开关"} {
+	for _, name := range []string{"常规", "网络代理", "功能开关"} {
 		if !shows(driver, name) {
 			t.Fatalf("通用设置 has no %q group", name)
 		}

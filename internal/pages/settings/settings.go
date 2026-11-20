@@ -355,20 +355,22 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 	})
 }
 
-// general is 通用设置: the application's own preferences and the optional
-// features' switches, each its own named group — the same rhythm as 关于软件
-// (版本信息 / 更新 / 项目) and 日记配置 (日记本 / 导入导出). The switches used to
-// be a section of their own; they act on the navigation rather than on a page of
-// it, so they belong beside the other things the application itself sets.
+// general is 通用设置: the application's own preferences, the proxy placeholder
+// and the optional features' switches, each its own named group — the same
+// rhythm as 关于软件 (版本信息 / 更新 / 项目) and 日记配置 (日记本 / 导入导出). The
+// switches used to be a section of their own; they act on the navigation rather
+// than on a page of it, so they belong beside the other things the application
+// itself sets.
 func (m *Model) general(c ui.C, spec Spec) {
 	ui.Column(c).FillWidth().Gap(layout.GroupGap).Children(func() {
 		m.generalPreferences(c, spec)
+		m.proxy(c)
 		m.featureSwitches(c, spec)
 	})
 }
 
-// generalPreferences is 常规: the workspace, the appearance, the close behavior
-// and the not-yet-migrated proxy row.
+// generalPreferences is 常规: the workspace, the appearance and the close
+// behavior.
 func (m *Model) generalPreferences(c ui.C, spec Spec) {
 	trayNote := ""
 	if !spec.TrayAvailable {
@@ -394,8 +396,15 @@ func (m *Model) generalPreferences(c ui.C, spec Spec) {
 				m.report("保存关闭行为失败", func() error { return spec.OnCloseBehavior(value) })
 			}
 		})
-		ui.Divider(c)
-		controls.Row(c, "网络代理", "行情、涨停池与更新检查走代理。", func() {
+	})
+}
+
+// proxy is 网络代理, a group of its own: it is a placeholder until the proxy
+// settings are migrated, and a row that only says 暂未支持 reads as a group the
+// user can skip rather than as part of 常规.
+func (m *Model) proxy(c ui.C) {
+	controls.Group(c, "网络代理", func() {
+		controls.Row(c, "代理", "行情、涨停池与更新检查走代理。", func() {
 			typography.Caption(c, "暂未支持")
 		})
 	})
