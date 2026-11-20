@@ -951,6 +951,30 @@ func TestWindowBorderFollowsTheme(t *testing.T) {
 	}
 }
 
+// TestWindowControlsFollowTheTheme guards the native window buttons: Viva reads
+// WindowControls on every paint, so the ink has to be a function of the current
+// theme. The viva dev host never receives this callback (see the framework gap
+// section of docs/architecture.md) and picks the ink once from ClearColor.
+func TestWindowControlsFollowTheTheme(t *testing.T) {
+	model := New()
+	config := newConfig(model)
+	if config.WindowControls == nil {
+		t.Fatal("the window has no controls style")
+	}
+	light := config.WindowControls().Foreground
+	if want := model.theme.Foreground; light != want {
+		t.Fatalf("light control ink = %v, want the theme's foreground %v", light, want)
+	}
+	model.toggleTheme()
+	dark := config.WindowControls().Foreground
+	if dark == light {
+		t.Fatal("the window buttons did not follow the appearance toggle")
+	}
+	if want := model.theme.Foreground; dark != want {
+		t.Fatalf("dark control ink = %v, want the theme's foreground %v", dark, want)
+	}
+}
+
 func TestSettingsPageAndThemeToggle(t *testing.T) {
 	driver, model := open(t)
 
