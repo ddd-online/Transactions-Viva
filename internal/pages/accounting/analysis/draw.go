@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 
@@ -13,17 +14,35 @@ import (
 	"transactions/internal/repository"
 )
 
+const (
+	// pieHoleRatio is the hole's share of the radius: a donut, not a pie, so
+	// the range's total can sit in the middle.
+	pieHoleRatio = 0.52
+	// noSlice is "no wedge here": the hole, the seam between two wedges, or the
+	// card around the pie.
+	noSlice = -1
+	// pieTooltipGap is how far off a wedge's outer edge its tip hangs.
+	pieTooltipGap = 12
+	// pieTooltipLayer is the layer the area chart paints its own tooltip in, so
+	// a pie's tip sits above the card exactly like a line chart's.
+	pieTooltipLayer = 4
+)
+
 // canvas paints the selected chart into its card. A line chart is Viva's own
 // area chart — axes, grid, dots and the hover tooltip are painted by the
 // component — so the page keeps no chart geometry of its own and a hovered
-// point needs no hand-written tip. A pie has no component, so it is still
-// painted here, in the same card and from the same theme palette.
+// point needs no hand-written tip. A pie has no component, so its wedges are
+// painted here, in the same card and from the same theme palette, and the page
+// turns the pointer into the hovered slice itself (the tip is the component's
+// tooltip shell, see pieTooltip).
 func (m *Model) canvas(c ui.C, chart *domain.Chart) {
 	theme := c.Theme()
 	if chart.ChartType == chartPie {
-		// A pie has no hover model; forget the line chart's plot so a stale
-		// hover is not carried over.
+		// The pie forgets the line chart's plot so a stale hover is not carried
+		// over, and names its own hit region: the page's Pointer reads the slice
+		// under the pointer from it.
 		m.chartHit = gfx.ID{}
+		m.pieHit = ui.ID(c)
 		ui.Row(c).FillWidth().Grow(1).MinHeight(160).
 			Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).
 			Background(theme.Card).Children(func() {
@@ -31,6 +50,7 @@ func (m *Model) canvas(c ui.C, chart *domain.Chart) {
 		})
 		return
 	}
+	m.pieHit, m.pieHover = gfx.ID{}, noSlice
 	// The component registers the plot as a hit region with this id; the page's
 	// Pointer turns the pointer over it into the hovered point, and its Key
 	// steps that point with the arrows.
@@ -97,6 +117,10 @@ func (m *Model) areaChart(theme gfx.Theme, label string) components.AreaChart {
 	}
 }
 
+// drawPie paints the donut: one wedge per slice from twelve o'clock clockwise,
+// the hole with the range's total, and — over the hovered wedge — the same
+// tooltip shell the line chart uses. Its geometry is kept for pieSliceAt, which
+// the page's Pointer asks which wedge a point is in.
 func (m *Model) drawPie(d *ui.DrawContext) {
 	theme := d.Theme
 	inner := inset(d.Rect, 18)
@@ -114,6 +138,13 @@ func (m *Model) drawPie(d *ui.DrawContext) {
 	}
 	center := size / 2
 	radius := size/2 - 8
+	m.pieCenter = gfx.Point{X: pie.X + center, Y: pie.Y + center}
+	m.pieRadius = radius
+	d.Canvas.HitWithOptions(m.pieHit, pie, "饼图", gfx.HitOptions{
+		Role:   gfx.RoleGroup,
+		Cursor: gfx.PointerCursorCrosshair,
+		Value:  m.pieSliceValue(m.pieHover),
+	})
 	start := float64(-math.Pi / 2)
 	for index, slice := range m.pieSlices {
 		angle := float64(slice.Amount) / float64(m.pie.Total) * 2 * math.Pi
@@ -130,7 +161,7 @@ func (m *Model) drawPie(d *ui.DrawContext) {
 		})
 		start += angle
 	}
-	hole := radius * 0.52
+	hole := radius * pieHoleRatio
 	d.Canvas.Rounded(gfx.Rect{
 		X: pie.X + center - hole, Y: pie.Y + center - hole,
 		Width: hole * 2, Height: hole * 2,
@@ -143,14 +174,121 @@ func (m *Model) drawPie(d *ui.DrawContext) {
 		X: pie.X + center - radius/2, Y: pie.Y + center,
 		Width: radius, Height: 22,
 	}, gfx.TextStyle{Size: typography.SizeBody, Color: theme.Foreground, Mono: true})
+	if m.pieHover >= 0 && m.pieHover < len(m.pieSlices) {
+		m.pieTooltip(d)
+	}
 }
 
-// Pointer moves the chart's hovered point under the pointer and clears it when
-// the pointer leaves the plot, so the component paints (or drops) its tooltip.
+// pieTooltip describes the hovered slice where the pointer is: the slice's
+// color, its name, what it adds up to and its share. It is the component's
+// tooltip shell, so the pie's tip and the line chart's are the same object.
+func (m *Model) pieTooltip(d *ui.DrawContext) {
+	slice := m.pieSlices[m.pieHover]
+	series := []components.ChartSeries{{
+		Key: slice.Key, Label: slice.Label, Color: pieColor(*d.Theme, m.pieHover),
+	}}
+	rows := []components.ChartTooltipRow{{Series: 0, Value: m.pieSliceValue(m.pieHover)}}
+	options := components.ChartTooltipOptions{
+		Indicator: components.ChartTooltipDot, Layer: pieTooltipLayer,
+	}
+	size := components.ChartTooltipSize(d.Canvas, *d.Theme, series, rows, options)
+	// Beside the pointer, flipped to the other side of it where the card runs
+	// out, so the tip neither covers the ring under the pointer nor leaves the
+	// card.
+	x, y := m.pieAt.X+pieTooltipGap, m.pieAt.Y+pieTooltipGap
+	bounds := inset(d.Rect, 8)
+	if x+size.Width > bounds.X+bounds.Width {
+		x = m.pieAt.X - size.Width - pieTooltipGap
+	}
+	if y+size.Height > bounds.Y+bounds.Height {
+		y = m.pieAt.Y - size.Height - pieTooltipGap
+	}
+	x = max(min(x, bounds.X+bounds.Width-size.Width), bounds.X)
+	y = max(min(y, bounds.Y+bounds.Height-size.Height), bounds.Y)
+	components.PaintChartTooltip(d.Canvas, *d.Theme, gfx.Rect{X: x, Y: y}, series, rows, options)
+}
+
+// pieSliceAt names the wedge a point is in, or noSlice over the hole, outside
+// the pie and on a slice too thin to name.
+func (m *Model) pieSliceAt(x, y float32) int {
+	if len(m.pieSlices) == 0 || m.pie.Total <= 0 || m.pieRadius <= 0 {
+		return noSlice
+	}
+	dx, dy := x-m.pieCenter.X, y-m.pieCenter.Y
+	distance := float32(math.Hypot(float64(dx), float64(dy)))
+	if distance > m.pieRadius || distance < m.pieRadius*pieHoleRatio {
+		return noSlice
+	}
+	// The wedges start at twelve o'clock and sweep clockwise; atan2 measures
+	// the same direction, so shifting it by a quarter turn is the offset into
+	// the pie, and each slice takes its own span off that.
+	angle := math.Atan2(float64(dy), float64(dx)) + math.Pi/2
+	for angle < 0 {
+		angle += 2 * math.Pi
+	}
+	for index, slice := range m.pieSlices {
+		span := float64(slice.Amount) / float64(m.pie.Total) * 2 * math.Pi
+		if angle < span {
+			return index
+		}
+		angle -= span
+	}
+	return noSlice
+}
+
+// pieSliceValue writes one slice the way the table and the tip do: what it adds
+// up to, then its share of the pie.
+func (m *Model) pieSliceValue(index int) string {
+	if index < 0 || index >= len(m.pieSlices) {
+		return ""
+	}
+	return fmt.Sprintf("%s · %.1f%%", domain.CentsToYuan(m.pieSlices[index].Amount), m.sliceShare(index))
+}
+
+// sliceShare is a slice's part of the pie, in percent.
+func (m *Model) sliceShare(index int) float64 {
+	if m.pie.Total <= 0 || index < 0 || index >= len(m.pieSlices) {
+		return 0
+	}
+	return float64(m.pieSlices[index].Amount) / float64(m.pie.Total) * 100
+}
+
+// Pointer moves the hover the pointer is over — a line chart's point or a pie's
+// slice — and clears it when the pointer leaves the chart, so the chart paints
+// (or drops) its tooltip.
 func (m *Model) Pointer(event gfx.PointerEvent) gfx.EventResult {
 	if event.Kind != gfx.PointerMove && event.Kind != gfx.PointerExit {
 		return gfx.EventResult{}
 	}
+	if chart := m.selectedChart(); chart != nil && chart.ChartType == chartPie {
+		return m.piePointer(event)
+	}
+	return m.linePointer(event)
+}
+
+// piePointer turns the pointer over the pie into the hovered slice; the tip
+// follows the pointer, so a move within a wedge repaints too, and leaving the
+// pie drops the tip.
+func (m *Model) piePointer(event gfx.PointerEvent) gfx.EventResult {
+	if event.Kind == gfx.PointerExit || m.pieHit.IsZero() || event.Target != m.pieHit {
+		// Only repaint: the move belongs to whatever the pointer is over now.
+		changed := m.pieHover != noSlice
+		m.pieHover = noSlice
+		return gfx.EventResult{Repaint: changed}
+	}
+	m.pieAt = gfx.Point{X: event.X, Y: event.Y}
+	index := m.pieSliceAt(event.X, event.Y)
+	if index == noSlice && m.pieHover == noSlice {
+		// Over the hole or the seam: nothing is described there.
+		return gfx.EventResult{Handled: true}
+	}
+	m.pieHover = index
+	return gfx.EventResult{Handled: true, Repaint: true}
+}
+
+// linePointer is the same for the area chart's point: the component keeps the
+// hover, the plot turns the pointer into an index.
+func (m *Model) linePointer(event gfx.PointerEvent) gfx.EventResult {
 	previous, active := m.chartState.Index()
 	if event.Kind == gfx.PointerExit || m.chartHit.IsZero() || event.Target != m.chartHit {
 		m.chartState.Clear()

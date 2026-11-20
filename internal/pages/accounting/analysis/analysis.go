@@ -83,6 +83,16 @@ type Model struct {
 	chartHit     gfx.ID
 	chartVersion uint32
 
+	// The pie has no component, so the page keeps its own hover: the wedge
+	// under the pointer, where that pointer is (the tip follows it), the region
+	// that hit the pie, and the geometry the last paint laid out to turn a point
+	// into that wedge.
+	pieHover  int
+	pieAt     gfx.Point
+	pieHit    gfx.ID
+	pieCenter gfx.Point
+	pieRadius float32
+
 	categories []domain.Category
 	tagsByKind map[string][]string
 	tagKeyed   map[string][]string
@@ -112,6 +122,7 @@ func New(ledgers *ledger.Store) *Model {
 		rangeGrain: datepicker.ByMonth,
 		rangePick:  datepicker.NewState(),
 		list:       ui.ListState{},
+		pieHover:   noSlice,
 	}
 	m.list.Key = func(index int) int { return index }
 	m.list.Label = func(index int) string {
@@ -217,9 +228,10 @@ func (m *Model) ReloadData() {
 func (m *Model) loadSelected() {
 	m.loadErr = ""
 	m.chartVersion++
-	// A new data set starts with no hovered point: the old index would name a
-	// bucket of the previous chart.
+	// A new data set starts with no hover: the old index would name a bucket of
+	// the previous chart, or a wedge that is no longer there.
 	m.chartState.Clear()
+	m.pieHover = noSlice
 	m.lines, m.lineData, m.pie, m.pieSlices = nil, nil, repository.ChartPieResult{}, nil
 	m.stats = repository.ChartStatistics{}
 	chart := m.selectedChart()

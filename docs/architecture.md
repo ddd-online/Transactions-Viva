@@ -223,7 +223,9 @@ main → desktop → pages → components
   直接交给 `components.PaintAreaChart`（轴、网格、点、悬停竖线与提示框都由组件画，页面只
   把 `lineData` 换成元与 X 轴标签），指针从 `Config.OnPointer` 进外壳、`accounting.Pointer`
   转到 `analysis.Pointer`，再用 `ChartPlot.IndexAt` 换算成悬停点；饼图没有对应组件，仍是
-  自绘。
+  自绘（扇区、圆环与中心合计由 `drawPie` 画，指针同样走 `analysis.Pointer`，页面用上一帧的
+  圆心 / 半径把落点换成扇区，提示框借 `components.PaintChartTooltip`，所以两张图的提示框是
+  同一个壳）。
 - 页面自己浮起来的层（选择器面板、标签弹层）在切走分区 / 子功能时由外壳收起：页面实现
   `CloseOverlays()`，`internal/desktop` 的 `selectNav` 在离开前调用它，浮层不会跟着用户
   跑到另一个页面上。

@@ -53,7 +53,9 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   折线图 / 饼图、重命名、改粒度、改饼图分组、增删曲线；曲线条件支持交易类型、分类、标签
   多选（任意 / 全部）、描述与离群值。折线图由 `components.PaintAreaChart` 绘制（轴、网格、
   点、悬停提示框都是组件的），指针经 `Config.OnPointer` → `accounting.Pointer` →
-  `analysis.Pointer` 进入页面；饼图仍是自绘。图表存 `chart` 表，按账本与 `sort_order` 排序；
+  `analysis.Pointer` 进入页面；饼图仍是自绘（扇区、圆环、中心合计与悬停提示都由
+  `drawPie` / `pieTooltip` 画，提示框是同一个 `components.PaintChartTooltip`，指针命中靠上一帧
+  的圆心与半径换算成扇区）。图表存 `chart` 表，按账本与 `sort_order` 排序；
   时间范围默认本年，月 / 年粒度由图表自己的 granularity 决定。
 - 记账-模板页已迁移前端：工具栏最左侧是同一个「账本」选择器，右侧是「新建模板」；主体是通到
   版心边缘的表格（拖拽把手 / 模板名称 / 交易类型 / 分类 / 标签 / 标记 / 描述 / 操作），

@@ -206,10 +206,6 @@ func (m *Model) pieTable(c ui.C, chart *domain.Chart) {
 		return
 	}
 	for index, slice := range m.pieSlices {
-		share := float64(0)
-		if m.pie.Total > 0 {
-			share = float64(slice.Amount) / float64(m.pie.Total) * 100
-		}
 		c.KeyInt(index)
 		ui.Row(c).Height(layout.RowHeight).FillWidth().
 			PadX(layout.BlockGap).Gap(layout.ColumnGap).Items(ui.Center).
@@ -223,7 +219,7 @@ func (m *Model) pieTable(c ui.C, chart *domain.Chart) {
 				typography.Body(c, domain.CentsToYuan(slice.Amount)).Mono()
 			})
 			ui.Row(c).Width(curveTypeWidth).Justify(ui.End).Children(func() {
-				typography.Caption(c, fmt.Sprintf("%.1f%%", share))
+				typography.Caption(c, fmt.Sprintf("%.1f%%", m.sliceShare(index)))
 			})
 		})
 	}

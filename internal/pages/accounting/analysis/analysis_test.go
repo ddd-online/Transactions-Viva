@@ -1,8 +1,11 @@
 package analysis
 
 import (
+	"math"
 	"strings"
 	"testing"
+
+	"github.com/vivaui/viva/gfx"
 
 	"transactions/internal/domain"
 	"transactions/internal/pages/accounting/ledger"
@@ -120,6 +123,84 @@ func TestTagOptionsFollowTypeAndCategory(t *testing.T) {
 	options = m.lineTagOptions()
 	if contains(options, "饮料") || !contains(options, "工资") {
 		t.Fatalf("income options = %v", options)
+	}
+}
+
+// TestPieHoverPicksTheSlice checks the page's own pie geometry: the wedges
+// start at twelve o'clock and sweep clockwise, the hole and the card around the
+// pie name no slice, and the pointer reports a repaint only when the hovered
+// wedge changes.
+func TestPieHoverPicksTheSlice(t *testing.T) {
+	m := newTestModel(t)
+	m.openCreate()
+	m.form.title = "支出构成"
+	m.form.chartType = "饼图"
+	m.form.groupField = "分类"
+	m.createChart()
+	if chart := m.selectedChart(); chart == nil || chart.ChartType != chartPie {
+		t.Fatalf("selected chart = %+v, want the pie", chart)
+	}
+	// What the paint would hand the page: a hit region and the geometry.
+	const (
+		cx, cy = 200, 200
+		radius = 120
+	)
+	var tree gfx.Tree
+	m.pieHit = tree.ID(tree.Feature("analysis-test"), "pie")
+	m.pieCenter = gfx.Point{X: cx, Y: cy}
+	m.pieRadius = radius
+	if got := m.pieSliceAt(cx, cy); got != noSlice {
+		t.Fatalf("slice in the hole = %d, want none", got)
+	}
+	if got := m.pieSliceAt(cx, cy-radius-20); got != noSlice {
+		t.Fatalf("slice outside the pie = %d, want none", got)
+	}
+	start := -math.Pi / 2
+	for index, slice := range m.pieSlices {
+		span := float64(slice.Amount) / float64(m.pie.Total) * 2 * math.Pi
+		mid := start + span/2
+		x := cx + float32(math.Cos(mid))*(radius*0.8)
+		y := cy + float32(math.Sin(mid))*(radius*0.8)
+		if got := m.pieSliceAt(x, y); got != index {
+			t.Fatalf("slice at the middle of %d = %d", index, got)
+		}
+		start += span
+	}
+
+	// The pointer over the first wedge hovers it and asks for a repaint; a move
+	// within the same wedge repaints too, because the tip follows the pointer.
+	top := gfx.PointerEvent{Kind: gfx.PointerMove, Target: m.pieHit, X: cx, Y: cy - radius*0.8}
+	if result := m.Pointer(top); !result.Repaint || m.pieHover != 0 {
+		t.Fatalf("hover over the top wedge = %d, repaint %v", m.pieHover, result.Repaint)
+	}
+	if m.pieAt != (gfx.Point{X: top.X, Y: top.Y}) {
+		t.Fatalf("tip follows %+v, want %+v", m.pieAt, top)
+	}
+	near := top
+	near.Y -= 10
+	if result := m.Pointer(near); !result.Repaint || m.pieHover != 0 {
+		t.Fatalf("move within the wedge = %d, repaint %v", m.pieHover, result.Repaint)
+	}
+	// The hole describes no slice: it drops the tip, then asks for nothing while
+	// there is nothing to drop.
+	hole := gfx.PointerEvent{Kind: gfx.PointerMove, Target: m.pieHit, X: cx, Y: cy}
+	if result := m.Pointer(hole); !result.Repaint || m.pieHover != noSlice {
+		t.Fatalf("hover over the hole = %d, repaint %v", m.pieHover, result.Repaint)
+	}
+	if result := m.Pointer(hole); result.Repaint {
+		t.Fatal("the hole repainted with no tip showing")
+	}
+	// A move off the pie clears the tip too.
+	m.Pointer(top)
+	left := gfx.PointerEvent{Kind: gfx.PointerMove, X: 0, Y: 0}
+	if result := m.Pointer(left); !result.Repaint || m.pieHover != noSlice {
+		t.Fatalf("hover after leaving the pie = %d, repaint %v", m.pieHover, result.Repaint)
+	}
+	if !strings.Contains(m.pieSliceValue(0), "·") || !strings.HasSuffix(m.pieSliceValue(0), "%") {
+		t.Fatalf("slice value = %q", m.pieSliceValue(0))
+	}
+	if value := m.pieSliceValue(noSlice); value != "" {
+		t.Fatalf("value of no slice = %q", value)
 	}
 }
 
