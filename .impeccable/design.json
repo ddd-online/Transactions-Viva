@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-21T00:20:00+08:00",
+  "generatedAt": "2026-11-21T00:18:00+08:00",
   "title": "Design System: Transactions",
   "extensions": {
     "colorMeta": {
@@ -182,7 +182,7 @@
       },
       "amount": {
         "displayName": "Amount",
-        "purpose": "金额与价格；等宽规则已确认，代码尚未实现。"
+        "purpose": "金额与价格；系统等宽面，右对齐到列边，表里与图表刻度共用一条网格。"
       }
     },
     "shadows": [
@@ -269,7 +269,7 @@
       "refersTo": "workspace-card",
       "description": "整个窗口唯一的一张卡：内容画在它里面，外面只留 7px 边距。",
       "html": "<section class=\"ds-card\"><header class=\"ds-card__toolbar\"><button class=\"ds-pill\">今天</button><button class=\"ds-pill\">日</button><span class=\"ds-card__spacer\"></span><button class=\"ds-card__action\">记一笔</button></header><div class=\"ds-card__row\"><span class=\"ds-card__date\">11-21</span><span class=\"ds-card__kind\">支出</span><span class=\"ds-card__desc\">地铁通勤</span><span class=\"ds-card__amount\">-4.00</span></div></section>",
-      "css": ".ds-card{display:block;background:#ffffff;border:1px solid #e4e4e7;border-radius:11px;overflow:hidden;font-size:13px;color:#18181b}.ds-card__toolbar{display:flex;align-items:center;gap:8px;height:56px;padding:0 18px}.ds-card__spacer{flex:1}.ds-pill{height:32px;padding:0 12px;border:1px solid #e4e4e7;border-radius:7.5px;background:#ffffff;font-size:14px;cursor:pointer}.ds-card__action{height:32px;padding:0 12px;border:0;border-radius:7.5px;background:#1d4ed8;color:#ffffff;font-size:14px;cursor:pointer}.ds-card__row{display:flex;align-items:center;gap:12px;height:48px;padding:0 18px;border-top:1px solid #e4e4e7}.ds-card__row:hover{background:#f4f4f5}.ds-card__date{width:78px}.ds-card__kind{width:64px;font-size:12px;font-weight:500;color:#b91c1c}.ds-card__desc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ds-card__amount{width:120px;text-align:right;font-weight:500;color:#b91c1c}"
+      "css": ".ds-card{display:block;background:#ffffff;border:1px solid #e4e4e7;border-radius:11px;overflow:hidden;font-size:13px;color:#18181b}.ds-card__toolbar{display:flex;align-items:center;gap:8px;height:56px;padding:0 18px}.ds-card__spacer{flex:1}.ds-pill{height:32px;padding:0 12px;border:1px solid #e4e4e7;border-radius:7.5px;background:#ffffff;font-size:14px;cursor:pointer}.ds-card__action{height:32px;padding:0 12px;border:0;border-radius:7.5px;background:#1d4ed8;color:#ffffff;font-size:14px;cursor:pointer}.ds-card__row{display:flex;align-items:center;gap:12px;height:48px;padding:0 18px;border-top:1px solid #e4e4e7}.ds-card__row:hover{background:#f4f4f5}.ds-card__date{width:78px}.ds-card__kind{width:64px;font-size:12px;font-weight:500;color:#b91c1c}.ds-card__desc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ds-card__amount{width:120px;text-align:right;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:500;color:#b91c1c}"
     },
     {
       "name": "Mark Chip",
@@ -293,7 +293,7 @@
     "keyCharacteristics": [
       "一个强调色（Signal Blue）承担全部动作、焦点与选中；没有第二强调色。",
       "灰阶分三层：外壳、导航列、纸面。它们之间只隔 1px 发丝线。",
-      "金额右对齐、列宽固定；等宽字体是已确认的规则，尚未实现。",
+      "金额一律等宽、右对齐、列宽固定；表里的金额与图表刻度共用同一条网格。",
       "32px 控件、7.5px 控件圆角、11px 内容卡圆角：小而一致。",
       "语义色（收入 / 支出 / 转账 / 离群值）只标数据与状态，外壳与导航永不上色。",
       "明暗双主题共用同一套 token 名，深色单独取值，不靠反色推导。"
@@ -316,7 +316,7 @@
       },
       {
         "name": "The Mono Money Rule",
-        "body": "每一笔金额、每一个价格都用等宽面，列与列对齐。正文里出现的钱也必须换面——数字不是散文。",
+        "body": "每一笔金额、每一个价格都用等宽面（ui.Text(...).Mono()；画布上是 gfx.TextStyle{Mono: true}），右对齐，列与列对齐。正文里出现的钱也必须换面——数字不是散文；表单里的金额输入框同样等宽。",
         "section": "typography"
       },
       {
@@ -348,7 +348,7 @@
     "dos": [
       "Do 从 c.Theme() 取颜色、从 theme.Metrics 取尺寸；页面里不出现十六进制字面量，数据色经 internal/components/semantic 取。",
       "Do 用 32px 控件、7.5px 控件圆角、11px 卡片圆角这三档把界面钉住。",
-      "Do 金额右对齐、列宽固定；实现等宽规则时整列一起换。",
+      "Do 金额一律等宽（Mono() / TextStyle{Mono: true}）、右对齐、列宽固定，不留半列等宽。",
       "Do 把语义色限制在数据与状态上。",
       "Do 先用色差与 1px 发丝线分层，阴影只给浮层。",
       "Do 给每个可交互元素 2px 焦点环（导航行 3px）与 32px 以内的点击面。",

@@ -475,7 +475,7 @@ func (m *Model) row(r ui.ListRow) {
 				ui.Text(r.C, "★").FontSize(12).Color(outlierColor(*theme))
 			}
 		})
-	ui.Text(r.C, rec.signedAmount()).Width(recordAmountWidth).TextEnd().
+	ui.Text(r.C, rec.signedAmount()).Width(recordAmountWidth).TextEnd().Mono().
 		FontSize(13).Weight(gfx.WeightMedium).Color(color)
 
 	// The old operation column's three actions live on the row's context menu.
@@ -605,7 +605,7 @@ func (m *Model) footer(c ui.C) {
 func (m *Model) stat(c ui.C, label string, cents int64, color gfx.Color) {
 	ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
 		ui.Text(c, label).FontSize(11).Muted()
-		ui.Text(c, domain.CentsToYuan(cents)).FontSize(12).
+		ui.Text(c, domain.CentsToYuan(cents)).FontSize(12).Mono().
 			Weight(gfx.WeightMedium).Color(color)
 	})
 }

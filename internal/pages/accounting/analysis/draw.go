@@ -39,8 +39,8 @@ func (m *Model) drawLine(d *ui.DrawContext) {
 		return
 	}
 	plot := gfx.Rect{
-		X: inner.X + 52, Y: inner.Y + 16,
-		Width: inner.Width - 68, Height: inner.Height - 54,
+		X: inner.X + 60, Y: inner.Y + 16,
+		Width: inner.Width - 76, Height: inner.Height - 54,
 	}
 	if plot.Width < 40 || plot.Height < 40 {
 		return
@@ -65,8 +65,8 @@ func (m *Model) drawLine(d *ui.DrawContext) {
 		if value > 0 && value < 10 {
 			label = fmt.Sprintf("%.1f", value)
 		}
-		d.Canvas.Label(label, gfx.Rect{X: inner.X, Y: y - 8, Width: 44, Height: 16},
-			gfx.TextStyle{Size: theme.Metrics.FontSizeS, Color: theme.MutedForeground})
+		d.Canvas.LabelAligned(label, gfx.Rect{X: inner.X, Y: y - 8, Width: 52, Height: 16},
+			gfx.TextStyle{Size: theme.Metrics.FontSizeS, Color: theme.MutedForeground, Mono: true}, gfx.AlignRight)
 	}
 
 	labels := m.lineData[0].Data
@@ -180,7 +180,7 @@ func (m *Model) drawPie(d *ui.DrawContext) {
 	d.Canvas.LabelCenter(domain.CentsToYuan(m.pie.Total), gfx.Rect{
 		X: pie.X + center - radius/2, Y: pie.Y + center,
 		Width: radius, Height: 22,
-	}, gfx.TextStyle{Size: theme.Metrics.FontSizeM, Color: theme.Foreground})
+	}, gfx.TextStyle{Size: theme.Metrics.FontSizeM, Color: theme.Foreground, Mono: true})
 }
 
 func inset(rect gfx.Rect, all float32) gfx.Rect {

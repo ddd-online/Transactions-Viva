@@ -182,7 +182,7 @@ func (state *State) View(c ui.C, spec Spec) {
 				ui.TextField(c, &state.draft.Description, "描述", "描述消费内容")
 			})
 			state.wideFormField(c, &state.fields.amount, "金额", func() {
-				ui.TextField(c, &state.draft.Amount, "金额", "0.00")
+				ui.TextField(c, &state.draft.Amount, "金额", "0.00").Mono()
 			})
 			if state.err != "" {
 				ui.Text(c, state.err).FontSize(11).Color(c.Theme().Danger)

@@ -466,8 +466,8 @@ func (m *Model) lineSummary(c ui.C) {
 	theme := c.Theme()
 	ui.Text(c, "曲线合计").FontSize(theme.Metrics.FontSizeM).Weight(gfx.WeightSemibold)
 	ui.Row(c).Gap(14).Children(func() {
-		ui.Text(c, "收入 "+domain.CentsToYuan(m.stats.Income)).FontSize(theme.Metrics.FontSizeS).Color(theme.Success)
-		ui.Text(c, "支出 "+domain.CentsToYuan(m.stats.Expense)).FontSize(theme.Metrics.FontSizeS).Color(theme.Danger)
+		summaryAmount(c, "收入", m.stats.Income, theme.Success)
+		summaryAmount(c, "支出", m.stats.Expense, theme.Danger)
 	})
 	for index, line := range m.lineData {
 		total := int64(0)
@@ -485,10 +485,21 @@ func (m *Model) lineSummary(c ui.C) {
 	}
 }
 
+// summaryAmount is one 收入 / 支出 figure of the summary: the label stays in the
+// reading face, the number is set on the mono grid so the two columns line up.
+func summaryAmount(c ui.C, label string, cents int64, color gfx.Color) {
+	theme := c.Theme()
+	ui.Row(c).Gap(4).Items(ui.Center).Children(func() {
+		ui.Text(c, label).FontSize(theme.Metrics.FontSizeS).Color(color)
+		ui.Text(c, domain.CentsToYuan(cents)).FontSize(theme.Metrics.FontSizeS).Mono().Color(color)
+	})
+}
+
 func (m *Model) pieSummary(c ui.C) {
 	theme := c.Theme()
 	ui.Text(c, "分组合计").FontSize(theme.Metrics.FontSizeM).Weight(gfx.WeightSemibold)
-	ui.Text(c, domain.CentsToYuan(m.pie.Total)).FontSize(theme.Metrics.FontSizeL).Weight(gfx.WeightSemibold)
+	ui.Text(c, domain.CentsToYuan(m.pie.Total)).FontSize(theme.Metrics.FontSizeL).
+		Mono().Weight(gfx.WeightSemibold)
 	for index, slice := range m.pieSlices {
 		ui.Row(c).Gap(8).Items(ui.Center).Children(func() {
 			dot(c, pieColor(*theme, index))
