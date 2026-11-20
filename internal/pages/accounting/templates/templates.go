@@ -494,7 +494,7 @@ func (m *Model) save() {
 	m.Reload()
 	m.list.ScrollIntoView(len(m.items()) - 1)
 	m.closeForm()
-	m.toaster.Show("保存模板成功", "", ui.ToastSuccess)
+	m.toaster.Show("模板已保存", "", ui.ToastSuccess)
 }
 
 func (m *Model) askDelete(one tpl.Template) {
@@ -514,7 +514,7 @@ func (m *Model) confirmDelete() {
 	}
 	m.Reload()
 	m.deleteOpen = false
-	m.toaster.Show("删除模板成功", "", ui.ToastSuccess)
+	m.toaster.Show("模板已删除", "", ui.ToastSuccess)
 }
 
 // formModal is 新建模板.
