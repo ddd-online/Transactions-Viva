@@ -80,7 +80,7 @@ func (m *Model) categoryNames(kind, current string) []string {
 func (m *Model) tagOptions() []string { return mockTagOptions[:] }
 
 // templateList are the 模板 choices the dialog offers.
-func (m *Model) templateList() []tpl.Template { return m.templates.List() }
+func (m *Model) templateList() []tpl.Template { return m.templates.List(m.ledgerID) }
 
 // saveDraft validates the dialog's draft and writes one mock record; the error
 // it returns is what the dialog shows under its fields.
@@ -145,7 +145,10 @@ func (m *Model) saveDraft(draft composer.Draft) error {
 
 // saveTemplate stores the dialog's repeating fields as a template and returns it
 // with the id the dialog selects.
-func (m *Model) saveTemplate(one tpl.Template) tpl.Template { return m.templates.Add(one) }
+func (m *Model) saveTemplate(one tpl.Template) tpl.Template {
+	one.LedgerID = m.ledgerID
+	return m.templates.Add(one)
+}
 
 // errDraft is a validation failure the dialog shows.
 type errDraft string

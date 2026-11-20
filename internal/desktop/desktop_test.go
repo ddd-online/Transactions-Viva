@@ -429,6 +429,60 @@ func TestRecordsLedgerSelect(t *testing.T) {
 	}
 }
 
+// TestAccountingLedgerIsSharedAcrossPages switches the ledger on each migrated
+// 记账 page and checks the other pages follow it.
+func TestAccountingLedgerIsSharedAcrossPages(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "账本")
+	click(t, driver, "旅行账本")
+	if !shows(driver, "去程机票") {
+		t.Fatal("旅行账本 did not show its rows")
+	}
+
+	// The tags page shows the same choice and lets it change for everyone.
+	click(t, driver, "标签")
+	if !shows(driver, "旅行账本") {
+		t.Fatal("the tags page did not inherit 旅行账本")
+	}
+	click(t, driver, "账本")
+	click(t, driver, "家庭账本")
+	if shows(driver, "旅行账本") {
+		t.Fatal("switching back to 家庭账本 left the old name on the tags page")
+	}
+
+	// The templates page follows, and each ledger has its own templates.
+	click(t, driver, "模板")
+	if !shows(driver, "午餐 · 餐饮美食") {
+		t.Fatal("the templates page did not inherit 家庭账本")
+	}
+	click(t, driver, "账本")
+	click(t, driver, "旅行账本")
+	if !shows(driver, "机票 · 交通出行") {
+		t.Fatal("旅行账本 did not show its templates")
+	}
+	if shows(driver, "午餐 · 餐饮美食") {
+		t.Fatal("the family ledger's template stayed after switching")
+	}
+
+	// The records page sees the ledger chosen on the templates page.
+	click(t, driver, "记录")
+	if !shows(driver, "去程机票") {
+		t.Fatal("the records page did not inherit 旅行账本")
+	}
+
+	// A switch while the tags page has a category chosen clears the choice.
+	click(t, driver, "标签")
+	click(t, driver, "餐饮美食")
+	if !shows(driver, "三餐") {
+		t.Fatal("the chosen category did not show its tags")
+	}
+	click(t, driver, "账本")
+	click(t, driver, "家庭账本")
+	if shows(driver, "三餐") || !shows(driver, "选择分类查看标签") {
+		t.Fatal("the ledger switch did not clear the chosen category")
+	}
+}
+
 // TestRecordCategorySelect checks the 分类 field is a single choice among the
 // categories of the chosen type, and that a category already chosen survives a
 // change of type.

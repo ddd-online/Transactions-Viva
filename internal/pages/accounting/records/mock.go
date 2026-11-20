@@ -3,25 +3,14 @@ package records
 import (
 	"time"
 
-	"transactions/internal/domain"
+	"transactions/internal/pages/accounting/ledger"
 )
 
-// The mock workspace's ledgers. A record carries the ledger it belongs to, as
-// the store's ledger_id will, so switching the toolbar's 账本 Select filters the
-// table and the statistics exactly as the workspace does.
+// The ledger ids the mock rows belong to, aliased for the tests.
 const (
-	ledgerHome   = "ledger-home"
-	ledgerTravel = "ledger-travel"
+	ledgerHome   = ledger.HomeID
+	ledgerTravel = ledger.TravelID
 )
-
-// mockLedgers is the workspace's ledger list until the store lands. The names
-// are the ones the 同步到其他账本 submenu offers.
-func mockLedgers() []domain.Ledger {
-	return []domain.Ledger{
-		{ID: ledgerHome, Name: "家庭账本"},
-		{ID: ledgerTravel, Name: "旅行账本"},
-	}
-}
 
 // mockCategory is one 分类 of the composer's 分类 Select: its name and the type
 // it belongs to.

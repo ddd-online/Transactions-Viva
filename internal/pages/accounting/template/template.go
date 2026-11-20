@@ -1,10 +1,15 @@
 // Package template is the in-memory list of 记账 · 模板 entries: the 记录
 // composer applies them and the 模板 page manages them, so the accounting model
-// gives both the same Store for the run. The mock defaults and the storage are
-// replaced by internal/store later.
+// gives both the same Store for the run. Templates belong to a ledger, as they
+// do in the old application; the store keeps one ordered list per ledger. The
+// mock defaults and the storage are replaced by internal/store later.
 package template
 
-import "strconv"
+import (
+	"strconv"
+
+	"transactions/internal/pages/accounting/ledger"
+)
 
 // Kind values are the transaction types a template belongs to. They are the
 // stored form; KindLabel is what the page shows.
@@ -44,6 +49,7 @@ func KindValue(label string) string {
 // old dialog does.
 type Template struct {
 	ID          string
+	LedgerID    string
 	Name        string
 	Kind        string // one of Kinds
 	Category    string
@@ -52,61 +58,81 @@ type Template struct {
 	Outlier     bool
 }
 
-// Store is one ledger's templates in display order. It is shared by the 记录
-// composer and the 模板 page while the store is mock.
+// Store holds every ledger's templates, each in display order. It is shared by
+// the 记录 composer and the 模板 page while the store is mock.
 type Store struct {
-	items  []Template
+	items  map[string][]Template
 	nextID int
 }
 
-// NewStore returns the mock default templates.
+// NewStore returns the mock default templates: three for the family ledger and
+// two for the travel ledger.
 func NewStore() *Store {
-	return &Store{items: []Template{
-		{
-			ID: "tpl-lunch", Name: "午餐 · 餐饮美食", Kind: KindExpense,
-			Category: "餐饮美食", Description: "午餐", Tags: []string{"日常"},
+	return &Store{items: map[string][]Template{
+		ledger.HomeID: {
+			{
+				ID: "tpl-lunch", LedgerID: ledger.HomeID, Name: "午餐 · 餐饮美食", Kind: KindExpense,
+				Category: "餐饮美食", Description: "午餐", Tags: []string{"日常"},
+			},
+			{
+				ID: "tpl-commute", LedgerID: ledger.HomeID, Name: "地铁通勤 · 交通出行", Kind: KindExpense,
+				Category: "交通出行", Description: "地铁通勤", Tags: []string{"通勤"},
+			},
+			{
+				ID: "tpl-salary", LedgerID: ledger.HomeID, Name: "工资到账 · 工资奖金", Kind: KindIncome,
+				Category: "工资奖金", Description: "工资到账", Tags: []string{"月薪"}, Outlier: true,
+			},
 		},
-		{
-			ID: "tpl-commute", Name: "地铁通勤 · 交通出行", Kind: KindExpense,
-			Category: "交通出行", Description: "地铁通勤", Tags: []string{"通勤"},
-		},
-		{
-			ID: "tpl-salary", Name: "工资到账 · 工资奖金", Kind: KindIncome,
-			Category: "工资奖金", Description: "工资到账", Tags: []string{"月薪"}, Outlier: true,
+		ledger.TravelID: {
+			{
+				ID: "tpl-flight", LedgerID: ledger.TravelID, Name: "机票 · 交通出行", Kind: KindExpense,
+				Category: "交通出行", Description: "机票",
+			},
+			{
+				ID: "tpl-stay", LedgerID: ledger.TravelID, Name: "民宿 · 娱乐休闲", Kind: KindExpense,
+				Category: "娱乐休闲", Description: "民宿两晚",
+			},
 		},
 	}}
 }
 
-// List is the templates in display order.
-func (s *Store) List() []Template { return s.items }
+// List is one ledger's templates in display order.
+func (s *Store) List(ledgerID string) []Template { return s.items[ledgerID] }
 
-// Add appends a template, gives it an ID when it has none, and returns what it
-// stored. The tags are copied, so the caller may reuse its slice.
+// Add appends a template to its ledger, gives it an ID when it has none, and
+// returns what it stored. The tags are copied, so the caller may reuse its
+// slice.
 func (s *Store) Add(one Template) Template {
+	if one.LedgerID == "" {
+		one.LedgerID = ledger.HomeID
+	}
 	s.nextID++
 	if one.ID == "" {
 		one.ID = "tpl-new-" + strconv.Itoa(s.nextID)
 	}
 	one.Tags = append([]string(nil), one.Tags...)
-	s.items = append(s.items, one)
+	s.items[one.LedgerID] = append(s.items[one.LedgerID], one)
 	return one
 }
 
-// Delete removes the template with the id.
+// Delete removes the template with the id from whichever ledger holds it.
 func (s *Store) Delete(id string) {
-	for index := range s.items {
-		if s.items[index].ID != id {
-			continue
+	for ledgerID, items := range s.items {
+		for index := range items {
+			if items[index].ID != id {
+				continue
+			}
+			s.items[ledgerID] = append(items[:index], items[index+1:]...)
+			return
 		}
-		s.items = append(s.items[:index], s.items[index+1:]...)
-		return
 	}
 }
 
-// Move takes the template at from and puts it before to, where to is an index
-// in the list as it was before the move.
-func (s *Store) Move(from, to int) {
-	if from < 0 || from >= len(s.items) || to < 0 || to > len(s.items) {
+// Move takes the ledger's template at from and puts it before to, where to is an
+// index in the ledger's list as it was before the move.
+func (s *Store) Move(ledgerID string, from, to int) {
+	items := s.items[ledgerID]
+	if from < 0 || from >= len(items) || to < 0 || to > len(items) {
 		return
 	}
 	if to > from {
@@ -115,11 +141,12 @@ func (s *Store) Move(from, to int) {
 	if to == from {
 		return
 	}
-	one := s.items[from]
+	one := items[from]
 	if from < to {
-		copy(s.items[from:to], s.items[from+1:to+1])
+		copy(items[from:to], items[from+1:to+1])
 	} else {
-		copy(s.items[to+1:from+1], s.items[to:from])
+		copy(items[to+1:from+1], items[to:from])
 	}
-	s.items[to] = one
+	items[to] = one
+	s.items[ledgerID] = items
 }

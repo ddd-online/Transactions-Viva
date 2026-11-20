@@ -1,6 +1,10 @@
 package tags
 
-import "testing"
+import (
+	"testing"
+
+	"transactions/internal/pages/accounting/ledger"
+)
 
 func TestNewDefaults(t *testing.T) {
 	m := New()
@@ -192,4 +196,17 @@ func tagNames(tags []tag) []string {
 		names[index] = one.name
 	}
 	return names
+}
+
+func TestLedgerSwitchClearsTheChosenCategory(t *testing.T) {
+	m := New()
+	selectCategory(t, m, "餐饮美食")
+	m.ledgers.SetActive(ledger.TravelID)
+	m.syncLedger()
+	if m.selected != "" || len(m.currentTags()) != 0 {
+		t.Fatalf("after the ledger switch: selected %q, tags %v", m.selected, m.currentTags())
+	}
+	if m.ledgerID != ledger.TravelID {
+		t.Fatalf("ledger = %q", m.ledgerID)
+	}
 }

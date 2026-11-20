@@ -1,35 +1,55 @@
 package template
 
-import "testing"
+import (
+	"testing"
 
-func TestStoreAddsMovesAndDeletes(t *testing.T) {
+	"transactions/internal/pages/accounting/ledger"
+)
+
+func TestStoreKeepsOneListPerLedger(t *testing.T) {
 	store := NewStore()
-	before := len(store.List())
-	added := store.Add(Template{Name: "咖啡 · 餐饮美食", Kind: KindExpense, Category: "餐饮美食"})
+	home := store.List(ledger.HomeID)
+	travel := store.List(ledger.TravelID)
+	if len(home) != 3 || len(travel) != 2 {
+		t.Fatalf("home = %d, travel = %d templates", len(home), len(travel))
+	}
+	if home[0].LedgerID != ledger.HomeID || travel[0].LedgerID != ledger.TravelID {
+		t.Fatal("a template is in the wrong ledger's list")
+	}
+
+	added := store.Add(Template{LedgerID: ledger.TravelID, Name: "门票 · 娱乐休闲", Kind: KindExpense, Category: "娱乐休闲"})
 	if added.ID == "" {
 		t.Fatal("the stored template has no id")
 	}
-	if len(store.List()) != before+1 || store.List()[before].Name != added.Name {
-		t.Fatalf("the template was not appended: %v", store.List())
+	if got := len(store.List(ledger.TravelID)); got != len(travel)+1 {
+		t.Fatalf("travel templates = %d, want %d", got, len(travel)+1)
+	}
+	if got := len(store.List(ledger.HomeID)); got != len(home) {
+		t.Fatalf("adding a travel template changed home: %d", got)
 	}
 
-	store.Move(before, 0)
-	if got := store.List()[0].Name; got != added.Name {
-		t.Fatalf("after the move: %v", store.List())
+	store.Move(ledger.TravelID, len(store.List(ledger.TravelID))-1, 0)
+	if got := store.List(ledger.TravelID)[0].ID; got != added.ID {
+		t.Fatalf("after the move: %v", store.List(ledger.TravelID))
 	}
-	store.Move(0, len(store.List()))
-	if got := store.List()[len(store.List())-1].Name; got != added.Name {
-		t.Fatalf("after moving to the end: %v", store.List())
+	if got := store.List(ledger.HomeID)[0].ID; got != "tpl-lunch" {
+		t.Fatal("moving a travel template changed the home order")
 	}
 
 	store.Delete(added.ID)
-	if len(store.List()) != before {
-		t.Fatalf("templates = %d, want %d", len(store.List()), before)
+	if got := len(store.List(ledger.TravelID)); got != len(travel) {
+		t.Fatalf("travel templates = %d, want %d", got, len(travel))
 	}
-	for _, one := range store.List() {
+	for _, one := range store.List(ledger.TravelID) {
 		if one.ID == added.ID {
 			t.Fatal("the deleted template is still listed")
 		}
+	}
+
+	// A template added without a ledger belongs to the family ledger.
+	fallback := store.Add(Template{Name: "测试"})
+	if fallback.LedgerID != ledger.HomeID {
+		t.Fatalf("fallback ledger = %q", fallback.LedgerID)
 	}
 }
 

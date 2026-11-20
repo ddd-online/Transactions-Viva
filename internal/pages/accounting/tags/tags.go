@@ -12,6 +12,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/icons"
+	"transactions/internal/pages/accounting/ledger"
 )
 
 // kind is a transaction type: categories and tags belong to one of them.
@@ -76,6 +77,11 @@ type Model struct {
 	selected   string
 	nextID     int
 
+	// ledgers is the section's shared ledger list; ledgerID caches its active
+	// choice so a switch made on another page can clear the chosen category.
+	ledgers  *ledger.Store
+	ledgerID string
+
 	categoryList ui.ListState
 	tagList      ui.ListState
 
@@ -93,9 +99,16 @@ type Model struct {
 	toaster ui.Toaster
 }
 
-// New returns the 标签 page on 支出 with the mock defaults.
-func New() *Model {
-	m := &Model{kind: kindExpense}
+// New returns the 标签 page on 支出 with the mock defaults and its own ledger
+// store.
+func New() *Model { return NewWithLedger(ledger.NewStore()) }
+
+// NewWithLedger returns the page over the section's shared ledger store.
+func NewWithLedger(ledgers *ledger.Store) *Model {
+	if ledgers == nil {
+		ledgers = ledger.NewStore()
+	}
+	m := &Model{kind: kindExpense, ledgers: ledgers, ledgerID: ledgers.Active()}
 	for k := range m.tags {
 		m.tags[k] = map[string][]tag{}
 	}
@@ -127,6 +140,7 @@ func (m *Model) takeID() int {
 
 // View declares the page: the type cards, the two columns and the dialogs.
 func (m *Model) View(c ui.C) {
+	m.syncLedger()
 	ui.Column(c).Fill().Children(func() {
 		m.toolbar(c)
 		ui.Divider(c)
@@ -150,10 +164,28 @@ func (m *Model) CloseOverlays() {
 
 func (m *Model) toolbar(c ui.C) {
 	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(8).Items(ui.Center).Children(func() {
+		if ledger.Picker(c, m.ledgers) {
+			m.syncLedger()
+		}
+		ui.Divider(c).Height(24)
 		for _, k := range kinds {
 			m.typeCard(c, k)
 		}
 	})
+}
+
+// syncLedger adopts a ledger chosen on this page or another accounting page. A
+// switch clears the chosen category: it belongs to the ledger that was showing.
+func (m *Model) syncLedger() {
+	active := m.ledgers.Active()
+	if active == m.ledgerID {
+		return
+	}
+	m.ledgerID = active
+	m.selected = ""
+	m.categoryList.Select(-1)
+	m.tagList.Select(-1)
+	m.tagList.ScrollTo(0, ui.ListStart)
 }
 
 // typeCard is one transaction-type card: the chosen one takes its type's color

@@ -201,8 +201,8 @@ func TestLedgerSelectFiltersTheTable(t *testing.T) {
 		}
 	}
 
-	m.ledgerID = ledgerTravel
-	m.refilter()
+	m.ledgers.SetActive(ledgerTravel)
+	m.syncLedger()
 	if len(m.shown) == 0 || len(m.shown) == home {
 		t.Fatalf("the travel ledger shows %d rows, the family ledger %d", len(m.shown), home)
 	}
@@ -234,8 +234,8 @@ func TestLedgerSelectFiltersTheTable(t *testing.T) {
 	}
 
 	// The family ledger still has its own rows and does not see the new one.
-	m.ledgerID = ledgerHome
-	m.refilter()
+	m.ledgers.SetActive(ledgerHome)
+	m.syncLedger()
 	if got := len(m.shown); got != home {
 		t.Fatalf("the family ledger = %d rows, want its original %d", got, home)
 	}
@@ -280,15 +280,18 @@ func TestSaveDraftValidates(t *testing.T) {
 
 func TestSaveTemplate(t *testing.T) {
 	m := New()
-	before := len(m.templates.List())
+	before := len(m.templates.List(m.ledgerID))
 	template := m.saveTemplate(tpl.Template{
 		Name: "支出 · 测试", Kind: tpl.KindExpense, Category: "测试", Description: "测试",
 	})
 	if template.ID == "" {
 		t.Fatal("the stored template has no id")
 	}
-	if len(m.templates.List()) != before+1 {
-		t.Fatalf("templates = %d, want %d", len(m.templates.List()), before+1)
+	if template.LedgerID != m.ledgerID {
+		t.Fatalf("template ledger = %q, want %q", template.LedgerID, m.ledgerID)
+	}
+	if len(m.templates.List(m.ledgerID)) != before+1 {
+		t.Fatalf("templates = %d, want %d", len(m.templates.List(m.ledgerID)), before+1)
 	}
 }
 

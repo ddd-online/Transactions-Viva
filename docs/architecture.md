@@ -49,8 +49,9 @@ main → desktop → pages → components
 | `internal/pages/accounting` | 记账分区的四个子功能（记录 / 分析 / 标签 / 模板） | `src/pages/records*`、`charts*`、`category-tag*`、`template*` |
 | `internal/pages/accounting/records` | 记录页：工具栏、表格、分页、统计、空态、行操作 | `src/pages/records.tsx`、`records-table.tsx` |
 | `internal/pages/accounting/records/composer` | 新增 / 编辑记录弹窗（草稿、标签多选、日期选择器） | `src/pages/record-composer.tsx` |
-| `internal/pages/accounting/tags` | 标签页：类型卡片、分类 / 标签两栏、新增 / 删除 / 拖拽排序 | `src/pages/category-tag.tsx`、`category-column.tsx`、`tag-column.tsx` |
-| `internal/pages/accounting/template` | 模板的内存列表：记录弹窗与模板页共用 | `electron/services/transaction-template.ts` |
+| `internal/pages/accounting/ledger` | 记账三页共享的账本列表与当前账本（含工具栏选择器） | `src/app-shell.tsx` 的账本菜单、`electron/services/ledger.ts` |
+| `internal/pages/accounting/tags` | 标签页：账本选择、类型卡片、分类 / 标签两栏、新增 / 删除 / 拖拽排序 | `src/pages/category-tag.tsx`、`category-column.tsx`、`tag-column.tsx` |
+| `internal/pages/accounting/template` | 模板的内存列表：按账本存放，记录弹窗与模板页共用 | `electron/services/transaction-template.ts` |
 | `internal/pages/accounting/templates` | 模板页：表格、新建 / 删除 / 拖拽排序 | `src/pages/templates.tsx`、`template-list.tsx`、`template-form.tsx` |
 | `internal/pages/stock` | 账户 / 持仓 / 记录 / 心得 / 统计 / 天梯 / 设置 | `src/pages/stock*` |
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
@@ -98,10 +99,14 @@ main → desktop → pages → components
   重载 worker 在它内部连接宿主；发布版用 `app.RunApplication`，才能拿到 `*app.Window` /
   `*app.Application` 建 `StatusItem`、隐藏到托盘并处理 `OnCloseRequest`。开发宿主只在自身的
   绘制请求里重绘，所以开发模式的关闭直接退出，不弹「每次询问」。
+- 记账的三个页面共用 `internal/pages/accounting/ledger.Store`（mock 家庭账本 / 旅行账本）：
+  每个工具栏最左侧都是同一个「账本」Select，运行期间保持选中；切换后记录页重过滤并从第一页开始、
+  标签页清空已选分类、模板页换成本账本自己的列表。数据层接入后由 store 提供账本列表。
 - 记账-记录页：工具栏 / 时间范围 / 表头排序 / 表格 / 分页 /
   收支统计都在 `internal/pages/accounting/records`，行数据来自同包的 `mock.go`，
-  工具栏最左侧的「账本」`selectbox.Select` 在 mock 的两个账本（家庭账本 / 旅行账本）间切换：
-  表格、统计与分页随当前账本过滤，新记录落到当前账本，右键的「同步到其他账本」列出其余账本。
+  工具栏最左侧的「账本」`selectbox.Select` 来自共享的 `ledger.Store`，在 mock 的两个账本
+  （家庭账本 / 旅行账本）间切换：表格、统计与分页随当前账本过滤，新记录落到当前账本，右键的
+  「同步到其他账本」列出其余账本。
   日期与金额两个表头各带一个方形排序按钮（文字在按钮外）：每次点击在「未选 → 降序 → 升序」
   之间循环；未选用 `arrow-up-down`，降序用 `arrow-up-wide-narrow`，升序用
   `arrow-down-narrow-wide`，选中时图标取主色、底色加一层主色激活态。金额按行上显示的有符号值
@@ -127,23 +132,27 @@ main → desktop → pages → components
   编辑、同步到其他账本、删除。底部分页是 `internal/components/pagination`：
   每页 15 / 30 / 50 的 `selectbox.Select` 在 Viva 分页左侧，「共 N 条」在右侧，三者同属
   一个自定义分页组件；分页栏上方不再画分割线。接入 store 时替换 mock，不改这套布局。
-- 记账-标签页（`internal/pages/accounting/tags`，旧工程 `category-tag.tsx`）：工具栏是
-  支出 / 收入 / 转账三张类型卡片（选中时用该类型的语义色 + 8% 同色底）；主体是 240px 的
+- 记账-标签页（`internal/pages/accounting/tags`，旧工程 `category-tag.tsx`）：工具栏最左侧是
+  共享的账本 Select，后面是支出 / 收入 / 转账三张类型卡片（选中时用该类型的语义色 + 8% 同色底）；
+  切账本会清空已选分类；主体是 240px 的
   分类栏、一条竖线、剩下的标签栏。分类栏列出当前类型的分类（名称、记录数徽标、拖拽手柄、
   删除），栏头是计数与「新增分类」；标签栏标题是所选分类名（未选时「标签」），栏头是计数与
   「新增标签」（未选分类时禁用），列出该分类下的标签。两张列表都用 `ui.List` 的
   `Reorder` 拖拽排序；行内删除打开确认弹窗，新增分类 / 新增标签用 `ui.ModalWith`，重名分别
   提示「该分类已存在 / 该标签已存在」，成功后用 `ui.Toaster`。数据来自同包的 `mock.go`
   （旧工程的默认分类与代表性标签，计数是假的），接入 store 后替换。
-- 记账-模板页（`internal/pages/accounting/templates`，旧工程 `templates.tsx`）：工具栏只有
-  右侧的「新建模板」；主体是一张通到版心边缘的表（软灰底、固定的表头，行间发丝线），列是
+- 记账-模板页（`internal/pages/accounting/templates`，旧工程 `templates.tsx`）：工具栏最左侧是
+  共享的账本 Select，右侧是「新建模板」；模板按账本存放在
+  `internal/pages/accounting/template` 的 Store 里，切账本换一整套列表；主体是一张通到版心边缘的表
+  （软灰底、固定的表头，行间发丝线），列是
   拖拽把手、模板名称、交易类型、分类、标签、标记、描述、操作；行可拖拽排序，操作列的删除
   按钮打开确认弹窗。`新建模板` 弹窗按旧工程的字段顺序：模板名称、交易类型（支出 / 收入 /
   转账）、分类、标签（该分类下的 `components.PaintMultiSelect`；没有分类或分类没有标签时
   字段禁用并显示原因，键盘 / 滚轮 / 输入和记录弹窗一样经 `accounting.Key/Scroll/TagsEditor`
   路由）、描述、标记（离群值）；保存时依次校验「模板名称不能为空」「分类不能为空」，成功后
   toast「保存模板成功」，删除后「删除模板成功」。模板放在 `internal/pages/accounting/template` 的内存 Store 里，记录页的
-  「记一笔」和模板页共用同一个：在模板页新建的模板马上出现在记录弹窗的模板下拉里。
+  「记一笔」和模板页共用同一个 Store：在模板页新建的模板马上出现在记录弹窗的模板下拉里，
+  但只在它所属的账本下出现。
 - 页面自己浮起来的层（选择器面板、标签弹层）在切走分区 / 子功能时由外壳收起：页面实现
   `CloseOverlays()`，`internal/desktop` 的 `selectNav` 在离开前调用它，浮层不会跟着用户
   跑到另一个页面上。

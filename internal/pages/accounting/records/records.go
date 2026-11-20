@@ -18,9 +18,9 @@ import (
 
 	"transactions/internal/components/datepicker"
 	"transactions/internal/components/pagination"
-	"transactions/internal/components/selectbox"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
+	"transactions/internal/pages/accounting/ledger"
 	"transactions/internal/pages/accounting/records/composer"
 	tpl "transactions/internal/pages/accounting/template"
 )
@@ -79,12 +79,11 @@ type Model struct {
 
 	stats [3]int64 // 收入 / 支出 / 转账, within the visible rows
 
-	// The workspace's ledgers and the one the table shows. Every record carries
-	// its ledger's id, so a switch only changes this field and refilters.
-	ledgers     []domain.Ledger
-	ledgerIDs   []string
-	ledgerID    string
-	ledgerLabel func(string) string
+	// ledgers is the section's shared ledger list; ledgerID caches its active
+	// choice for filtering, saving and the table. A switch made on another
+	// accounting page is picked up by syncLedger at the next paint.
+	ledgers  *ledger.Store
+	ledgerID string
 
 	// rangeStart and rangeEnd are the visible time range as local dates, both
 	// ends included; rangeGrain is the unit the picker chooses them in.
@@ -121,18 +120,22 @@ type Model struct {
 }
 
 // New returns the page on 今天, newest first, with the mock rows already
-// filtered and a template store of its own. The accounting model uses
-// NewWithTemplates so the 模板 page and the 记一笔 dialog share one store.
-func New() *Model { return NewWithTemplates(tpl.NewStore()) }
+// filtered and ledger and template stores of its own.
+func New() *Model { return NewWithStores(ledger.NewStore(), tpl.NewStore()) }
 
-// NewWithTemplates returns the page over a shared template store.
-func NewWithTemplates(templates *tpl.Store) *Model {
+// NewWithStores returns the page over the section's shared ledger and template
+// stores, so the 记账 pages switch the same ledger and see the same templates.
+func NewWithStores(ledgers *ledger.Store, templates *tpl.Store) *Model {
+	if ledgers == nil {
+		ledgers = ledger.NewStore()
+	}
 	if templates == nil {
 		templates = tpl.NewStore()
 	}
 	m := &Model{
 		records:    mockRecords(),
-		ledgers:    mockLedgers(),
+		ledgers:    ledgers,
+		ledgerID:   ledgers.Active(),
 		templates:  templates,
 		rangeStart: todayDate(),
 		rangeEnd:   todayDate(),
@@ -142,14 +145,6 @@ func NewWithTemplates(templates *tpl.Store) *Model {
 		form:       composer.New(),
 		rangePick:  datepicker.NewState(),
 	}
-	m.ledgerIDs = make([]string, 0, len(m.ledgers))
-	for _, ledger := range m.ledgers {
-		m.ledgerIDs = append(m.ledgerIDs, ledger.ID)
-	}
-	if len(m.ledgerIDs) > 0 {
-		m.ledgerID = m.ledgerIDs[0]
-	}
-	m.ledgerLabel = m.ledgerName
 	m.formSpec = composer.Spec{
 		Categories: m.categoryNames,
 		TagOptions: m.tagOptions,
@@ -164,6 +159,7 @@ func NewWithTemplates(templates *tpl.Store) *Model {
 // View declares the records page.
 func (m *Model) View(c ui.C) {
 	m.bounds = c.Bounds()
+	m.syncLedger()
 	if m.rangeStale {
 		m.rangeStale = false
 		m.refilter()
@@ -186,9 +182,8 @@ func (m *Model) View(c ui.C) {
 // time range on the left, and the sort beside the primary action on the right.
 func (m *Model) toolbar(c ui.C) {
 	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(10).Items(ui.Center).Children(func() {
-		ledger := selectbox.Select(c, &m.ledgerID, m.ledgerIDs, m.ledgerLabel).Label("账本")
-		if ledger.Changed() {
-			m.refilter()
+		if ledger.Picker(c, m.ledgers) {
+			m.syncLedger()
 		}
 		if ui.Button(c, "今天").Outline().Clicked() {
 			m.setRange(todayDate(), todayDate(), datepicker.ByDay)
@@ -211,14 +206,16 @@ func (m *Model) toolbar(c ui.C) {
 	})
 }
 
-// ledgerName is what the toolbar's 账本 Select shows for a ledger id.
-func (m *Model) ledgerName(id string) string {
-	for _, ledger := range m.ledgers {
-		if ledger.ID == id {
-			return ledger.Name
-		}
+// syncLedger adopts a ledger chosen on this page or another accounting page. A
+// switch starts the table at its first page, as the old page did.
+func (m *Model) syncLedger() {
+	active := m.ledgers.Active()
+	if active == m.ledgerID {
+		return
 	}
-	return id
+	m.ledgerID = active
+	m.page = 1
+	m.refilter()
 }
 
 // sortHeader is a column title with a square sort button beside it. The
@@ -385,7 +382,7 @@ func (m *Model) row(r ui.ListRow) {
 			m.openEdit(id)
 		}
 		menu.Sub("同步到其他账本", func(sub *ui.MenuItems) {
-			for _, target := range m.ledgers {
+			for _, target := range m.ledgers.List() {
 				if target.ID == m.ledgerID {
 					continue
 				}

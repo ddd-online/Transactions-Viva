@@ -27,7 +27,8 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   的「框架缺口」）。
   记录行右键打开 ContextMenu（编辑 / 同步到其他账本 / 删除）。行数据、模板与保存都只在
   内存里。工具栏最左侧是「账本」Select（mock 两个账本：家庭账本 / 旅行账本）：切换后表格、
-  统计与分页按账本过滤，新记录落到当前账本。日期与金额两个表头各带一个方形排序按钮（文字在
+  统计与分页按账本过滤，新记录落到当前账本；这个选择在记账的记录 / 标签 / 模板三页之间共享。
+  日期与金额两个表头各带一个方形排序按钮（文字在
   按钮外）：未选 → 降序 → 升序，未选 `arrow-up-down`、降序 `arrow-up-wide-narrow`、
   升序 `arrow-down-narrow-wide`，选中时图标变主色；金额按有符号值比较（支出为负），两列可同时
   生效、按点击顺序决定优先级（先点的先排）。工具栏的时间范围用同一个
@@ -36,11 +37,13 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   粒度、前后周期、快捷区间，日粒度的面板标题两侧还有 `chevrons-left` / `chevrons-right`
   的整年箭头，浮层面板不占布局）；分页栏在 `internal/components/pagination`：
   每页 15 / 30 / 50 的 Select 在 Viva 分页左侧，「共 N 条」在右侧，三者是一个自定义组件。
-- 记账-标签页已迁移前端：工具栏是 支出 / 收入 / 转账 类型卡片，主体是 240px 分类栏 + 标签栏；
+- 记账-标签页已迁移前端：工具栏最左侧是同一个「账本」选择器，后面是 支出 / 收入 / 转账 类型卡片；
+  主体是 240px 分类栏 + 标签栏；切账本会清空已选分类；
   分类与标签都能新增、删除（带确认弹窗）、拖拽排序，重名在弹窗里提示；分类 / 标签的记录数、
   默认分类与标签都在 `internal/pages/accounting/tags/mock.go`，接入 store 后替换。
-- 记账-模板页已迁移前端：通到版心边缘的表格（拖拽把手 / 模板名称 / 交易类型 / 分类 / 标签 /
-  标记 / 描述 / 操作），行可拖拽排序、删除前确认；「新建模板」弹窗按旧工程校验模板名称与分类，
+- 记账-模板页已迁移前端：工具栏最左侧是同一个「账本」选择器，右侧是「新建模板」；主体是通到
+  版心边缘的表格（拖拽把手 / 模板名称 / 交易类型 / 分类 / 标签 / 标记 / 描述 / 操作），
+  行可拖拽排序、删除前确认；模板按账本存放，切账本换一整套列表；「新建模板」弹窗按旧工程校验模板名称与分类，
   标签取所选分类下的多选器（Viva `PaintMultiSelect`，与记一笔共用同一套键盘 / 滚轮 / 输入路由）。
   模板存在 `internal/pages/accounting/template` 的内存 Store 里，记录页「记一笔」的模板下拉
   读同一个 Store，模板页新建的模板马上能在弹窗里选到。
@@ -81,8 +84,9 @@ internal/icons/          由 SVG 编译出的矢量图标（viva icons）
 internal/pages/          各功能页：accounting、stock、todo、events、diary、settings
   accounting/records/    记录页本身（表格 / 工具栏 / 分页 / 空态 / 行操作）
   accounting/records/composer/  新增 / 编辑记录弹窗
+  accounting/ledger/     记账各页共享的账本列表与当前账本
   accounting/tags/       标签页（类型卡片 / 分类与标签两栏 / 新增与删除弹窗）
-  accounting/template/   模板的内存列表（记录弹窗与模板页共用）
+  accounting/template/   模板的内存列表（按账本存放，记录弹窗与模板页共用）
   accounting/templates/  模板页（表格 / 新建与删除弹窗 / 拖拽排序）
 internal/components/     可复用的 UI：占位空态，以及 datepicker / pagination / selectbox 子包
 internal/pages/settings/controls/  只属于设置页的分组卡片 / 设置行

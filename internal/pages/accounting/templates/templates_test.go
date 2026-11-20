@@ -3,12 +3,13 @@ package templates
 import (
 	"testing"
 
+	"transactions/internal/pages/accounting/ledger"
 	tpl "transactions/internal/pages/accounting/template"
 )
 
 func TestNewDefaults(t *testing.T) {
 	m := New(tpl.NewStore())
-	if got := len(m.store.List()); got != 3 {
+	if got := len(m.items()); got != 3 {
 		t.Fatalf("templates = %d, want 3", got)
 	}
 	if got := len(m.categories[tpl.KindExpense]); got != 9 {
@@ -56,15 +57,15 @@ func TestSaveRequiresNameAndCategory(t *testing.T) {
 	m.form.description = " 外带 "
 	m.form.tags = []string{"咖啡"}
 	m.form.outlier = true
-	before := len(m.store.List())
+	before := len(m.items())
 	m.save()
 	if m.formOpen || m.form.err != "" {
 		t.Fatalf("a saved form stayed open: %+v", m.form)
 	}
-	if len(m.store.List()) != before+1 {
-		t.Fatalf("templates = %d, want %d", len(m.store.List()), before+1)
+	if len(m.items()) != before+1 {
+		t.Fatalf("templates = %d, want %d", len(m.items()), before+1)
 	}
-	stored := m.store.List()[before]
+	stored := m.items()[before]
 	if stored.Name != "咖啡外带" || stored.Kind != tpl.KindExpense ||
 		stored.Description != "外带" || !stored.Outlier || len(stored.Tags) != 1 {
 		t.Fatalf("stored = %+v", stored)
@@ -120,17 +121,17 @@ func TestTagSelectionFollowsTheCategory(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	m := New(tpl.NewStore())
-	before := len(m.store.List())
-	one := m.store.List()[0]
+	before := len(m.items())
+	one := m.items()[0]
 	m.askDelete(one)
 	if !m.deleteOpen || m.deleteName != one.Name {
 		t.Fatalf("the confirmation did not open on %+v", one)
 	}
 	m.confirmDelete()
-	if m.deleteOpen || len(m.store.List()) != before-1 {
-		t.Fatalf("templates = %d, want %d", len(m.store.List()), before-1)
+	if m.deleteOpen || len(m.items()) != before-1 {
+		t.Fatalf("templates = %d, want %d", len(m.items()), before-1)
 	}
-	for _, entry := range m.store.List() {
+	for _, entry := range m.items() {
 		if entry.ID == one.ID {
 			t.Fatal("the deleted template is still listed")
 		}
@@ -139,10 +140,10 @@ func TestDelete(t *testing.T) {
 
 func TestListReorderMovesTheStore(t *testing.T) {
 	m := New(tpl.NewStore())
-	first := m.store.List()[0]
+	first := m.items()[0]
 	m.list.Reorder([]int{0}, 2)
-	if got := m.store.List()[1].ID; got != first.ID {
-		t.Fatalf("after moving the first row before the third: %v", m.store.List())
+	if got := m.items()[1].ID; got != first.ID {
+		t.Fatalf("after moving the first row before the third: %v", m.items())
 	}
 }
 
@@ -152,5 +153,31 @@ func TestCloseOverlays(t *testing.T) {
 	m.CloseOverlays()
 	if m.formOpen || m.deleteOpen || m.form.err != "" {
 		t.Fatal("CloseOverlays left a dialog open")
+	}
+}
+
+func TestLedgerSwitchShowsItsTemplates(t *testing.T) {
+	m := New(tpl.NewStore())
+	if got := len(m.items()); got != 3 {
+		t.Fatalf("family templates = %d, want 3", got)
+	}
+	m.ledgers.SetActive(ledger.TravelID)
+	m.syncLedger()
+	items := m.items()
+	if len(items) != 2 || items[0].ID != "tpl-flight" {
+		t.Fatalf("travel templates = %v", items)
+	}
+	if m.ledgerID != ledger.TravelID {
+		t.Fatalf("ledger = %q", m.ledgerID)
+	}
+
+	// A template created now belongs to the travel ledger.
+	m.form.name, m.form.category = "门票", "娱乐休闲"
+	m.save()
+	if got := m.items(); len(got) != 3 || got[2].LedgerID != ledger.TravelID {
+		t.Fatalf("after saving: %v", got)
+	}
+	if got := m.store.List(ledger.HomeID); len(got) != 3 {
+		t.Fatalf("the family ledger = %d templates, want 3", len(got))
 	}
 }

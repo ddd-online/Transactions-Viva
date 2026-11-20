@@ -11,6 +11,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components"
+	"transactions/internal/pages/accounting/ledger"
 	"transactions/internal/pages/accounting/records"
 	"transactions/internal/pages/accounting/tags"
 	"transactions/internal/pages/accounting/template"
@@ -46,14 +47,16 @@ type Model struct {
 	templates *templates.Model
 }
 
-// New returns the default page (记录). The records dialog and the 模板 page
-// share one template store, so a template created on either shows in both.
+// New returns the default page (记录). The three migrated pages share one ledger
+// store, so their 账本 Selectors always agree, and the records dialog and the
+// 模板 page share one template store.
 func New() *Model {
-	store := template.NewStore()
+	ledgers := ledger.NewStore()
+	sharedTemplates := template.NewStore()
 	return &Model{
-		records:   records.NewWithTemplates(store),
-		tags:      tags.New(),
-		templates: templates.New(store),
+		records:   records.NewWithStores(ledgers, sharedTemplates),
+		tags:      tags.NewWithLedger(ledgers),
+		templates: templates.NewWithLedger(sharedTemplates, ledgers),
 	}
 }
 

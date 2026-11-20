@@ -14,6 +14,7 @@ import (
 
 	"transactions/internal/components/selectbox"
 	"transactions/internal/icons"
+	"transactions/internal/pages/accounting/ledger"
 	tpl "transactions/internal/pages/accounting/template"
 )
 
@@ -39,8 +40,10 @@ const (
 // Model is the 模板 page's state: the shared store, the list, and the 新建模板
 // and delete dialogs.
 type Model struct {
-	store *tpl.Store
-	list  ui.ListState
+	store    *tpl.Store
+	ledgers  *ledger.Store
+	ledgerID string
+	list     ui.ListState
 
 	// categories and tags are the form's mock choices, built once: the first is
 	// per transaction type, the second per type and category.
@@ -96,12 +99,22 @@ type tagSelect struct {
 	values  []string // the options the state was built from
 }
 
-// New returns the 模板 page over the ledger's shared template store.
-func New(store *tpl.Store) *Model {
+// New returns the 模板 page over a template store of its own.
+func New(store *tpl.Store) *Model { return NewWithLedger(store, ledger.NewStore()) }
+
+// NewWithLedger returns the page over the section's shared template and ledger
+// stores, so its 账本 Select follows the records and tags pages.
+func NewWithLedger(store *tpl.Store, ledgers *ledger.Store) *Model {
 	if store == nil {
 		store = tpl.NewStore()
 	}
-	m := &Model{store: store, categories: map[string][]string{}, tags: map[string][]string{}}
+	if ledgers == nil {
+		ledgers = ledger.NewStore()
+	}
+	m := &Model{
+		store: store, ledgers: ledgers, ledgerID: ledgers.Active(),
+		categories: map[string][]string{}, tags: map[string][]string{},
+	}
 	m.tagSelect.feature = m.tagSelect.tree.Feature("template-tags")
 	m.tagSelect.options = m.tagSelect.tree.Sub(m.tagSelect.feature, m.tagSelect.tree.Name("option"))
 	m.tagSelect.removes = m.tagSelect.tree.Sub(m.tagSelect.feature, m.tagSelect.tree.Name("remove"))
@@ -116,7 +129,7 @@ func New(store *tpl.Store) *Model {
 	}
 	m.list.Key = func(index int) int { return index }
 	m.list.Label = func(index int) string {
-		items := m.store.List()
+		items := m.items()
 		if index < 0 || index >= len(items) {
 			return ""
 		}
@@ -124,7 +137,7 @@ func New(store *tpl.Store) *Model {
 	}
 	m.list.Reorder = func(rows []int, to int) {
 		if len(rows) > 0 {
-			m.store.Move(rows[0], to)
+			m.store.Move(m.ledgerID, rows[0], to)
 		}
 	}
 	return m
@@ -132,6 +145,7 @@ func New(store *tpl.Store) *Model {
 
 // View declares the page: the table and its dialogs.
 func (m *Model) View(c ui.C) {
+	m.syncLedger()
 	ui.Column(c).Fill().Children(func() {
 		m.toolbar(c)
 		ui.Divider(c)
@@ -150,12 +164,30 @@ func (m *Model) CloseOverlays() {
 }
 
 func (m *Model) toolbar(c ui.C) {
-	ui.Row(c).Height(56).FillWidth().PadX(18).Items(ui.Center).Children(func() {
+	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(8).Items(ui.Center).Children(func() {
+		if ledger.Picker(c, m.ledgers) {
+			m.syncLedger()
+		}
 		ui.Spacer(c)
 		if ui.Button(c, "新建模板").Icon(icons.Plus).Clicked() {
 			m.openForm()
 		}
 	})
+}
+
+// items are the active ledger's templates.
+func (m *Model) items() []tpl.Template { return m.store.List(m.ledgerID) }
+
+// syncLedger adopts a ledger chosen on this page or another accounting page. The
+// list restarts at the top: another ledger has its own templates.
+func (m *Model) syncLedger() {
+	active := m.ledgers.Active()
+	if active == m.ledgerID {
+		return
+	}
+	m.ledgerID = active
+	m.list.Select(-1)
+	m.list.ScrollTo(0, ui.ListStart)
 }
 
 // table is the fixed header over the scrolling rows; the header stays while
@@ -164,7 +196,7 @@ func (m *Model) table(c ui.C) {
 	ui.Column(c).Grow(1).FillWidth().Children(func() {
 		m.header(c)
 		ui.Divider(c)
-		items := m.store.List()
+		items := m.items()
 		if len(items) == 0 {
 			m.empty(c)
 			return
@@ -213,7 +245,7 @@ func (m *Model) empty(c ui.C) {
 // row declares one template: drag handle, name, type chip, category, tags,
 // mark, description and the delete action.
 func (m *Model) row(row ui.ListRow) {
-	items := m.store.List()
+	items := m.items()
 	if row.Index >= len(items) {
 		return
 	}
@@ -394,6 +426,7 @@ func (m *Model) save() {
 		return
 	}
 	m.store.Add(tpl.Template{
+		LedgerID:    m.ledgerID,
 		Name:        name,
 		Kind:        m.form.kind,
 		Category:    m.form.category,
@@ -401,7 +434,7 @@ func (m *Model) save() {
 		Tags:        append([]string(nil), m.form.tags...),
 		Outlier:     m.form.outlier,
 	})
-	m.list.ScrollIntoView(len(m.store.List()) - 1)
+	m.list.ScrollIntoView(len(m.items()) - 1)
 	m.closeForm()
 	m.toaster.Show("保存模板成功", "", ui.ToastSuccess)
 }
