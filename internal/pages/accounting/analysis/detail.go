@@ -79,7 +79,11 @@ func (m *Model) curveTable(c ui.C, chart *domain.Chart) {
 		PadX(layout.BlockGap).Gap(layout.ColumnGap).Items(ui.Center).
 		Background(theme.Muted).Children(func() {
 		typography.Caption(c, "名称").Width(curveNameWidth)
-		typography.Caption(c, "类型").Width(curveTypeWidth)
+		// The type column is centered: its header and the capsule under it sit
+		// in the middle of the same 80 px, so the column reads as one block.
+		ui.Row(c).Width(curveTypeWidth).Justify(ui.Center).Children(func() {
+			typography.Caption(c, "类型")
+		})
 		typography.Caption(c, "条件").Grow(1)
 		ui.Row(c).Width(curveAmountWidth).Justify(ui.End).Children(func() {
 			typography.Caption(c, "合计")
@@ -124,7 +128,7 @@ func (m *Model) curveRow(c ui.C, chart *domain.Chart, index int, line *domain.Ch
 			dot(c, seriesColor(*theme, index))
 			typography.Body(c, line.Label).Grow(1).Ellipsis()
 		})
-		ui.Row(c).Width(curveTypeWidth).Children(func() {
+		ui.Row(c).Width(curveTypeWidth).Justify(ui.Center).Children(func() {
 			kindChip(c, lineTypeLabel(line.TransactionType))
 		})
 		typography.Caption(c, conditionSummary(*line)).Grow(1).Ellipsis()
@@ -244,17 +248,16 @@ func (m *Model) seriesTotal(index int) int64 {
 	return total
 }
 
-// kindChip is the transaction type of a curve. The inspector is a muted panel,
-// so the capsule takes the page's background as its fill to stay visible.
+// kindChip is the transaction type of a curve. The table rows sit on the card,
+// so the capsule takes the muted fill the other chips on a card use.
 func kindChip(c ui.C, label string) {
 	theme := c.Theme()
 	ui.Text(c, label).FontSize(typography.SizeCaption).Color(theme.MutedForeground).
-		Background(theme.Background).Radius(theme.Metrics.RadiusItem()).
+		Background(theme.Muted).Radius(theme.Metrics.RadiusItem()).
 		PadX(6).PadY(1)
 }
 
-// countBadge is a count in a capsule: the same badge the rail's header uses,
-// filled with the page's background because the inspector is muted.
+// countBadge is a count in a capsule: the same badge the rail's header uses.
 func countBadge(c ui.C, count int) {
 	theme := c.Theme()
 	ui.Text(c, strconv.Itoa(count)).FontSize(typography.SizeCaption).
