@@ -95,6 +95,70 @@ func TestCreateLedgerSeedsDefaults(t *testing.T) {
 	}
 }
 
+// TestUpdateLedgerRenamesAndDescribes covers the settings page's edit dialog:
+// the name and description both write, surrounding spaces are trimmed, an empty
+// name is refused and an unknown ledger is reported.
+func TestUpdateLedgerRenamesAndDescribes(t *testing.T) {
+	workspace := testWorkspace(t)
+	ledger := testLedger(t, workspace)
+	ctx := context.Background()
+
+	if err := workspace.UpdateLedger(ctx, ledger.ID, "  日常账本  ", " 房租与三餐 "); err != nil {
+		t.Fatalf("UpdateLedger: %v", err)
+	}
+	ledgers, err := workspace.Ledgers(ctx)
+	if err != nil {
+		t.Fatalf("Ledgers: %v", err)
+	}
+	if len(ledgers) != 1 || ledgers[0].Name != "日常账本" || ledgers[0].Description != "房租与三餐" {
+		t.Fatalf("ledger after update = %+v", ledgers)
+	}
+	if ledgers[0].UpdatedAt < ledger.UpdatedAt {
+		t.Fatalf("updated_at went backwards: %d < %d", ledgers[0].UpdatedAt, ledger.UpdatedAt)
+	}
+
+	// An empty description clears the field; the name is the only required one.
+	if err := workspace.UpdateLedger(ctx, ledger.ID, "日常账本", ""); err != nil {
+		t.Fatalf("clear description: %v", err)
+	}
+	ledgers, _ = workspace.Ledgers(ctx)
+	if ledgers[0].Description != "" {
+		t.Fatalf("description = %q, want empty", ledgers[0].Description)
+	}
+
+	if err := workspace.UpdateLedger(ctx, ledger.ID, "   ", ""); !errors.Is(err, repository.ErrInvalid) {
+		t.Fatalf("empty name error = %v", err)
+	}
+	if err := workspace.UpdateLedger(ctx, "missing", "名称", ""); !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("unknown ledger error = %v", err)
+	}
+}
+
+// TestDeleteLedgerRemovesItsCharts proves the cascade covers the chart table:
+// a shared table would otherwise keep a deleted ledger's charts as orphans.
+func TestDeleteLedgerRemovesItsCharts(t *testing.T) {
+	workspace := testWorkspace(t)
+	home := testLedger(t, workspace)
+	ctx := context.Background()
+	if err := workspace.EnsureChartPresets(ctx, home.ID); err != nil {
+		t.Fatalf("EnsureChartPresets: %v", err)
+	}
+	charts, err := workspace.Charts(ctx, home.ID)
+	if err != nil || len(charts) == 0 {
+		t.Fatalf("charts = %v, %v", charts, err)
+	}
+	if err := workspace.DeleteLedger(ctx, home.ID); err != nil {
+		t.Fatalf("DeleteLedger: %v", err)
+	}
+	remaining, err := workspace.Charts(ctx, home.ID)
+	if err != nil {
+		t.Fatalf("Charts after delete: %v", err)
+	}
+	if len(remaining) != 0 {
+		t.Fatalf("charts left behind: %d", len(remaining))
+	}
+}
+
 func TestRecordCRUDTagsAndRange(t *testing.T) {
 	workspace := testWorkspace(t)
 	home := testLedger(t, workspace)

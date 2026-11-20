@@ -129,8 +129,11 @@ type Repository interface {
 	// CreateLedger inserts a ledger and seeds its 19 default categories and 57
 	// tags in the same transaction.
 	CreateLedger(ctx context.Context, name, description string) (domain.Ledger, error)
-	// DeleteLedger removes the ledger and its records, tags, categories and
-	// templates in one transaction.
+	// UpdateLedger renames a ledger and replaces its description. An empty
+	// description clears it; a missing ledger is ErrNotFound.
+	UpdateLedger(ctx context.Context, id, name, description string) error
+	// DeleteLedger removes the ledger and its records, tags, categories,
+	// charts and templates in one transaction.
 	DeleteLedger(ctx context.Context, id string) error
 
 	// Labels returns categories, tags and their counts for one ledger.

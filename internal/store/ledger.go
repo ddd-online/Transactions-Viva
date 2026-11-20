@@ -46,7 +46,7 @@ func (w *Workspace) CreateLedger(ctx context.Context, name, description string) 
 	}
 	now := nowUnix()
 	ledger := domain.Ledger{
-		ID: newID(), Name: name, Description: description,
+		ID: newID(), Name: name, Description: strings.TrimSpace(description),
 		CreatedAt: now, UpdatedAt: now,
 	}
 	err = inTx(ctx, db, func(tx *sql.Tx) error {
@@ -64,6 +64,39 @@ func (w *Workspace) CreateLedger(ctx context.Context, name, description string) 
 	return ledger, nil
 }
 
+// UpdateLedger renames a ledger and replaces its description. The name is the
+// only required field; an empty description clears it. As in CreateLedger the
+// name is trimmed, and a missing ledger is reported rather than silently
+// ignored: the settings page would otherwise show a name that never saved.
+func (w *Workspace) UpdateLedger(ctx context.Context, id, name, description string) error {
+	id = strings.TrimSpace(id)
+	name = strings.TrimSpace(name)
+	if id == "" {
+		return fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
+	}
+	if name == "" {
+		return fmt.Errorf("%w：账本名称不能为空", repository.ErrInvalid)
+	}
+	db, err := w.dbHandle()
+	if err != nil {
+		return err
+	}
+	result, err := db.ExecContext(ctx,
+		"UPDATE ledger SET name = ?, description = ?, updated_at = ? WHERE id = ?",
+		name, strings.TrimSpace(description), nowUnix(), id)
+	if err != nil {
+		return fmt.Errorf("重命名账本失败：%w", err)
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if changed == 0 {
+		return fmt.Errorf("%w：账本 %s", repository.ErrNotFound, id)
+	}
+	return nil
+}
+
 // DeleteLedger removes the ledger and its data. The new schema keeps the old
 // application's no-foreign-key rule, so the cascade is explicit and ordered.
 func (w *Workspace) DeleteLedger(ctx context.Context, id string) error {
@@ -75,11 +108,15 @@ func (w *Workspace) DeleteLedger(ctx context.Context, id string) error {
 		return err
 	}
 	return inTx(ctx, db, func(tx *sql.Tx) error {
+		// The old application's list, minus the stock, event and diary tables
+		// this schema does not create. The charts belong to the ledger too:
+		// without this line they would outlive it as orphan rows.
 		statements := []string{
 			"DELETE FROM transaction_record_tag WHERE ledger_id = ?",
 			"DELETE FROM transaction_record WHERE ledger_id = ?",
 			"DELETE FROM category WHERE ledger_id = ?",
 			"DELETE FROM tag WHERE ledger_id = ?",
+			"DELETE FROM chart WHERE ledger_id = ?",
 			"DELETE FROM transaction_template WHERE ledger_id = ?",
 			"DELETE FROM ledger WHERE id = ?",
 		}
