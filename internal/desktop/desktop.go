@@ -320,7 +320,16 @@ func (m *Model) titlebar(c ui.C, leading, trailing float32) {
 		if m.dark {
 			icon, tip = icons.Sun, "切换到浅色模式"
 		}
-		if ui.Button(c, tip).Icon(icon).IconOnly().Ghost().Tooltip(tip).Clicked() {
+		button := ui.ButtonBase(c, tip).Size(32, 32).
+			Radius(theme.Metrics.RadiusControl).
+			Hover(ui.Look{}.Background(theme.Border)).
+			Pressed(ui.Look{}.Background(theme.Muted.Mix(theme.Foreground, 0.12))).
+			Focus(ui.Look{}.Ring(2, theme.Ring)).
+			Tooltip(tip)
+		button.Children(func() {
+			ui.Icon(c, icon).Size(16, 16)
+		})
+		if button.Clicked() {
 			m.toggleTheme()
 		}
 	})

@@ -1248,3 +1248,34 @@ func TestDevModeFollowsTheReloadHost(t *testing.T) {
 		t.Fatal("release mode under a reload host")
 	}
 }
+
+// TestTitlebarThemeButtonHoverChangesFill guards the titlebar's appearance
+// toggle: it is a Viva ButtonBase with an explicit Hover look, because the
+// titlebar's own fill is the same Muted colour Viva's Ghost button uses.
+func TestTitlebarThemeButtonHoverChangesFill(t *testing.T) {
+	driver, _ := open(t)
+	bounds, ok := controlBounds(driver, "切换到深色模式")
+	if !ok {
+		t.Fatal("the titlebar has no appearance toggle")
+	}
+	fill := func() gfx.Color {
+		for _, primitive := range driver.Snapshot().Primitives {
+			if primitive.Kind == app.RectanglePrimitive && primitive.Bounds == bounds {
+				return primitive.Color
+			}
+		}
+		return gfx.Color{}
+	}
+	rest := fill()
+	if err := driver.Move(bounds.X+bounds.Width/2, bounds.Y+bounds.Height/2); err != nil {
+		t.Fatal(err)
+	}
+	settle(t, driver)
+	hover := fill()
+	if hover == rest {
+		t.Fatalf("the appearance toggle has no hover fill: rest %v, hover %v", rest, hover)
+	}
+	if hover.Alpha == 0 {
+		t.Fatalf("the appearance toggle's hover fill is transparent: %v", hover)
+	}
+}
