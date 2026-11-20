@@ -13,6 +13,7 @@ import (
 	"github.com/vivaui/viva/text"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/layout"
 	"transactions/internal/components/selectbox"
 	"transactions/internal/components/semantic"
 	"transactions/internal/icons"
@@ -29,9 +30,9 @@ const (
 	typeColumnWidth   = float32(100)
 	actionColumnWidth = float32(60)
 
-	tablePadX = float32(12)
-	tableGap  = float32(8)
-	rowHeight = float32(40)
+	tablePadX = layout.Inset
+	tableGap  = layout.ColumnGap
+	rowHeight = layout.RowHeight
 
 	nameWeight        = float32(1.4)
 	categoryWeight    = float32(1)
@@ -220,7 +221,8 @@ func (m *Model) CloseOverlays() {
 }
 
 func (m *Model) toolbar(c ui.C) {
-	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(8).Items(ui.Center).Children(func() {
+	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
+		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
 		if ledger.Picker(c, m.ledgers) && m.onLedgerChanged != nil {
 			m.onLedgerChanged()
 		}
@@ -280,7 +282,8 @@ func (m *Model) table(c ui.C) {
 
 func (m *Model) header(c ui.C) {
 	theme := c.Theme()
-	ui.Row(c).Height(36).FillWidth().PadX(tablePadX).Gap(tableGap).Items(ui.Center).
+	ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().
+		PadX(tablePadX).Gap(tableGap).Items(ui.Center).
 		Background(theme.Muted).Children(func() {
 		ui.Row(c).Width(dragColumnWidth)
 		headerText(c, "模板名称", nameWeight, 120)

@@ -15,6 +15,8 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/datepicker"
+	"transactions/internal/components/emptystate"
+	"transactions/internal/components/layout"
 	"transactions/internal/components/selectbox"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
@@ -272,7 +274,8 @@ func (m *Model) View(c ui.C) {
 }
 
 func (m *Model) toolbar(c ui.C) {
-	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(8).Items(ui.Center).Children(func() {
+	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
+		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
 		if ledger.Picker(c, m.ledgers) && m.onLedgerChanged != nil {
 			m.onLedgerChanged()
 		}
@@ -296,8 +299,9 @@ func (m *Model) toolbar(c ui.C) {
 
 func (m *Model) chartRail(c ui.C) {
 	theme := c.Theme()
-	ui.Column(c).Width(240).FillHeight().Children(func() {
-		ui.Row(c).Height(46).FillWidth().PadX(18).Gap(8).Items(ui.Center).Children(func() {
+	ui.Column(c).Width(layout.RailWidth).FillHeight().Children(func() {
+		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
+			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
 			ui.Text(c, "图表").FontSize(theme.Metrics.FontSizeM).Weight(gfx.WeightSemibold)
 			ui.Text(c, fmt.Sprintf("%d", len(m.charts))).FontSize(theme.Metrics.FontSizeS).
 				Color(theme.MutedForeground).Background(theme.Muted).
@@ -306,7 +310,7 @@ func (m *Model) chartRail(c ui.C) {
 		})
 		ui.Divider(c)
 		if len(m.charts) == 0 {
-			empty(c, "暂无图表")
+			emptystate.Notice(c, "暂无图表")
 			return
 		}
 		ui.List(c, &m.list, len(m.charts), m.chartRow).Label("图表").Grow(1)
@@ -326,7 +330,7 @@ func (m *Model) chartRow(row ui.ListRow) {
 		return
 	}
 	chart := m.charts[row.Index]
-	row.Element.Height(40).PadX(8).Gap(8).Items(ui.Center).
+	row.Element.Height(layout.RowHeight).PadX(layout.BlockGap).Gap(layout.Gap).Items(ui.Center).
 		Radius(theme.Metrics.RadiusControl).
 		Hover(ui.Look{}.Background(theme.Hover)).
 		Focus(ui.Look{}.Ring(2, theme.Ring)).
@@ -346,13 +350,6 @@ func (m *Model) chartRow(row ui.ListRow) {
 	}
 }
 
-func empty(c ui.C, text string) {
-	theme := c.Theme()
-	ui.Column(c).Grow(1).FillWidth().Center().Children(func() {
-		ui.Text(c, text).FontSize(theme.Metrics.FontSizeM).Muted().TextCenter()
-	})
-}
-
 // ------------------------------------------------------------------ detail
 
 func (m *Model) detail(c ui.C) {
@@ -360,7 +357,7 @@ func (m *Model) detail(c ui.C) {
 	ui.Column(c).Grow(1).FillHeight().Children(func() {
 		chart := m.selectedChart()
 		if chart == nil {
-			empty(c, "选择左侧图表，或点右上角「新增图表」")
+			emptystate.Notice(c, "选择左侧图表，或点右上角「新增图表」")
 			return
 		}
 		m.header(c, chart)
@@ -370,7 +367,7 @@ func (m *Model) detail(c ui.C) {
 		}
 		ui.Row(c).Grow(1).FillWidth().Children(func() {
 			ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-				ui.Column(c).FillWidth().Gap(14).Pad(18).Children(func() {
+				ui.Column(c).FillWidth().Gap(layout.BlockGap).Pad(layout.Inset).Children(func() {
 					m.canvas(c, chart)
 					m.linePanel(c, chart)
 				})
@@ -383,7 +380,8 @@ func (m *Model) detail(c ui.C) {
 
 func (m *Model) header(c ui.C, chart *domain.Chart) {
 	theme := c.Theme()
-	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(8).Items(ui.Center).Children(func() {
+	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
+		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
 		ui.Text(c, chart.Title).FontSize(theme.Metrics.FontSizeL).Weight(gfx.WeightSemibold).Shrink(1).Ellipsis()
 		ui.Text(c, chartTypeLabel(chart.ChartType)).FontSize(theme.Metrics.FontSizeS).
 			Color(theme.MutedForeground).Background(theme.Muted).
@@ -449,9 +447,9 @@ func (m *Model) groupControls(c ui.C, chart *domain.Chart) {
 
 func (m *Model) summary(c ui.C, chart *domain.Chart) {
 	theme := c.Theme()
-	ui.Column(c).Width(248).FillHeight().Background(theme.Muted).Children(func() {
+	ui.Column(c).Width(layout.SummaryWidth).FillHeight().Background(theme.Muted).Children(func() {
 		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-			ui.Column(c).FillWidth().Gap(10).Pad(16).Children(func() {
+			ui.Column(c).FillWidth().Gap(layout.BlockGap).Pad(layout.Inset).Children(func() {
 				if chart.ChartType == chartPie {
 					m.pieSummary(c)
 				} else {

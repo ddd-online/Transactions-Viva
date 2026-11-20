@@ -18,6 +18,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/datepicker"
+	"transactions/internal/components/layout"
 	"transactions/internal/components/pagination"
 	"transactions/internal/components/semantic"
 	"transactions/internal/domain"
@@ -282,7 +283,8 @@ func (m *Model) View(c ui.C) {
 // toolbar is the page's actions, laid out like the old page's filter bar: the
 // time range on the left, and the sort beside the primary action on the right.
 func (m *Model) toolbar(c ui.C) {
-	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(8).Items(ui.Center).Children(func() {
+	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
+		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
 		if ledger.Picker(c, m.ledgers) && m.onLedgerChanged != nil {
 			m.onLedgerChanged()
 		}
@@ -314,7 +316,7 @@ func (m *Model) toolbar(c ui.C) {
 // button cycles the column: none, descending, ascending. Columns sort in the
 // order they were chosen, so the first one clicked is the primary sort.
 func (m *Model) sortHeader(c ui.C, label string, field sortField, width float32, end bool) {
-	row := ui.Row(c).Width(width).Height(34).Items(ui.Center).Gap(4)
+	row := ui.Row(c).Width(width).Height(layout.TableHeaderHeight).Items(ui.Center).Gap(4)
 	if end {
 		row = row.Justify(ui.End)
 	}
@@ -413,7 +415,8 @@ func (m *Model) applySort() {
 func (m *Model) table(c ui.C) {
 	theme := c.Theme()
 	ui.Column(c).Grow(1).FillWidth().Children(func() {
-		ui.Row(c).Height(34).FillWidth().PadX(18).Gap(12).Items(ui.Center).
+		ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().
+			PadX(layout.Inset).Gap(layout.ColumnGap).Items(ui.Center).
 			Background(theme.Muted).Children(func() {
 			m.sortHeader(c, "日期", sortDate, recordDateWidth, false)
 			ui.Text(c, "类型").Width(recordTypeWidth).FontSize(11).Muted()
@@ -440,7 +443,7 @@ func (m *Model) table(c ui.C) {
 func (m *Model) row(r ui.ListRow) {
 	rec := &m.shown[m.pageStart+r.Index]
 	theme := r.C.Theme()
-	r.Element.Height(48).PadX(18).Gap(12).Items(ui.Center).
+	r.Element.Height(layout.RowHeight).PadX(layout.Inset).Gap(layout.ColumnGap).Items(ui.Center).
 		Hover(ui.Look{}.Background(theme.Hover))
 	if r.Selected() {
 		r.Element.Background(theme.Hover)
@@ -591,7 +594,8 @@ func (m *Model) thisYear() {
 // footer is the records' 收入 / 支出 / 转账 summary and the visible row count.
 func (m *Model) footer(c ui.C) {
 	theme := c.Theme()
-	ui.Row(c).Height(40).FillWidth().PadX(18).Gap(24).Items(ui.Center).Children(func() {
+	ui.Row(c).Height(layout.FooterHeight).FillWidth().
+		PadX(layout.Inset).Gap(layout.GroupGap).Items(ui.Center).Children(func() {
 		m.stat(c, "收入", m.stats[0], kindColor(*theme, kindIncome))
 		m.stat(c, "支出", m.stats[1], kindColor(*theme, kindExpense))
 		m.stat(c, "转账", m.stats[2], kindColor(*theme, kindTransfer))

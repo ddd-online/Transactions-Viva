@@ -13,6 +13,8 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/emptystate"
+	"transactions/internal/components/layout"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting/ledger"
 	"transactions/internal/repository"
@@ -77,9 +79,9 @@ type tag struct {
 }
 
 const (
-	categoryColumnWidth = float32(240)
-	columnHeaderHeight  = float32(46)
-	listRowHeight       = float32(40)
+	categoryColumnWidth = layout.RailWidth
+	columnHeaderHeight  = layout.SectionHeaderHeight
+	listRowHeight       = layout.RowHeight
 )
 
 // Model is the 标签 screen's state: the chosen type, the categories and tags,
@@ -272,7 +274,8 @@ func (m *Model) CloseOverlays() {
 }
 
 func (m *Model) toolbar(c ui.C) {
-	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(8).Items(ui.Center).Children(func() {
+	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
+		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
 		if ledger.Picker(c, m.ledgers) && m.onLedgerChanged != nil {
 			m.onLedgerChanged()
 		}
@@ -333,13 +336,13 @@ func (m *Model) selectKind(k kind) {
 func (m *Model) categoryColumn(c ui.C) {
 	categories := m.categories[m.kind]
 	ui.Column(c).Width(categoryColumnWidth).FillHeight().Children(func() {
-		add := m.columnHeader(c, "分类", len(categories), "新增分类", false, false)
+		add := m.columnHeader(c, "分类", len(categories), "新增分类", false)
 		if add.Clicked() {
 			m.openCategoryModal()
 		}
 		ui.Divider(c)
 		if len(categories) == 0 {
-			emptyState(c, "暂无分类")
+			emptystate.Notice(c, "暂无分类")
 			return
 		}
 		ui.List(c, &m.categoryList, len(categories), m.categoryRow).Label("分类").Grow(1)
@@ -358,16 +361,16 @@ func (m *Model) tagColumn(c ui.C) {
 		title = m.selected
 	}
 	ui.Column(c).Grow(1).FillHeight().Children(func() {
-		add := m.columnHeader(c, title, len(tags), "新增标签", m.selected == "", true)
+		add := m.columnHeader(c, title, len(tags), "新增标签", m.selected == "")
 		if add.Clicked() {
 			m.openTagModal()
 		}
 		ui.Divider(c)
 		switch {
 		case m.selected == "":
-			emptyState(c, "选择分类查看标签")
+			emptystate.Notice(c, "选择分类查看标签")
 		case len(tags) == 0:
-			emptyState(c, "暂无标签")
+			emptystate.Notice(c, "暂无标签")
 		default:
 			ui.List(c, &m.tagList, len(tags), m.tagRow).Label("标签").Grow(1)
 		}
@@ -376,19 +379,16 @@ func (m *Model) tagColumn(c ui.C) {
 
 // columnHeader is one column's title, its count badge and its add button. The
 // caller reads Clicked from the returned button.
-func (m *Model) columnHeader(c ui.C, title string, count int, addLabel string, disabled, secondary bool) ui.Box {
+func (m *Model) columnHeader(c ui.C, title string, count int, addLabel string, disabled bool) ui.Box {
 	theme := c.Theme()
 	var add ui.Box
-	ui.Row(c).Height(columnHeaderHeight).FillWidth().PadX(18).Gap(8).
-		Items(ui.Center).Children(func() {
+	ui.Row(c).Height(columnHeaderHeight).FillWidth().
+		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
 		ui.Text(c, title).FontSize(theme.Metrics.FontSizeM).
 			Weight(gfx.WeightSemibold).Shrink(1).Ellipsis()
 		countPill(c, count)
 		ui.Spacer(c)
-		add = ui.Button(c, addLabel).Small().Icon(icons.Plus).Disabled(disabled)
-		if secondary {
-			add = add.Secondary()
-		}
+		add = ui.Button(c, addLabel).Small().Secondary().Icon(icons.Plus).Disabled(disabled)
 	})
 	return add
 }
@@ -399,14 +399,6 @@ func countPill(c ui.C, count int) {
 	ui.Text(c, strconv.Itoa(count)).FontSize(theme.Metrics.FontSizeS).
 		Color(theme.MutedForeground).Background(theme.Muted).
 		Radius(theme.Metrics.RadiusItem() + 2).PadX(6).PadY(1)
-}
-
-// emptyState fills the body below a column header with its explanation.
-func emptyState(c ui.C, text string) {
-	theme := c.Theme()
-	ui.Column(c).Grow(1).FillWidth().Center().Children(func() {
-		ui.Text(c, text).FontSize(theme.Metrics.FontSizeM).Muted().TextCenter()
-	})
 }
 
 // categoryRow declares one category: drag handle, name, record count and the
@@ -422,7 +414,7 @@ func (m *Model) categoryRow(row ui.ListRow) {
 	if row.Selected() {
 		hover = theme.Accent
 	}
-	row.Element.Height(listRowHeight).PadX(8).Gap(8).Items(ui.Center).
+	row.Element.Height(listRowHeight).PadX(layout.BlockGap).Gap(layout.Gap).Items(ui.Center).
 		Radius(theme.Metrics.RadiusControl).
 		Hover(ui.Look{}.Background(hover)).
 		Focus(ui.Look{}.Ring(2, theme.Ring))
@@ -449,7 +441,7 @@ func (m *Model) tagRow(row ui.ListRow) {
 		return
 	}
 	one := tags[row.Index]
-	row.Element.Height(listRowHeight).PadX(8).Gap(8).Items(ui.Center).
+	row.Element.Height(listRowHeight).PadX(layout.BlockGap).Gap(layout.Gap).Items(ui.Center).
 		Radius(theme.Metrics.RadiusControl).
 		Hover(ui.Look{}.Background(theme.Hover)).
 		Focus(ui.Look{}.Ring(2, theme.Ring))

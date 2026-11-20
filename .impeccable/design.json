@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-21T00:18:00+08:00",
+  "generatedAt": "2026-11-21T00:40:00+08:00",
   "title": "Design System: Transactions",
   "extensions": {
     "colorMeta": {
@@ -269,7 +269,7 @@
       "refersTo": "workspace-card",
       "description": "整个窗口唯一的一张卡：内容画在它里面，外面只留 7px 边距。",
       "html": "<section class=\"ds-card\"><header class=\"ds-card__toolbar\"><button class=\"ds-pill\">今天</button><button class=\"ds-pill\">日</button><span class=\"ds-card__spacer\"></span><button class=\"ds-card__action\">记一笔</button></header><div class=\"ds-card__row\"><span class=\"ds-card__date\">11-21</span><span class=\"ds-card__kind\">支出</span><span class=\"ds-card__desc\">地铁通勤</span><span class=\"ds-card__amount\">-4.00</span></div></section>",
-      "css": ".ds-card{display:block;background:#ffffff;border:1px solid #e4e4e7;border-radius:11px;overflow:hidden;font-size:13px;color:#18181b}.ds-card__toolbar{display:flex;align-items:center;gap:8px;height:56px;padding:0 18px}.ds-card__spacer{flex:1}.ds-pill{height:32px;padding:0 12px;border:1px solid #e4e4e7;border-radius:7.5px;background:#ffffff;font-size:14px;cursor:pointer}.ds-card__action{height:32px;padding:0 12px;border:0;border-radius:7.5px;background:#1d4ed8;color:#ffffff;font-size:14px;cursor:pointer}.ds-card__row{display:flex;align-items:center;gap:12px;height:48px;padding:0 18px;border-top:1px solid #e4e4e7}.ds-card__row:hover{background:#f4f4f5}.ds-card__date{width:78px}.ds-card__kind{width:64px;font-size:12px;font-weight:500;color:#b91c1c}.ds-card__desc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ds-card__amount{width:120px;text-align:right;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:500;color:#b91c1c}"
+      "css": ".ds-card{display:block;background:#ffffff;border:1px solid #e4e4e7;border-radius:11px;overflow:hidden;font-size:13px;color:#18181b}.ds-card__toolbar{display:flex;align-items:center;gap:8px;height:56px;padding:0 16px}.ds-card__spacer{flex:1}.ds-pill{height:32px;padding:0 12px;border:1px solid #e4e4e7;border-radius:7.5px;background:#ffffff;font-size:14px;cursor:pointer}.ds-card__action{height:32px;padding:0 12px;border:0;border-radius:7.5px;background:#1d4ed8;color:#ffffff;font-size:14px;cursor:pointer}.ds-card__row{display:flex;align-items:center;gap:12px;height:44px;padding:0 16px;border-top:1px solid #e4e4e7}.ds-card__row:hover{background:#f4f4f5}.ds-card__date{width:78px}.ds-card__kind{width:64px;font-size:12px;font-weight:500;color:#b91c1c}.ds-card__desc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ds-card__amount{width:120px;text-align:right;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:500;color:#b91c1c}"
     },
     {
       "name": "Mark Chip",
@@ -343,6 +343,11 @@
         "name": "The Hairline Layering Rule",
         "body": "先用色差和 1px 发丝线分层；只有东西真的离开纸面（浮层、菜单、弹窗）时才出现阴影。",
         "section": "elevation"
+      },
+      {
+        "name": "The One Scale Rule",
+        "body": "页面尺寸只从 internal/components/layout 取，控件尺寸只从 theme.Metrics 取；两条阶梯步长相同（4 / 8 / 12 / 16 / 24 / 32），页面里不再出现一次性数字。",
+        "section": "layout"
       }
     ],
     "dos": [

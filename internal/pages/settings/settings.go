@@ -12,6 +12,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/layout"
 	"transactions/internal/config"
 	"transactions/internal/pages/settings/controls"
 )
@@ -27,14 +28,14 @@ const (
 )
 
 // The page's own measurements, taken from the reference application's settings
-// page: a 208 wide category list, a 760 wide reading column with 32 of side
-// room, and a 64 high settings row.
+// The page's own measurements: the shared rail width, a 760 wide reading column
+// with the page's inset on either side, and a 36 high settings row.
 const (
-	navWidth      = float32(208)
+	navWidth      = layout.RailWidth
 	columnMax     = float32(760)
-	columnMargin  = float32(32)
-	columnTop     = float32(34)
-	columnBottom  = float32(28)
+	columnMargin  = layout.GroupGap
+	columnTop     = float32(32)
+	columnBottom  = layout.GroupGap
 	sectionTitle  = float32(26)
 	navEntryHigh  = float32(36)
 	navEntrySpace = float32(4)
@@ -187,15 +188,15 @@ func (m *Model) nav(c ui.C) {
 	theme := c.Theme()
 	ui.Column(c).Width(navWidth).FillHeight().Children(func() {
 		ui.Text(c, "设置").FontSize(19).Bold().LineHeight(28).
-			MarginSides(26, 8, 10, 22)
+			MarginSides(layout.BlockGap+layout.Gap, layout.Gap, layout.BlockGap, layout.GroupGap)
 		ui.Scroll(c).Grow(1).Children(func() {
 			ui.Column(c).Gap(navEntrySpace).MarginBottom(8).Children(func() {
 				for index := range sections {
 					entry := &sections[index]
 					active := m.tab == entry.tab
 					c.KeyInt(index)
-					row := ui.Row(c).Height(navEntryHigh).Shrink(0).MarginX(12).
-						PadSides(0, 8, 0, 12).Items(ui.Center).
+					row := ui.Row(c).Height(navEntryHigh).Shrink(0).MarginX(layout.BlockGap).
+						PadSides(0, layout.Gap, 0, layout.BlockGap).Items(ui.Center).
 						Radius(theme.Metrics.RadiusControl)
 					if active {
 						row = row.Background(theme.Accent)
@@ -229,9 +230,9 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 			MarginSides(columnTop, columnMargin, columnBottom, columnMargin).
 			Children(func() {
 				ui.Text(c, entry.title).FontSize(sectionTitle).Bold().
-					LineHeight(34).MarginBottom(8)
+					LineHeight(32).MarginBottom(layout.Gap)
 				ui.Paragraph(c, entry.note, 3).FontSize(theme.Metrics.FontSizeM).
-					Muted().LineHeight(20).MarginBottom(24)
+					Muted().LineHeight(20).MarginBottom(layout.GroupGap)
 				switch entry.tab {
 				case tabGeneral:
 					m.general(c, spec)
