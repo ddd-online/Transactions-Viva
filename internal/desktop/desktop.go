@@ -184,10 +184,14 @@ func newConfig(m *Model) app.Config {
 	if height <= 0 {
 		height = 1000
 	}
+	width = max(width, MinimumWindowWidth)
+	height = max(height, MinimumWindowHeight)
 	config := app.Config{
-		Title:  "Transactions",
-		Width:  width,
-		Height: height,
+		Title:     "Transactions",
+		Width:     width,
+		Height:    height,
+		MinWidth:  MinimumWindowWidth,
+		MinHeight: MinimumWindowHeight,
 		// The old application draws its own 36px title bar; Viva draws the
 		// window buttons on Windows and Linux, and keeps the macOS traffic lights.
 		WindowMode:     app.WindowCustomTitlebar,
@@ -280,6 +284,14 @@ func (m *Model) windowControls() app.WindowControlsStyle {
 // right and bottom edges, after the reference application: the card sits on the
 // shell surface instead of filling the window.
 const contentCardMargin = float32(7)
+
+// MinimumWindowWidth and MinimumWindowHeight match motty's main window: the
+// navigation, titlebar controls and accounting content stay usable at this
+// size. Viva reduces a minimum only when the display's work area is smaller.
+const (
+	MinimumWindowWidth  = 960
+	MinimumWindowHeight = 620
+)
 
 // page declares the whole window: title bar, navigation and content. The
 // window's own surface is the shell the card floats on.

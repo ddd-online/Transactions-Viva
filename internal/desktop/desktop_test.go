@@ -919,6 +919,22 @@ func TestSettingsCategoriesSwitchThePage(t *testing.T) {
 	}
 }
 
+func TestWindowMinimumMatchesMotty(t *testing.T) {
+	cfg := config.Default()
+	cfg.Width, cfg.Height = 400, 300
+	window := newConfig(NewWithConfig(cfg, nil))
+	if window.MinWidth != 960 || window.MinHeight != 620 {
+		t.Fatalf("minimum = %dx%d, want motty's 960x620", window.MinWidth, window.MinHeight)
+	}
+	if window.Width != 960 || window.Height != 620 {
+		t.Fatalf("restored frame = %dx%d, want it clamped to the minimum", window.Width, window.Height)
+	}
+	defaults := newConfig(New())
+	if defaults.Width != 1500 || defaults.Height != 1000 {
+		t.Fatalf("default frame = %dx%d, want 1500x1000", defaults.Width, defaults.Height)
+	}
+}
+
 func TestWindowBorderFollowsTheme(t *testing.T) {
 	model := New()
 	config := newConfig(model)
