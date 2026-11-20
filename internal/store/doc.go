@@ -1,21 +1,27 @@
-// Package store will own the workspace's SQLite database: opening a workspace,
-// applying the schema migrations, and the DAOs that read and write each table.
+// Package store owns the workspace's SQLite database: opening a workspace,
+// applying schema migrations, and the repositories for ledgers, records,
+// categories/tags and templates.
 //
-// It is a documented seam for now, not an implementation. The contract it must
-// keep is the old project's electron/db:
+// Contract:
 //
-//   - the database is transactions.db inside the user-chosen workspace
-//     directory; images live under data/assets in the same workspace;
-//   - schema versions are recorded in app_meta.schema_version and old
-//     workspaces are upgraded once, never silently recreated;
-//   - opening a workspace runs PRAGMA quick_check only; integrity_check is
-//     reserved for the explicit backup and restore actions;
-//   - SQLite units are the domain's: amounts in integer cents (columns ending
-//     _cents), stock prices in integer milli (columns ending _milli), times as
-//     Unix seconds (columns ending _at), dates as local "YYYY-MM-DD" (columns
-//     ending _date).
+//   - a workspace is a directory containing transactions.db; the directory must
+//     already exist, and a missing database is created and migrated to v1;
+//   - schema versions live in app_meta.schema_version; versions are contiguous
+//     from 1, upgrades back up the database to transactions.db.bak first, and a
+//     database written by a newer build is refused;
+//   - opening runs PRAGMA quick_check only; integrity_check is reserved for the
+//     explicit backup and restore actions;
+//   - the accounting tables are column-for-column compatible with the old
+//     project's schema, so internal/store/import_old.go can copy old rows
+//     without translation. The old stock/chart/event/diary/todo tables are not
+//     created here;
+//   - amounts are integer cents (columns ending _cents), times are Unix seconds
+//     (columns ending _at), dates are local "YYYY-MM-DD" (columns ending _date);
+//   - there are no foreign keys, as in the old schema; deletes are explicit
+//     transactions in the store.
 //
-// The schema and its later migrations are ported together with the first
-// screen that needs them (记账), so this package starts with a blank file
-// rather than a half-copied schema that would drift from the old database.
+// The old application's database (schema version 12 and stock tables) is not
+// opened directly: it is recognized and reported, and the import tool writes a
+// new workspace instead. This keeps the new schema's version history
+// independent of the old one.
 package store
