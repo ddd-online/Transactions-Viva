@@ -16,11 +16,11 @@ func newTheme(dark bool) gfx.Theme {
 	// Viva paints the hover of menu and popup rows with Accent. The stock token
 	// sits almost on the Popover color (#f5f5f5 on #ffffff, #262626 on #171717),
 	// so the highlight is technically there but reads as no hover at all. Keep
-	// the neutral hue and deepen it one step.
+	// the neutral hue and deepen it until a submenu row is unmistakable.
 	if dark {
-		theme.Accent = gfx.RGB(46, 46, 46)
+		theme.Accent = gfx.RGB(52, 52, 52)
 	} else {
-		theme.Accent = gfx.RGB(236, 236, 236)
+		theme.Accent = gfx.RGB(230, 230, 230)
 	}
 	return theme
 }

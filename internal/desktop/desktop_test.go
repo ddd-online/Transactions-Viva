@@ -1279,3 +1279,36 @@ func TestTitlebarThemeButtonHoverChangesFill(t *testing.T) {
 		t.Fatalf("the appearance toggle's hover fill is transparent: %v", hover)
 	}
 }
+
+// TestRecordsSyncSubmenuHover checks the ledger submenu of the record context
+// menu: Viva paints a row's hover with theme.Accent, and the deep Accent is what
+// makes it visible beside the white popover.
+func TestRecordsSyncSubmenuHover(t *testing.T) {
+	driver, model := open(t)
+	rightClickText(t, driver, "早餐 · 豆浆油条")
+	parent, ok := controlBounds(driver, "同步到其他账本")
+	if !ok {
+		t.Fatal("the row menu has no 同步到其他账本")
+	}
+	if err := driver.Move(parent.X+parent.Width/2, parent.Y+parent.Height/2); err != nil {
+		t.Fatal(err)
+	}
+	settle(t, driver)
+	item, ok := controlBounds(driver, "旅行账本")
+	if !ok {
+		t.Fatal("the sync submenu did not open")
+	}
+	if err := driver.Move(item.X+item.Width/2, item.Y+item.Height/2); err != nil {
+		t.Fatal(err)
+	}
+	settle(t, driver)
+	for _, primitive := range driver.Snapshot().Primitives {
+		if primitive.Kind == app.RectanglePrimitive && primitive.Bounds == item {
+			if primitive.Color != model.theme.Accent {
+				t.Fatalf("submenu hover fill = %v, want %v", primitive.Color, model.theme.Accent)
+			}
+			return
+		}
+	}
+	t.Fatal("the sync submenu item has no hover fill")
+}
