@@ -72,6 +72,9 @@ type Model struct {
 	list       ui.ListState
 
 	categories []domain.Category
+	tagsByKind map[string][]string
+	tagKeyed   map[string][]string
+	tagSelect  tagSelect
 	loadErr    string
 	toaster    ui.Toaster
 	bounds     gfx.Rect
@@ -106,6 +109,7 @@ func New(ledgers *ledger.Store) *Model {
 		return m.charts[index].Title
 	}
 	m.list.Reorder = m.moveChart
+	m.initTagSelect()
 	return m
 }
 
@@ -151,6 +155,17 @@ func (m *Model) Reload() {
 	}
 	if snapshot, err := m.repo.Labels(ctx, active); err == nil {
 		m.categories = snapshot.Categories
+		m.tagsByKind = map[string][]string{}
+		m.tagKeyed = map[string][]string{}
+		for _, tag := range snapshot.Tags {
+			category, kind, ok := splitTagCategory(tag.CategoryTransactionType)
+			if !ok {
+				continue
+			}
+			m.tagsByKind[kind] = append(m.tagsByKind[kind], tag.Name)
+			key := kind + "\x00" + category
+			m.tagKeyed[key] = append(m.tagKeyed[key], tag.Name)
+		}
 	}
 	charts, err := m.repo.Charts(ctx, active)
 	if err != nil {

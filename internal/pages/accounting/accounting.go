@@ -185,6 +185,8 @@ func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
 	switch m.tab {
 	case tabRecords:
 		return m.records.Key(event)
+	case tabAnalysis:
+		return m.analysis.Key(event)
 	case tabTemplates:
 		return m.templates.Key(event)
 	}
@@ -196,6 +198,8 @@ func (m *Model) Scroll(event gfx.ScrollEvent) gfx.EventResult {
 	switch m.tab {
 	case tabRecords:
 		return m.records.Scroll(event)
+	case tabAnalysis:
+		return m.analysis.Scroll(event)
 	case tabTemplates:
 		return m.templates.Scroll(event)
 	}
@@ -208,6 +212,8 @@ func (m *Model) TagsEditor(id gfx.ID) *text.Editor {
 	switch m.tab {
 	case tabRecords:
 		return m.records.TagsEditor(id)
+	case tabAnalysis:
+		return m.analysis.TagsEditor(id)
 	case tabTemplates:
 		return m.templates.TagsEditor(id)
 	}

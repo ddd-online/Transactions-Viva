@@ -31,7 +31,7 @@ type form struct {
 	lineLabel       string
 	lineKind        string
 	lineCategory    string
-	lineTags        string
+	lineTags        []string
 	linePolicy      string // label: 任意 / 全部
 	lineDescription string
 	lineOutlier     bool
@@ -46,6 +46,7 @@ func (m *Model) showModal(kind modalKind) {
 }
 
 func (m *Model) closeModal() {
+	m.tagSelect.state.Open = false
 	m.dialogOpen = false
 	m.modal = modalNone
 }
@@ -83,13 +84,15 @@ func (m *Model) openLine(chart *domain.Chart, index int) {
 		if len(line.Conditions) > 0 {
 			condition := line.Conditions[0]
 			m.form.lineCategory = condition.Category
-			m.form.lineTags = strings.Join(condition.Tags, ", ")
+			m.form.lineTags = append([]string(nil), condition.Tags...)
 			if condition.TagPolicy == "all" {
 				m.form.linePolicy = "全部"
 			}
 			m.form.lineDescription = condition.Description
 		}
 	}
+	m.syncTagOptions()
+	m.setTags(m.form.lineTags)
 	m.showModal(modalLine)
 }
 
@@ -180,11 +183,10 @@ func (m *Model) saveLine() {
 			return
 		}
 	}
-	tags := splitTags(m.form.lineTags)
 	condition := domain.QueryConditionItem{
 		TransactionType: m.lineKindValue(),
 		Category:        strings.TrimSpace(m.form.lineCategory),
-		Tags:            tags,
+		Tags:            append([]string(nil), m.form.lineTags...),
 		TagPolicy:       "any",
 		Description:     strings.TrimSpace(m.form.lineDescription),
 	}
@@ -306,19 +308,6 @@ func groupFieldValue(label string) string {
 	return groupType
 }
 
-func splitTags(raw string) []string {
-	raw = strings.ReplaceAll(raw, "，", ",")
-	parts := strings.Split(raw, ",")
-	tags := make([]string, 0, len(parts))
-	for _, tag := range parts {
-		tag = strings.TrimSpace(tag)
-		if tag != "" {
-			tags = append(tags, tag)
-		}
-	}
-	return tags
-}
-
 // modals paints the create, rename, curve and delete dialogs.
 func (m *Model) modals(c ui.C) {
 	if !m.dialogOpen {
@@ -422,12 +411,15 @@ func (m *Model) lineFields(c ui.C) {
 	ui.Text(c, "交易类型").FontSize(c.Theme().Metrics.FontSizeS).Muted()
 	if selectbox.Select(c, &m.form.lineKind, lineTypeLabels[:], nil).Label("交易类型").FillWidth().Changed() {
 		m.form.lineCategory = ""
-		m.form.lineTags = ""
+		m.resetTagSelect()
 	}
 	ui.Text(c, "分类（可选）").FontSize(c.Theme().Metrics.FontSizeS).Muted()
 	names := m.categoryNames(m.lineKindValueForForm())
-	selectbox.Select(c, &m.form.lineCategory, names, nil).Placeholder("不限分类").Label("分类（可选）").FillWidth()
-	m.field(c, "标签（可选，逗号分隔）", &m.form.lineTags, "三餐, 外卖")
+	if selectbox.Select(c, &m.form.lineCategory, names, nil).Placeholder("不限分类").Label("分类（可选）").FillWidth().Changed() {
+		m.resetTagSelect()
+	}
+	ui.Text(c, "标签（可选）").FontSize(c.Theme().Metrics.FontSizeS).Muted()
+	m.tagField(c)
 	ui.Text(c, "标签匹配").FontSize(c.Theme().Metrics.FontSizeS).Muted()
 	ui.Choice(c, &m.form.linePolicy, tagPolicyLabels[:], nil)
 	m.field(c, "描述包含（可选）", &m.form.lineDescription, "输入关键词")

@@ -1369,15 +1369,17 @@ func TestAnalysisLineEditor(t *testing.T) {
 	}
 	click(t, driver, "分类（可选）")
 	click(t, driver, "餐饮美食")
-	click(t, driver, "标签（可选，逗号分隔）")
-	if err := driver.Type("三餐"); err != nil {
+	click(t, driver, "曲线标签")
+	click(t, driver, "饮料")
+	click(t, driver, "零食")
+	if err := driver.Key(gfx.KeyEscape, 0); err != nil {
 		t.Fatal(err)
 	}
 	click(t, driver, "保存")
 	if !hasControl(driver, "删除曲线 餐饮") {
 		t.Fatal("the filtered curve was not added")
 	}
-	if !shows(driver, "三餐") {
-		t.Fatal("the curve condition is not shown")
+	if !shows(driver, "饮料") || !shows(driver, "零食") {
+		t.Fatal("the curve conditions are not shown")
 	}
 }

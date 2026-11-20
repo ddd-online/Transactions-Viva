@@ -59,7 +59,7 @@ func TestCreateLineChartAndAddCurve(t *testing.T) {
 	m.form.lineLabel = "餐饮"
 	m.form.lineKind = "支出"
 	m.form.lineCategory = "餐饮美食"
-	m.form.lineTags = "三餐, 外卖"
+	m.form.lineTags = []string{"三餐", "外卖"}
 	m.form.linePolicy = "全部"
 	m.form.lineDescription = "午餐"
 	m.saveLine()
@@ -69,6 +69,9 @@ func TestCreateLineChartAndAddCurve(t *testing.T) {
 	added := m.lines[1]
 	if added.Label != "餐饮" || len(added.Conditions) != 1 || added.Conditions[0].TagPolicy != "all" {
 		t.Fatalf("added line = %+v", added)
+	}
+	if len(added.Conditions[0].Tags) != 2 || added.Conditions[0].Tags[0] != "三餐" {
+		t.Fatalf("added line tags = %+v", added.Conditions[0].Tags)
 	}
 	if len(m.lineData) != 2 {
 		t.Fatalf("line data = %d", len(m.lineData))
@@ -96,6 +99,27 @@ func TestCreatePieChart(t *testing.T) {
 		if strings.TrimSpace(slice.Label) == "" {
 			t.Fatalf("slice without a label: %+v", slice)
 		}
+	}
+}
+
+func TestTagOptionsFollowTypeAndCategory(t *testing.T) {
+	m := newTestModel(t)
+	m.openLine(m.selectedChart(), -1)
+	m.form.lineKind = "支出"
+	m.form.lineCategory = "餐饮美食"
+	options := m.lineTagOptions()
+	if !contains(options, "饮料") || contains(options, "工资") {
+		t.Fatalf("餐饮美食 options = %v", options)
+	}
+	m.form.lineCategory = ""
+	options = m.lineTagOptions()
+	if !contains(options, "饮料") || contains(options, "工资") {
+		t.Fatalf("expense options = %v", options)
+	}
+	m.form.lineKind = "收入"
+	options = m.lineTagOptions()
+	if contains(options, "饮料") || !contains(options, "工资") {
+		t.Fatalf("income options = %v", options)
 	}
 }
 
