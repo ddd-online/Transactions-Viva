@@ -10,7 +10,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 整体迁移到 **Viva + Go**：没有 Electron、没有 Node、没有内嵌浏览器，窗口与控件由 GPU
 直接绘制。**行为、文案、交互、数据契约一律以旧工程为准，先追平再改进。**
 
-当前阶段：**外壳与记账-记录页、标签页、模板页的前端已搭起；配置持久化、通用设置与功能开关已可用；数据都是 mock，其余页面只搭结构。**
+当前阶段：**外壳、配置与通用设置、记账三页与 SQLite 数据层已落地；记账三页读写工作空间；旧数据可导入；分析、股票、待办、事件、日记仍是占位。**
 
 - 入口是根目录 `main.go`：只做 `log.Fatal(desktop.Run())`，`viva.toml` 的 `package = "."`。
   开发时 `viva dev .`，一次性运行 `go run .`。
@@ -25,9 +25,11 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   下拉一律用本工程的 `selectbox.Select`（`internal/components/selectbox`：Viva v0.6.5
   的 Select 不收下拉动画的组，弹窗里会把下面的字段带得抖一下，见 `docs/architecture.md`
   的「框架缺口」）。
-  记录行右键打开 ContextMenu（编辑 / 同步到其他账本 / 删除）。行数据、模板与保存都只在
-  内存里。工具栏最左侧是「账本」Select（mock 两个账本：家庭账本 / 旅行账本）：切换后表格、
-  统计与分页按账本过滤，新记录落到当前账本；这个选择在记账的记录 / 标签 / 模板三页之间共享。
+  记录行右键打开 ContextMenu（编辑 / 同步到其他账本 / 删除）。行数据来自工作空间
+  `transactions.db`：账本 + 日期范围在 SQL 里过滤，多列排序、统计与分页在页面内存里；
+  编辑保留记录 ID，同步到其他账本会复制一条新记录（不带关联事件日期）。工具栏最左侧是
+  「账本」Select，列表来自数据库；切换后表格、统计与分页按账本过滤，新记录落到当前账本；
+  这个选择在记账的记录 / 标签 / 模板三页之间共享。
   日期与金额两个表头各带一个方形排序按钮（文字在
   按钮外）：未选 → 降序 → 升序，未选 `arrow-up-down`、降序 `arrow-up-wide-narrow`、
   升序 `arrow-down-narrow-wide`，选中时图标变主色；金额按有符号值比较（支出为负），两列可同时
@@ -39,18 +41,25 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   每页 15 / 30 / 50 的 Select 在 Viva 分页左侧，「共 N 条」在右侧，三者是一个自定义组件。
 - 记账-标签页已迁移前端：工具栏最左侧是同一个「账本」选择器，后面是 支出 / 收入 / 转账 类型卡片；
   主体是 240px 分类栏 + 标签栏；切账本会清空已选分类；
-  分类与标签都能新增、删除（带确认弹窗）、拖拽排序，重名在弹窗里提示；分类 / 标签的记录数、
-  默认分类与标签都在 `internal/pages/accounting/tags/mock.go`，接入 store 后替换。
+  分类与标签都能新增、删除（带确认弹窗）、拖拽排序，重名在弹窗里提示；数据与记录数来自
+  工作空间；新建账本时播种旧工程的 19 个分类 / 57 个标签；删除分类连带其标签，删除标签
+  连带记录上的标签关联。
 - 记账-模板页已迁移前端：工具栏最左侧是同一个「账本」选择器，右侧是「新建模板」；主体是通到
   版心边缘的表格（拖拽把手 / 模板名称 / 交易类型 / 分类 / 标签 / 标记 / 描述 / 操作），
   行可拖拽排序、删除前确认；模板按账本存放，切账本换一整套列表；「新建模板」弹窗按旧工程校验模板名称与分类，
   标签取所选分类下的多选器（Viva `PaintMultiSelect`，与记一笔共用同一套键盘 / 滚轮 / 输入路由）。
-  模板存在 `internal/pages/accounting/template` 的内存 Store 里，记录页「记一笔」的模板下拉
-  读同一个 Store，模板页新建的模板马上能在弹窗里选到。
+  模板存在 `transaction_template` 表，`internal/pages/accounting/template` 只是同步绘制用的
+  缓存；记录页「记一笔」的模板下拉与模板页读同一份缓存，新建的模板马上能在弹窗里选到。
 - 用户配置已落地：`internal/config` 读写 `~/.transactions.json`（`viva dev` 期间是
   `~/.transactions.dev.json`），逐字段归一化，写回保留未知顶层键，写入走 `.tmp` + rename。
   窗口尺寸 / 位置（关闭时保存）、工作空间、外观、关闭行为、功能开关与账本级覆盖都在里面；
   `desktop.Run` 启动时加载，设置页的改动立即写回。
+- SQLite 工作空间已落地：目录里的 `transactions.db`，schema v1 只含 `app_meta` /
+  `ledger` / `transaction_record` / `transaction_record_tag` / `category` / `tag` /
+  `transaction_template`（列与旧库兼容，不建股票等表）。打开时 `quick_check`、版本迁移
+  （升级前 `VACUUM INTO <db>.bak`）、拒绝损坏 / 陌生 / 旧版 / 更高版本库。空工作空间
+  自动创建「默认账本」并播种默认分类标签；设置里切换工作空间先打开新库，失败保留旧库。
+  没有工作空间时内容区显示「打开工作空间」门禁，设置仍可进入。
 - 通用设置（除网络代理）已可用：工作空间（目录选择器，记入最近 5 条）、外观（浅色 / 深色 /
   跟随系统，标题栏的明暗开关写同一份配置，系统换色时自动重绘）、关闭行为（直接退出 /
   最小化到托盘 / 每次询问；托盘用 Viva 的 StatusItem，没有托盘时回退为退出）。功能开关会
@@ -61,7 +70,10 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   隐藏窗口、处理原生关闭。开发宿主只按自己的绘制请求重绘，所以开发模式关闭窗口直接退出，
   不弹「每次询问」。
 - 原来的 `viva init` 示例（计数页）已移除；根目录 `main.go` 现在是真实入口。
-- SQLite 存储尚未接入；其余页面的真实内容也还没迁移（见下面的迁移顺序）。
+- 旧数据导入工具：`go run ./cmd/tr-import -from <旧工作空间或 transactions.db> -to <新目录>`
+  只读旧库，复制账本 / 分类 / 标签 / 记录 / 记录标签 / 模板，保留 ID、时间戳、排序与空值，
+  报告孤儿行（`-strict` 中止）；旧库的股票、图表、事件、日记、待办不导入。
+- 其余页面的真实内容还没迁移（见下面的迁移顺序）。
 
 ## 参考对象
 
@@ -86,13 +98,17 @@ internal/pages/          各功能页：accounting、stock、todo、events、dia
   accounting/records/composer/  新增 / 编辑记录弹窗
   accounting/ledger/     记账各页共享的账本列表与当前账本
   accounting/tags/       标签页（类型卡片 / 分类与标签两栏 / 新增与删除弹窗）
-  accounting/template/   模板的内存列表（按账本存放，记录弹窗与模板页共用）
+  accounting/template/   模板缓存与 domain 互转（按账本存放，记录弹窗与模板页共用）
   accounting/templates/  模板页（表格 / 新建与删除弹窗 / 拖拽排序）
 internal/components/     可复用的 UI：占位空态，以及 datepicker / pagination / selectbox 子包
 internal/pages/settings/controls/  只属于设置页的分组卡片 / 设置行
 internal/domain/         纯领域规则与数据形状：金额、记录、账本、事件、日记、待办、股票
+internal/repository/     页面使用的数据契约（接口 / 查询 / 错误），不依赖 SQLite
 internal/config/         应用配置：形状、默认值、读写与归一化（~/.transactions.json）
-internal/store/          SQLite 工作空间与 DAO 的位置（目前只有包文档）
+internal/store/          SQLite 工作空间、schema / 迁移 / 仓储 / 旧库导入
+  storetest/             测试用的临时工作空间与种子数据
+  schema/                schema SQL（0001_init.sql）
+cmd/tr-import/           旧工作空间导入命令
 docs/architecture.md     分层规则、旧模块到新包的映射、迁移顺序
 ```
 
@@ -101,13 +117,16 @@ docs/architecture.md     分层规则、旧模块到新包的映射、迁移顺�
 ```text
 main → desktop → pages → components
                    ↓
-                 domain ← store（将来的 DAO 只依赖 domain）
-config 不依赖 UI；domain 不依赖 UI、数据库或操作系统。
+             repository ← store
+                   ↓
+                 domain
+config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repository 只依赖 domain。
 ```
 
-规则：页面只 import `ui`（以及本工程的 `components` / `domain` / `icons`）；页面不持有 `ui.C`、
-`ui.Box` 或 `gfx.Canvas`；后台工作走 `ui.Effect` 或 `Invalidator`，不从页面函数里起
-goroutine；坐标与像素只交给布局，不手算 `gfx.Rect`。
+规则：页面只 import `ui`（以及本工程的 `components` / `domain` / `icons` / `repository`）；
+页面不直接 import `internal/store`，也不持有 `ui.C`、`ui.Box` 或 `gfx.Canvas`；后台工作走
+`ui.Effect` 或 `Invalidator`，不从页面函数里起 goroutine；坐标与像素只交给布局，不手算
+`gfx.Rect`。
 
 导航是 Sidebar 的两级结构：一级功能项展开自己的子功能，同时收起其他一级项；没有子功能的
 功能（事件、日记）就是单独一项。页面用 `Tabs() []string` / `Tab() int` / `SelectTab(int)`
@@ -116,17 +135,16 @@ goroutine；坐标与像素只交给布局，不手算 `gfx.Rect`。
 ## 迁移顺序
 
 1. **外壳**（已完成）：窗口、标题栏、导航、底栏、主题切换、设置页、页面骨架。
-2. **领域 + 存储**：`internal/domain` 补全（费用、统计、图表、涨停池），`internal/store`
-   用 `modernc.org/sqlite` 打开工作空间，移植 schema 与迁移，先做 `app_meta` / 账本 / 记录。
-3. **记账**：记录页、标签页与模板页前端已用 mock 数据搭起（记录：工具栏 / 时间范围 / 表头排序 /
-   表格 / 分页 / 收支统计 / 新增与编辑弹窗；标签：类型卡片 / 分类与标签两栏 / 新增 / 删除 /
-   拖拽排序；模板：表格 / 新建 / 删除 / 拖拽排序 / 记录弹窗的模板下拉）；接入 store 后替换
-   mock，再做分析图表，以及分类 / 标签 / 模板与记录的真实关联。
+2. **领域 + 存储**（已完成）：`internal/domain` 核心形状；`internal/store` 用
+   `modernc.org/sqlite` 打开工作空间，schema v1 与迁移、账本 / 记录 / 分类标签 / 模板仓储。
+3. **记账**：记录 / 标签 / 模板已接工作空间（记录：SQL 范围过滤 + 内存排序分页；标签：
+   分类标签 CRUD / 计数 / 排序；模板：CRUD / 排序 / 记录弹窗下拉）；分析图表、
+   记录的条件筛选（标签 / 描述）还没做。
 4. **待办**：卡片、四象限、六档紧急度 / 重要度、进度记录、历史。
 5. **事件与日记**：事件画廊、图片资产、实况照片；日记树、心情、导入导出。
 6. **股票**：账户、持仓、成交记录、轮次、费用算法、统计、天梯、设置。
-7. **设置与数据**：配置持久化、通用设置与五个功能开关已完成；网络代理、数据备份 / 恢复、
-   更新检查，以及真正打开工作空间数据库还在后面。
+7. **设置与数据**：配置持久化、通用设置与五个功能开关、工作空间打开与旧数据导入已完成；
+   网络代理、数据备份 / 恢复、更新检查还在后面。
 8. **打包**：`viva package`、图标、单实例、托盘、发布流程。
 
 每一阶段先对照旧工程的 E2E / 单测确认行为，再动下一步。**不要在没有行为依据时猜功能。**
@@ -137,6 +155,9 @@ goroutine；坐标与像素只交给布局，不手算 `gfx.Rect`。
   `Milli` 结尾）；时间恒为 Unix 秒（`At`）；日期恒为本地 `YYYY-MM-DD`（`Date`）。
 - 配置是用户数据：生产 `~/.transactions.json`，开发 `~/.transactions.dev.json`；升级 / 降级都必须保留未知键。
 - 每个工作空间一个独立 SQLite 数据库；图片资产在工作空间 `data/assets` 下，引用相对路径。
+- 新库 schema 版本在 `app_meta.schema_version`，从 1 连续递增；迁移升级前写
+  `transactions.db.bak`。新库不建股票表，也不建立股票与账本的关联；旧库通过导入工具复制
+  记账六张表，不直接打开。
 - 打开工作空间只做 `PRAGMA quick_check`；全量 `integrity_check` 只用于备份与恢复两个显式动作。
   库坏了就报告并引导从备份恢复，不自动修复、不静默建空库。
 - 恢复必然重启；恢复前的当前数据先另存为 `pre-restore-*`；手动备份是「库 + assets」目录，

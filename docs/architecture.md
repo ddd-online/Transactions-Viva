@@ -14,8 +14,9 @@ main.go                    入口：只做 log.Fatal(desktop.Run())
        │    ├─ internal/pages/*/controls   只属于该页面的组件
        │    ├─ internal/components/*      可复用的自定义组件（datepicker / pagination / selectbox）
        │    └─ internal/domain       纯领域规则与数据形状
-       ├─ internal/config        应用配置形状、默认值、读写与归一化
-       └─ internal/store         SQLite 工作空间与 DAO（尚未实现）
+       ├─ internal/repository   页面使用的数据契约（接口 / 查询 / 错误）
+       ├─ internal/config       应用配置形状、默认值、读写与归一化
+       └─ internal/store        SQLite 工作空间、schema / 迁移 / 仓储 / 旧库导入
 ```
 
 依赖方向固定为：
@@ -23,13 +24,17 @@ main.go                    入口：只做 log.Fatal(desktop.Run())
 ```text
 main → desktop → pages → components
                     ↘
-                      domain ← store
+              repository ← store
+                    ↘
+                      domain
 ```
 
 - `domain` 不 import `ui`、`gfx`、`store` 或任何操作系统 / 数据库包；它是可以用普通 Go 单测
   直接验证的规则层。
-- `store` 只依赖 `domain` 和 SQLite 驱动；页面不直接写 SQL。
-- `pages` 只依赖 `ui`、`components`、`domain`，不依赖 `desktop`（避免外壳与页面互相引用）。
+- `repository` 只依赖 `domain`，是页面与数据层之间的接口；页面不直接写 SQL。
+- `store` 只依赖 `domain`、`repository` 和 SQLite 驱动，实现工作空间与仓储。
+- `pages` 只依赖 `ui`、`components`、`domain`、`repository`，不依赖 `desktop` 或 `store`
+  （避免外壳与页面互相引用，也避免页面碰 SQLite）。
 - `desktop` 是唯一知道窗口、标题栏和页面切换的地方；页面模型由它长期持有，切页不丢状态。
 - `config` 不依赖 UI；设置页只通过 `Spec` 回调用外壳读写配置，自己不碰文件。
 
@@ -51,7 +56,7 @@ main → desktop → pages → components
 | `internal/pages/accounting/records/composer` | 新增 / 编辑记录弹窗（草稿、标签多选、日期选择器） | `src/pages/record-composer.tsx` |
 | `internal/pages/accounting/ledger` | 记账三页共享的账本列表与当前账本（含工具栏选择器） | `src/app-shell.tsx` 的账本菜单、`electron/services/ledger.ts` |
 | `internal/pages/accounting/tags` | 标签页：账本选择、类型卡片、分类 / 标签两栏、新增 / 删除 / 拖拽排序 | `src/pages/category-tag.tsx`、`category-column.tsx`、`tag-column.tsx` |
-| `internal/pages/accounting/template` | 模板的内存列表：按账本存放，记录弹窗与模板页共用 | `electron/services/transaction-template.ts` |
+| `internal/pages/accounting/template` | 模板缓存与 domain 互转：按账本存放，记录弹窗与模板页共用 | `electron/services/transaction-template.ts` |
 | `internal/pages/accounting/templates` | 模板页：表格、新建 / 删除 / 拖拽排序 | `src/pages/templates.tsx`、`template-list.tsx`、`template-form.tsx` |
 | `internal/pages/stock` | 账户 / 持仓 / 记录 / 心得 / 统计 / 天梯 / 设置 | `src/pages/stock*` |
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
@@ -65,10 +70,41 @@ main → desktop → pages → components
 | `internal/pages/<page>/controls` | 只属于某一个页面的组件：目前是设置页的分组卡片 / 设置行 | 旧工程同页目录下的组件 |
 | `internal/domain` | 金额、模型、常量、股票费用、统计、图表规则 | `shared/domain` |
 | `internal/config` | `AppConfig`、功能开关、默认值、读写 / 归一化 / 未知键保留 | `shared/types/config.ts`、`electron/config.ts`、`electron/services/config.ts` |
-| `internal/store` | SQLite 打开 / 迁移 / DAO | `electron/db`、`electron/services` 的持久化部分 |
+| `internal/repository` | 页面数据契约：账本 / 分类标签 / 记录 / 模板的查询与写入 | `electron/ipc/handlers` 的命令边界 |
+| `internal/store` | SQLite 工作空间、schema v1 / 迁移、账本 / 分类标签 / 记录 / 模板仓储、旧库导入 | `electron/db`、`electron/services` 的持久化部分 |
+| `cmd/tr-import` | 旧工作空间导入命令 | `electron/services/*` 的导入 / 备份入口 |
 
 非 UI 的能力按职责拆到 `internal/<capability>`（对齐 motty 的做法），例如后续会出现的
 `backup`、`update`、`stockquote`、`proxy`。不要把所有东西都塞进 `desktop`。
+
+## SQLite 工作空间与数据层
+
+- 工作空间是一个目录，库固定为 `transactions.db`。`store.Open` 要求目录已存在，打开后设置
+  `journal_mode=WAL` / `synchronous=NORMAL` / `busy_timeout=5000` / `foreign_keys=OFF`，
+  并保持单连接。已有库先跑 `PRAGMA quick_check`；新建 / 空库直接建表。打开序：目录 →
+  `quick_check` → 识别 `app_meta` / 旧库 → 迁移。损坏、陌生、旧版（含股票表的 v12）与更高
+  版本库都返回明确错误，不静默建空库。
+- schema v1 只建记账需要的表：`app_meta`、`ledger`、`transaction_record`、
+  `transaction_record_tag`、`category`、`tag`、`transaction_template`。列名 / 类型与旧库
+  逐列一致（金额 `_cents`、时间 `_at`、日期文本、无外键），便于导入工具直接复制；不建
+  股票 / 图表 / 事件 / 日记 / 待办表，也不建立股票与账本的关联。
+- 版本：`app_meta.schema_version` 从 1 连续递增，迁移清单在 `internal/store/migrate.go`，
+  SQL 内嵌在 `internal/store/schema/`。升级已有库前 `VACUUM INTO <db>.bak`，失败不升级；
+  每条迁移与版本更新同事务。新增结构时只追加迁移，不改已发布的 SQL。
+- `internal/repository` 是页面看到的数据契约：账本、`Labels` 快照（分类 + 标签 + 计数）、
+  记录（按账本 + 本地日期范围）、模板，以及各自的写入 / 删除 / 排序。页面只调用接口，不写
+  SQL；`internal/store` 用编译期断言实现该接口。记录写入与标签关联、删除与关联清理、分类
+  删除与其标签、标签删除与记录关联都在单事务里。
+- 新建账本在同一个事务里写入旧工程的 19 个分类 / 57 个标签。空工作空间由
+  `accounting.SetRepository` 创建「默认账本」；导入的旧库已有账本时不重复播种。
+- 记录范围查询把本地 `YYYY-MM-DD` 两端换算成当天 00:00:00 / 23:59:59（含结束日），SQL 只
+  做账本 + 时间过滤并批量取标签；排序 / 统计 / 分页留在页面内存。记录编辑用 UPDATE 保留 ID
+  （旧工程是新建后删旧），同步到其他账本复制一条新记录并把 `key_event_date` 置空。
+- 旧库导入：`internal/store/import_old.go` 用只读连接打开旧 `transactions.db`，校验六张表，
+  `-strict` 检查孤儿行，然后在新目录创建当前 schema 并单事务复制
+  `ledger / category / tag / transaction_record / transaction_record_tag /
+  transaction_template`，保留 ID、时间戳、排序、JSON 标签与可空字段。CLI 是
+  `cmd/tr-import`；旧库不直接由应用打开。
 
 ## 页面约定
 
@@ -88,38 +124,46 @@ main → desktop → pages → components
   `~/.transactions.dev.json`）。读取时每个字段独立回退（缺字段、类型不对、文件损坏都只影响
   那一项），写回把已知字段合并进文件原有的顶层对象再写 `.tmp` + rename，所以升级 / 降级
   不会抹掉未知键。窗口关闭时把尺寸 / 位置写回 `width` / `height` / `x` / `y`，下次启动
-  按它开窗。设置页的「通用设置」是工作空间（`app.OpenDirectory`，写入 `workspaceDir` 和最近
-  5 条 `recentWorkspaces`）、外观（浅色 / 深色 / 跟随系统；标题栏开关写同一个值，
-  `app.WatchSystemAppearance` 让跟随系统时会重绘）、关闭行为（`OnCloseRequest`：直接退出 /
-  隐藏到托盘 / 弹窗询问；托盘用 Viva 的 `StatusItem`，没有状态区时回退为退出）；网络代理
-  仍是占位。「功能开关」写 `features`（当前还没有打开的账本，所以只写全局默认；
-  `ledgerFeatures` 的账本覆盖规则已在 `config` 里，等账本进入外壳后接上），关掉的分区立即从
-  Sidebar 消失，五个全关时落到设置。
+  按它开窗。设置页的「通用设置」是工作空间（`app.OpenDirectory`：先 `store.Open` 新库，
+  成功后才关闭旧库并写入 `workspaceDir` 和最近 5 条 `recentWorkspaces`；失败保留旧工作空间）、
+  外观（浅色 / 深色 / 跟随系统；标题栏开关写同一个值，`app.WatchSystemAppearance` 让跟随
+  系统时会重绘）、关闭行为（`OnCloseRequest`：直接退出 / 隐藏到托盘 / 弹窗询问；托盘用
+  Viva 的 `StatusItem`，没有状态区时回退为退出）；网络代理仍是占位。「功能开关」写 `features`
+  的全局默认；`ledgerFeatures` 的账本覆盖规则已在 `config` 里，但还没有接到真实账本上。
+  关掉的分区立即从 Sidebar 消失，五个全关时落到设置。
 - 运行入口按模式分叉：`viva dev`（`VIVA_RELOAD_ADDRESS` 存在）必须用 `app.RunCanvas`，开发
   重载 worker 在它内部连接宿主；发布版用 `app.RunApplication`，才能拿到 `*app.Window` /
   `*app.Application` 建 `StatusItem`、隐藏到托盘并处理 `OnCloseRequest`。开发宿主只在自身的
   绘制请求里重绘，所以开发模式的关闭直接退出，不弹「每次询问」。
-- 记账的三个页面共用 `internal/pages/accounting/ledger.Store`（mock 家庭账本 / 旅行账本）：
+- 工作空间：`desktop.Model` 持有 `*store.Workspace`。启动时读配置里的 `workspaceDir` 并
+  `store.Open`；没有配置 / 打不开时内容区显示「打开工作空间」门禁（设置仍可进入），门禁与
+  设置里的目录选择都走同一个流程。账本为空的新工作空间由 `accounting.SetRepository` 自动
+  创建「默认账本」并播种 19 个分类 / 57 个标签。切换工作空间时先打开新库、注入页面，成功
+  后才关闭旧库；页面读不到 SQLite 以外的状态。退出时关闭连接。
+- 记账的三个页面共用 `internal/pages/accounting/ledger.Store`（运行时列表，由数据层填充）：
   每个工具栏最左侧都是同一个「账本」Select，运行期间保持选中；切换后记录页重过滤并从第一页开始、
-  标签页清空已选分类、模板页换成本账本自己的列表。数据层接入后由 store 提供账本列表。
+  标签页清空已选分类、模板页换成本账本自己的列表。切换由任一页触发后，`accounting` 统一重载
+  三页，避免别的页面留在旧账本的数据上；切子页时目标页也会重载。
 - 记账-记录页：工具栏 / 时间范围 / 表头排序 / 表格 / 分页 /
-  收支统计都在 `internal/pages/accounting/records`，行数据来自同包的 `mock.go`，
-  工具栏最左侧的「账本」`selectbox.Select` 来自共享的 `ledger.Store`，在 mock 的两个账本
-  （家庭账本 / 旅行账本）间切换：表格、统计与分页随当前账本过滤，新记录落到当前账本，右键的
-  「同步到其他账本」列出其余账本。
+  收支统计都在 `internal/pages/accounting/records`。行数据来自 `repository.Records`：
+  SQL 只按账本 + 本地日期范围过滤并带出标签，页面保留多列排序 / 统计 / 分页；工具栏最左侧的
+  「账本」`selectbox.Select` 来自共享的 `ledger.Store`：表格、统计与分页随当前账本过滤，
+  新记录落到当前账本，右键的「同步到其他账本」列出其余账本并复制一条新记录（不带关联事件
+  日期）。编辑用 UPDATE 保留记录 ID；删除在一个事务里删记录与标签关联。
   日期与金额两个表头各带一个方形排序按钮（文字在按钮外）：每次点击在「未选 → 降序 → 升序」
   之间循环；未选用 `arrow-up-down`，降序用 `arrow-up-wide-narrow`，升序用
   `arrow-down-narrow-wide`，选中时图标取主色、底色加一层主色激活态。金额按行上显示的有符号值
   比较（支出记负、收入 / 转账记正），所以降序里 -4 排在 -32 前面。两列可同时生效，
   `sorts` 的顺序就是点击顺序，先点的列是主排序。工具栏原来的「排序」菜单已移除。
-  子包 `records/composer` 的「新增记录 / 编辑记录」弹窗只写内存：模板、日期、类型、分类、
-  标签、标记、关联事件日期、描述与金额按旧工程 `record-composer.tsx` 排列；模板来自
-  `internal/pages/accounting/template` 的内存 Store，和模板页共用同一份；
+  子包 `records/composer` 的「新增记录 / 编辑记录」弹窗写 `transaction_record` 与
+  `transaction_record_tag`：模板、日期、类型、分类、标签、标记、关联事件日期、描述与金额按
+  旧工程 `record-composer.tsx` 排列；模板来自 `internal/pages/accounting/template` 的缓存，
+  和模板页共用同一份，分类 / 标签候选来自当前账本的 `category` / `tag` 表；
   每个字段用 `ui.FormField`（标题 + 控件的标准表单节奏），日期/事件日期用共享的
   `components.DateField`（可输入的日期框 + 浮在弹窗上的月历面板，见下面的「时间选择器」），
   分类是单选下拉（`selectbox.Select`，候选取当前「类型」下的分类；换类型时已选分类留在
   候选末尾，旧工程的 AutoComplete 也是把值留在框里），
-  标签用 Viva 的 `components.PaintMultiSelect`。MultiSelect 需要宿主路由：`Config.OnKey` /
+  标签用 Viva 的 `components.PaintMultiSelect`，候选取所选分类下的标签。MultiSelect 需要宿主路由：`Config.OnKey` /
   `OnScroll` 交给 `MultiSelectState.Key/Wheel`，`Config.TextInput` 把聚焦的输入接到
   `MultiSelectState.Query`。
   没有记录时用 Viva 的 `components.Empty`（图标 + 标题 + 说明，居中在表格区），
@@ -131,7 +175,7 @@ main → desktop → pages → components
   记录行的右键 ContextMenu 取代原「操作」列：
   编辑、同步到其他账本、删除。底部分页是 `internal/components/pagination`：
   每页 15 / 30 / 50 的 `selectbox.Select` 在 Viva 分页左侧，「共 N 条」在右侧，三者同属
-  一个自定义分页组件；分页栏上方不再画分割线。接入 store 时替换 mock，不改这套布局。
+  一个自定义分页组件；分页栏上方不再画分割线。
 - 记账-标签页（`internal/pages/accounting/tags`，旧工程 `category-tag.tsx`）：工具栏最左侧是
   共享的账本 Select，后面是支出 / 收入 / 转账三张类型卡片（选中时用该类型的语义色 + 8% 同色底）；
   切账本会清空已选分类；主体是 240px 的
@@ -139,20 +183,22 @@ main → desktop → pages → components
   删除），栏头是计数与「新增分类」；标签栏标题是所选分类名（未选时「标签」），栏头是计数与
   「新增标签」（未选分类时禁用），列出该分类下的标签。两张列表都用 `ui.List` 的
   `Reorder` 拖拽排序；行内删除打开确认弹窗，新增分类 / 新增标签用 `ui.ModalWith`，重名分别
-  提示「该分类已存在 / 该标签已存在」，成功后用 `ui.Toaster`。数据来自同包的 `mock.go`
-  （旧工程的默认分类与代表性标签，计数是假的），接入 store 后替换。
+  提示「该分类已存在 / 该标签已存在」，成功后用 `ui.Toaster`。数据来自 `category` / `tag` /
+  `transaction_record` / `transaction_record_tag` 表，`repository.Labels` 一次带回分类、标签
+  与两类计数；新增 / 删除 / 排序都直接写库，成功后重载；删除分类连带它的标签，删除标签连带
+  记录上的标签关联（与旧服务一致）。
 - 记账-模板页（`internal/pages/accounting/templates`，旧工程 `templates.tsx`）：工具栏最左侧是
-  共享的账本 Select，右侧是「新建模板」；模板按账本存放在
-  `internal/pages/accounting/template` 的 Store 里，切账本换一整套列表；主体是一张通到版心边缘的表
+  共享的账本 Select，右侧是「新建模板」；模板按账本存放在 `transaction_template` 表里，
+  `internal/pages/accounting/template` 只是绘制用的缓存，切账本换一整套列表；主体是一张通到版心边缘的表
   （软灰底、固定的表头，行间发丝线），列是
   拖拽把手、模板名称、交易类型、分类、标签、标记、描述、操作；行可拖拽排序，操作列的删除
   按钮打开确认弹窗。`新建模板` 弹窗按旧工程的字段顺序：模板名称、交易类型（支出 / 收入 /
   转账）、分类、标签（该分类下的 `components.PaintMultiSelect`；没有分类或分类没有标签时
   字段禁用并显示原因，键盘 / 滚轮 / 输入和记录弹窗一样经 `accounting.Key/Scroll/TagsEditor`
   路由）、描述、标记（离群值）；保存时依次校验「模板名称不能为空」「分类不能为空」，成功后
-  toast「保存模板成功」，删除后「删除模板成功」。模板放在 `internal/pages/accounting/template` 的内存 Store 里，记录页的
-  「记一笔」和模板页共用同一个 Store：在模板页新建的模板马上出现在记录弹窗的模板下拉里，
-  但只在它所属的账本下出现。
+  toast「保存模板成功」，删除后「删除模板成功」。模板存在 `transaction_template` 表，记录页的
+  「记一笔」和模板页共用同一个缓存：在模板页新建的模板马上出现在记录弹窗的模板下拉里，
+  但只在它所属的账本下出现；排序写 `sort_order`。
 - 页面自己浮起来的层（选择器面板、标签弹层）在切走分区 / 子功能时由外壳收起：页面实现
   `CloseOverlays()`，`internal/desktop` 的 `selectNav` 在离开前调用它，浮层不会跟着用户
   跑到另一个页面上。
