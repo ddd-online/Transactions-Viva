@@ -55,13 +55,20 @@ type record struct {
 	keyEventDate string // 关联的事件日期（空串 = 不关联）
 }
 
-// sortField is the column the table is ordered by.
+// sortField is a column the table can be ordered by.
 type sortField uint8
 
 const (
 	sortDate sortField = iota
 	sortAmount
 )
+
+// sortKey is one active sort column. The slice keeps the order the user chose
+// the columns in, so its first entry is the primary sort.
+type sortKey struct {
+	field sortField
+	desc  bool
+}
 
 // Model is the 记录 screen's state. The shell owns it for as long as the section
 // exists, so its filters and scroll survive a section switch.
@@ -85,8 +92,10 @@ type Model struct {
 	rangeGrain datepicker.Grain
 	// rangeStale says a range picked in a painted panel still has to be filtered.
 	rangeStale bool
-	sortField  sortField
-	sortDesc   bool
+
+	// sorts are the active sort columns, most significant first. The table is
+	// unsorted until a header is clicked; each click cycles its column.
+	sorts []sortKey
 
 	// page is the 1-based page of the table; pageSize is the mock page size.
 	// pageStart is where the current page begins in shown, set by table.
@@ -95,7 +104,6 @@ type Model struct {
 	pageStart int
 
 	list      ui.ListState
-	sortMenu  bool
 	templates []composer.Template
 	form      composer.State
 	formSpec  composer.Spec
@@ -121,8 +129,6 @@ func New() *Model {
 		rangeStart: todayDate(),
 		rangeEnd:   todayDate(),
 		rangeGrain: datepicker.ByDay,
-		sortField:  sortDate,
-		sortDesc:   true,
 		page:       1,
 		pageSize:   15,
 		form:       composer.New(),
@@ -191,16 +197,6 @@ func (m *Model) toolbar(c ui.C) {
 		})
 
 		ui.Spacer(c)
-		sortButton := ui.Button(c, "排序").Outline()
-		if sortButton.Clicked() {
-			m.sortMenu = !m.sortMenu
-		}
-		ui.Menu(c, sortButton, &m.sortMenu, func(menu *ui.MenuItems) {
-			m.sortItem(menu, "日期：从新到旧", sortDate, true)
-			m.sortItem(menu, "日期：从旧到新", sortDate, false)
-			m.sortItem(menu, "金额：从高到低", sortAmount, true)
-			m.sortItem(menu, "金额：从低到高", sortAmount, false)
-		})
 		if ui.Button(c, "记一笔").Icon(icons.Plus).Clicked() {
 			m.openComposer()
 		}
@@ -217,14 +213,80 @@ func (m *Model) ledgerName(id string) string {
 	return id
 }
 
-// sortItem declares one choice of the sort menu and applies it when chosen.
-func (m *Model) sortItem(menu *ui.MenuItems, label string, field sortField, desc bool) {
-	item := menu.Item(label)
-	item.Checked(m.sortField == field && m.sortDesc == desc)
-	if item.Clicked() {
-		m.sortField, m.sortDesc = field, desc
-		m.refilter()
+// sortHeader is a column title that orders the table. A click cycles the
+// column: none, descending, ascending. Columns sort in the order they were
+// chosen, so the first one clicked is the primary sort. The arrow's room is
+// reserved while the column is off, so the title does not move when it is
+// turned on.
+func (m *Model) sortHeader(c ui.C, label string, field sortField, width float32, end bool) {
+	theme := c.Theme()
+	desc, rank := m.sortState(field)
+	row := ui.Row(c).Width(width).Height(26).Items(ui.Center).Gap(4).
+		Radius(theme.Metrics.RadiusItem()).
+		HitWith(ui.ID(c), "按"+label+"排序", gfx.HitOptions{
+			Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
+			Hint: "点击切换 未选 / 降序 / 升序",
+		}).
+		Hover(ui.Look{}.Background(theme.Accent)).
+		Focus(ui.Look{}.Ring(2, theme.Ring))
+	if end {
+		row = row.Justify(ui.End)
 	}
+	row.Children(func() {
+		if end {
+			sortArrow(c, theme, desc, rank > 0)
+		}
+		ui.Text(c, label).FontSize(11).Muted()
+		if !end {
+			sortArrow(c, theme, desc, rank > 0)
+		}
+	})
+	if row.Clicked() {
+		m.cycleSort(field)
+	}
+}
+
+// sortArrow is the column's direction, invisible but still laid out while the
+// column is not sorting.
+func sortArrow(c ui.C, theme *gfx.Theme, desc, active bool) {
+	glyph := icons.ChevronUp
+	if desc {
+		glyph = icons.ChevronDown
+	}
+	arrow := ui.Icon(c, glyph).Size(14, 14).Color(theme.MutedForeground)
+	if !active {
+		arrow = arrow.Opacity(0)
+	}
+}
+
+// sortState returns the column's direction and its 1-based priority, or rank 0
+// while the column is not sorting.
+func (m *Model) sortState(field sortField) (desc bool, rank int) {
+	for index, key := range m.sorts {
+		if key.field == field {
+			return key.desc, index + 1
+		}
+	}
+	return false, 0
+}
+
+// cycleSort moves a column through none, descending and ascending. Turning a
+// column on appends it, so the first column clicked is the primary sort.
+func (m *Model) cycleSort(field sortField) {
+	for index, key := range m.sorts {
+		if key.field != field {
+			continue
+		}
+		if key.desc {
+			m.sorts[index].desc = false
+		} else {
+			m.sorts = append(m.sorts[:index], m.sorts[index+1:]...)
+		}
+		m.refilter()
+		return
+	}
+	m.sorts = append(m.sorts, sortKey{field: field, desc: true})
+	m.refilter()
 }
 
 // table is the column header and the scrolling rows.
@@ -233,13 +295,13 @@ func (m *Model) table(c ui.C) {
 	ui.Column(c).Grow(1).FillWidth().Children(func() {
 		ui.Row(c).Height(34).FillWidth().PadX(18).Gap(12).Items(ui.Center).
 			Background(theme.Muted).Children(func() {
-			ui.Text(c, "日期").Width(recordDateWidth).FontSize(11).Muted()
+			m.sortHeader(c, "日期", sortDate, recordDateWidth, false)
 			ui.Text(c, "类型").Width(recordTypeWidth).FontSize(11).Muted()
 			ui.Text(c, "分类").Width(recordCategoryWidth).FontSize(11).Muted()
 			ui.Text(c, "标签").Width(recordTagsWidth).FontSize(11).Muted()
 			ui.Text(c, "描述").Grow(1).FontSize(11).Muted()
 			ui.Text(c, "标记").Width(recordMarksWidth).TextCenter().FontSize(11).Muted()
-			ui.Text(c, "金额").Width(recordAmountWidth).TextEnd().FontSize(11).Muted()
+			m.sortHeader(c, "金额", sortAmount, recordAmountWidth, true)
 		})
 		ui.Divider(c)
 		if len(m.shown) == 0 {
@@ -482,25 +544,41 @@ func (m *Model) refilter() {
 
 	sort.SliceStable(m.shown, func(i, j int) bool {
 		left, right := m.shown[i], m.shown[j]
-		if m.sortField == sortAmount {
-			if left.amount == right.amount {
-				return left.at.After(right.at)
+		for _, key := range m.sorts {
+			order := compareRecords(left, right, key.field)
+			if order == 0 {
+				continue
 			}
-			if m.sortDesc {
-				return left.amount > right.amount
+			if key.desc {
+				return order > 0
 			}
-			return left.amount < right.amount
+			return order < 0
 		}
-		if left.at.Equal(right.at) {
-			return left.id < right.id
-		}
-		if m.sortDesc {
-			return left.at.After(right.at)
-		}
-		return left.at.Before(right.at)
+		return false
 	})
 	m.page = 1
 	m.list.Select(-1)
+}
+
+// compareRecords orders two rows by one column, ascending: -1 when left comes
+// first, +1 when right does, 0 when they tie.
+func compareRecords(left, right record, field sortField) int {
+	if field == sortAmount {
+		switch {
+		case left.amount < right.amount:
+			return -1
+		case left.amount > right.amount:
+			return 1
+		}
+		return 0
+	}
+	switch {
+	case left.at.Before(right.at):
+		return -1
+	case left.at.After(right.at):
+		return 1
+	}
+	return 0
 }
 
 // dateLayout is the local YYYY-MM-DD form the page compares its dates in.

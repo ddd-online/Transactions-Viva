@@ -75,6 +75,19 @@ var ChevronRight = gfx.Icon{
 	},
 }
 
+// chevron-up is a compiled vector icon.
+var ChevronUp = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(18.0, 15.0),
+		gfx.LineTo(12.0, 9.0),
+		gfx.LineTo(6.0, 15.0),
+	},
+}
+
 // chevrons-left is a compiled vector icon.
 var ChevronsLeft = gfx.Icon{
 	ViewBox: 24.0,

@@ -487,25 +487,38 @@ func TestRecordPanelsCloseOnNavigation(t *testing.T) {
 	}
 }
 
-// TestRecordsSortMenu checks the sort sits beside 记一笔 and opens its menu
-// there.
-func TestRecordsSortMenu(t *testing.T) {
+// TestRecordsHeaderSort checks the date and amount column titles cycle through
+// unsorted, descending and ascending, and sort in the order they are clicked.
+func TestRecordsHeaderSort(t *testing.T) {
 	driver, _ := open(t)
-	sort, ok := controlBounds(driver, "排序")
-	create, found := controlBounds(driver, "记一笔")
-	if !ok || !found {
-		t.Fatal("the toolbar has no 排序 beside 记一笔")
+	if hasControl(driver, "排序") {
+		t.Fatal("the toolbar still has the old 排序 button")
 	}
-	if sort.X > create.X {
-		t.Fatalf("排序 is not left of 记一笔: %v, %v", sort.X, create.X)
+	above := func(first, second string) bool {
+		return labelBoundsOf(t, driver, first).Y < labelBoundsOf(t, driver, second).Y
 	}
-	click(t, driver, "排序")
-	if !hasControl(driver, "金额：从高到低") {
-		t.Fatal("the sort menu did not open")
+
+	// The amount is the first column clicked, so it leads the sort; the date
+	// joins it as the second key and does not change the order.
+	click(t, driver, "按金额排序")
+	if !above("工资到账", "社保代扣") {
+		t.Fatal("the descending amount sort did not put the largest first")
 	}
-	click(t, driver, "金额：从高到低")
-	if hasControl(driver, "金额：从高到低") {
-		t.Fatal("choosing a sort left the menu open")
+	click(t, driver, "按日期排序")
+	if !above("工资到账", "社保代扣") {
+		t.Fatal("the second column took over from the first")
+	}
+	click(t, driver, "按金额排序")
+	if !above("地铁通勤", "工资到账") {
+		t.Fatal("the ascending amount sort did not put the smallest first")
+	}
+	click(t, driver, "按金额排序")
+	if !above("社保代扣", "早餐 · 豆浆油条") {
+		t.Fatal("turning the amount sort off did not leave the date descending")
+	}
+	click(t, driver, "按日期排序")
+	if !above("早餐 · 豆浆油条", "社保代扣") {
+		t.Fatal("the ascending date sort did not put the earliest first")
 	}
 }
 

@@ -20,8 +20,7 @@ func TestRecordsRefilter(t *testing.T) {
 		},
 		rangeStart: "2000-01-01",
 		rangeEnd:   "2100-01-01",
-		sortField:  sortDate,
-		sortDesc:   true,
+		sorts:      []sortKey{{field: sortDate, desc: true}},
 	}
 	m.refilter()
 
@@ -35,10 +34,64 @@ func TestRecordsRefilter(t *testing.T) {
 		t.Fatalf("stats = %v", m.stats)
 	}
 
-	m.sortField, m.sortDesc = sortAmount, true
+	m.sorts = []sortKey{{field: sortAmount, desc: true}}
 	m.refilter()
 	if m.shown[0].id != "c" {
 		t.Fatalf("amount sort first row = %q, want c", m.shown[0].id)
+	}
+}
+
+// TestSortHeadersCycleAndOrder checks a header click moves its column through
+// none, descending and ascending, and that columns sort in click order.
+func TestSortHeadersCycleAndOrder(t *testing.T) {
+	day := func(hoursAgo int) time.Time { return time.Now().Add(-time.Duration(hoursAgo) * time.Hour) }
+	m := &Model{
+		records: []record{
+			{id: "a", amount: 300, at: day(1)},
+			{id: "b", amount: 100, at: day(2)},
+			{id: "c", amount: 200, at: day(3)},
+		},
+		rangeStart: "2000-01-01",
+		rangeEnd:   "2100-01-01",
+		sorts:      []sortKey{{field: sortDate, desc: true}},
+	}
+	m.refilter()
+	if m.shown[0].id != "a" || m.shown[2].id != "c" {
+		t.Fatalf("default order = %q..%q, want a..c", m.shown[0].id, m.shown[2].id)
+	}
+
+	// Amount joins as the second key; the date still decides the order.
+	m.cycleSort(sortAmount)
+	if len(m.sorts) != 2 || m.sorts[1].field != sortAmount || !m.sorts[1].desc {
+		t.Fatalf("sorts after adding amount = %v", m.sorts)
+	}
+	m.cycleSort(sortAmount)
+	if m.sorts[1].desc {
+		t.Fatal("the second amount click did not turn it ascending")
+	}
+	m.cycleSort(sortAmount)
+	if len(m.sorts) != 1 || m.sorts[0].field != sortDate {
+		t.Fatalf("the third amount click left %v", m.sorts)
+	}
+
+	// The first column clicked is the primary sort.
+	m.sorts = nil
+	m.cycleSort(sortAmount)
+	m.cycleSort(sortDate)
+	want := [3]string{"a", "c", "b"}
+	for index, id := range want {
+		if m.shown[index].id != id {
+			t.Fatalf("amount first: row %d = %q, want %q", index, m.shown[index].id, id)
+		}
+	}
+	m.sorts = nil
+	m.cycleSort(sortDate)
+	m.cycleSort(sortAmount)
+	want = [3]string{"a", "b", "c"}
+	for index, id := range want {
+		if m.shown[index].id != id {
+			t.Fatalf("date first: row %d = %q, want %q", index, m.shown[index].id, id)
+		}
 	}
 }
 
