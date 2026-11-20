@@ -43,9 +43,13 @@ func (w *Workspace) Records(ctx context.Context, query repository.RecordQuery) (
 		where = append(where, "transaction_at <= ?")
 		args = append(args, end)
 	}
+	orderBy, err := recordOrderBy(query.Sorts)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := db.QueryContext(ctx,
 		"SELECT "+recordColumns+" FROM transaction_record WHERE "+strings.Join(where, " AND ")+
-			" ORDER BY transaction_at DESC, transaction_id ASC", args...)
+			" ORDER BY "+orderBy, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -325,6 +329,30 @@ func tagsForRecords(ctx context.Context, db *sql.DB, ids []string) (map[string][
 		sort.Strings(result[id])
 	}
 	return result, nil
+}
+
+// recordOrderBy turns the page's active columns into a whitelisted ORDER BY
+// over the whole date range. The amount is ordered by the value the table shows:
+// an expense is negative, income and transfers are positive. The final keys keep
+// rows with equal sort values stable.
+func recordOrderBy(sorts []repository.RecordSort) (string, error) {
+	keys := make([]string, 0, len(sorts)+2)
+	for _, sort := range sorts {
+		direction := "ASC"
+		if sort.Desc {
+			direction = "DESC"
+		}
+		switch sort.Field {
+		case repository.RecordSortDate:
+			keys = append(keys, "transaction_at "+direction)
+		case repository.RecordSortAmount:
+			keys = append(keys, "CASE transaction_type WHEN 'expense' THEN -amount_cents ELSE amount_cents END "+direction)
+		default:
+			return "", fmt.Errorf("%w：排序字段 %q", repository.ErrInvalid, sort.Field)
+		}
+	}
+	keys = append(keys, "transaction_at DESC", "transaction_id ASC")
+	return strings.Join(keys, ", "), nil
 }
 
 func localDayStart(value string) (int64, error) {

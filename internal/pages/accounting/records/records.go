@@ -10,7 +10,6 @@ package records
 import (
 	"context"
 	"encoding/json"
-	"sort"
 	"strings"
 	"time"
 
@@ -191,8 +190,18 @@ func (m *Model) Reload() {
 		return
 	}
 	ctx := context.Background()
+	sorts := make([]repository.RecordSort, 0, len(m.sorts))
+	for _, key := range m.sorts {
+		sort := repository.RecordSort{Desc: key.desc}
+		if key.field == sortAmount {
+			sort.Field = repository.RecordSortAmount
+		} else {
+			sort.Field = repository.RecordSortDate
+		}
+		sorts = append(sorts, sort)
+	}
 	entries, err := m.repo.Records(ctx, repository.RecordQuery{
-		LedgerID: active, StartDate: m.rangeStart, EndDate: m.rangeEnd,
+		LedgerID: active, StartDate: m.rangeStart, EndDate: m.rangeEnd, Sorts: sorts,
 	})
 	if err != nil {
 		m.records = nil
@@ -381,11 +390,22 @@ func (m *Model) cycleSort(field sortField) {
 		} else {
 			m.sorts = append(m.sorts[:index], m.sorts[index+1:]...)
 		}
-		m.refilter()
+		m.applySort()
 		return
 	}
 	m.sorts = append(m.sorts, sortKey{field: field, desc: true})
-	m.refilter()
+	m.applySort()
+}
+
+// applySort asks SQL for the whole range in the new order. The database is the
+// only sorter; refilter must not reorder rows, or the visible page would differ
+// from a fresh query.
+func (m *Model) applySort() {
+	if m.repo == nil {
+		m.refilter()
+		return
+	}
+	m.Reload()
 }
 
 // table is the column header and the scrolling rows.
@@ -642,54 +662,8 @@ func (m *Model) refilter() {
 		}
 	}
 
-	sort.SliceStable(m.shown, func(i, j int) bool {
-		left, right := m.shown[i], m.shown[j]
-		for _, key := range m.sorts {
-			order := compareRecords(left, right, key.field)
-			if order == 0 {
-				continue
-			}
-			if key.desc {
-				return order > 0
-			}
-			return order < 0
-		}
-		return false
-	})
 	m.page = 1
 	m.list.Select(-1)
-}
-
-// compareRecords orders two rows by one column, ascending: -1 when left comes
-// first, +1 when right does, 0 when they tie. The amount is compared as the row
-// shows it, so an expense (a negative number) sorts below income and transfers.
-func compareRecords(left, right record, field sortField) int {
-	if field == sortAmount {
-		leftAmount, rightAmount := signedAmount(left), signedAmount(right)
-		switch {
-		case leftAmount < rightAmount:
-			return -1
-		case leftAmount > rightAmount:
-			return 1
-		}
-		return 0
-	}
-	switch {
-	case left.at.Before(right.at):
-		return -1
-	case left.at.After(right.at):
-		return 1
-	}
-	return 0
-}
-
-// signedAmount is a row's amount with the sign it reads with: an expense spends,
-// so it is negative; income and transfers stay positive.
-func signedAmount(rec record) int64 {
-	if rec.kind == kindExpense {
-		return -rec.amount
-	}
-	return rec.amount
 }
 
 // dateLayout is the local YYYY-MM-DD form the page compares its dates in.

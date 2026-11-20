@@ -446,3 +446,67 @@ func TestOpenRejectsBadWorkspaces(t *testing.T) {
 		}
 	})
 }
+
+func TestRecordsSortInSQL(t *testing.T) {
+	workspace := testWorkspace(t)
+	ledger := testLedger(t, workspace)
+	ctx := context.Background()
+	rows := []domain.TransactionRecord{
+		{TransactionID: "income", LedgerID: ledger.ID, AmountCents: 500, TransactionType: "income", Category: "工资奖金", TransactionAt: day(2026, time.January, 1, 10, 0, 0)},
+		{TransactionID: "expense100", LedgerID: ledger.ID, AmountCents: 100, TransactionType: "expense", Category: "餐饮美食", TransactionAt: day(2026, time.January, 2, 10, 0, 0)},
+		{TransactionID: "expense300", LedgerID: ledger.ID, AmountCents: 300, TransactionType: "expense", Category: "餐饮美食", TransactionAt: day(2026, time.January, 3, 10, 0, 0)},
+		{TransactionID: "expense50", LedgerID: ledger.ID, AmountCents: 50, TransactionType: "expense", Category: "餐饮美食", TransactionAt: day(2026, time.January, 3, 12, 0, 0)},
+		{TransactionID: "transfer", LedgerID: ledger.ID, AmountCents: 200, TransactionType: "transfer", Category: "五险一金", TransactionAt: day(2026, time.January, 4, 10, 0, 0)},
+	}
+	for _, record := range rows {
+		if _, err := workspace.CreateRecord(ctx, record, nil); err != nil {
+			t.Fatalf("CreateRecord %s: %v", record.TransactionID, err)
+		}
+	}
+	query := repository.RecordQuery{LedgerID: ledger.ID, StartDate: "2026-01-01", EndDate: "2026-01-04"}
+	ids := func(sorts []repository.RecordSort) []string {
+		t.Helper()
+		query.Sorts = sorts
+		entries, err := workspace.Records(ctx, query)
+		if err != nil {
+			t.Fatalf("Records: %v", err)
+		}
+		out := make([]string, len(entries))
+		for index, entry := range entries {
+			out[index] = entry.Record.TransactionID
+		}
+		return out
+	}
+	equal := func(got, want []string) {
+		t.Helper()
+		if len(got) != len(want) {
+			t.Fatalf("ids = %v, want %v", got, want)
+		}
+		for index := range want {
+			if got[index] != want[index] {
+				t.Fatalf("ids = %v, want %v", got, want)
+			}
+		}
+	}
+
+	// No sort is newest first.
+	equal(ids(nil), []string{"transfer", "expense50", "expense300", "expense100", "income"})
+	// Amount descending uses signed values: income, transfer, then the
+	// smaller expenses first (-50, -100, -300).
+	equal(ids([]repository.RecordSort{{Field: repository.RecordSortAmount, Desc: true}}),
+		[]string{"income", "transfer", "expense50", "expense100", "expense300"})
+	// Ascending reverses the signed order.
+	equal(ids([]repository.RecordSort{{Field: repository.RecordSortAmount}}),
+		[]string{"expense300", "expense100", "expense50", "transfer", "income"})
+	// Date ascending groups the same day; amount descending breaks the tie.
+	equal(ids([]repository.RecordSort{
+		{Field: repository.RecordSortDate},
+		{Field: repository.RecordSortAmount, Desc: true},
+	}), []string{"income", "expense100", "expense300", "expense50", "transfer"})
+
+	if _, err := workspace.Records(ctx, repository.RecordQuery{
+		LedgerID: ledger.ID, Sorts: []repository.RecordSort{{Field: "bogus"}},
+	}); !errors.Is(err, repository.ErrInvalid) {
+		t.Fatalf("unknown sort error = %v", err)
+	}
+}

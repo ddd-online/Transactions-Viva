@@ -21,12 +21,30 @@ var ErrNotFound = errors.New("数据不存在")
 // or another request the store refuses.
 var ErrInvalid = errors.New("无效的数据")
 
+// RecordSortField is a column the SQL query may order by. It is an enum, not a
+// column name, so the store never interpolates caller text into ORDER BY.
+type RecordSortField string
+
+const (
+	RecordSortDate   RecordSortField = "date"
+	RecordSortAmount RecordSortField = "amount"
+)
+
+// RecordSort is one ORDER BY key. The first key is the primary sort; the page
+// keeps the click order so several columns can be active.
+type RecordSort struct {
+	Field RecordSortField
+	Desc  bool
+}
+
 // RecordQuery selects one ledger's records within a local-date range. Both
-// dates are inclusive and empty strings mean no bound on that side.
+// dates are inclusive and empty strings mean no bound on that side. Sorts are
+// applied in SQL over the whole range; an empty list means newest first.
 type RecordQuery struct {
 	LedgerID  string
 	StartDate string
 	EndDate   string
+	Sorts     []RecordSort
 }
 
 // RecordEntry is a record with its tag names, the shape pages paint.

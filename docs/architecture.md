@@ -98,7 +98,7 @@ main → desktop → pages → components
 - 新建账本在同一个事务里写入旧工程的 19 个分类 / 57 个标签。空工作空间由
   `accounting.SetRepository` 创建「默认账本」；导入的旧库已有账本时不重复播种。
 - 记录范围查询把本地 `YYYY-MM-DD` 两端换算成当天 00:00:00 / 23:59:59（含结束日），SQL 只
-  做账本 + 时间过滤并批量取标签；排序 / 统计 / 分页留在页面内存。记录编辑用 UPDATE 保留 ID
+  做账本 + 时间过滤 + 多列排序并批量取标签；统计 / 分页留在页面内存。记录编辑用 UPDATE 保留 ID
   （旧工程是新建后删旧），同步到其他账本复制一条新记录并把 `key_event_date` 置空。
 - 旧库导入：`internal/store/import_old.go` 用只读连接打开旧 `transactions.db`，校验六张表，
   `-strict` 检查孤儿行，然后在新目录创建当前 schema 并单事务复制
@@ -146,7 +146,7 @@ main → desktop → pages → components
   三页，避免别的页面留在旧账本的数据上；切子页时目标页也会重载。
 - 记账-记录页：工具栏 / 时间范围 / 表头排序 / 表格 / 分页 /
   收支统计都在 `internal/pages/accounting/records`。行数据来自 `repository.Records`：
-  SQL 只按账本 + 本地日期范围过滤并带出标签，页面保留多列排序 / 统计 / 分页；工具栏最左侧的
+  SQL 按账本 + 本地日期范围过滤、按表头多列排序并带出标签，页面保留统计 / 分页；工具栏最左侧的
   「账本」`selectbox.Select` 来自共享的 `ledger.Store`：表格、统计与分页随当前账本过滤，
   新记录落到当前账本，右键的「同步到其他账本」列出其余账本并复制一条新记录（不带关联事件
   日期）。编辑用 UPDATE 保留记录 ID；删除在一个事务里删记录与标签关联。

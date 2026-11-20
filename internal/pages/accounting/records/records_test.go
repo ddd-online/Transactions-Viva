@@ -24,127 +24,6 @@ func newTestModel(t *testing.T) (*Model, *storetest.Fixture) {
 	return m, fixture
 }
 
-func TestRecordsRefilter(t *testing.T) {
-	now := time.Now()
-	m := &Model{
-		records: []record{
-			{id: "a", kind: kindExpense, description: "早餐", category: "餐饮", tags: []string{"日常"}, amount: 1200, at: now.Add(-time.Hour)},
-			{id: "b", kind: kindIncome, description: "工资", category: "工资奖金", tags: []string{"月薪"}, amount: 100000, at: now.Add(-2 * time.Hour)},
-			{id: "c", kind: kindExpense, description: "房租", category: "居住", tags: []string{"固定支出"}, amount: 450000, at: now.Add(-3 * time.Hour)},
-		},
-		rangeStart: "2000-01-01",
-		rangeEnd:   "2100-01-01",
-		sorts:      []sortKey{{field: sortDate, desc: true}},
-	}
-	m.refilter()
-
-	if len(m.shown) != 3 {
-		t.Fatalf("shown = %d, want 3", len(m.shown))
-	}
-	if m.shown[0].id != "a" {
-		t.Fatalf("newest first: first row = %q", m.shown[0].id)
-	}
-	if m.stats != [3]int64{100000, 451200, 0} {
-		t.Fatalf("stats = %v", m.stats)
-	}
-
-	m.sorts = []sortKey{{field: sortAmount, desc: true}}
-	m.refilter()
-	if m.shown[0].id != "b" {
-		t.Fatalf("amount sort first row = %q, want the income b", m.shown[0].id)
-	}
-	if m.shown[2].id != "c" {
-		t.Fatalf("amount sort last row = %q, want the largest expense c", m.shown[2].id)
-	}
-}
-
-// TestAmountSortUsesSignedValues checks an expense sorts as the negative number
-// it reads as, so descending puts -4 above -32.
-func TestAmountSortUsesSignedValues(t *testing.T) {
-	now := time.Now()
-	m := &Model{
-		records: []record{
-			{id: "income", kind: kindIncome, amount: 500, at: now},
-			{id: "expense-small", kind: kindExpense, amount: 100, at: now},
-			{id: "expense-big", kind: kindExpense, amount: 300, at: now},
-			{id: "transfer", kind: kindTransfer, amount: 200, at: now},
-		},
-		rangeStart: "2000-01-01",
-		rangeEnd:   "2100-01-01",
-		sorts:      []sortKey{{field: sortAmount, desc: true}},
-	}
-	m.refilter()
-	want := [4]string{"income", "transfer", "expense-small", "expense-big"}
-	for index, id := range want {
-		if m.shown[index].id != id {
-			t.Fatalf("descending: row %d = %q, want %q", index, m.shown[index].id, id)
-		}
-	}
-
-	m.sorts = []sortKey{{field: sortAmount, desc: false}}
-	m.refilter()
-	want = [4]string{"expense-big", "expense-small", "transfer", "income"}
-	for index, id := range want {
-		if m.shown[index].id != id {
-			t.Fatalf("ascending: row %d = %q, want %q", index, m.shown[index].id, id)
-		}
-	}
-}
-
-// TestSortHeadersCycleAndOrder checks a header click moves its column through
-// none, descending and ascending, and that columns sort in click order.
-func TestSortHeadersCycleAndOrder(t *testing.T) {
-	day := func(hoursAgo int) time.Time { return time.Now().Add(-time.Duration(hoursAgo) * time.Hour) }
-	m := &Model{
-		records: []record{
-			{id: "a", amount: 300, at: day(1)},
-			{id: "b", amount: 100, at: day(2)},
-			{id: "c", amount: 200, at: day(3)},
-		},
-		rangeStart: "2000-01-01",
-		rangeEnd:   "2100-01-01",
-		sorts:      []sortKey{{field: sortDate, desc: true}},
-	}
-	m.refilter()
-	if m.shown[0].id != "a" || m.shown[2].id != "c" {
-		t.Fatalf("default order = %q..%q, want a..c", m.shown[0].id, m.shown[2].id)
-	}
-
-	// Amount joins as the second key; the date still decides the order.
-	m.cycleSort(sortAmount)
-	if len(m.sorts) != 2 || m.sorts[1].field != sortAmount || !m.sorts[1].desc {
-		t.Fatalf("sorts after adding amount = %v", m.sorts)
-	}
-	m.cycleSort(sortAmount)
-	if m.sorts[1].desc {
-		t.Fatal("the second amount click did not turn it ascending")
-	}
-	m.cycleSort(sortAmount)
-	if len(m.sorts) != 1 || m.sorts[0].field != sortDate {
-		t.Fatalf("the third amount click left %v", m.sorts)
-	}
-
-	// The first column clicked is the primary sort.
-	m.sorts = nil
-	m.cycleSort(sortAmount)
-	m.cycleSort(sortDate)
-	want := [3]string{"a", "c", "b"}
-	for index, id := range want {
-		if m.shown[index].id != id {
-			t.Fatalf("amount first: row %d = %q, want %q", index, m.shown[index].id, id)
-		}
-	}
-	m.sorts = nil
-	m.cycleSort(sortDate)
-	m.cycleSort(sortAmount)
-	want = [3]string{"a", "b", "c"}
-	for index, id := range want {
-		if m.shown[index].id != id {
-			t.Fatalf("date first: row %d = %q, want %q", index, m.shown[index].id, id)
-		}
-	}
-}
-
 func TestRecordActions(t *testing.T) {
 	m, fixture := newTestModel(t)
 	if len(m.shown) < 2 {
@@ -358,4 +237,62 @@ func TestOutlierColorMatchesTheOldProject(t *testing.T) {
 	if got := outlierColor(gfx.DarkTheme()); got != gfx.RGB24(0xfbbf24) {
 		t.Errorf("dark outlier color = %v", got)
 	}
+}
+
+// TestRecordSortingIsInSQL drives the header sort against the real store: the
+// whole range comes back ordered by the database, not by a page comparison.
+func TestRecordSortingIsInSQL(t *testing.T) {
+	m, _ := newTestModel(t)
+	today := time.Now().Format(dateLayout)
+	m.rangeStart, m.rangeEnd = today, today
+	m.Reload()
+	names := func() []string {
+		out := make([]string, len(m.shown))
+		for index, rec := range m.shown {
+			out[index] = rec.description
+		}
+		return out
+	}
+	assertOrder := func(want ...string) {
+		t.Helper()
+		got := names()
+		if len(got) != len(want) {
+			t.Fatalf("rows = %v, want %v", got, want)
+		}
+		for index := range want {
+			if got[index] != want[index] {
+				t.Fatalf("rows = %v, want %v", got, want)
+			}
+		}
+	}
+
+	// No sort means newest first, as the SQL default.
+	assertOrder("社保代扣", "工资到账", "地铁通勤", "午餐 · 公司楼下", "早餐 · 豆浆油条")
+
+	// Amount descending uses the signed value: income and transfer above
+	// expenses, and the smaller expense (-4) above the larger one (-32).
+	m.cycleSort(sortAmount)
+	assertOrder("工资到账", "社保代扣", "地铁通勤", "早餐 · 豆浆油条", "午餐 · 公司楼下")
+
+	// The second click is ascending.
+	m.cycleSort(sortAmount)
+	assertOrder("午餐 · 公司楼下", "早餐 · 豆浆油条", "地铁通勤", "社保代扣", "工资到账")
+
+	// The third click removes the column and returns to the date default.
+	m.cycleSort(sortAmount)
+	if len(m.sorts) != 0 {
+		t.Fatalf("sorts = %v, want none", m.sorts)
+	}
+	assertOrder("社保代扣", "工资到账", "地铁通勤", "午餐 · 公司楼下", "早餐 · 豆浆油条")
+
+	// Clicking amount first makes it the primary key even after date joins.
+	m.cycleSort(sortAmount)
+	m.cycleSort(sortDate)
+	assertOrder("工资到账", "社保代扣", "地铁通勤", "早餐 · 豆浆油条", "午餐 · 公司楼下")
+
+	// Clicking date first makes date primary; amount only breaks ties.
+	m.sorts = nil
+	m.cycleSort(sortDate)
+	m.cycleSort(sortAmount)
+	assertOrder("社保代扣", "工资到账", "地铁通勤", "午餐 · 公司楼下", "早餐 · 豆浆油条")
 }
