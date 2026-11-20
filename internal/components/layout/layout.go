@@ -24,10 +24,6 @@ const (
 	// navigation is a different, narrower column and does not use it.
 	RailWidth float32 = 240
 
-	// SummaryWidth is the analysis page's right-hand summary panel. It matches
-	// RailWidth so both edges of the page read as one frame.
-	SummaryWidth float32 = 240
-
 	// ToolbarHeight is the band above a page's content: ledger, filters and the
 	// page's primary action.
 	ToolbarHeight float32 = 56

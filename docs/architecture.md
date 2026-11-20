@@ -60,7 +60,7 @@ main → desktop → pages → components
 | `internal/pages/accounting/tags` | 标签页：账本选择、类型卡片、分类 / 标签两栏、新增 / 删除 / 拖拽排序 | `src/pages/category-tag.tsx`、`category-column.tsx`、`tag-column.tsx` |
 | `internal/pages/accounting/template` | 模板缓存与 domain 互转：按账本存放，记录弹窗与模板页共用 | `electron/services/transaction-template.ts` |
 | `internal/pages/accounting/templates` | 模板页：表格、新建 / 删除 / 拖拽排序 | `src/pages/templates.tsx`、`template-list.tsx`、`template-form.tsx` |
-| `internal/pages/accounting/analysis` | 分析页：图表列表、折线 / 饼图、曲线条件、合计 | `src/pages/charts.tsx`、`chart-*`、`antv-*-chart.tsx` |
+| `internal/pages/accounting/analysis` | 分析页：图表列表、折线 / 饼图、曲线条件、明细表与合计带 | `src/pages/charts.tsx`、`chart-*`、`antv-*-chart.tsx` |
 | `internal/pages/stock` | 账户 / 持仓 / 记录 / 心得 / 统计 / 天梯 / 设置 | `src/pages/stock*` |
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
 | `internal/pages/events` | 事件画廊、图片、实况照片 | `src/pages/event*` |
@@ -214,7 +214,7 @@ main → desktop → pages → components
   「记一笔」和模板页共用同一个缓存：在模板页新建的模板马上出现在记录弹窗的模板下拉里，
   但只在它所属的账本下出现；排序写 `sort_order`。
 - 记账-分析页（`internal/pages/accounting/analysis`）：左侧图表列表（预设 / 自定义，选中、
-  删除、拖拽排序），右侧是图表头、画布、曲线配置与合计栏。折线图按账本的 `chart.granularity`
+  删除、拖拽排序），右侧是图表头、画布、图下方的曲线 / 分组明细表与底部合计带。折线图按账本的 `chart.granularity`
   分月 / 年聚合，曲线条件在 SQL 里按交易类型、分类、标签多选（任意 / 全部）、描述与离群值
   过滤；
   饼图按交易类型 / 分类 / 标签分组，标签分组会重复计入多标签记录。预设「月度消费趋势 /

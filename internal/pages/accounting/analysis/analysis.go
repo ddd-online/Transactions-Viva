@@ -1,7 +1,7 @@
 // Package analysis is the 记账 · 分析 screen: saved line and pie charts over a
 // date range. Charts live in the workspace's chart table; presets are seeded
 // once per ledger and can be deleted. The layout is this application's own:
-// a chart rail, a canvas, the curve configuration, and a right-hand summary.
+// a chart rail, a canvas, and the table and totals the chart fills in.
 package analysis
 
 import (
@@ -254,7 +254,7 @@ func (m *Model) selectedChart() *domain.Chart {
 	return nil
 }
 
-// View paints the toolbars, chart rail, canvas and summary.
+// View paints the toolbars, chart rail, canvas, the chart table and the totals.
 func (m *Model) View(c ui.C) {
 	m.bounds = c.Bounds()
 	if m.rangeStale {
@@ -336,7 +336,10 @@ func (m *Model) chartRow(row ui.ListRow) {
 		Hover(ui.Look{}.Background(theme.Hover)).
 		Focus(ui.Look{}.Ring(2, theme.Ring)).
 		Background(theme.Background)
-	if row.Selected() {
+	// The highlight follows the chart the page is showing. The list's own
+	// selection is a paint behind when a chart was just created (its row count
+	// is read after this paint), so it cannot be the source of truth.
+	if chart.ChartID == m.selectedID {
 		row.Element.Background(theme.Accent)
 	}
 	ui.Icon(row.C, icons.GripVertical).Size(16, 16).Color(theme.MutedForeground)
@@ -353,6 +356,13 @@ func (m *Model) chartRow(row ui.ListRow) {
 
 // ------------------------------------------------------------------ detail
 
+// detail is the chart and its totals panel. The chart takes every pixel the
+// panel does not need — it grows with the window instead of sitting in a fixed
+// box — so the three columns end on the same line at the bottom.
+// detail is the chart and the table under it: the header names the chart, the
+// plot takes the height it can use, the table says what the plot draws, and the
+// band at the bottom carries the range's totals. The rail and this column end
+// on the same line.
 func (m *Model) detail(c ui.C) {
 	theme := c.Theme()
 	ui.Column(c).Grow(1).FillHeight().Children(func() {
@@ -366,30 +376,28 @@ func (m *Model) detail(c ui.C) {
 		if m.loadErr != "" {
 			typography.Caption(c, m.loadErr).Color(theme.Danger).PadX(18).PadY(6)
 		}
-		ui.Row(c).Grow(1).FillWidth().Children(func() {
-			ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-				ui.Column(c).FillWidth().Gap(layout.BlockGap).Pad(layout.Inset).Children(func() {
-					m.canvas(c, chart)
-					m.linePanel(c, chart)
-				})
+		ui.Column(c).Grow(1).FillWidth().Pad(layout.Inset).Gap(layout.BlockGap).
+			Children(func() {
+				m.canvas(c, chart)
+				m.chartTable(c, chart)
 			})
-			ui.Divider(c)
-			m.summary(c, chart)
-		})
+		ui.Divider(c)
+		m.footer(c, chart)
 	})
 }
 
+// header names the chart and carries its own controls. The band is the same
+// height as the rail's header, so the two rules under them run across the page
+// on one line.
 func (m *Model) header(c ui.C, chart *domain.Chart) {
-	theme := c.Theme()
-	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
+	ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
 		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
 		typography.Title(c, chart.Title).Shrink(1).Ellipsis()
-		ui.Text(c, chartTypeLabel(chart.ChartType)).FontSize(typography.SizeCaption).
-			Color(theme.MutedForeground).Background(theme.Muted).
-			Radius(theme.Metrics.RadiusItem()).PadX(8).PadY(2)
+		meta := chartTypeLabel(chart.ChartType)
 		if chart.IsPreset {
-			typography.Caption(c, "预设")
+			meta += " · 预设"
 		}
+		typography.Caption(c, meta).Shrink(0)
 		ui.Spacer(c)
 		if chart.ChartType == chartLine {
 			granularity := chart.Granularity
@@ -444,78 +452,7 @@ func (m *Model) groupControls(c ui.C, chart *domain.Chart) {
 	}
 }
 
-// ------------------------------------------------------------------ summaries and small labels
-
-func (m *Model) summary(c ui.C, chart *domain.Chart) {
-	theme := c.Theme()
-	ui.Column(c).Width(layout.SummaryWidth).FillHeight().Background(theme.Muted).Children(func() {
-		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-			ui.Column(c).FillWidth().Gap(layout.BlockGap).Pad(layout.Inset).Children(func() {
-				if chart.ChartType == chartPie {
-					m.pieSummary(c)
-				} else {
-					m.lineSummary(c)
-				}
-			})
-		})
-	})
-}
-
-func (m *Model) lineSummary(c ui.C) {
-	theme := c.Theme()
-	typography.Section(c, "曲线合计")
-	ui.Row(c).Gap(14).Children(func() {
-		summaryAmount(c, "收入", m.stats.Income, theme.Success)
-		summaryAmount(c, "支出", m.stats.Expense, theme.Danger)
-	})
-	for index, line := range m.lineData {
-		total := int64(0)
-		for _, point := range line.Data {
-			total += point.Amount
-		}
-		ui.Row(c).Gap(8).Items(ui.Center).Children(func() {
-			dot(c, seriesColor(*theme, index))
-			typography.Body(c, line.Label).Grow(1).Ellipsis()
-			typography.Body(c, domain.CentsToYuan(total)).Mono()
-		})
-	}
-	if len(m.lineData) == 0 {
-		typography.Body(c, "暂无曲线").Muted()
-	}
-}
-
-// summaryAmount is one 收入 / 支出 figure of the summary: the label stays in the
-// reading face, the number is set on the mono grid so the two columns line up.
-func summaryAmount(c ui.C, label string, cents int64, color gfx.Color) {
-	ui.Row(c).Gap(4).Items(ui.Center).Children(func() {
-		typography.Caption(c, label).Color(color)
-		typography.Caption(c, domain.CentsToYuan(cents)).Mono().Color(color)
-	})
-}
-
-func (m *Model) pieSummary(c ui.C) {
-	theme := c.Theme()
-	typography.Section(c, "分组合计")
-	typography.Metric(c, domain.CentsToYuan(m.pie.Total))
-	for index, slice := range m.pieSlices {
-		ui.Row(c).Gap(8).Items(ui.Center).Children(func() {
-			dot(c, pieColor(*theme, index))
-			typography.Body(c, slice.Label).Grow(1).Ellipsis()
-			typography.Caption(c, domain.CentsToYuan(slice.Amount)).Mono()
-			share := float64(0)
-			if m.pie.Total > 0 {
-				share = float64(slice.Amount) / float64(m.pie.Total) * 100
-			}
-			typography.Caption(c, fmt.Sprintf("%.1f%%", share))
-		})
-	}
-	if len(m.pieSlices) == 0 {
-		typography.BodyParagraph(c, pieEmptyDescription(m.pie, *m.selectedChart()), 3).Muted()
-	}
-	if m.pie.Total > m.pie.FilteredTotal {
-		typography.Caption(c, "带多个标签的记录会分别计入每个标签")
-	}
-}
+// ------------------------------------------------------------------ small helpers
 
 func dot(c ui.C, color gfx.Color) {
 	ui.Row(c).Size(8, 8).Radius(4).Background(color)

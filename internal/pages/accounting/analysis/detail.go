@@ -3,57 +3,263 @@ package analysis
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
+	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/layout"
+	"transactions/internal/components/semantic"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
 	"transactions/internal/repository"
 )
 
-func (m *Model) linePanel(c ui.C, chart *domain.Chart) {
-	theme := c.Theme()
-	ui.Column(c).FillWidth().Gap(8).Children(func() {
-		ui.Row(c).FillWidth().Items(ui.Center).Gap(8).Children(func() {
-			typography.Section(c, "曲线")
-			ui.Text(c, fmt.Sprintf("%d", len(m.lines))).FontSize(typography.SizeCaption).
-				Color(theme.MutedForeground).Background(theme.Muted).
-				Radius(theme.Metrics.RadiusItem()).PadX(6).PadY(1)
-			ui.Spacer(c)
-			if !chart.IsPreset {
-				if ui.Button(c, "添加曲线").Small().Icon(icons.Plus).Clicked() {
-					m.openLine(chart, -1)
-				}
-			}
-		})
-		if len(m.lines) == 0 {
-			typography.BodyParagraph(c, "还没有曲线，添加一条之后这里会画出趋势。", 2).Muted()
+// The table's columns, shared by the header row and the rows so the two always
+// agree: a name, the type it sums, the condition it matches, and its total.
+const (
+	curveNameWidth   float32 = 240
+	curveTypeWidth   float32 = 80
+	curveAmountWidth float32 = 140
+	curveActionWidth float32 = 64
+)
+
+// chartTable is the list under the plot: one row per curve that says what the
+// line is and what it adds up to, with its edit and delete commands. A pie has
+// no curves, so its table lists the slices with their amounts and shares.
+func (m *Model) chartTable(c ui.C, chart *domain.Chart) {
+	// The table is as tall as the rows it holds, up to the height where it
+	// starts to scroll: a short list leaves the chart the room, and a long one
+	// never squeezes it below its minimum.
+	rows := len(m.lines)
+	if chart.ChartType == chartPie {
+		rows = len(m.pieSlices)
+	}
+	const maxRows = 5
+	height := layout.SectionHeaderHeight + layout.TableHeaderHeight +
+		float32(min(rows, maxRows))*layout.RowHeight
+	ui.Column(c).FillWidth().Height(height).Shrink(1).Children(func() {
+		m.chartTableHead(c, chart)
+		if chart.ChartType == chartPie {
+			m.pieTable(c, chart)
 			return
 		}
-		for index := range m.lines {
-			line := &m.lines[index]
-			c.KeyInt(index)
-			ui.Row(c).FillWidth().MinHeight(40).PadX(8).Gap(8).Items(ui.Center).
-				Radius(theme.Metrics.RadiusControl).Hover(ui.Look{}.Background(theme.Hover)).Children(func() {
-				dot(c, seriesColor(*theme, index))
-				typography.Body(c, line.Label)
-				ui.Text(c, lineTypeLabel(line.TransactionType)).FontSize(typography.SizeCaption).
-					Color(theme.MutedForeground).Background(theme.Muted).
-					Radius(theme.Metrics.RadiusItem()).PadX(6).PadY(1)
-				typography.Caption(c, conditionSummary(*line)).Grow(1).Ellipsis()
-				if !chart.IsPreset {
-					if ui.Button(c, "编辑曲线 "+line.Label).Ghost().Small().Clicked() {
-						m.openLine(chart, index)
-					}
-					if ui.Button(c, "删除曲线 "+line.Label).Ghost().Icon(icons.Trash2).IconOnly().Tooltip("删除曲线").Clicked() {
-						m.removeLine(chart, index)
-					}
-				}
+		m.curveTable(c, chart)
+	})
+}
+
+// chartTableHead is the table's own header: what it lists, how many, and the
+// command that adds one more.
+func (m *Model) chartTableHead(c ui.C, chart *domain.Chart) {
+	label, count := "曲线", len(m.lines)
+	if chart.ChartType == chartPie {
+		label, count = "分组", len(m.pieSlices)
+	}
+	ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().Items(ui.Center).
+		Gap(layout.Gap).Children(func() {
+		typography.Section(c, label)
+		countBadge(c, count)
+		ui.Spacer(c)
+		if chart.ChartType == chartLine && !chart.IsPreset {
+			if ui.Button(c, "添加曲线").Small().Ghost().Icon(icons.Plus).Clicked() {
+				m.openLine(chart, -1)
+			}
+		}
+	})
+}
+
+// curveTable is the line chart's series: a header row with the columns, then a
+// row per curve. The rows share the table with the chart above them, so the
+// page ends on the totals band instead of trailing into empty space.
+func (m *Model) curveTable(c ui.C, chart *domain.Chart) {
+	theme := c.Theme()
+	ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().
+		PadX(layout.BlockGap).Gap(layout.ColumnGap).Items(ui.Center).
+		Background(theme.Muted).Children(func() {
+		typography.Caption(c, "名称").Width(curveNameWidth)
+		typography.Caption(c, "类型").Width(curveTypeWidth)
+		typography.Caption(c, "条件").Grow(1)
+		ui.Row(c).Width(curveAmountWidth).Justify(ui.End).Children(func() {
+			typography.Caption(c, "合计")
+		})
+		// A preset has no commands, so it gets no 操作 column; the width stays
+		// on the rows so the figures keep their grid.
+		if chart.IsPreset {
+			// An empty cell, not a Spacer: a Spacer grows and would steal the
+			// 条件 column's room, pushing 合计 left of the figures.
+			ui.Row(c).Width(curveActionWidth)
+		} else {
+			ui.Row(c).Width(curveActionWidth).Justify(ui.End).Children(func() {
+				typography.Caption(c, "操作")
 			})
 		}
 	})
+	if len(m.lines) == 0 {
+		ui.Row(c).FillWidth().Pad(layout.Inset).Children(func() {
+			typography.CaptionParagraph(c, "还没有曲线。加一条之后，这张表会写出它包含哪些记录、合计多少。", 2).Muted()
+		})
+		return
+	}
+	ui.Scroll(c).Grow(1).FillWidth().Scrollbars().Children(func() {
+		ui.Column(c).FillWidth().Children(func() {
+			for index := range m.lines {
+				line := &m.lines[index]
+				c.KeyInt(index)
+				m.curveRow(c, chart, index, line)
+			}
+		})
+	})
+}
+
+// curveRow is one curve of the line chart.
+func (m *Model) curveRow(c ui.C, chart *domain.Chart, index int, line *domain.ChartLine) {
+	theme := c.Theme()
+	ui.Row(c).Height(layout.RowHeight).FillWidth().
+		PadX(layout.BlockGap).Gap(layout.ColumnGap).Items(ui.Center).
+		Radius(theme.Metrics.RadiusControl).
+		Hover(ui.Look{}.Background(theme.Hover)).Children(func() {
+		ui.Row(c).Width(curveNameWidth).Gap(layout.Gap).Items(ui.Center).Children(func() {
+			dot(c, seriesColor(*theme, index))
+			typography.Body(c, line.Label).Grow(1).Ellipsis()
+		})
+		ui.Row(c).Width(curveTypeWidth).Children(func() {
+			kindChip(c, lineTypeLabel(line.TransactionType))
+		})
+		typography.Caption(c, conditionSummary(*line)).Grow(1).Ellipsis()
+		ui.Row(c).Width(curveAmountWidth).Justify(ui.End).Children(func() {
+			typography.Body(c, domain.CentsToYuan(m.seriesTotal(index))).Mono()
+		})
+		ui.Row(c).Width(curveActionWidth).Gap(2).Justify(ui.End).Children(func() {
+			if chart.IsPreset {
+				return
+			}
+			if ui.Button(c, "编辑曲线 "+line.Label).Ghost().Small().Icon(icons.Pencil).
+				IconOnly().Tooltip("编辑曲线").Clicked() {
+				m.openLine(chart, index)
+			}
+			if ui.Button(c, "删除曲线 "+line.Label).Ghost().Small().Icon(icons.Trash2).
+				IconOnly().Tooltip("删除曲线").Clicked() {
+				m.removeLine(chart, index)
+			}
+		})
+	})
+}
+
+// pieTable lists the slices: the same colors the donut draws, what each one
+// adds up to, and its share of the total.
+func (m *Model) pieTable(c ui.C, chart *domain.Chart) {
+	theme := c.Theme()
+	// The first column is whatever the pie groups by, so the header can never
+	// disagree with the control in the page header.
+	groupColumn := groupLabel(chart.GroupField)
+	ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().
+		PadX(layout.BlockGap).Gap(layout.ColumnGap).Items(ui.Center).
+		Background(theme.Muted).Children(func() {
+		typography.Caption(c, groupColumn).Grow(1)
+		ui.Row(c).Width(curveAmountWidth).Justify(ui.End).Children(func() {
+			typography.Caption(c, "金额")
+		})
+		ui.Row(c).Width(curveTypeWidth).Justify(ui.End).Children(func() {
+			typography.Caption(c, "占比")
+		})
+	})
+	if len(m.pieSlices) == 0 {
+		ui.Row(c).FillWidth().Pad(layout.Inset).Children(func() {
+			typography.CaptionParagraph(c, pieEmptyDescription(m.pie, *m.selectedChart()), 3).Muted()
+		})
+		return
+	}
+	ui.Scroll(c).Grow(1).FillWidth().Scrollbars().Children(func() {
+		ui.Column(c).FillWidth().Children(func() {
+			for index, slice := range m.pieSlices {
+				share := float64(0)
+				if m.pie.Total > 0 {
+					share = float64(slice.Amount) / float64(m.pie.Total) * 100
+				}
+				ui.Row(c).Height(layout.RowHeight).FillWidth().
+					PadX(layout.BlockGap).Gap(layout.ColumnGap).Items(ui.Center).
+					Radius(theme.Metrics.RadiusControl).
+					Hover(ui.Look{}.Background(theme.Hover)).Children(func() {
+					ui.Row(c).Grow(1).Gap(layout.Gap).Items(ui.Center).Children(func() {
+						dot(c, pieColor(*theme, index))
+						typography.Body(c, slice.Label).Grow(1).Ellipsis()
+					})
+					typography.Body(c, domain.CentsToYuan(slice.Amount)).
+						Width(curveAmountWidth).TextEnd().Mono()
+					typography.Caption(c, fmt.Sprintf("%.1f%%", share)).
+						Width(curveTypeWidth).TextEnd()
+				})
+			}
+		})
+	})
+}
+
+// footer is the band under the table: the range's totals, the same readout the
+// records page carries at its own bottom.
+func (m *Model) footer(c ui.C, chart *domain.Chart) {
+	theme := c.Theme()
+	ui.Row(c).Height(layout.FooterHeight).FillWidth().
+		PadX(layout.Inset).Gap(layout.GroupGap).Items(ui.Center).Children(func() {
+		if chart.ChartType == chartPie {
+			footerStat(c, "合计", m.pie.Total, theme.Foreground)
+			typography.Caption(c, fmt.Sprintf("共 %d 组", len(m.pieSlices)))
+			if m.pie.Total > m.pie.FilteredTotal {
+				ui.Spacer(c)
+				typography.Caption(c, "带多个标签的记录会分别计入每个标签")
+			}
+			return
+		}
+		footerStat(c, "收入", m.stats.Income, theme.Success)
+		footerStat(c, "支出", m.stats.Expense, theme.Danger)
+		footerStat(c, "转账", m.stats.Transfer, semantic.Kind(*theme, "transfer"))
+	})
+}
+
+// footerStat is one total of the footer: its name, then its figure on the mono
+// grid, colored like the series it sums.
+func footerStat(c ui.C, label string, cents int64, color gfx.Color) {
+	ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
+		typography.Caption(c, label)
+		ui.Text(c, domain.CentsToYuan(cents)).FontSize(typography.SizeCaption).
+			Mono().Weight(gfx.WeightMedium).Color(color)
+	})
+}
+
+// lineRow is one curve: its color and name, its total on the mono grid, the
+// commands that change it, and a second line with the type and the condition
+// the curve matches. The whole row is 56 high, so the list reads as a table.
+
+// seriesTotal is the sum of one loaded curve over the range. A curve the query
+// did not return yet counts as zero, the same way its line draws.
+func (m *Model) seriesTotal(index int) int64 {
+	if index < 0 || index >= len(m.lineData) {
+		return 0
+	}
+	total := int64(0)
+	for _, point := range m.lineData[index].Data {
+		total += point.Amount
+	}
+	return total
+}
+
+// kindChip is the transaction type of a curve. The inspector is a muted panel,
+// so the capsule takes the page's background as its fill to stay visible.
+func kindChip(c ui.C, label string) {
+	theme := c.Theme()
+	ui.Text(c, label).FontSize(typography.SizeCaption).Color(theme.MutedForeground).
+		Background(theme.Background).Radius(theme.Metrics.RadiusItem()).
+		PadX(6).PadY(1)
+}
+
+// countBadge is a count in a capsule: the same badge the rail's header uses,
+// filled with the page's background because the inspector is muted.
+func countBadge(c ui.C, count int) {
+	theme := c.Theme()
+	ui.Text(c, strconv.Itoa(count)).FontSize(typography.SizeCaption).
+		Color(theme.MutedForeground).Background(theme.Background).
+		Radius(theme.Metrics.RadiusItem() + 2).PadX(6).PadY(1)
 }
 
 func (m *Model) moveChart(rows []int, to int) {

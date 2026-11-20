@@ -233,7 +233,7 @@ func TestNavigationSwitchesSections(t *testing.T) {
 func TestSubFunctionTabs(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "分析")
-	if !shows(driver, "曲线合计") || !hasControl(driver, "新增图表") {
+	if !shows(driver, "名称") || !hasControl(driver, "新增图表") {
 		t.Fatal("the 分析 tab did not show its screen")
 	}
 	click(t, driver, "标签")
@@ -1479,7 +1479,7 @@ func TestRecordsSyncSubmenuHover(t *testing.T) {
 func TestAnalysisPage(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "分析")
-	if !shows(driver, "月度消费趋势") || !shows(driver, "曲线合计") {
+	if !shows(driver, "月度消费趋势") || !shows(driver, "名称") {
 		t.Fatal("the analysis presets or summary are missing")
 	}
 	if !hasControl(driver, "新增图表") {
@@ -1497,7 +1497,7 @@ func TestAnalysisPage(t *testing.T) {
 	}
 	click(t, driver, "饼图")
 	click(t, driver, "创建")
-	if !shows(driver, "支出构成") || !shows(driver, "分组合计") {
+	if !shows(driver, "支出构成") || !shows(driver, "占比") {
 		t.Fatal("the pie chart was not created or selected")
 	}
 	if !hasControl(driver, "删除图表 支出构成") {

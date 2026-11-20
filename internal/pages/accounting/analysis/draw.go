@@ -15,21 +15,23 @@ import (
 // canvas paints the selected chart into its card. The drawing is a small,
 // self-contained canvas chart rather than a browser chart: line and donut
 // charts share the theme's chart palette and the page's summary.
+// canvas is the plot surface. It takes the height the column has left, so the
+// chart grows with the window instead of sitting in a fixed box; the series it
+// draws are listed once, in the inspector.
 func (m *Model) canvas(c ui.C, chart *domain.Chart) {
 	theme := c.Theme()
-	ui.Row(c).FillWidth().Height(320).
+	ui.Row(c).FillWidth().Grow(1).MinHeight(160).
 		Radius(theme.Metrics.RadiusSurface).
 		Border(1, theme.Border).
-		Background(theme.Card).
-		Children(func() {
-			ui.Slot(c).Fill().Draw(func(d *ui.DrawContext) {
-				if chart.ChartType == chartPie {
-					m.drawPie(d)
-					return
-				}
-				m.drawLine(d)
-			})
+		Background(theme.Card).Children(func() {
+		ui.Slot(c).Fill().Draw(func(d *ui.DrawContext) {
+			if chart.ChartType == chartPie {
+				m.drawPie(d)
+				return
+			}
+			m.drawLine(d)
 		})
+	})
 }
 
 func (m *Model) drawLine(d *ui.DrawContext) {
@@ -57,16 +59,14 @@ func (m *Model) drawLine(d *ui.DrawContext) {
 	if maxAmount <= 0 {
 		maxAmount = 1
 	}
-	// Horizontal grid and amount labels.
-	for step := 0; step <= 4; step++ {
-		y := plot.Y + plot.Height*float32(step)/4
+	// The axis is rounded to a step a reader can hold (0 / 1500 / 3000), so the
+	// top line is a number, not whatever the largest point happened to be.
+	axisTop, axisStep := niceAxis(float64(maxAmount) / 100)
+	for tick := 0; tick <= axisTicks; tick++ {
+		y := plot.Y + plot.Height*float32(tick)/float32(axisTicks)
 		d.Canvas.Fill(gfx.Rect{X: plot.X, Y: y, Width: plot.Width, Height: 1}, theme.Border)
-		value := float64(maxAmount) * float64(4-step) / 4 / 100
-		label := fmt.Sprintf("%.0f", value)
-		if value > 0 && value < 10 {
-			label = fmt.Sprintf("%.1f", value)
-		}
-		d.Canvas.LabelAligned(label, gfx.Rect{X: inner.X, Y: y - 8, Width: 52, Height: 16},
+		value := axisTop - axisStep*float64(tick)
+		d.Canvas.LabelAligned(axisText(value), gfx.Rect{X: inner.X, Y: y - 8, Width: 52, Height: 16},
 			gfx.TextStyle{Size: typography.SizeCaption, Color: theme.MutedForeground, Mono: true}, gfx.AlignRight)
 	}
 
@@ -130,7 +130,7 @@ func (m *Model) drawLine(d *ui.DrawContext) {
 			} else {
 				x += plot.Width / 2
 			}
-			y := plot.Y + plot.Height*(1-float32(point.Amount)/float32(maxAmount))
+			y := plot.Y + plot.Height*(1-float32(point.Amount)/100/float32(axisTop))
 			d.Canvas.Rounded(gfx.Rect{X: x - 2.5, Y: y - 2.5, Width: 5, Height: 5}, 2.5, color)
 		}
 	}
@@ -182,6 +182,42 @@ func (m *Model) drawPie(d *ui.DrawContext) {
 		X: pie.X + center - radius/2, Y: pie.Y + center,
 		Width: radius, Height: 22,
 	}, gfx.TextStyle{Size: typography.SizeBody, Color: theme.Foreground, Mono: true})
+}
+
+// axisTicks is the number of intervals the amount axis is divided into.
+const axisTicks = 4
+
+// niceAxis picks a rounded top and step for the amount axis: four intervals
+// that cover the range with numbers a reader can hold, so the ticks read
+// 0 / 1500 / 3000 / 4500 / 6000 rather than 0 / 1334 / 2667 / 4001 / 5335.
+func niceAxis(maxValue float64) (top, step float64) {
+	if maxValue <= 0 {
+		return 1, 1 / axisTicks
+	}
+	rough := maxValue / axisTicks
+	magnitude := math.Pow(10, math.Floor(math.Log10(rough)))
+	for _, candidate := range []float64{1, 1.5, 2, 2.5, 3, 4, 5, 10} {
+		if candidate*magnitude >= rough {
+			step = candidate * magnitude
+			break
+		}
+	}
+	if step == 0 {
+		step = 10 * magnitude
+	}
+	return step * axisTicks, step
+}
+
+// axisText writes an axis value without trailing zeros: 6000 stays 6000 and
+// 4.5 keeps its decimal.
+func axisText(value float64) string {
+	switch {
+	case math.Abs(value-math.Round(value)) < 0.005:
+		return fmt.Sprintf("%.0f", value)
+	case math.Abs(value*10-math.Round(value*10)) < 0.005:
+		return fmt.Sprintf("%.1f", value)
+	}
+	return fmt.Sprintf("%.2f", value)
 }
 
 func inset(rect gfx.Rect, all float32) gfx.Rect {
