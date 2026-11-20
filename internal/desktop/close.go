@@ -73,14 +73,17 @@ func (m *Model) closeModal(c ui.C) {
 		return
 	}
 	ui.ModalWith(c, &m.closeAsk, "关闭选项", ui.ModalSpec{Width: 440}, func() {
-		ui.Column(c).Gap(8).Children(func() {
-			ui.Text(c, "请选择关闭行为：「关闭应用」= 直接退出；「缩小到托盘」= 隐藏窗口继续运行。").
+		// The old dialog's three lines, kept apart: a single Text does not wrap,
+		// so the tail of the second line was clipped by the modal's edge.
+		ui.Column(c).Gap(6).Children(func() {
+			ui.Text(c, "请选择关闭行为：").FontSize(13).LineHeight(20)
+			ui.Paragraph(c, "「关闭应用」= 直接退出；「缩小到托盘」= 隐藏窗口继续运行。", 2).
 				FontSize(13).LineHeight(20)
 			if m.trayOK {
-				ui.Text(c, "可在「设置 → 通用设置 → 关闭行为」中固定该选择。").
+				ui.Paragraph(c, "可在「设置 → 通用设置 → 关闭行为」中固定该选择。", 2).
 					FontSize(12).Muted().LineHeight(18)
 			} else {
-				ui.Text(c, "当前系统没有可用的托盘，关闭会直接退出。可在「设置 → 通用设置 → 关闭行为」中固定该选择。").
+				ui.Paragraph(c, "当前系统没有可用的托盘，关闭会直接退出。可在「设置 → 通用设置 → 关闭行为」中固定该选择。", 3).
 					FontSize(12).Muted().LineHeight(18)
 			}
 		})
