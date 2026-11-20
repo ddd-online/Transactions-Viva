@@ -166,14 +166,21 @@ func (m *Model) drawPie(d *ui.DrawContext) {
 		X: pie.X + center - hole, Y: pie.Y + center - hole,
 		Width: hole * 2, Height: hole * 2,
 	}, hole, theme.Card)
-	d.Canvas.LabelCenter("合计", gfx.Rect{
-		X: pie.X + center - radius/2, Y: pie.Y + center - 18,
-		Width: radius, Height: 18,
-	}, gfx.TextStyle{Size: typography.SizeCaption, Color: theme.MutedForeground})
-	d.Canvas.LabelCenter(domain.CentsToYuan(m.pie.Total), gfx.Rect{
-		X: pie.X + center - radius/2, Y: pie.Y + center,
-		Width: radius, Height: 22,
-	}, gfx.TextStyle{Size: typography.SizeBody, Color: theme.Foreground, Mono: true})
+	// The hole carries the total only where the hole is wider than the figure:
+	// in a short card the number would spill across the ring, and the footer
+	// already states the range's total.
+	total := domain.CentsToYuan(m.pie.Total)
+	amount := gfx.TextStyle{Size: typography.SizeBody, Color: theme.Foreground, Mono: true}
+	if d.Canvas.TextWidthStyle(total, amount) <= hole*2-8 {
+		d.Canvas.LabelCenter("合计", gfx.Rect{
+			X: pie.X + center - radius/2, Y: pie.Y + center - 18,
+			Width: radius, Height: 18,
+		}, gfx.TextStyle{Size: typography.SizeCaption, Color: theme.MutedForeground})
+		d.Canvas.LabelCenter(total, gfx.Rect{
+			X: pie.X + center - radius/2, Y: pie.Y + center,
+			Width: radius, Height: 22,
+		}, amount)
+	}
 	if m.pieHover >= 0 && m.pieHover < len(m.pieSlices) {
 		m.pieTooltip(d)
 	}
