@@ -44,14 +44,6 @@ const (
 	columnBottom  = layout.GroupGap
 	navEntryHigh  = float32(36)
 	navEntrySpace = float32(4)
-	// ledgerFieldHeight is one form row of 新增 / 编辑账本: the FormField title
-	// and its 32 px control. FormField reserves a description and an error row
-	// this dialog does not use; pinning the row keeps the form compact, as the
-	// record composer does.
-	ledgerFieldHeight = float32(64)
-	// ledgerActionHeight is the card's 新增账本 row: shorter than a settings row,
-	// because it is an action on the list rather than a setting.
-	ledgerActionHeight = float32(48)
 )
 
 // setting is one row of a not-yet-migrated section. label is the row's name and
@@ -370,7 +362,9 @@ func (m *Model) ledgers(c ui.C, spec Spec) {
 			})
 		}
 		ui.Divider(c)
-		ui.Row(c).Height(ledgerActionHeight).FillWidth().
+		// The action row is a 32 px button with a gap around it: shorter than a
+		// settings row, because it acts on the list rather than setting it.
+		ui.Row(c).Height(metrics.ControlHeight + 2*metrics.GapItem).FillWidth().
 			PadX(metrics.PadSurface).Items(ui.Center).Children(func() {
 			if ui.Button(c, "新增账本").Ghost().Icon(icons.Plus).Clicked() {
 				m.openLedgerForm(spec, "")
@@ -402,12 +396,16 @@ func (m *Model) ledgerDialog(c ui.C, spec Spec) {
 	if m.ledgerForm.id != "" {
 		title, submit = "编辑账本", "保存"
 	}
+	// FormField reserves a description row and an error row this form does not
+	// use; pinning each field to the control's own two-row height keeps the
+	// dialog compact, as the record composer does.
+	fieldHeight := c.Theme().Metrics.ControlHeight * 2
 	ui.ModalWith(c, &m.ledgerForm.open, title, ui.ModalSpec{Width: 420}, func() {
 		ui.Column(c).Children(func() {
-			ui.FormField(c, &m.ledgerForm.nameField, "名称").Height(ledgerFieldHeight).Children(func() {
+			ui.FormField(c, &m.ledgerForm.nameField, "名称").Height(fieldHeight).Children(func() {
 				ui.TextField(c, &m.ledgerForm.name, "账本名称", "请输入账本名称").AutoFocus()
 			})
-			ui.FormField(c, &m.ledgerForm.descField, "描述").Height(ledgerFieldHeight).Children(func() {
+			ui.FormField(c, &m.ledgerForm.descField, "描述").Height(fieldHeight).Children(func() {
 				ui.TextField(c, &m.ledgerForm.description, "账本描述", "请输入账本描述")
 			})
 			if m.ledgerForm.err != "" {
