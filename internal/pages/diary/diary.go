@@ -17,5 +17,5 @@ func New() *Model { return &Model{} }
 // View declares the page.
 func (m *Model) View(c ui.C) {
 	components.Pending(c, "日记",
-		"按账本隔离的日记目录树、正文编辑、心情与导入 / 导出。")
+		"每个账本各自一棵日记目录树：正文、心情与导入 / 导出。")
 }

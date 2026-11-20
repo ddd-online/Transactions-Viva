@@ -146,7 +146,7 @@ func (w *Workspace) UpdateChart(ctx context.Context, chart domain.Chart) error {
 			return err
 		}
 		if existing == nil {
-			return fmt.Errorf("%w：图表 %s", repository.ErrNotFound, chart.ChartID)
+			return fmt.Errorf("%w：找不到该图表", repository.ErrNotFound)
 		}
 		if existing.IsPreset && (existing.Title != chart.Title ||
 			existing.Granularity != chart.Granularity ||

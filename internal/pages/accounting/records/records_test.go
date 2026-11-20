@@ -137,7 +137,7 @@ func TestSaveDraftValidates(t *testing.T) {
 		draft composer.Draft
 		want  string
 	}{
-		{"no category", composer.Draft{Amount: "1", Date: "2026-01-02"}, "请填写分类"},
+		{"no category", composer.Draft{Amount: "1", Date: "2026-01-02"}, "请选择分类"},
 		{"bad amount", composer.Draft{Category: "餐饮美食", Amount: "x", Date: "2026-01-02"}, "金额格式不正确"},
 		{"zero amount", composer.Draft{Category: "餐饮美食", Amount: "0", Date: "2026-01-02"}, "金额需要大于 0"},
 		{"bad date", composer.Draft{Category: "餐饮美食", Amount: "1", Date: "2026-13-40"}, "日期格式应为 YYYY-MM-DD"},

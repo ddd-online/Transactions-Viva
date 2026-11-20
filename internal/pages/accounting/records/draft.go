@@ -107,7 +107,7 @@ func (m *Model) saveDraft(draft composer.Draft) error {
 	}
 	category := strings.TrimSpace(draft.Category)
 	if category == "" {
-		return errDraft("请填写分类")
+		return errDraft("请选择分类")
 	}
 	amount, err := domain.YuanToCents(draft.Amount)
 	if err != nil {
@@ -145,7 +145,7 @@ func (m *Model) saveDraft(draft composer.Draft) error {
 		KeyEventDate:    eventDate,
 		TransactionAt:   at.Unix(),
 	}
-	notice := "已记一笔"
+	notice := "记录已保存"
 	if draft.EditingID != "" {
 		err = m.repo.UpdateRecord(context.Background(), one, draft.Tags)
 		notice = "记录已更新"

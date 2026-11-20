@@ -92,7 +92,7 @@ func (w *Workspace) UpdateLedger(ctx context.Context, id, name, description stri
 		return err
 	}
 	if changed == 0 {
-		return fmt.Errorf("%w：账本 %s", repository.ErrNotFound, id)
+		return fmt.Errorf("%w：找不到该账本", repository.ErrNotFound)
 	}
 	return nil
 }

@@ -24,7 +24,7 @@ func (m *Model) deleteView(c ui.C) {
 	// The old confirmation was the question alone. The description states
 	// the one fact the title does not; a body line repeating it only made the
 	// dialog longer.
-	ui.ModalWith(c, &m.deleteConfirm, "删除这条消费记录？", ui.ModalSpec{
+	ui.ModalWith(c, &m.deleteConfirm, "删除这条记录？", ui.ModalSpec{
 		Width:       380,
 		Description: "删除后无法恢复。",
 	}, nil, func() {

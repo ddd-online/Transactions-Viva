@@ -79,9 +79,9 @@ var sections = [...]section{
 		rows: []setting{
 			{"最近工作空间", "最近打开的本地工作空间，可直接切换。"},
 			{"备份位置", "手动备份与恢复前的副本都放这里。"},
-			{"手动备份", "数据库与 data/assets 一起保存。"},
-			{"自动备份", "每天第一次打开时存一份只含库的快照，保留最近 7 份。"},
-			{"从备份恢复", "覆盖当前工作空间，恢复完成后重启应用。"},
+			{"手动备份", "数据库与图片资产一起保存。"},
+			{"自动备份", "每天第一次打开时存一份只含数据库的快照，保留最近 7 份。"},
+			{"从备份恢复", "用备份替换当前工作空间，完成后重启应用。"},
 		},
 	},
 	{
@@ -97,7 +97,7 @@ var sections = [...]section{
 		title: "关于软件",
 		rows: []setting{
 			{"版本", "当前安装的 Transactions 版本。"},
-			{"检查更新", "手动检查更新，或让应用定期检查。"},
+			{"检查更新", "手动检查新版本，或让应用定期检查。"},
 			{"GitHub", "项目主页与问题反馈。"},
 		},
 	},
@@ -304,19 +304,19 @@ func (m *Model) general(c ui.C, spec Spec) {
 		controls.Row(c, "外观", "", func() {
 			value := spec.Appearance
 			if ui.Choice(c, &value, appearanceOptions[:], appearanceLabel).Changed() {
-				m.report("保存失败", func() error { return spec.OnAppearance(value) })
+				m.report("保存外观失败", func() error { return spec.OnAppearance(value) })
 			}
 		})
 		ui.Divider(c)
 		controls.Row(c, "关闭行为", trayNote, func() {
 			value := spec.CloseBehavior
 			if ui.Choice(c, &value, closeBehaviorOptions[:], closeBehaviorLabel).Changed() {
-				m.report("保存失败", func() error { return spec.OnCloseBehavior(value) })
+				m.report("保存关闭行为失败", func() error { return spec.OnCloseBehavior(value) })
 			}
 		})
 		ui.Divider(c)
 		controls.Row(c, "网络代理", "行情、涨停池与更新检查走代理。", func() {
-			typography.Caption(c, "未迁移")
+			typography.Caption(c, "暂未支持")
 		})
 	})
 }
@@ -403,10 +403,10 @@ func (m *Model) ledgerDialog(c ui.C, spec Spec) {
 	ui.ModalWith(c, &m.ledgerForm.open, title, ui.ModalSpec{Width: 420}, func() {
 		ui.Column(c).Children(func() {
 			ui.FormField(c, &m.ledgerForm.nameField, "名称").Height(fieldHeight).Children(func() {
-				ui.TextField(c, &m.ledgerForm.name, "账本名称", "请输入账本名称").AutoFocus()
+				ui.TextField(c, &m.ledgerForm.name, "名称", "例如：家庭账本").AutoFocus()
 			})
 			ui.FormField(c, &m.ledgerForm.descField, "描述").Height(fieldHeight).Children(func() {
-				ui.TextField(c, &m.ledgerForm.description, "账本描述", "请输入账本描述")
+				ui.TextField(c, &m.ledgerForm.description, "描述", "例如：日常开销与储蓄")
 			})
 			if m.ledgerForm.err != "" {
 				typography.Caption(c, m.ledgerForm.err).Color(c.Theme().Danger)
@@ -503,7 +503,7 @@ func (m *Model) features(c ui.C, spec Spec) {
 				// The row's title already says what this switch is; the label
 				// stays for assistive technology and for the tests.
 				if ui.Switch(c, &on, "").Label(entry.title + "功能开关").Changed() {
-					m.report("保存失败", func() error { return spec.OnFeature(entry.key, on) })
+					m.report("保存功能开关失败", func() error { return spec.OnFeature(entry.key, on) })
 				}
 			})
 		}
@@ -521,7 +521,7 @@ func (m *Model) pending(c ui.C, entry section) {
 			row := entry.rows[index]
 			c.KeyInt(index)
 			controls.Row(c, row.title, row.note, func() {
-				typography.Caption(c, "未迁移")
+				typography.Caption(c, "暂未支持")
 			})
 		}
 	})

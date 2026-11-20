@@ -513,7 +513,7 @@ func (m *Model) pieSummary(c ui.C) {
 		typography.BodyParagraph(c, pieEmptyDescription(m.pie, *m.selectedChart()), 3).Muted()
 	}
 	if m.pie.Total > m.pie.FilteredTotal {
-		typography.Caption(c, "多标签的记录会重复计入")
+		typography.Caption(c, "带多个标签的记录会分别计入每个标签")
 	}
 }
 

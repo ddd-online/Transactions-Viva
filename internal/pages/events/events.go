@@ -17,5 +17,5 @@ func New() *Model { return &Model{} }
 // View declares the page.
 func (m *Model) View(c ui.C) {
 	components.Pending(c, "事件",
-		"按日期的事件画廊、编辑、图片与实况照片。图片资产保存在工作空间 data/assets 下。")
+		"按日期浏览事件，附图片与实况照片。")
 }

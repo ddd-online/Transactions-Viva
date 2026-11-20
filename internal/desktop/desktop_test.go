@@ -273,7 +273,7 @@ func TestTagsPage(t *testing.T) {
 	if err := driver.Type("宠物"); err != nil {
 		t.Fatal(err)
 	}
-	click(t, driver, "确认")
+	click(t, driver, "添加")
 	if !hasControl(driver, "宠物") {
 		t.Fatal("the new category is not in the list")
 	}
@@ -286,7 +286,7 @@ func TestTagsPage(t *testing.T) {
 	if err := driver.Type("洗澡"); err != nil {
 		t.Fatal(err)
 	}
-	click(t, driver, "确认")
+	click(t, driver, "添加")
 	if !hasControl(driver, "洗澡") {
 		t.Fatal("the new tag is not in the list")
 	}
@@ -297,7 +297,7 @@ func TestTagsPage(t *testing.T) {
 	if err := driver.Type("宠物"); err != nil {
 		t.Fatal(err)
 	}
-	click(t, driver, "确认")
+	click(t, driver, "添加")
 	if !shows(driver, "该分类已存在") {
 		t.Fatal("the duplicate category was accepted")
 	}
@@ -695,7 +695,7 @@ func TestRecordsRowContextMenu(t *testing.T) {
 	}
 
 	click(t, driver, "删除记录")
-	if !shows(driver, "删除这条消费记录？") {
+	if !shows(driver, "删除这条记录？") {
 		t.Fatal("删除记录 did not open the confirmation")
 	}
 	click(t, driver, "删除")
@@ -716,7 +716,7 @@ func TestRecordsEmptyState(t *testing.T) {
 	click(t, driver, time.Now().Format("2006"))
 	click(t, driver, "2024 年") // the start of a range
 	click(t, driver, "2024 年") // and its end
-	if !shows(driver, "今天还没有记录") {
+	if !shows(driver, "这个时间范围里没有记录") {
 		t.Fatal("a range without records showed no empty state")
 	}
 	for _, action := range []string{"上月", "今年", "记一笔"} {
@@ -725,7 +725,7 @@ func TestRecordsEmptyState(t *testing.T) {
 		}
 	}
 	click(t, driver, "上月")
-	if shows(driver, "今天还没有记录") {
+	if shows(driver, "这个时间范围里没有记录") {
 		t.Fatal("上月 did not leave the empty state")
 	}
 }
@@ -856,7 +856,7 @@ func TestSidebarExpandsOneSectionAtATime(t *testing.T) {
 	if hasControl(driver, "历史") {
 		t.Fatal("事件 did not collapse 待办")
 	}
-	if !shows(driver, "按日期的事件画廊") {
+	if !shows(driver, "按日期浏览事件") {
 		t.Fatal("事件 did not show its screen")
 	}
 
@@ -1059,11 +1059,11 @@ func TestSettingsManagesLedgers(t *testing.T) {
 	}
 
 	click(t, driver, "新增账本")
-	click(t, driver, "账本名称")
+	click(t, driver, "名称")
 	if err := driver.Type("装修账本"); err != nil {
 		t.Fatal(err)
 	}
-	click(t, driver, "账本描述")
+	click(t, driver, "描述")
 	if err := driver.Type("2026 年装修支出"); err != nil {
 		t.Fatal(err)
 	}
@@ -1078,14 +1078,14 @@ func TestSettingsManagesLedgers(t *testing.T) {
 
 	// Rename and rewrite the description in one dialog.
 	click(t, driver, "编辑账本 装修账本")
-	click(t, driver, "账本名称")
+	click(t, driver, "名称")
 	if err := driver.SelectText(0, len([]rune("装修账本"))); err != nil {
 		t.Fatal(err)
 	}
 	if err := driver.Type("装修 2026"); err != nil {
 		t.Fatal(err)
 	}
-	click(t, driver, "账本描述")
+	click(t, driver, "描述")
 	if err := driver.SelectText(0, len([]rune("2026 年装修支出"))); err != nil {
 		t.Fatal(err)
 	}
@@ -1106,7 +1106,7 @@ func TestSettingsManagesLedgers(t *testing.T) {
 
 	// A name is required; the dialog stays open with the reason.
 	click(t, driver, "编辑账本 装修 2026")
-	click(t, driver, "账本名称")
+	click(t, driver, "名称")
 	if err := driver.SelectText(0, len([]rune("装修 2026"))); err != nil {
 		t.Fatal(err)
 	}
@@ -1220,7 +1220,7 @@ func TestSettingsFailedWriteKeepsTheOldValue(t *testing.T) {
 	if model.config.Appearance != config.AppearanceLight || model.dark {
 		t.Fatal("a failed write did not restore the appearance")
 	}
-	if !shows(driver, "保存失败") {
+	if !shows(driver, "保存外观失败") {
 		t.Fatal("the failed write was silent")
 	}
 }

@@ -719,7 +719,7 @@ func (m *Model) categoryModal(c ui.C) {
 	}
 	theme := c.Theme()
 	ui.ModalWith(c, &m.categoryOpen, "新增分类", ui.ModalSpec{Width: 400}, func() {
-		field := ui.TextField(c, &m.categoryName, "分类名称", "输入分类名称").
+		field := ui.TextField(c, &m.categoryName, "分类名称", "例如：餐饮美食").
 			AutoFocus().FillWidth()
 		if m.categoryError != "" {
 			typography.Caption(c, m.categoryError).Color(theme.Danger).MarginTop(6)
@@ -732,7 +732,7 @@ func (m *Model) categoryModal(c ui.C) {
 			if ui.Button(c, "取消").Secondary().Clicked() {
 				m.closeCategoryModal()
 			}
-			confirm := ui.Button(c, "确认").
+			confirm := ui.Button(c, "添加").
 				Disabled(strings.TrimSpace(m.categoryName) == "")
 			if confirm.Clicked() {
 				m.confirmCategory()
@@ -748,7 +748,7 @@ func (m *Model) tagModal(c ui.C) {
 	}
 	theme := c.Theme()
 	ui.ModalWith(c, &m.tagOpen, "新增标签", ui.ModalSpec{Width: 400}, func() {
-		field := ui.TextField(c, &m.tagName, "标签名称", "输入标签名称").
+		field := ui.TextField(c, &m.tagName, "标签名称", "例如：三餐").
 			AutoFocus().FillWidth()
 		if m.tagError != "" {
 			typography.Caption(c, m.tagError).Color(theme.Danger).MarginTop(6)
@@ -761,7 +761,7 @@ func (m *Model) tagModal(c ui.C) {
 			if ui.Button(c, "取消").Secondary().Clicked() {
 				m.closeTagModal()
 			}
-			confirm := ui.Button(c, "确认").Disabled(strings.TrimSpace(m.tagName) == "")
+			confirm := ui.Button(c, "添加").Disabled(strings.TrimSpace(m.tagName) == "")
 			if confirm.Clicked() {
 				m.confirmTag()
 			}
@@ -774,13 +774,17 @@ func (m *Model) deleteModal(c ui.C) {
 	if !m.deleteOpen {
 		return
 	}
-	title, what := "删除分类", "分类"
+	title := "删除分类「" + m.deleteName + "」？"
+	// A category takes its tags with it; a tag only loses its links.
+	description := "它下面的标签会一起删除。"
 	if m.deleteTag {
-		title, what = "删除标签", "标签"
+		title = "删除标签「" + m.deleteName + "」？"
+		description = "记录上的这个标签会一起移除，记录本身不受影响。"
 	}
-	ui.ModalWith(c, &m.deleteOpen, title, ui.ModalSpec{Width: 380}, func() {
-		typography.BodyParagraph(c, "确定删除"+what+"「"+m.deleteName+"」？", 3)
-	}, func() {
+	ui.ModalWith(c, &m.deleteOpen, title, ui.ModalSpec{
+		Width:       380,
+		Description: description,
+	}, nil, func() {
 		ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
 			if ui.Button(c, "取消").Secondary().Clicked() {
 				m.deleteOpen = false

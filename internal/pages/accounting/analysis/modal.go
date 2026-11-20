@@ -104,7 +104,7 @@ func (m *Model) createChart() {
 	}
 	title := strings.TrimSpace(m.form.title)
 	if title == "" {
-		m.form.err = "请输入图表名称"
+		m.form.err = "图表名称不能为空"
 		return
 	}
 	chart := domain.Chart{
@@ -154,7 +154,7 @@ func (m *Model) renameChart() {
 	}
 	title := strings.TrimSpace(m.form.title)
 	if title == "" {
-		m.form.err = "请输入图表名称"
+		m.form.err = "图表名称不能为空"
 		return
 	}
 	updated := *chart
@@ -175,7 +175,7 @@ func (m *Model) saveLine() {
 	}
 	label := strings.TrimSpace(m.form.lineLabel)
 	if label == "" {
-		m.form.err = "请输入曲线名称"
+		m.form.err = "曲线名称不能为空"
 		return
 	}
 	for index, line := range m.lines {
@@ -317,9 +317,10 @@ func (m *Model) modals(c ui.C) {
 	}
 	if m.modal == modalDelete {
 		chart := m.deleting
-		ui.ModalWith(c, &m.dialogOpen, "删除图表？", ui.ModalSpec{Width: 380}, func() {
-			typography.BodyParagraph(c, "「"+chart.Title+"」会从当前账本移除。", 3)
-		}, func() {
+		ui.ModalWith(c, &m.dialogOpen, "删除图表「"+chart.Title+"」？", ui.ModalSpec{
+			Width:       380,
+			Description: "只删除这张图表，记录不受影响。",
+		}, nil, func() {
 			if ui.Button(c, "取消").Outline().Clicked() {
 				m.closeModal()
 			}
@@ -349,7 +350,7 @@ func (m *Model) modals(c ui.C) {
 			case modalCreate:
 				m.createFields(c)
 			case modalRename:
-				m.primaryField(c, "图表名称", &m.form.title, "请输入图表名称")
+				m.primaryField(c, "图表名称", &m.form.title, "例如：年度支出")
 			case modalLine:
 				m.lineFields(c)
 			}

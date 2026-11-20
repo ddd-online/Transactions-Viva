@@ -344,7 +344,7 @@ func chartSliceLabel(groupField, key string) string {
 		}
 	case "tag":
 		if key == "" {
-			return "未命名标签"
+			return "未加标签"
 		}
 	default:
 		switch key {

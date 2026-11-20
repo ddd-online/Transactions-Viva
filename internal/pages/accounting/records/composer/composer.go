@@ -180,7 +180,7 @@ func (state *State) View(c ui.C, spec Spec) {
 				})
 			})
 			state.wideFormField(c, &state.fields.description, "描述", func() {
-				ui.TextField(c, &state.draft.Description, "描述", "描述消费内容")
+				ui.TextField(c, &state.draft.Description, "描述", "例如：午餐 · 公司楼下")
 			})
 			state.wideFormField(c, &state.fields.amount, "金额", func() {
 				ui.TextField(c, &state.draft.Amount, "金额", "0.00").Mono()

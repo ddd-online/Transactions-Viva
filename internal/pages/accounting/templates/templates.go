@@ -310,8 +310,9 @@ func headerCenter(c ui.C, text string, width float32) {
 func (m *Model) empty(c ui.C) {
 	ui.Slot(c).Grow(1).FillWidth().Draw(func(d *ui.DrawContext) {
 		viva.Empty(d.Canvas, *d.Theme, d.Rect, viva.EmptyData{
-			Media: viva.EmptyMediaDefault,
-			Title: "暂无模板",
+			Media:       viva.EmptyMediaDefault,
+			Title:       "暂无模板",
+			Description: "把常记的一笔存成模板，记一笔时可以直接选。",
 		})
 	})
 }
@@ -527,7 +528,7 @@ func (m *Model) formModal(c ui.C) {
 	ui.ModalWith(c, &m.formOpen, "新建模板", ui.ModalSpec{Width: 520}, func() {
 		ui.Column(c).FillWidth().Gap(14).Children(func() {
 			ui.FormField(c, &m.fields.name, "模板名称").FillWidth().Height(64).Children(func() {
-				ui.TextField(c, &m.form.name, "模板名称", "请输入模板名称").FillWidth()
+				ui.TextField(c, &m.form.name, "模板名称", "例如：工作日午餐").FillWidth()
 			})
 			ui.FormField(c, &m.fields.kind, "交易类型").FillWidth().Height(64).Children(func() {
 				if ui.Choice(c, &m.form.kind, tpl.Kinds[:], tpl.KindLabel).Changed() {
@@ -536,7 +537,7 @@ func (m *Model) formModal(c ui.C) {
 			})
 			ui.FormField(c, &m.fields.category, "分类").FillWidth().Height(64).Children(func() {
 				if selectbox.Select(c, &m.form.category, m.categories[m.form.kind], nil).
-					Placeholder("选择消费分类").Label("分类").Changed() {
+					Placeholder("选择分类").Label("分类").Changed() {
 					m.changeCategory()
 				}
 			})
@@ -544,7 +545,7 @@ func (m *Model) formModal(c ui.C) {
 				m.tagField(c)
 			})
 			ui.FormField(c, &m.fields.description, "描述").FillWidth().Height(64).Children(func() {
-				ui.TextField(c, &m.form.description, "描述", "请输入描述").FillWidth()
+				ui.TextField(c, &m.form.description, "描述", "例如：公司楼下的午餐").FillWidth()
 			})
 			ui.FormField(c, &m.fields.mark, "标记").FillWidth().Height(64).Children(func() {
 				ui.Checkbox(c, &m.form.outlier, "离群值")
@@ -682,9 +683,10 @@ func (m *Model) deleteModal(c ui.C) {
 	if !m.deleteOpen {
 		return
 	}
-	ui.ModalWith(c, &m.deleteOpen, "删除模板", ui.ModalSpec{Width: 380}, func() {
-		typography.BodyParagraph(c, "删除模板「"+m.deleteName+"」？", 3)
-	}, func() {
+	ui.ModalWith(c, &m.deleteOpen, "删除模板「"+m.deleteName+"」？", ui.ModalSpec{
+		Width:       380,
+		Description: "只删除模板，已经记下的记录不受影响。",
+	}, nil, func() {
 		if ui.Button(c, "取消").Secondary().Clicked() {
 			m.deleteOpen = false
 		}

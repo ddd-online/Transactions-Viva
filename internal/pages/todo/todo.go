@@ -22,7 +22,7 @@ var tabs = [...]tab{tabBoard, tabHistory}
 var tabLabels = [...]string{"待办", "历史"}
 
 var notes = [...]string{
-	"按主题（卡片）组织的进行中事项、四象限与进度记录。",
+	"按主题分组的进行中事项、四象限与进度记录。",
 	"已完成事项，按完成时间回看。",
 }
 

@@ -104,7 +104,7 @@ func TestWorkspaceSwitchLoadsTheOtherLedgers(t *testing.T) {
 	if shows(driver, "去程机票") || shows(driver, "早餐 · 豆浆油条") {
 		t.Fatal("the old workspace's records stayed after switching")
 	}
-	if !shows(driver, "今天还没有记录") {
+	if !shows(driver, "这个时间范围里没有记录") {
 		t.Fatal("the new empty workspace did not show its empty records")
 	}
 	if !shows(driver, "默认账本") {

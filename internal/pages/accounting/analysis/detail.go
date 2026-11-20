@@ -162,11 +162,12 @@ func pieEmptyDescription(pie repository.ChartPieResult, chart domain.Chart) stri
 		return "这个时间范围里没有记录，换一个范围试试。"
 	}
 	if pie.FilteredRecords == 0 {
+		// One shape for both groupings: 「括号里是被筛掉的那一类」的记录.
 		switch chart.GroupField {
 		case groupTag:
 			return "这个范围里没有「" + lineTypeLabel(chart.GroupTransactionType) + " · " + chart.GroupCategory + "」的记录。"
 		case groupCategory:
-			return "这个范围里没有「" + lineTypeLabel(chart.GroupTransactionType) + "」记录。"
+			return "这个范围里没有「" + lineTypeLabel(chart.GroupTransactionType) + "」的记录。"
 		}
 		return "这个范围里没有可统计的记录。"
 	}

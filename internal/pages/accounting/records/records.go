@@ -351,7 +351,7 @@ func (m *Model) sortButton(c ui.C, label string, field sortField) {
 		Radius(theme.Metrics.RadiusItem()).
 		HitWith(ui.ID(c), "按"+label+"排序", gfx.HitOptions{
 			Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
-			Hint: "点击切换 未选 / 降序 / 升序",
+			Hint: "点击切换：不排序 / 降序 / 升序",
 		}).
 		Focus(ui.Look{}.Ring(2, theme.Ring))
 	if rank == 0 {
@@ -520,7 +520,7 @@ func (m *Model) empty(c ui.C) {
 		content := viva.Empty(d.Canvas, *d.Theme, d.Rect, viva.EmptyData{
 			Media:         viva.EmptyMediaIcon,
 			Icon:          icons.Wallet,
-			Title:         "今天还没有记录",
+			Title:         "这个时间范围里没有记录",
 			Description:   "换个时间范围，或直接记一笔。",
 			ContentHeight: row,
 		})

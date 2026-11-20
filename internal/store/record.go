@@ -86,7 +86,7 @@ func (w *Workspace) Record(ctx context.Context, id string) (repository.RecordEnt
 	row := db.QueryRowContext(ctx, "SELECT "+recordColumns+" FROM transaction_record WHERE transaction_id = ?", id)
 	record, err := scanRecord(row)
 	if err == sql.ErrNoRows {
-		return repository.RecordEntry{}, fmt.Errorf("%w：记录 %s", repository.ErrNotFound, id)
+		return repository.RecordEntry{}, fmt.Errorf("%w：找不到这条记录", repository.ErrNotFound)
 	}
 	if err != nil {
 		return repository.RecordEntry{}, err
@@ -162,7 +162,7 @@ func (w *Workspace) UpdateRecord(ctx context.Context, record domain.TransactionR
 			return err
 		}
 		if affected == 0 {
-			return fmt.Errorf("%w：记录 %s", repository.ErrNotFound, record.TransactionID)
+			return fmt.Errorf("%w：找不到这条记录", repository.ErrNotFound)
 		}
 		if _, err := tx.ExecContext(ctx,
 			"DELETE FROM transaction_record_tag WHERE transaction_id = ?", record.TransactionID); err != nil {
