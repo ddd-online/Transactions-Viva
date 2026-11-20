@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-21T00:36:00+08:00",
+  "generatedAt": "2026-11-21T00:50:00+08:00",
   "title": "Design System: Transactions",
   "extensions": {
     "colorMeta": {
@@ -285,6 +285,13 @@
       "description": "记录编辑器一类的弹窗：11px 圆角、520px 宽、暖遮罩压住页面。",
       "html": "<div class=\"ds-dialog\" role=\"dialog\" aria-label=\"新建模板\"><h2 class=\"ds-dialog__title\">新建模板</h2><div class=\"ds-dialog__body\"><label class=\"ds-dialog__field\"><span>模板名称</span><input placeholder=\"例如：工作日午餐\" /></label></div><footer class=\"ds-dialog__footer\"><button class=\"ds-dialog__cancel\">取消</button><button class=\"ds-dialog__save\">保存</button></footer></div>",
       "css": ".ds-dialog{width:520px;max-width:100%;background:#ffffff;border-radius:11px;box-shadow:0 16px 40px rgba(18,18,20,0.22);overflow:hidden;color:#18181b;font-size:13px}.ds-dialog__title{margin:0;padding:16px 16px 12px;font-size:14px;font-weight:700}.ds-dialog__body{display:grid;gap:12px;padding:0 16px 16px}.ds-dialog__field{display:grid;gap:6px;font-size:12px;color:#52525b}.ds-dialog__field input{height:32px;padding:0 12px;border:1px solid #d4d4d8;border-radius:7.5px;font-size:14px;color:#18181b;background:#ffffff}.ds-dialog__field input:focus{outline:none;border-color:#1d4ed8}.ds-dialog__footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid #e4e4e7}.ds-dialog__cancel,.ds-dialog__save{height:32px;padding:0 12px;border-radius:7.5px;font-size:14px;cursor:pointer}.ds-dialog__cancel{border:1px solid #e4e4e7;background:#ffffff;color:#18181b}.ds-dialog__save{border:0;background:#1d4ed8;color:#ffffff}"
+    },
+    {
+      "name": "Tag Chip",
+      "kind": "chip",
+      "description": "记录与模板的标签：中性胶囊，单行排列，放不下的折成 +N。",
+      "html": "<span class=\"ds-tag\">通勤</span><span class=\"ds-tag\">同事</span><span class=\"ds-tag\">+2</span>",
+      "css": ".ds-tag{display:inline-block;margin-right:4px;padding:1px 6px;border-radius:5.5px;background:#f4f4f5;color:#646b76;font-size:12px;line-height:1.6;white-space:nowrap}"
     }
   ],
   "narrative": {

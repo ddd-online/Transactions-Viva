@@ -21,6 +21,7 @@ import (
 	"transactions/internal/components/layout"
 	"transactions/internal/components/pagination"
 	"transactions/internal/components/semantic"
+	"transactions/internal/components/tag"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting/ledger"
@@ -456,11 +457,7 @@ func (m *Model) row(r ui.ListRow) {
 		Weight(gfx.WeightMedium).Color(color)
 	ui.Text(r.C, rec.category).Width(recordCategoryWidth).TextCenter().FontSize(12).Ellipsis()
 
-	tags := strings.Join(rec.tags, "、")
-	if tags == "" {
-		tags = "-"
-	}
-	ui.Text(r.C, tags).Width(recordTagsWidth).FontSize(12).Muted().Ellipsis()
+	tag.List(r.C, rec.tags, recordTagsWidth)
 
 	description := rec.description
 	if description == "" {

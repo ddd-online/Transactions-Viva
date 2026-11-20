@@ -16,6 +16,7 @@ import (
 	"transactions/internal/components/layout"
 	"transactions/internal/components/selectbox"
 	"transactions/internal/components/semantic"
+	"transactions/internal/components/tag"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting/ledger"
 	tpl "transactions/internal/pages/accounting/template"
@@ -367,7 +368,7 @@ func (m *Model) row(row ui.ListRow) {
 			return
 		}
 		for _, name := range one.Tags {
-			tagChip(row.C, name)
+			tag.Chip(row.C, name)
 		}
 	})
 
@@ -401,14 +402,6 @@ func chip(c ui.C, text string, color gfx.Color) {
 	ui.Text(c, text).FontSize(theme.Metrics.FontSizeS).Weight(gfx.WeightMedium).
 		Color(color).Background(theme.Background.Mix(color, 0.12)).
 		PadX(8).PadY(2).Radius(theme.Metrics.RadiusItem())
-}
-
-// tagChip is one tag of a template, in the old table's muted capsule.
-func tagChip(c ui.C, text string) {
-	theme := c.Theme()
-	ui.Text(c, text).FontSize(theme.Metrics.FontSizeS).
-		Color(theme.MutedForeground).Background(theme.Muted).
-		PadX(6).PadY(1).Radius(theme.Metrics.RadiusItem())
 }
 
 // dash is the old table's empty cell: a muted hyphen.
