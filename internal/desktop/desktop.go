@@ -4,10 +4,13 @@
 package desktop
 
 import (
+	"os"
+
 	"github.com/vivaui/viva/app"
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/config"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting"
 	"transactions/internal/pages/diary"
@@ -29,6 +32,30 @@ type Model struct {
 	dark    bool
 	theme   gfx.Theme
 
+	// config is the loaded user configuration; configStore writes it back when
+	// a setting changes. A model built by New has no store and keeps its
+	// configuration in memory.
+	config      config.AppConfig
+	configStore *config.Store
+
+	// invalidator asks the window for a frame when something outside a click
+	// changes what is painted (a system appearance change, a close prompt).
+	invalidator *app.Invalidator
+
+	// window and tray are the native handles Run opens; close.go and tray.go
+	// use them. trayOK says the status area accepted the icon.
+	window *app.Window
+	tray   *app.StatusItem
+	trayOK bool
+
+	// pickWorkspace chooses the workspace directory; tests replace it.
+	pickWorkspace func() (string, error)
+
+	// closeAsk is the 关闭选项 dialog, raised by the close button when the
+	// configuration asks every time. closeAllow is the pending close.
+	closeAsk   bool
+	closeAllow func()
+
 	// tree is the page's identity tree. New names the page's feature in it so
 	// this page's identities stay out of the development reload host's scope,
 	// where its window buttons live.
@@ -48,20 +75,38 @@ type Model struct {
 	settings   *settings.Model
 }
 
-// New returns the shell on the 记账 section in the light theme. The saved
-// appearance (system / light / dark) takes over when config persistence lands.
+// New returns the shell with the default configuration, pinned to the light
+// appearance. It owns no configuration file, which keeps tests independent of
+// the machine and its user settings; Run loads the file and calls
+// NewWithConfig.
 func New() *Model {
+	cfg := config.Default()
+	cfg.Appearance = config.AppearanceLight
+	return NewWithConfig(cfg, nil)
+}
+
+// NewWithConfig returns the shell over cfg and, when store is not nil, saves
+// every later change through it. The shell opens on the first enabled feature.
+func NewWithConfig(cfg config.AppConfig, store *config.Store) *Model {
 	m := &Model{
-		section:    SectionAccounting,
-		theme:      newTheme(false),
-		accounting: accounting.New(),
-		stock:      stock.New(),
-		todo:       todo.New(),
-		events:     events.New(),
-		diary:      diary.New(),
-		settings:   settings.New(),
+		config:      cfg,
+		configStore: store,
+		accounting:  accounting.New(),
+		stock:       stock.New(),
+		todo:        todo.New(),
+		events:      events.New(),
+		diary:       diary.New(),
+		settings:    settings.New(),
 	}
-	m.expanded, m.expandedOpen = SectionAccounting, true
+	m.pickWorkspace = func() (string, error) {
+		return app.OpenDirectory(app.OpenDirectoryOptions{Title: "选择工作空间"})
+	}
+	m.refreshTheme()
+	m.section = m.firstEnabledSection()
+	if m.section != SectionSettings {
+		m.expanded = m.section
+		m.expandedOpen = len(m.pageTabs(m.section)) > 0
+	}
 	// The development reload host names its window buttons in a tree of its
 	// own; its first feature is the buttons, at scope 2. Keep this page's
 	// identities out of that scope so a host button cannot share an identity
@@ -70,12 +115,40 @@ func New() *Model {
 	return m
 }
 
-// Run opens the application window and blocks until it closes.
+// Run opens the application window and blocks until it closes. It loads the
+// configuration, follows the system appearance while the configuration asks
+// for it, and keeps one status-area icon so closing to the tray has a way back.
 func Run() error {
-	model := New()
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	store := config.Load(config.Path(home, devMode()))
+	model := NewWithConfig(store.Config(), store)
 	page := ui.NewPage(ui.PageConfig{Tree: &model.tree, View: model.page, Theme: &model.theme})
-	return app.RunCanvas(page.Config(newConfig(model)), new(gfx.Canvas))
+	invalidator := &app.Invalidator{}
+	model.invalidator = invalidator
+	return app.RunApplication(func(application *app.Application) error {
+		windowConfig := newConfig(model)
+		windowConfig.Invalidator = invalidator
+		windowConfig.OnClosed = application.Quit
+		window, err := application.OpenWindow(page.Config(windowConfig), new(gfx.Canvas))
+		if err != nil {
+			return err
+		}
+		model.window = window
+		model.trayOK = model.addTray(application)
+		app.WatchSystemAppearance(func() {
+			model.refreshTheme()
+			invalidator.Invalidate()
+		})
+		return nil
+	})
 }
+
+// devMode reports whether the development reload host is running this build:
+// it sets VIVA_RELOAD_ADDRESS for the worker it launches.
+func devMode() bool { return os.Getenv("VIVA_RELOAD_ADDRESS") != "" }
 
 // newConfig is the one place the native window is described. Tests build the
 // same window without opening one.
@@ -85,10 +158,17 @@ func newConfig(m *Model) app.Config {
 	// a custom-titlebar window against the desktop, so the border has to name the
 	// surface it meets or the desktop shows through as a white seam.
 	edge := m.theme.Muted
-	return app.Config{
+	width, height := m.config.Width, m.config.Height
+	if width <= 0 {
+		width = 1500
+	}
+	if height <= 0 {
+		height = 1000
+	}
+	config := app.Config{
 		Title:  "Transactions",
-		Width:  1500,
-		Height: 1000,
+		Width:  width,
+		Height: height,
 		// The old application draws its own 36px title bar; Viva draws the
 		// window buttons on Windows and Linux, and keeps the macOS traffic lights.
 		WindowMode:     app.WindowCustomTitlebar,
@@ -105,7 +185,14 @@ func newConfig(m *Model) app.Config {
 		OnKey:             m.key,
 		OnScroll:          m.scroll,
 		TextInput:         m.textInput,
+		// The close button saves the frame and applies the configured behavior.
+		// Tests call this callback directly to exercise the prompt.
+		OnCloseRequest: func(allow func()) { m.requestClose(allow) },
 	}
+	if m.config.X != nil && m.config.Y != nil {
+		config.Origin = &gfx.Point{X: float32(*m.config.X), Y: float32(*m.config.Y)}
+	}
+	return config
 }
 
 // key gives the records page's canvas controls (the tags multi-select) the
@@ -233,9 +320,10 @@ func (m *Model) content(c ui.C) {
 			case SectionDiary:
 				m.diary.View(c)
 			case SectionSettings:
-				m.settings.View(c)
+				m.settings.View(c, m.settingsSpec())
 			}
 		})
+	m.closeModal(c)
 }
 
 // footer is the 36px band that runs under the whole window.
@@ -245,14 +333,36 @@ func (m *Model) footer(c ui.C) {
 		Items(ui.Center).Children(func() {
 		ui.Text(c, "本地优先 · 数据保存在本地工作空间").FontSize(11).Muted()
 		ui.Spacer(c)
-		ui.Text(c, "尚未打开工作空间").FontSize(11).Muted()
+		ui.Text(c, m.workspaceLabel()).FontSize(11).Muted()
 		ui.Text(c, "v"+Version).FontSize(11).Muted().Mono()
 	})
 }
 
-// toggleTheme switches between the light and dark palettes. The page holds
-// &m.theme, so the next paint uses the new one.
+// toggleTheme switches between the light and dark palettes, as an explicit
+// appearance choice; from 跟随系统 the first click pins the opposite of what is
+// on screen, as the old titlebar toggle did.
 func (m *Model) toggleTheme() {
-	m.dark = !m.dark
+	next := config.AppearanceDark
+	if m.dark {
+		next = config.AppearanceLight
+	}
+	_ = m.setAppearance(next)
+}
+
+// effectiveDark resolves the configured appearance against the system.
+func (m *Model) effectiveDark() bool {
+	switch m.config.Appearance {
+	case config.AppearanceDark:
+		return true
+	case config.AppearanceLight:
+		return false
+	}
+	return app.SystemAppearance() == app.AppearanceDark
+}
+
+// refreshTheme recomputes the palette. The page holds &m.theme, so the next
+// paint uses the new one.
+func (m *Model) refreshTheme() {
+	m.dark = m.effectiveDark()
 	m.theme = newTheme(m.dark)
 }

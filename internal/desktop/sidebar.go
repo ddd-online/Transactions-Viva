@@ -45,8 +45,11 @@ func (m *Model) sidebar(c ui.C) {
 func (m *Model) navList(c ui.C) {
 	metrics := c.Theme().Metrics
 	gap := metrics.GapItem / 2
-	for index, entry := range navSections {
-		row := m.navRow(c, index, entry.label, entry.icon, m.section == entry.section)
+	for _, entry := range navSections {
+		if !m.sectionEnabled(entry.section) {
+			continue
+		}
+		row := m.navRow(c, int(entry.section), entry.label, entry.icon, m.section == entry.section)
 		if row.Clicked() {
 			m.openSection(entry.section)
 		}

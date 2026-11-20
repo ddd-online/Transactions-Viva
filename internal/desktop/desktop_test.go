@@ -1,6 +1,7 @@
 package desktop
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -8,12 +9,19 @@ import (
 	"github.com/vivaui/viva/app"
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
+
+	"transactions/internal/config"
 )
 
 // open runs the shell with no window: the real painter, input and focus rules.
 func open(t *testing.T) (*app.Driver, *Model) {
 	t.Helper()
-	model := New()
+	return openModel(t, New())
+}
+
+// openModel is open over an already configured model.
+func openModel(t *testing.T, model *Model) (*app.Driver, *Model) {
+	t.Helper()
 	page := ui.NewPage(ui.PageConfig{Tree: &model.tree, View: model.page, Theme: &model.theme})
 	driver, err := app.NewDriver(page.Config(newConfig(model)), nil)
 	if err != nil {
@@ -856,5 +864,236 @@ func TestSettingsPageAndThemeToggle(t *testing.T) {
 	}
 	if !hasControl(driver, "切换到浅色模式") {
 		t.Fatal("the toggle does not offer the light theme after switching")
+	}
+}
+
+// TestSettingsAppearanceAndCloseBehavior drives the two segmented general
+// settings and checks they reach both the shell and the configuration.
+func TestSettingsAppearanceAndCloseBehavior(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "应用设置")
+	if !shows(driver, "窗口关闭行为") {
+		t.Fatal("通用设置 is missing its explanation")
+	}
+
+	click(t, driver, "深色")
+	if model.config.Appearance != config.AppearanceDark || !model.dark {
+		t.Fatalf("appearance = %q, dark = %v", model.config.Appearance, model.dark)
+	}
+	if !hasControl(driver, "切换到浅色模式") {
+		t.Fatal("the titlebar toggle did not follow the appearance")
+	}
+	click(t, driver, "浅色")
+	if model.config.Appearance != config.AppearanceLight || model.dark {
+		t.Fatalf("appearance = %q, dark = %v", model.config.Appearance, model.dark)
+	}
+
+	click(t, driver, "直接退出")
+	if model.config.CloseBehavior != config.CloseQuit {
+		t.Fatalf("close behavior = %q", model.config.CloseBehavior)
+	}
+	click(t, driver, "每次询问")
+	if model.config.CloseBehavior != config.CloseAsk {
+		t.Fatalf("close behavior = %q", model.config.CloseBehavior)
+	}
+}
+
+// TestFeatureSwitchHidesItsSection checks a switch removes the section from the
+// rail immediately, and turning it back on restores it.
+func TestFeatureSwitchHidesItsSection(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "应用设置")
+	click(t, driver, "功能开关")
+	if !hasControl(driver, "记账功能开关") {
+		t.Fatal("功能开关 did not show the five switches")
+	}
+
+	click(t, driver, "股票功能开关")
+	if model.config.Features.Stock {
+		t.Fatal("the switch did not turn 股票 off")
+	}
+	if hasControl(driver, "股票") {
+		t.Fatal("股票 is still in the navigation after being switched off")
+	}
+	click(t, driver, "股票功能开关")
+	if !model.config.Features.Stock || !hasControl(driver, "股票") {
+		t.Fatal("turning 股票 back on did not restore it")
+	}
+
+	click(t, driver, "记账功能开关")
+	if hasControl(driver, "记账") {
+		t.Fatal("记账 is still in the navigation after being switched off")
+	}
+	if !hasControl(driver, "股票") {
+		t.Fatal("disabling 记账 removed another section")
+	}
+}
+
+// TestSettingsWritesTheConfigurationFile drives appearance, close behavior and a
+// feature switch, then reloads the file to prove they were saved.
+func TestSettingsWritesTheConfigurationFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), config.FileName)
+	store := config.Load(path)
+	cfg := store.Config()
+	cfg.Appearance = config.AppearanceLight
+	model := NewWithConfig(cfg, store)
+	driver, _ := openModel(t, model)
+
+	click(t, driver, "应用设置")
+	click(t, driver, "深色")
+	click(t, driver, "直接退出")
+	click(t, driver, "功能开关")
+	click(t, driver, "日记功能开关")
+
+	reloaded := config.Load(path).Config()
+	if reloaded.Appearance != config.AppearanceDark {
+		t.Fatalf("appearance in the file = %q", reloaded.Appearance)
+	}
+	if reloaded.CloseBehavior != config.CloseQuit {
+		t.Fatalf("close behavior in the file = %q", reloaded.CloseBehavior)
+	}
+	if reloaded.Features.Diary {
+		t.Fatal("the feature switch was not written")
+	}
+}
+
+// TestSettingsFailedWriteKeepsTheOldValue points the store at a directory so
+// saving fails; the setting must revert and the page must say why.
+func TestSettingsFailedWriteKeepsTheOldValue(t *testing.T) {
+	cfg := config.Default()
+	cfg.Appearance = config.AppearanceLight
+	model := NewWithConfig(cfg, config.Load(t.TempDir()))
+	driver, _ := openModel(t, model)
+
+	click(t, driver, "应用设置")
+	click(t, driver, "深色")
+	if model.config.Appearance != config.AppearanceLight || model.dark {
+		t.Fatal("a failed write did not restore the appearance")
+	}
+	if !shows(driver, "保存失败") {
+		t.Fatal("the failed write was silent")
+	}
+}
+
+// TestSettingsWorkspacePicker adopts a directory, shows it and remembers it.
+func TestSettingsWorkspacePicker(t *testing.T) {
+	model := New()
+	directory := filepath.Join(t.TempDir(), "books")
+	model.pickWorkspace = func() (string, error) { return directory, nil }
+	driver, _ := openModel(t, model)
+
+	click(t, driver, "应用设置")
+	if !shows(driver, "尚未选择工作空间") {
+		t.Fatal("the empty workspace is not reported")
+	}
+	click(t, driver, "切换")
+	if model.config.WorkspaceDir != directory {
+		t.Fatalf("workspace = %q", model.config.WorkspaceDir)
+	}
+	if len(model.config.RecentWorkspaces) != 1 || model.config.RecentWorkspaces[0] != directory {
+		t.Fatalf("recent = %v", model.config.RecentWorkspaces)
+	}
+	if !shows(driver, directory) {
+		t.Fatal("the settings row does not show the chosen directory")
+	}
+	if !shows(driver, filepath.Base(directory)) {
+		t.Fatal("the footer does not show the workspace")
+	}
+}
+
+// TestPrependWorkspaceKeepsFiveDistinctPaths checks the recent-list rule the
+// old configuration service applied.
+func TestPrependWorkspaceKeepsFiveDistinctPaths(t *testing.T) {
+	recent := []string{"a", "b", "c", "d", "e"}
+	next := prependWorkspace("c", recent)
+	want := []string{"c", "a", "b", "d", "e"}
+	if len(next) != len(want) {
+		t.Fatalf("recent = %v", next)
+	}
+	for index := range want {
+		if next[index] != want[index] {
+			t.Fatalf("recent = %v, want %v", next, want)
+		}
+	}
+}
+
+// TestNewConfigUsesTheSavedWindowFrame checks the window opens at the saved
+// size and place.
+func TestNewConfigUsesTheSavedWindowFrame(t *testing.T) {
+	cfg := config.Default()
+	cfg.Width, cfg.Height = 1200, 800
+	x, y := 40, 60
+	cfg.X, cfg.Y = &x, &y
+	window := newConfig(NewWithConfig(cfg, nil))
+	if window.Width != 1200 || window.Height != 800 {
+		t.Fatalf("window = %dx%d", window.Width, window.Height)
+	}
+	if window.Origin == nil || window.Origin.X != 40 || window.Origin.Y != 60 {
+		t.Fatalf("origin = %v", window.Origin)
+	}
+}
+
+// TestClosePromptAsksBeforeClosing raises the 每次询问 dialog and checks both
+// answers.
+func TestClosePromptAsksBeforeClosing(t *testing.T) {
+	model := New()
+	model.config.WorkspaceDir = t.TempDir()
+	model.config.CloseBehavior = config.CloseAsk
+	closed := false
+	model.requestClose(func() { closed = true })
+	driver, _ := openModel(t, model)
+
+	if !shows(driver, "关闭选项") {
+		t.Fatal("the close prompt did not appear")
+	}
+	click(t, driver, "取消")
+	if closed || model.closeAsk {
+		t.Fatal("取消 still closed the window")
+	}
+
+	model.requestClose(func() { closed = true })
+	settle(t, driver)
+	if !shows(driver, "关闭选项") {
+		t.Fatal("the close prompt did not appear the second time")
+	}
+	click(t, driver, "关闭应用")
+	if !closed || model.closeAsk {
+		t.Fatal("关闭应用 did not close the window")
+	}
+}
+
+// TestFirstEnabledSectionFollowsTheSwitches checks the fallback order when the
+// current feature is off.
+func TestFirstEnabledSectionFollowsTheSwitches(t *testing.T) {
+	model := New()
+	model.config.Features.Stock = false
+	if model.firstEnabledSection() != SectionAccounting {
+		t.Fatalf("fallback = %v", model.firstEnabledSection())
+	}
+	model.config.Features.Accounting = false
+	if model.firstEnabledSection() != SectionTodo {
+		t.Fatalf("fallback = %v", model.firstEnabledSection())
+	}
+	model.config.Features = config.FeatureFlags{}
+	if model.firstEnabledSection() != SectionSettings {
+		t.Fatalf("all-off fallback = %v", model.firstEnabledSection())
+	}
+}
+
+// TestTrayIconIsATemplate checks the placeholder status icon is a complete
+// transparent square with a visible mark.
+func TestTrayIconIsATemplate(t *testing.T) {
+	icon := trayIcon()
+	if icon.Size != 32 || len(icon.RGBA) != 32*32*4 || !icon.Template {
+		t.Fatalf("icon = %+v", icon)
+	}
+	opaque := 0
+	for index := 3; index < len(icon.RGBA); index += 4 {
+		if icon.RGBA[index] != 0 {
+			opaque++
+		}
+	}
+	if opaque == 0 {
+		t.Fatal("the status icon is empty")
 	}
 }

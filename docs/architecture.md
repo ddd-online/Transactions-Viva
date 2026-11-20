@@ -14,7 +14,7 @@ main.go                    入口：只做 log.Fatal(desktop.Run())
        │    ├─ internal/pages/*/controls   只属于该页面的组件
        │    ├─ internal/components/*      可复用的自定义组件（datepicker / pagination / selectbox）
        │    └─ internal/domain       纯领域规则与数据形状
-       ├─ internal/config        应用配置形状与默认值
+       ├─ internal/config        应用配置形状、默认值、读写与归一化
        └─ internal/store         SQLite 工作空间与 DAO（尚未实现）
 ```
 
@@ -31,7 +31,7 @@ main → desktop → pages → components
 - `store` 只依赖 `domain` 和 SQLite 驱动；页面不直接写 SQL。
 - `pages` 只依赖 `ui`、`components`、`domain`，不依赖 `desktop`（避免外壳与页面互相引用）。
 - `desktop` 是唯一知道窗口、标题栏和页面切换的地方；页面模型由它长期持有，切页不丢状态。
-- `config` 不依赖 UI；设置页通过依赖注入拿到读写配置的能力（落地时补）。
+- `config` 不依赖 UI；设置页只通过 `Spec` 回调用外壳读写配置，自己不碰文件。
 
 **自定义组件不设样式。** 自定义组件（`internal/components` 与各页面的 `controls` 子包）只用原生外观：`ui` 控件本来的样子、
 `components` 的 recipe（`BeginButton` / `Calendar` / `PopupRecipe` / `Select` …）和
@@ -63,7 +63,7 @@ main → desktop → pages → components
 | `internal/components/selectbox` | `ui.Select` 的包装，补上框架漏收的动画组 | — |
 | `internal/pages/<page>/controls` | 只属于某一个页面的组件：目前是设置页的分组卡片 / 设置行 | 旧工程同页目录下的组件 |
 | `internal/domain` | 金额、模型、常量、股票费用、统计、图表规则 | `shared/domain` |
-| `internal/config` | `AppConfig`、`FeatureFlags`、默认值 | `shared/types/config.ts`、`electron/config.ts` |
+| `internal/config` | `AppConfig`、功能开关、默认值、读写 / 归一化 / 未知键保留 | `shared/types/config.ts`、`electron/config.ts`、`electron/services/config.ts` |
 | `internal/store` | SQLite 打开 / 迁移 / DAO | `electron/db`、`electron/services` 的持久化部分 |
 
 非 UI 的能力按职责拆到 `internal/<capability>`（对齐 motty 的做法），例如后续会出现的
@@ -83,6 +83,17 @@ main → desktop → pages → components
   「设置行」是标题 / 说明在左、控件在右的 64px 行。尺寸与分组方式对齐 motty 的设置页
   （208px 分区列、760px 阅读列、32px 页边距），进入设置时左侧主导航保持可见，选中状态由
   `desktop.Model.section` 持有。
+- 配置与设置：`internal/config` 读写 `~/.transactions.json`（`viva dev` 期间是
+  `~/.transactions.dev.json`）。读取时每个字段独立回退（缺字段、类型不对、文件损坏都只影响
+  那一项），写回把已知字段合并进文件原有的顶层对象再写 `.tmp` + rename，所以升级 / 降级
+  不会抹掉未知键。窗口关闭时把尺寸 / 位置写回 `width` / `height` / `x` / `y`，下次启动
+  按它开窗。设置页的「通用设置」是工作空间（`app.OpenDirectory`，写入 `workspaceDir` 和最近
+  5 条 `recentWorkspaces`）、外观（浅色 / 深色 / 跟随系统；标题栏开关写同一个值，
+  `app.WatchSystemAppearance` 让跟随系统时会重绘）、关闭行为（`OnCloseRequest`：直接退出 /
+  隐藏到托盘 / 弹窗询问；托盘用 Viva 的 `StatusItem`，没有状态区时回退为退出）；网络代理
+  仍是占位。「功能开关」写 `features`（当前还没有打开的账本，所以只写全局默认；
+  `ledgerFeatures` 的账本覆盖规则已在 `config` 里，等账本进入外壳后接上），关掉的分区立即从
+  Sidebar 消失，五个全关时落到设置。
 - 记账-记录页：工具栏 / 时间范围 / 表头排序 / 表格 / 分页 /
   收支统计都在 `internal/pages/accounting/records`，行数据来自同包的 `mock.go`，
   工具栏最左侧的「账本」`selectbox.Select` 在 mock 的两个账本（家庭账本 / 旅行账本）间切换：
