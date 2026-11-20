@@ -14,6 +14,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components"
+	"transactions/internal/domain"
 	"transactions/internal/pages/accounting/analysis"
 	"transactions/internal/pages/accounting/ledger"
 	"transactions/internal/pages/accounting/records"
@@ -110,6 +111,81 @@ func (m *Model) SetRepository(repo repository.Repository) error {
 	m.templates.SetDataSource(repo, m.ledgerChanged)
 	return nil
 }
+
+// Ledgers are the workspace's ledgers, in the order the selectors show them.
+// The settings page paints the same list, so a rename there is visible here.
+func (m *Model) Ledgers() []domain.Ledger { return m.ledgers.List() }
+
+// ActiveLedger is the id the accounting pages are reading.
+func (m *Model) ActiveLedger() string { return m.ledgers.Active() }
+
+// CreateLedger adds a ledger to the workspace, makes it the active one (the old
+// application's 创建账本 did the same) and reloads the pages onto it.
+func (m *Model) CreateLedger(name, description string) error {
+	if m.repo == nil {
+		return errNoWorkspace
+	}
+	created, err := m.repo.CreateLedger(context.Background(), name, description)
+	if err != nil {
+		return err
+	}
+	if err := m.reloadLedgers(); err != nil {
+		return err
+	}
+	m.ledgers.SetActive(created.ID)
+	m.ledgerChanged()
+	return nil
+}
+
+// UpdateLedger renames a ledger and rewrites its description. The list is
+// re-read so every 账本 Selector and the settings rows agree; the records
+// themselves do not change.
+func (m *Model) UpdateLedger(id, name, description string) error {
+	if m.repo == nil {
+		return errNoWorkspace
+	}
+	if err := m.repo.UpdateLedger(context.Background(), id, name, description); err != nil {
+		return err
+	}
+	return m.reloadLedgers()
+}
+
+// DeleteLedger removes a ledger and everything it owns. The last ledger cannot
+// be deleted: accounting needs one, and the workspace would otherwise reopen on
+// a fresh 默认账本 as if the deletion had failed.
+func (m *Model) DeleteLedger(id string) error {
+	if m.repo == nil {
+		return errNoWorkspace
+	}
+	if len(m.ledgers.List()) <= 1 {
+		return fmt.Errorf("%w：至少保留一个账本", repository.ErrInvalid)
+	}
+	if err := m.repo.DeleteLedger(context.Background(), id); err != nil {
+		return err
+	}
+	if err := m.reloadLedgers(); err != nil {
+		return err
+	}
+	m.ledgerChanged()
+	return nil
+}
+
+// reloadLedgers re-reads the workspace's ledgers into the shared store. Reset
+// keeps the active id when it survived and falls back to the first otherwise.
+func (m *Model) reloadLedgers() error {
+	if m.repo == nil {
+		return errNoWorkspace
+	}
+	ledgers, err := m.repo.Ledgers(context.Background())
+	if err != nil {
+		return fmt.Errorf("读取账本失败：%w", err)
+	}
+	m.ledgers.Reset(ledgers)
+	return nil
+}
+
+// errNoWorkspace is what a ledger command reports when no workspace is open.
+var errNoWorkspace = fmt.Errorf("%w：工作空间尚未打开", repository.ErrInvalid)
 
 // ledgerChanged reloads every accounting page after the shared 账本 Selector
 // chose another ledger.

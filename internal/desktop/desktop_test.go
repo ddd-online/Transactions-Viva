@@ -1046,6 +1046,108 @@ func TestSettingsAppearanceAndCloseBehavior(t *testing.T) {
 	}
 }
 
+// TestSettingsManagesLedgers drives 账本管理, the settings section under 通用设置:
+// create a ledger with a description, rename it, and delete it. The new ledger becomes the one the
+// accounting pages read, as the old application's 创建账本 did.
+func TestSettingsManagesLedgers(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "设置")
+	// 账本管理 is its own section of the panel, under 通用设置.
+	click(t, driver, "账本管理")
+	if !shows(driver, "家庭账本") {
+		t.Fatal("账本管理 does not list the workspace's ledgers")
+	}
+
+	click(t, driver, "新增账本")
+	click(t, driver, "账本名称")
+	if err := driver.Type("装修账本"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "账本描述")
+	if err := driver.Type("2026 年装修支出"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "创建")
+	if !shows(driver, "装修账本") || !shows(driver, "2026 年装修支出") {
+		t.Fatal("the created ledger is not in 账本管理")
+	}
+	created := ledgerID(t, model, "装修账本")
+	if got := model.accounting.ActiveLedger(); got != created {
+		t.Fatalf("active ledger = %q, want the created %q", got, created)
+	}
+
+	// Rename and rewrite the description in one dialog.
+	click(t, driver, "编辑账本 装修账本")
+	click(t, driver, "账本名称")
+	if err := driver.SelectText(0, len([]rune("装修账本"))); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Type("装修 2026"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "账本描述")
+	if err := driver.SelectText(0, len([]rune("2026 年装修支出"))); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Type("只剩水电"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "保存")
+	if shows(driver, "装修账本") {
+		t.Fatal("the old name is still on the page")
+	}
+	if !shows(driver, "装修 2026") || !shows(driver, "只剩水电") {
+		t.Fatal("the rename and its description did not reach 账本管理")
+	}
+	renamed := ledgerID(t, model, "装修 2026")
+	if renamed != created {
+		t.Fatalf("the rename changed the id: %q -> %q", created, renamed)
+	}
+
+	// A name is required; the dialog stays open with the reason.
+	click(t, driver, "编辑账本 装修 2026")
+	click(t, driver, "账本名称")
+	if err := driver.SelectText(0, len([]rune("装修 2026"))); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Key(gfx.KeyBackspace, 0); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "保存")
+	if !shows(driver, "账本名称不能为空") {
+		t.Fatal("an empty name was accepted")
+	}
+	click(t, driver, "取消")
+
+	// Delete removes it, and the accounting pages fall back to the first.
+	click(t, driver, "删除账本 装修 2026")
+	if !shows(driver, "删除账本「装修 2026」？") {
+		t.Fatal("the delete confirmation did not open")
+	}
+	click(t, driver, "删除")
+	if shows(driver, "装修 2026") {
+		t.Fatal("the deleted ledger is still on the page")
+	}
+	if len(model.accounting.Ledgers()) != 2 {
+		t.Fatalf("ledgers = %d after the delete, want 2", len(model.accounting.Ledgers()))
+	}
+	if got := model.accounting.ActiveLedger(); got == created {
+		t.Fatal("the accounting pages are still reading the deleted ledger")
+	}
+}
+
+// ledgerID finds a ledger by name in the shared store.
+func ledgerID(t *testing.T, model *Model, name string) string {
+	t.Helper()
+	for _, one := range model.accounting.Ledgers() {
+		if one.Name == name {
+			return one.ID
+		}
+	}
+	t.Fatalf("no ledger named %q", name)
+	return ""
+}
+
 // TestFeatureSwitchHidesItsSection checks a switch removes the section from the
 // rail immediately, and turning it back on restores it.
 func TestFeatureSwitchHidesItsSection(t *testing.T) {

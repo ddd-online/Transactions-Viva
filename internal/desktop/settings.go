@@ -18,11 +18,43 @@ func (m *Model) settingsSpec() settings.Spec {
 		CloseBehavior:   m.config.CloseBehavior,
 		Features:        m.config.Features,
 		TrayAvailable:   m.trayOK,
+		Ledgers:         m.accounting.Ledgers(),
+		ActiveLedger:    m.accounting.ActiveLedger(),
 		OnPickWorkspace: m.pickWorkspaceDir,
 		OnAppearance:    m.setAppearance,
 		OnCloseBehavior: m.setCloseBehavior,
 		OnFeature:       m.setFeature,
+		OnCreateLedger:  m.createLedger,
+		OnUpdateLedger:  m.updateLedger,
+		OnDeleteLedger:  m.deleteLedger,
 	}
+}
+
+// The ledger commands belong to the accounting section, which owns the shared
+// ledger store the four pages read. The shell only repaints: a ledger created in
+// settings is immediately the one the records page shows.
+func (m *Model) createLedger(name, description string) error {
+	if err := m.accounting.CreateLedger(name, description); err != nil {
+		return err
+	}
+	m.invalidate()
+	return nil
+}
+
+func (m *Model) updateLedger(id, name, description string) error {
+	if err := m.accounting.UpdateLedger(id, name, description); err != nil {
+		return err
+	}
+	m.invalidate()
+	return nil
+}
+
+func (m *Model) deleteLedger(id string) error {
+	if err := m.accounting.DeleteLedger(id); err != nil {
+		return err
+	}
+	m.invalidate()
+	return nil
 }
 
 // setAppearance pins the look or follows the system, repaints, and saves. A

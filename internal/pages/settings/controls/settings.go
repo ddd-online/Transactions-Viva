@@ -13,16 +13,20 @@ import (
 // The caller declares the rows and the dividers between them, so a row can hold
 // any control without this component guessing.
 func Group(c ui.C, title string, rows func()) {
+	if title != "" {
+		typography.Section(c, title)
+	}
+	Card(c, rows)
+}
+
+// Card is the bordered surface of a settings card without its title: the rows
+// a page shows under its own heading (账本管理) use it directly, so every card
+// in the panel has the same chrome as the titled ones.
+func Card(c ui.C, rows func()) {
 	theme := c.Theme()
-	metrics := theme.Metrics
-	ui.Column(c).FillWidth().Children(func() {
-		if title != "" {
-			typography.Section(c, title).MarginBottom(metrics.GapItem)
-		}
-		ui.Column(c).FillWidth().Background(theme.Card).
-			Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).
-			Children(rows)
-	})
+	ui.Column(c).FillWidth().Background(theme.Card).
+		Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).
+		Children(rows)
 }
 
 // Row is one row of a settings card: the name and its explanation on
@@ -38,8 +42,11 @@ func Row(c ui.C, title, description string, control func()) {
 		Gap(metrics.GapItem * 2).Items(ui.Center).Children(func() {
 		ui.Column(c).Grow(1).Children(func() {
 			// No half weight: on a Chinese face 500 draws as 400, so a row's
-			// name would look like its explanation.
-			typography.Body(c, title)
+			// name would look like its explanation. The name is the row's
+			// only unbounded text (a ledger can be named anything), so it
+			// keeps one line and ends with … instead of running into the
+			// control on the right.
+			typography.Body(c, title).FillWidth().Ellipsis()
 			if description != "" {
 				typography.CaptionParagraph(c, description, 2)
 			}

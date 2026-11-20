@@ -9,12 +9,16 @@
 package settings
 
 import (
+	"strings"
+
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/layout"
 	"transactions/internal/components/typography"
 	"transactions/internal/config"
+	"transactions/internal/domain"
+	"transactions/internal/icons"
 	"transactions/internal/pages/settings/controls"
 )
 
@@ -22,6 +26,7 @@ type tab uint8
 
 const (
 	tabGeneral tab = iota
+	tabLedgers
 	tabFeatures
 	tabData
 	tabDiary
@@ -39,6 +44,14 @@ const (
 	columnBottom  = layout.GroupGap
 	navEntryHigh  = float32(36)
 	navEntrySpace = float32(4)
+	// ledgerFieldHeight is one form row of 新增 / 编辑账本: the FormField title
+	// and its 32 px control. FormField reserves a description and an error row
+	// this dialog does not use; pinning the row keeps the form compact, as the
+	// record composer does.
+	ledgerFieldHeight = float32(64)
+	// ledgerActionHeight is the card's 新增账本 row: shorter than a settings row,
+	// because it is an action on the list rather than a setting.
+	ledgerActionHeight = float32(48)
 )
 
 // setting is one row of a not-yet-migrated section. label is the row's name and
@@ -59,6 +72,10 @@ var sections = [...]section{
 	{
 		tab:   tabGeneral,
 		title: "通用设置",
+	},
+	{
+		tab:   tabLedgers,
+		title: "账本管理",
 	},
 	{
 		tab:   tabFeatures,
@@ -107,10 +124,24 @@ type Spec struct {
 	// no way back, so the close behavior row explains that it quits instead.
 	TrayAvailable bool
 
+	// Ledgers are the open workspace's ledgers, newest last. The settings page
+	// manages them; the accounting pages read the same list through their
+	// shared store, so a rename here is the name they show.
+	Ledgers []domain.Ledger
+	// ActiveLedger is the id the accounting pages are reading, marked 当前 in
+	// the list; empty when no workspace is open.
+	ActiveLedger string
+
 	OnPickWorkspace func() error
 	OnAppearance    func(config.Appearance) error
 	OnCloseBehavior func(config.CloseBehavior) error
 	OnFeature       func(config.FeatureKey, bool) error
+	// CreateLedger adds a ledger and makes it the accounting pages' active one;
+	// UpdateLedger rewrites its name and description; DeleteLedger removes it
+	// with its records. Each returns what the user should read on failure.
+	OnCreateLedger func(name, description string) error
+	OnUpdateLedger func(id, name, description string) error
+	OnDeleteLedger func(id string) error
 }
 
 // appearanceOptions is the segmented 外观 control, in the old page's order.
@@ -160,6 +191,30 @@ var featureRows = [...]struct {
 type Model struct {
 	tab     tab
 	toaster ui.Toaster
+
+	// ledgerForm is the 新增 / 编辑账本 dialog; id empty means create.
+	ledgerForm ledgerForm
+	// ledgerDelete is the confirmation for removing one ledger.
+	ledgerDelete ledgerDelete
+}
+
+// ledgerForm is one ledger being created or edited. The two FormFieldStates are
+// the id, name and error rows' layout, kept across paints like any control.
+type ledgerForm struct {
+	open        bool
+	id          string
+	name        string
+	description string
+	nameField   ui.FormFieldState
+	descField   ui.FormFieldState
+	err         string
+}
+
+// ledgerDelete names the ledger a confirmation is open for.
+type ledgerDelete struct {
+	open bool
+	id   string
+	name string
 }
 
 // New returns the settings page on 通用设置.
@@ -173,6 +228,8 @@ func (m *Model) View(c ui.C, spec Spec) {
 		ui.Divider(c)
 		m.page(c, sections[m.tab], spec)
 	})
+	m.ledgerDialog(c, spec)
+	m.ledgerDeleteDialog(c, spec)
 	ui.Toasts(c, &m.toaster)
 }
 
@@ -227,6 +284,8 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 				switch entry.tab {
 				case tabGeneral:
 					m.general(c, spec)
+				case tabLedgers:
+					m.ledgers(c, spec)
 				case tabFeatures:
 					m.features(c, spec)
 				default:
@@ -267,6 +326,162 @@ func (m *Model) general(c ui.C, spec Spec) {
 		controls.Row(c, "网络代理", "行情、涨停池与更新检查走代理。", func() {
 			typography.Caption(c, "未迁移")
 		})
+	})
+}
+
+// ledgers is 账本管理, its own section of the panel: one card, one row per
+// ledger with its description, an edit and a delete command, and 新增账本 as the
+// card's last row. A ledger the accounting pages are reading is marked 当前; the
+// last one cannot be deleted, because accounting always needs one to read.
+func (m *Model) ledgers(c ui.C, spec Spec) {
+	theme := c.Theme()
+	metrics := theme.Metrics
+	controls.Card(c, func() {
+		if len(spec.Ledgers) == 0 {
+			controls.Row(c, "还没有账本", "打开工作空间后可以在这里新增、重命名或删除账本。", nil)
+			return
+		}
+		for index := range spec.Ledgers {
+			if index > 0 {
+				ui.Divider(c)
+			}
+			one := spec.Ledgers[index]
+			controls.Row(c, one.Name, one.Description, func() {
+				if spec.ActiveLedger == one.ID {
+					typography.Caption(c, "当前")
+				}
+				if ui.Button(c, "编辑账本 "+one.Name).Ghost().Icon(icons.Pencil).
+					IconOnly().Tooltip("编辑名称与描述").Clicked() {
+					m.openLedgerForm(spec, one.ID)
+				}
+				// The last ledger stays: a workspace without one would reopen on
+				// a fresh 默认账本, as if the deletion had failed.
+				last := len(spec.Ledgers) <= 1
+				remove := ui.Button(c, "删除账本 "+one.Name).Ghost().Icon(icons.Trash2).
+					IconOnly().Disabled(last)
+				if last {
+					remove = remove.Tooltip("至少保留一个账本")
+				} else {
+					remove = remove.Tooltip("删除账本")
+				}
+				if remove.Clicked() {
+					m.ledgerDelete = ledgerDelete{open: true, id: one.ID, name: one.Name}
+				}
+			})
+		}
+		ui.Divider(c)
+		ui.Row(c).Height(ledgerActionHeight).FillWidth().
+			PadX(metrics.PadSurface).Items(ui.Center).Children(func() {
+			if ui.Button(c, "新增账本").Ghost().Icon(icons.Plus).Clicked() {
+				m.openLedgerForm(spec, "")
+			}
+		})
+	})
+}
+
+// openLedgerForm raises the create dialog, or the edit dialog prefilled with the
+// chosen ledger.
+func (m *Model) openLedgerForm(spec Spec, id string) {
+	form := ledgerForm{open: true, id: id}
+	for _, one := range spec.Ledgers {
+		if one.ID == id {
+			form.name, form.description = one.Name, one.Description
+		}
+	}
+	m.ledgerForm = form
+}
+
+// ledgerDialog is the 新增 / 编辑账本 form: the ledger's name and its
+// description, both trimmed before they are written.
+func (m *Model) ledgerDialog(c ui.C, spec Spec) {
+	if !m.ledgerForm.open {
+		return
+	}
+	title := "新增账本"
+	submit := "创建"
+	if m.ledgerForm.id != "" {
+		title, submit = "编辑账本", "保存"
+	}
+	ui.ModalWith(c, &m.ledgerForm.open, title, ui.ModalSpec{Width: 420}, func() {
+		ui.Column(c).Children(func() {
+			ui.FormField(c, &m.ledgerForm.nameField, "名称").Height(ledgerFieldHeight).Children(func() {
+				ui.TextField(c, &m.ledgerForm.name, "账本名称", "请输入账本名称").AutoFocus()
+			})
+			ui.FormField(c, &m.ledgerForm.descField, "描述").Height(ledgerFieldHeight).Children(func() {
+				ui.TextField(c, &m.ledgerForm.description, "账本描述", "请输入账本描述")
+			})
+			if m.ledgerForm.err != "" {
+				typography.Caption(c, m.ledgerForm.err).Color(c.Theme().Danger)
+			}
+		})
+	}, func() {
+		if ui.Button(c, "取消").Outline().Clicked() {
+			m.ledgerForm.open = false
+		}
+		if ui.Button(c, submit).Clicked() {
+			m.submitLedger(spec)
+		}
+	})
+}
+
+// submitLedger writes the form through the shell and keeps the dialog open with
+// the reason when the workspace refuses it.
+func (m *Model) submitLedger(spec Spec) {
+	name := strings.TrimSpace(m.ledgerForm.name)
+	if name == "" {
+		m.ledgerForm.err = "账本名称不能为空"
+		return
+	}
+	description := strings.TrimSpace(m.ledgerForm.description)
+	var err error
+	if m.ledgerForm.id == "" {
+		if spec.OnCreateLedger == nil {
+			return
+		}
+		err = spec.OnCreateLedger(name, description)
+		if err == nil {
+			m.toaster.Show("账本已创建", "", ui.ToastSuccess)
+		}
+	} else {
+		if spec.OnUpdateLedger == nil {
+			return
+		}
+		err = spec.OnUpdateLedger(m.ledgerForm.id, name, description)
+		if err == nil {
+			m.toaster.Show("账本已保存", "", ui.ToastSuccess)
+		}
+	}
+	if err != nil {
+		m.ledgerForm.err = err.Error()
+		return
+	}
+	m.ledgerForm.open = false
+}
+
+// ledgerDeleteDialog confirms the cascade before deleting a ledger.
+func (m *Model) ledgerDeleteDialog(c ui.C, spec Spec) {
+	if !m.ledgerDelete.open {
+		return
+	}
+	ui.ModalWith(c, &m.ledgerDelete.open, "删除账本「"+m.ledgerDelete.name+"」？", ui.ModalSpec{
+		Width:       420,
+		Description: "记录、分类标签、模板与图表会一起删除，无法恢复。",
+	}, nil, func() {
+		if ui.Button(c, "取消").Outline().Clicked() {
+			m.ledgerDelete.open = false
+		}
+		if ui.Button(c, "删除").Destructive().Clicked() {
+			id := m.ledgerDelete.id
+			if spec.OnDeleteLedger == nil {
+				return
+			}
+			if err := spec.OnDeleteLedger(id); err != nil {
+				m.toaster.Show("删除账本失败："+err.Error(), "", ui.ToastError)
+				return
+			}
+			m.ledgerDelete.open = false
+			m.toaster.Show("账本已删除", "", ui.ToastSuccess)
+		}
 	})
 }
 
