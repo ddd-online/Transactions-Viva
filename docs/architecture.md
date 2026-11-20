@@ -70,6 +70,7 @@ main → desktop → pages → components
 | `internal/components/datepicker` | 日期 / 时间范围选择器（工具栏与表单同一组件） | `src/components/time-range-picker.tsx`、antd DatePicker |
 | `internal/components/pagination` | 分页栏：页大小 Select + Viva 分页 + 总数 | `src/components/pagination.tsx` |
 | `internal/components/selectbox` | `ui.Select` 的包装，补上框架漏收的动画组 | — |
+| `internal/buildinfo` | 版本、构建提交、运行平台与运行时；关于软件读它，`viva.toml` 的版本由测试对齐 | 旧工程 `settings-about.tsx` 的版本面板 |
 | `internal/components/typography` | 字号 / 字重的五个角色（Caption 12 · Body 14 · Section 16 · Title 20 · Metric 24） | `src/styles/tokens.css` 的 `--transactions-size-text-*`，收掉 12/13/14 的 1px 档 |
 | `internal/pages/<page>/controls` | 只属于某一个页面的组件：目前是设置页的分组卡片 / 设置行 | 旧工程同页目录下的组件 |
 | `internal/domain` | 金额、模型、常量、股票费用、统计、图表规则 | `shared/domain` |
@@ -136,6 +137,7 @@ main → desktop → pages → components
   Viva 的 `StatusItem`，没有状态区时回退为退出）；网络代理仍是占位。「功能开关」写 `features`
   的全局默认；`ledgerFeatures` 的账本覆盖规则已在 `config` 里，但还没有接到真实账本上。
   关掉的分区立即从 Sidebar 消失，五个全关时落到设置。
+- 关于软件是成立的页面（对齐 motty 的关于页）：身份卡（标志、名称、一句话定位、「复制版本信息」）→「版本信息」2×2 事实网格 →「更新」一行（尚未接入，标「暂未支持」）→「项目」两张外链卡 →「界面由 Viva 绘制」尾注。事实来自 `internal/buildinfo`（`debug.ReadBuildInfo` 的提交与日期 + `runtime`，一次读取）；「复制」与「打开链接」走 `Spec` 回调外壳（`app.SetClipboardText` / `app.OpenURL`，在驱动下记录而不碰真实系统）。
 - 账本管理是设置自己的一个分区（排在通用设置之后）：列出工作空间的账本（名称 + 描述），
   可以新增、编辑（名称与描述一次写入）与删除，标出记账页正在读的那一本。三命令落在
   `accounting.Model`（`CreateLedger` / `UpdateLedger` / `DeleteLedger`），因为它持有四个记账页
