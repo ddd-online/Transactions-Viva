@@ -1170,11 +1170,11 @@ func TestAboutPageShowsTheBuildAndOpensItsLinks(t *testing.T) {
 	}
 
 	click(t, driver, "项目主页")
-	if got, ok := driver.LastOpenedURL(); !ok || got != "https://github.com/ddd-online/Transactions" {
+	if got, ok := driver.LastOpenedURL(); !ok || got != "https://github.com/ddd-online/Transactions-Viva" {
 		t.Fatalf("项目主页 opened %q", got)
 	}
 	click(t, driver, "问题反馈")
-	if got, ok := driver.LastOpenedURL(); !ok || got != "https://github.com/ddd-online/Transactions/issues" {
+	if got, ok := driver.LastOpenedURL(); !ok || got != "https://github.com/ddd-online/Transactions-Viva/issues" {
 		t.Fatalf("问题反馈 opened %q", got)
 	}
 	click(t, driver, "界面由 Viva 绘制")

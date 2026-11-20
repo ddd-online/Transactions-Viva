@@ -14,7 +14,7 @@ import (
 // Where the project lives and who draws the window. One place, so the cards and
 // the colophon cannot drift apart.
 const (
-	projectURL = "https://github.com/ddd-online/Transactions"
+	projectURL = "https://github.com/ddd-online/Transactions-Viva"
 	issuesURL  = projectURL + "/issues"
 	vivaURL    = "https://vivaui.dev"
 )
