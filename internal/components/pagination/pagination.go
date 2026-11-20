@@ -10,6 +10,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/selectbox"
+	"transactions/internal/components/typography"
 )
 
 // paginationSlots is the widest page window Viva's pagination shows before it
@@ -66,12 +67,12 @@ func Bar(c ui.C, spec Spec) {
 	ui.Row(c).Height(metrics.ControlHeight + metrics.PadSurface).FillWidth().
 		PadX(metrics.PadSurface).Gap(metrics.GapItem).Items(ui.Center).Children(func() {
 		ui.Spacer(c)
-		ui.Text(c, "每页").FontSize(metrics.FontSizeS).Muted()
+		typography.Caption(c, "每页")
 		selectBox := selectbox.Select(c, &size, sizes, strconv.Itoa).Label("每页条数")
 		if selectBox.Changed() && spec.OnPageSize != nil {
 			spec.OnPageSize(size)
 		}
-		ui.Text(c, "条").FontSize(metrics.FontSizeS).Muted()
+		typography.Caption(c, "条")
 
 		// Viva's pagination paints its own hits; name them before the slot.
 		var ids [paginationSlots + 2]gfx.ID
@@ -84,7 +85,7 @@ func Bar(c ui.C, spec Spec) {
 			drawPagination(d, spec, ids, items, page, pages)
 		})
 
-		ui.Text(c, "共 "+strconv.Itoa(total)+" 条").FontSize(metrics.FontSizeS).Muted()
+		typography.Caption(c, "共 "+strconv.Itoa(total)+" 条")
 	})
 }
 

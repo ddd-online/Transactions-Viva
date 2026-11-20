@@ -10,6 +10,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/typography"
 	"transactions/internal/config"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting"
@@ -314,7 +315,7 @@ func (m *Model) titlebar(c ui.C, leading, trailing float32) {
 	ui.Row(c).Height(36).FillWidth().Background(theme.Muted).
 		PadLeft(leading + 12).PadRight(trailing + 8).Gap(8).Items(ui.Center).
 		MovesWindow().Children(func() {
-		ui.Text(c, "Transactions").FontSize(12).Bold()
+		typography.Caption(c, "Transactions").Bold()
 		ui.Spacer(c)
 		icon, tip := icons.Moon, "切换到深色模式"
 		if m.dark {

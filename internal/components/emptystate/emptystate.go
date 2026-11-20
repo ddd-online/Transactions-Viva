@@ -3,13 +3,17 @@
 // their own actions; this is the quiet line inside a section.
 package emptystate
 
-import "github.com/vivaui/viva/ui"
+import (
+	"github.com/vivaui/viva/ui"
+
+	"transactions/internal/components/typography"
+)
 
 // Notice centers one line of muted text in the space left in a column, so the
-// 标签 columns and the analysis rail all say it the same way.
+// 标签 columns and the analysis rail all say it the same way: a dense line, one
+// step below the rows it replaces.
 func Notice(c ui.C, text string) {
-	theme := c.Theme()
 	ui.Column(c).Grow(1).FillWidth().Center().Children(func() {
-		ui.Text(c, text).FontSize(theme.Metrics.FontSizeM).Muted().TextCenter()
+		typography.Body(c, text).Muted().TextCenter()
 	})
 }

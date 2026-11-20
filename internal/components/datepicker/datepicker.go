@@ -12,6 +12,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/typography"
 	"transactions/internal/icons"
 )
 
@@ -336,7 +337,7 @@ func (state *State) paintCaption(canvas *gfx.Canvas, theme gfx.Theme, spec Spec,
 	canvas.LabelCenter(title, gfx.Rect{
 		X: place.caption.X + titleInset, Y: place.caption.Y,
 		Width: place.caption.Width - 2*titleInset, Height: place.caption.Height,
-	}, gfx.TextStyle{Size: theme.Metrics.FontSizeM, Weight: gfx.WeightMedium, Color: theme.Foreground})
+	}, gfx.TextStyle{Size: typography.SizeBody, Weight: gfx.WeightMedium, Color: theme.Foreground})
 }
 
 // paintGrid paints the one grid of the grain: days under their weekdays, or the
@@ -355,7 +356,7 @@ func (state *State) paintGrid(canvas *gfx.Canvas, theme gfx.Theme, spec Spec, pl
 				Y: weekdays.Y, Width: cellWidth, Height: weekdays.Height,
 			}
 			canvas.LabelCenter(name, cell, gfx.TextStyle{
-				Size: metrics.FontSizeS, Color: theme.MutedForeground,
+				Size: typography.SizeCaption, Color: theme.MutedForeground,
 			})
 		}
 		top += weekdays.Height

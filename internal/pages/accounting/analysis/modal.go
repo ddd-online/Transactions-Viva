@@ -7,6 +7,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/selectbox"
+	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 )
 
@@ -317,7 +318,7 @@ func (m *Model) modals(c ui.C) {
 	if m.modal == modalDelete {
 		chart := m.deleting
 		ui.ModalWith(c, &m.dialogOpen, "删除图表？", ui.ModalSpec{Width: 380}, func() {
-			ui.Text(c, "「"+chart.Title+"」会从当前账本移除。").FontSize(13)
+			typography.BodyParagraph(c, "「"+chart.Title+"」会从当前账本移除。", 3)
 		}, func() {
 			if ui.Button(c, "取消").Outline().Clicked() {
 				m.closeModal()
@@ -353,7 +354,7 @@ func (m *Model) modals(c ui.C) {
 				m.lineFields(c)
 			}
 			if m.form.err != "" {
-				ui.Text(c, m.form.err).FontSize(12).Color(c.Theme().Danger)
+				typography.Caption(c, m.form.err).Color(c.Theme().Danger)
 			}
 		})
 	}, func() {
@@ -379,25 +380,25 @@ func (m *Model) modals(c ui.C) {
 
 func (m *Model) createFields(c ui.C) {
 	m.primaryField(c, "图表名称", &m.form.title, "例如：年度支出")
-	ui.Text(c, "图表类型").FontSize(c.Theme().Metrics.FontSizeS).Muted()
+	typography.Caption(c, "图表类型")
 	ui.Choice(c, &m.form.chartType, chartTypeLabels[:], nil)
 	if m.form.chartType == "饼图" {
-		ui.Text(c, "分组方式").FontSize(c.Theme().Metrics.FontSizeS).Muted()
+		typography.Caption(c, "分组方式")
 		ui.Choice(c, &m.form.groupField, groupLabels[:], nil)
 		if m.form.groupField != "交易类型" {
-			ui.Text(c, "交易类型").FontSize(c.Theme().Metrics.FontSizeS).Muted()
+			typography.Caption(c, "交易类型")
 			if selectbox.Select(c, &m.form.groupKind, lineTypeLabels[:], nil).Label("交易类型").FillWidth().Changed() {
 				m.form.groupCategory = ""
 			}
 		}
 		if m.form.groupField == "标签" {
-			ui.Text(c, "分类").FontSize(c.Theme().Metrics.FontSizeS).Muted()
+			typography.Caption(c, "分类")
 			names := m.categoryNames(m.groupKindValue())
 			selectbox.Select(c, &m.form.groupCategory, names, nil).Placeholder("选择分类").Label("分类").FillWidth()
 		}
 		return
 	}
-	ui.Text(c, "曲线粒度").FontSize(c.Theme().Metrics.FontSizeS).Muted()
+	typography.Caption(c, "曲线粒度")
 	selectbox.Select(c, &m.form.granularity, granularityValues[:], func(value string) string {
 		if value == granularityYear {
 			return "年"
@@ -408,19 +409,19 @@ func (m *Model) createFields(c ui.C) {
 
 func (m *Model) lineFields(c ui.C) {
 	m.primaryField(c, "曲线名称", &m.form.lineLabel, "例如：餐饮支出")
-	ui.Text(c, "交易类型").FontSize(c.Theme().Metrics.FontSizeS).Muted()
+	typography.Caption(c, "交易类型")
 	if selectbox.Select(c, &m.form.lineKind, lineTypeLabels[:], nil).Label("交易类型").FillWidth().Changed() {
 		m.form.lineCategory = ""
 		m.resetTagSelect()
 	}
-	ui.Text(c, "分类（可选）").FontSize(c.Theme().Metrics.FontSizeS).Muted()
+	typography.Caption(c, "分类（可选）")
 	names := m.categoryNames(m.lineKindValueForForm())
 	if selectbox.Select(c, &m.form.lineCategory, names, nil).Placeholder("不限分类").Label("分类（可选）").FillWidth().Changed() {
 		m.resetTagSelect()
 	}
-	ui.Text(c, "标签（可选）").FontSize(c.Theme().Metrics.FontSizeS).Muted()
+	typography.Caption(c, "标签（可选）")
 	m.tagField(c)
-	ui.Text(c, "标签匹配").FontSize(c.Theme().Metrics.FontSizeS).Muted()
+	typography.Caption(c, "标签匹配")
 	ui.Choice(c, &m.form.linePolicy, tagPolicyLabels[:], nil)
 	m.field(c, "描述包含（可选）", &m.form.lineDescription, "输入关键词")
 	ui.Checkbox(c, &m.form.lineOutlier, "包含离群值")
@@ -445,13 +446,13 @@ func (m *Model) groupKindValue() string {
 }
 
 func (m *Model) field(c ui.C, label string, value *string, placeholder string) {
-	ui.Text(c, label).FontSize(c.Theme().Metrics.FontSizeS).Muted()
+	typography.Caption(c, label)
 	ui.TextField(c, value, label, placeholder).FillWidth()
 }
 
 // primaryField is the first field of a dialog: it takes the keyboard as the
 // dialog appears, so the user can type the name without clicking the field.
 func (m *Model) primaryField(c ui.C, label string, value *string, placeholder string) {
-	ui.Text(c, label).FontSize(c.Theme().Metrics.FontSizeS).Muted()
+	typography.Caption(c, label)
 	ui.TextField(c, value, label, placeholder).FillWidth().AutoFocus()
 }

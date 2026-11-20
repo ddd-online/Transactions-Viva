@@ -12,6 +12,8 @@ import (
 
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
+
+	"transactions/internal/components/typography"
 )
 
 const (
@@ -27,7 +29,7 @@ const (
 // from its label, so callers put it in a Flow or a Row.
 func Chip(c ui.C, label string) ui.Box {
 	theme := c.Theme()
-	return ui.Text(c, label).FontSize(theme.Metrics.FontSizeS).
+	return ui.Text(c, label).FontSize(typography.SizeCaption).
 		Color(theme.MutedForeground).Background(theme.Muted).
 		PadX(chipPadX).PadY(chipPadY).Radius(theme.Metrics.RadiusItem())
 }
@@ -42,10 +44,10 @@ func List(c ui.C, labels []string, width float32) {
 		// The dash keeps the column's width. A cell that shrinks to its glyph
 		// would pull the next column left, and one row without tags would break
 		// the table's grid.
-		ui.Text(c, "-").Width(width).FontSize(theme.Metrics.FontSizeM).Color(theme.MutedForeground)
+		ui.Text(c, "-").Width(width).FontSize(typography.SizeBody).Color(theme.MutedForeground)
 		return
 	}
-	style := gfx.TextStyle{Size: theme.Metrics.FontSizeS}
+	style := gfx.TextStyle{Size: typography.SizeCaption}
 	canvas := c.Canvas()
 	widths := make([]float32, len(labels))
 	for index, label := range labels {

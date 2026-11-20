@@ -6,6 +6,8 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/typography"
+
 	storepkg "transactions/internal/store"
 )
 
@@ -77,17 +79,19 @@ func (m *Model) workspaceGate(c ui.C) {
 			Border(1, theme.Border).
 			Background(theme.Card).
 			Shadow(gfx.ShadowMD).Children(func() {
-			ui.Text(c, "打开工作空间").FontSize(22).Bold()
-			ui.Paragraph(c, "账本、记录、分类标签与模板都保存在本地工作空间的 transactions.db 里。选择一个目录开始使用。", 3).Muted()
+			typography.Title(c, "打开工作空间")
+			typography.BodyParagraph(c, "账本、记录、分类标签与模板都保存在本地工作空间的 transactions.db 里。选择一个目录开始使用。", 3).Muted()
 			if m.workspaceErr != "" {
-				ui.Text(c, "打开失败："+m.workspaceErr).FontSize(12).Color(theme.Danger)
+				// A backend message can be a sentence or three; let it wrap
+				// instead of running off the card.
+				typography.CaptionParagraph(c, "打开失败："+m.workspaceErr, 4).Color(theme.Danger)
 			}
 			if ui.Button(c, "选择工作空间").Clicked() {
 				if err := m.pickWorkspaceDir(); err != nil {
 					m.workspaceErr = err.Error()
 				}
 			}
-			ui.Text(c, "也可以从左侧进入「设置 → 通用设置 → 工作空间」选择目录。").FontSize(12).Muted()
+			typography.CaptionParagraph(c, "也可以从左侧进入「设置 → 通用设置 → 工作空间」选择目录。", 2)
 		})
 	})
 }

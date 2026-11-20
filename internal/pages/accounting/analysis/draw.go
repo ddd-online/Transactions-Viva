@@ -7,6 +7,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/repository"
 )
@@ -35,7 +36,7 @@ func (m *Model) drawLine(d *ui.DrawContext) {
 	theme := d.Theme
 	inner := inset(d.Rect, 18)
 	if len(m.lineData) == 0 || !hasLineValues(m.lineData) {
-		d.Canvas.LabelCenter("暂无数据", inner, gfx.TextStyle{Size: theme.Metrics.FontSizeM, Color: theme.MutedForeground})
+		d.Canvas.LabelCenter("暂无数据", inner, gfx.TextStyle{Size: typography.SizeBody, Color: theme.MutedForeground})
 		return
 	}
 	plot := gfx.Rect{
@@ -66,7 +67,7 @@ func (m *Model) drawLine(d *ui.DrawContext) {
 			label = fmt.Sprintf("%.1f", value)
 		}
 		d.Canvas.LabelAligned(label, gfx.Rect{X: inner.X, Y: y - 8, Width: 52, Height: 16},
-			gfx.TextStyle{Size: theme.Metrics.FontSizeS, Color: theme.MutedForeground, Mono: true}, gfx.AlignRight)
+			gfx.TextStyle{Size: typography.SizeCaption, Color: theme.MutedForeground, Mono: true}, gfx.AlignRight)
 	}
 
 	labels := m.lineData[0].Data
@@ -98,7 +99,7 @@ func (m *Model) drawLine(d *ui.DrawContext) {
 			label = label[5:]
 		}
 		d.Canvas.LabelCenter(label, gfx.Rect{X: x - 24, Y: plot.Y + plot.Height + 8, Width: 48, Height: 16},
-			gfx.TextStyle{Size: theme.Metrics.FontSizeS, Color: theme.MutedForeground})
+			gfx.TextStyle{Size: typography.SizeCaption, Color: theme.MutedForeground})
 	}
 
 	for lineIndex, line := range m.lineData {
@@ -139,7 +140,7 @@ func (m *Model) drawPie(d *ui.DrawContext) {
 	theme := d.Theme
 	inner := inset(d.Rect, 18)
 	if len(m.pieSlices) == 0 || m.pie.Total <= 0 {
-		d.Canvas.LabelCenter("暂无数据", inner, gfx.TextStyle{Size: theme.Metrics.FontSizeM, Color: theme.MutedForeground})
+		d.Canvas.LabelCenter("暂无数据", inner, gfx.TextStyle{Size: typography.SizeBody, Color: theme.MutedForeground})
 		return
 	}
 	size := min(inner.Width, inner.Height) - 12
@@ -176,11 +177,11 @@ func (m *Model) drawPie(d *ui.DrawContext) {
 	d.Canvas.LabelCenter("合计", gfx.Rect{
 		X: pie.X + center - radius/2, Y: pie.Y + center - 18,
 		Width: radius, Height: 18,
-	}, gfx.TextStyle{Size: theme.Metrics.FontSizeS, Color: theme.MutedForeground})
+	}, gfx.TextStyle{Size: typography.SizeCaption, Color: theme.MutedForeground})
 	d.Canvas.LabelCenter(domain.CentsToYuan(m.pie.Total), gfx.Rect{
 		X: pie.X + center - radius/2, Y: pie.Y + center,
 		Width: radius, Height: 22,
-	}, gfx.TextStyle{Size: theme.Metrics.FontSizeM, Color: theme.Foreground, Mono: true})
+	}, gfx.TextStyle{Size: typography.SizeBody, Color: theme.Foreground, Mono: true})
 }
 
 func inset(rect gfx.Rect, all float32) gfx.Rect {

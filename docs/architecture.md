@@ -40,9 +40,11 @@ main → desktop → pages → components
 
 **自定义组件不设样式。** 自定义组件（`internal/components` 与各页面的 `controls` 子包）只用原生外观：`ui` 控件本来的样子、
 `components` 的 recipe（`BeginButton` / `Calendar` / `PopupRecipe` / `Select` …）和
-`c.Theme()` 的 `Metrics` / 颜色。不写字号、颜色、圆角、阴影常量，也不给控件固定像素尺寸——
+`c.Theme()` 的 `Metrics` / 颜色。不写颜色、圆角、阴影常量，也不给控件固定像素尺寸——
 尺寸和留白从主题度量与原生组件的布局里来；需要在画布上画浮层时，同样只调用 recipe 的
-`Paint` 或取它的度量。
+`Paint` 或取它的度量。**文字与字重只有一个来源**：`internal/components/typography` 的
+五个角色（12 / 14 / 16 / 20 / 24）。组件和页面都不写 `FontSize(数字)`——组件的
+`typography_test.go` 会扫描 `internal/` 并让这类改动构建失败。
 
 ## 包与旧工程对照
 
@@ -68,6 +70,7 @@ main → desktop → pages → components
 | `internal/components/datepicker` | 日期 / 时间范围选择器（工具栏与表单同一组件） | `src/components/time-range-picker.tsx`、antd DatePicker |
 | `internal/components/pagination` | 分页栏：页大小 Select + Viva 分页 + 总数 | `src/components/pagination.tsx` |
 | `internal/components/selectbox` | `ui.Select` 的包装，补上框架漏收的动画组 | — |
+| `internal/components/typography` | 字号 / 字重的五个角色（Caption 12 · Body 14 · Section 16 · Title 20 · Metric 24） | `src/styles/tokens.css` 的 `--transactions-size-text-*`，收掉 12/13/14 的 1px 档 |
 | `internal/pages/<page>/controls` | 只属于某一个页面的组件：目前是设置页的分组卡片 / 设置行 | 旧工程同页目录下的组件 |
 | `internal/domain` | 金额、模型、常量、股票费用、统计、图表规则 | `shared/domain` |
 | `internal/config` | `AppConfig`、功能开关、默认值、读写 / 归一化 / 未知键保留 | `shared/types/config.ts`、`electron/config.ts`、`electron/services/config.ts` |
@@ -281,6 +284,11 @@ main → desktop → pages → components
   （回归测试：`internal/desktop` 的 `TestRecordMarkSelectKeepsTheDialogStill`）。
 - 同类问题：`ui` 里凡是「用 `BeginPresence` 开、由调用方 `End`」的组件，放进弹窗都要
   检查是否漏了收尾；漏了就会由弹窗的 `EndPresence` 误收，位移落到弹窗内容上。
+- **表单字段的标签字号与颜色改不了。** `ui.FormField` 画的是 `components.BeginField` 的
+  recipe：标题固定 `Metrics.FontSizeM`（14）+ `WeightMedium` + `Foreground`，错误行同号
+  危险色，`field.Spec` 只收文本、不收样式。所以记录弹窗里的八个字段标题和正文同号，
+  层级靠位置与字段边框；页面不要再自己画一行标签去「补」字号，否则同一张表单会有两套
+  标签。对话框标题是 `Metrics.FontSizeM + 2`（16），正好等于 Section 档。
 - **`ui.Modal` 里的 `ui.Popover` 收不到点击。** 弹窗给自己的内容开了焦点陷阱，Popover 的层
   虽然画在上面（`HitTest` 也能找到它的 hit），普通点击仍被判给弹窗里的控件，面板里什么都
   点不动（右键菜单、Select 的下拉不受影响：它们不走 Popover 这条路径）。所以日期面板是

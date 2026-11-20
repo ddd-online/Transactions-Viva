@@ -17,6 +17,7 @@ import (
 	"transactions/internal/components/selectbox"
 	"transactions/internal/components/semantic"
 	"transactions/internal/components/tag"
+	"transactions/internal/components/typography"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting/ledger"
 	tpl "transactions/internal/pages/accounting/template"
@@ -298,15 +299,11 @@ func (m *Model) header(c ui.C) {
 }
 
 func headerText(c ui.C, text string, grow, minWidth float32) {
-	theme := c.Theme()
-	ui.Text(c, text).FontSize(theme.Metrics.FontSizeS).Weight(gfx.WeightMedium).Muted().
-		Grow(grow).Basis(0).MinWidth(minWidth).Ellipsis()
+	typography.Caption(c, text).Grow(grow).Basis(0).MinWidth(minWidth).Ellipsis()
 }
 
 func headerCenter(c ui.C, text string, width float32) {
-	theme := c.Theme()
-	ui.Text(c, text).FontSize(theme.Metrics.FontSizeS).Weight(gfx.WeightMedium).Muted().
-		Width(width).TextCenter()
+	typography.Caption(c, text).Width(width).TextCenter()
 }
 
 // empty is the table body while the ledger has no templates.
@@ -348,7 +345,7 @@ func (m *Model) row(row ui.ListRow) {
 	ui.Row(row.C).Width(dragColumnWidth).Justify(ui.Center).Children(func() {
 		ui.Icon(row.C, icons.GripVertical).Size(16, 16).Color(theme.MutedForeground)
 	})
-	ui.Text(row.C, one.Name).FontSize(theme.Metrics.FontSizeM).
+	typography.Body(row.C, one.Name).
 		Grow(nameWeight).Basis(0).MinWidth(120).Ellipsis()
 
 	ui.Row(row.C).Width(typeColumnWidth).Justify(ui.Center).Children(func() {
@@ -356,7 +353,7 @@ func (m *Model) row(row ui.ListRow) {
 	})
 
 	if one.Category != "" {
-		ui.Text(row.C, one.Category).FontSize(theme.Metrics.FontSizeM).
+		typography.Body(row.C, one.Category).
 			Grow(categoryWeight).Basis(0).MinWidth(90).Ellipsis()
 	} else {
 		dash(row.C).Grow(categoryWeight).Basis(0).MinWidth(90)
@@ -381,7 +378,7 @@ func (m *Model) row(row ui.ListRow) {
 	})
 
 	if one.Description != "" {
-		ui.Text(row.C, one.Description).FontSize(theme.Metrics.FontSizeM).
+		typography.Body(row.C, one.Description).
 			Grow(descriptionWeight).Basis(0).MinWidth(140).Ellipsis()
 	} else {
 		dash(row.C).Grow(descriptionWeight).Basis(0).MinWidth(140)
@@ -399,7 +396,7 @@ func (m *Model) row(row ui.ListRow) {
 // chip is a semantic label: the type of a template, or its mark.
 func chip(c ui.C, text string, color gfx.Color) {
 	theme := c.Theme()
-	ui.Text(c, text).FontSize(theme.Metrics.FontSizeS).Weight(gfx.WeightMedium).
+	ui.Text(c, text).FontSize(typography.SizeCaption).
 		Color(color).Background(theme.Background.Mix(color, 0.12)).
 		PadX(8).PadY(2).Radius(theme.Metrics.RadiusItem())
 }
@@ -407,7 +404,7 @@ func chip(c ui.C, text string, color gfx.Color) {
 // dash is the old table's empty cell: a muted hyphen.
 func dash(c ui.C) ui.Box {
 	theme := c.Theme()
-	return ui.Text(c, "-").FontSize(theme.Metrics.FontSizeM).Color(theme.MutedForeground)
+	return ui.Text(c, "-").FontSize(typography.SizeBody).Color(theme.MutedForeground)
 }
 
 // kindColor and outlierColor come from the same semantic package the records
@@ -553,7 +550,7 @@ func (m *Model) formModal(c ui.C) {
 				ui.Checkbox(c, &m.form.outlier, "离群值")
 			})
 			if m.form.err != "" {
-				ui.Text(c, m.form.err).FontSize(12).Color(theme.Danger)
+				typography.Caption(c, m.form.err).Color(theme.Danger)
 			}
 			ui.Divider(c)
 		})
@@ -686,7 +683,7 @@ func (m *Model) deleteModal(c ui.C) {
 		return
 	}
 	ui.ModalWith(c, &m.deleteOpen, "删除模板", ui.ModalSpec{Width: 380}, func() {
-		ui.Text(c, "删除模板「"+m.deleteName+"」？").FontSize(13)
+		typography.BodyParagraph(c, "删除模板「"+m.deleteName+"」？", 3)
 	}, func() {
 		if ui.Button(c, "取消").Secondary().Clicked() {
 			m.deleteOpen = false

@@ -15,6 +15,7 @@ import (
 
 	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
+	"transactions/internal/components/typography"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting/ledger"
 	"transactions/internal/repository"
@@ -310,8 +311,7 @@ func (m *Model) typeCard(c ui.C, k kind) {
 		card = card.Hover(ui.Look{}.Background(theme.Hover))
 	}
 	card.Children(func() {
-		ui.Text(c, k.label()).FontSize(theme.Metrics.FontSizeM).
-			Weight(gfx.WeightMedium).Color(foreground)
+		typography.Body(c, k.label()).Color(foreground)
 	})
 	if card.Clicked() {
 		m.selectKind(k)
@@ -380,12 +380,10 @@ func (m *Model) tagColumn(c ui.C) {
 // columnHeader is one column's title, its count badge and its add button. The
 // caller reads Clicked from the returned button.
 func (m *Model) columnHeader(c ui.C, title string, count int, addLabel string, disabled bool) ui.Box {
-	theme := c.Theme()
 	var add ui.Box
 	ui.Row(c).Height(columnHeaderHeight).FillWidth().
 		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
-		ui.Text(c, title).FontSize(theme.Metrics.FontSizeM).
-			Weight(gfx.WeightSemibold).Shrink(1).Ellipsis()
+		typography.Section(c, title).Shrink(1).Ellipsis()
 		countPill(c, count)
 		ui.Spacer(c)
 		add = ui.Button(c, addLabel).Small().Secondary().Icon(icons.Plus).Disabled(disabled)
@@ -396,7 +394,7 @@ func (m *Model) columnHeader(c ui.C, title string, count int, addLabel string, d
 // countPill is a count in a muted capsule.
 func countPill(c ui.C, count int) {
 	theme := c.Theme()
-	ui.Text(c, strconv.Itoa(count)).FontSize(theme.Metrics.FontSizeS).
+	ui.Text(c, strconv.Itoa(count)).FontSize(typography.SizeCaption).
 		Color(theme.MutedForeground).Background(theme.Muted).
 		Radius(theme.Metrics.RadiusItem() + 2).PadX(6).PadY(1)
 }
@@ -422,7 +420,7 @@ func (m *Model) categoryRow(row ui.ListRow) {
 		row.Element.Background(theme.Accent)
 	}
 	ui.Icon(row.C, icons.GripVertical).Size(16, 16).Color(theme.MutedForeground)
-	ui.Text(row.C, cat.name).FontSize(theme.Metrics.FontSizeM).Grow(1).Ellipsis()
+	typography.Body(row.C, cat.name).Grow(1).Ellipsis()
 	if cat.count > 0 {
 		countPill(row.C, cat.count)
 	}
@@ -446,7 +444,7 @@ func (m *Model) tagRow(row ui.ListRow) {
 		Hover(ui.Look{}.Background(theme.Hover)).
 		Focus(ui.Look{}.Ring(2, theme.Ring))
 	ui.Icon(row.C, icons.GripVertical).Size(16, 16).Color(theme.MutedForeground)
-	ui.Text(row.C, one.name).FontSize(theme.Metrics.FontSizeM).Grow(1).Ellipsis()
+	typography.Body(row.C, one.name).Grow(1).Ellipsis()
 	if one.count > 0 {
 		countPill(row.C, one.count)
 	}
@@ -724,7 +722,7 @@ func (m *Model) categoryModal(c ui.C) {
 		field := ui.TextField(c, &m.categoryName, "分类名称", "输入分类名称").
 			AutoFocus().FillWidth()
 		if m.categoryError != "" {
-			ui.Text(c, m.categoryError).FontSize(12).Color(theme.Danger).MarginTop(6)
+			typography.Caption(c, m.categoryError).Color(theme.Danger).MarginTop(6)
 		}
 		if field.Submitted() {
 			m.confirmCategory()
@@ -753,7 +751,7 @@ func (m *Model) tagModal(c ui.C) {
 		field := ui.TextField(c, &m.tagName, "标签名称", "输入标签名称").
 			AutoFocus().FillWidth()
 		if m.tagError != "" {
-			ui.Text(c, m.tagError).FontSize(12).Color(theme.Danger).MarginTop(6)
+			typography.Caption(c, m.tagError).Color(theme.Danger).MarginTop(6)
 		}
 		if field.Submitted() {
 			m.confirmTag()
@@ -781,7 +779,7 @@ func (m *Model) deleteModal(c ui.C) {
 		title, what = "删除标签", "标签"
 	}
 	ui.ModalWith(c, &m.deleteOpen, title, ui.ModalSpec{Width: 380}, func() {
-		ui.Text(c, "确定删除"+what+"「"+m.deleteName+"」？").FontSize(13)
+		typography.BodyParagraph(c, "确定删除"+what+"「"+m.deleteName+"」？", 3)
 	}, func() {
 		ui.Row(c).Gap(8).Justify(ui.End).Children(func() {
 			if ui.Button(c, "取消").Secondary().Clicked() {

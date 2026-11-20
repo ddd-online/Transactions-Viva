@@ -21,12 +21,13 @@ func (m *Model) deleteView(c ui.C) {
 	if m.deletingID == "" {
 		return
 	}
+	// The old confirmation was the question alone. The description states
+	// the one fact the title does not; a body line repeating it only made the
+	// dialog longer.
 	ui.ModalWith(c, &m.deleteConfirm, "删除这条消费记录？", ui.ModalSpec{
 		Width:       380,
-		Description: "删除后不会保留。",
-	}, func() {
-		ui.Text(c, "这条记录会从当前账本移除。").FontSize(13).Muted()
-	}, func() {
+		Description: "删除后无法恢复。",
+	}, nil, func() {
 		if ui.Button(c, "取消").Outline().Clicked() {
 			m.deleteConfirm = false
 		}

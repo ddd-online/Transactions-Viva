@@ -13,6 +13,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/layout"
+	"transactions/internal/components/typography"
 	"transactions/internal/config"
 	"transactions/internal/pages/settings/controls"
 )
@@ -36,7 +37,6 @@ const (
 	columnMargin  = layout.GroupGap
 	columnTop     = float32(32)
 	columnBottom  = layout.GroupGap
-	sectionTitle  = float32(26)
 	navEntryHigh  = float32(36)
 	navEntrySpace = float32(4)
 )
@@ -181,7 +181,7 @@ func (m *Model) View(c ui.C, spec Spec) {
 func (m *Model) nav(c ui.C) {
 	theme := c.Theme()
 	ui.Column(c).Width(navWidth).FillHeight().Children(func() {
-		ui.Text(c, "设置").FontSize(19).Bold().LineHeight(28).
+		typography.Title(c, "设置").
 			MarginSides(layout.BlockGap+layout.Gap, layout.Gap, layout.BlockGap, layout.GroupGap)
 		ui.Scroll(c).Grow(1).Children(func() {
 			ui.Column(c).Gap(navEntrySpace).MarginBottom(8).Children(func() {
@@ -204,8 +204,8 @@ func (m *Model) nav(c ui.C) {
 						foreground = theme.AccentForeground
 					}
 					row.Children(func() {
-						ui.Text(c, entry.title).FontSize(theme.Metrics.FontSizeM).
-							Weight(gfx.WeightMedium).Color(foreground).Grow(1).Ellipsis()
+						typography.Body(c, entry.title).
+							Color(foreground).Grow(1).Ellipsis()
 					})
 					if row.Clicked() {
 						m.tab = entry.tab
@@ -222,8 +222,8 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 		ui.Column(c).FillWidth().MaxWidth(columnMax).
 			MarginSides(columnTop, columnMargin, columnBottom, columnMargin).
 			Children(func() {
-				ui.Text(c, entry.title).FontSize(sectionTitle).Bold().
-					LineHeight(32).MarginBottom(layout.GroupGap)
+				typography.Title(c, entry.title).
+					MarginBottom(layout.GroupGap)
 				switch entry.tab {
 				case tabGeneral:
 					m.general(c, spec)
@@ -239,7 +239,6 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 // general is 通用设置: the workspace, the appearance, the close behavior and the
 // not-yet-migrated proxy row.
 func (m *Model) general(c ui.C, spec Spec) {
-	theme := c.Theme()
 	trayNote := ""
 	if !spec.TrayAvailable {
 		trayNote = "当前系统没有可用的托盘，选「最小化到托盘」时关闭会直接退出。"
@@ -265,8 +264,8 @@ func (m *Model) general(c ui.C, spec Spec) {
 			}
 		})
 		ui.Divider(c)
-		controls.Row(c, "网络代理", "行情、涨停池与更新检查走代理；尚未迁移。", func() {
-			ui.Text(c, "未迁移").FontSize(theme.Metrics.FontSizeS).Muted()
+		controls.Row(c, "网络代理", "行情、涨停池与更新检查走代理。", func() {
+			typography.Caption(c, "未迁移")
 		})
 	})
 }
@@ -301,7 +300,6 @@ func (m *Model) features(c ui.C, spec Spec) {
 // pending is a section whose controls are migrated in a later stage: each row
 // reports that rather than pretending to work.
 func (m *Model) pending(c ui.C, entry section) {
-	theme := c.Theme()
 	controls.Group(c, "", func() {
 		for index := range entry.rows {
 			if index > 0 {
@@ -310,7 +308,7 @@ func (m *Model) pending(c ui.C, entry section) {
 			row := entry.rows[index]
 			c.KeyInt(index)
 			controls.Row(c, row.title, row.note, func() {
-				ui.Text(c, "未迁移").FontSize(theme.Metrics.FontSizeS).Muted()
+				typography.Caption(c, "未迁移")
 			})
 		}
 	})

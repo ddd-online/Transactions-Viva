@@ -9,6 +9,8 @@ package components
 
 import (
 	"github.com/vivaui/viva/ui"
+
+	"transactions/internal/components/typography"
 )
 
 // Pending is the honest state of a screen whose structure exists but whose
@@ -17,7 +19,7 @@ import (
 func Pending(c ui.C, title, note string) {
 	metrics := c.Theme().Metrics
 	ui.Column(c).Grow(1).FillWidth().Pad(metrics.PadSurface * 2).Gap(metrics.GapItem).Center().Children(func() {
-		ui.Text(c, title).FontSize(metrics.FontSizeL).Bold().TextCenter()
-		ui.Paragraph(c, note, 4).Muted().TextCenter()
+		typography.Title(c, title).TextCenter()
+		typography.BodyParagraph(c, note, 4).Muted().TextCenter()
 	})
 }

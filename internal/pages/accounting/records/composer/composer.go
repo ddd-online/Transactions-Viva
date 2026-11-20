@@ -12,6 +12,7 @@ import (
 
 	"transactions/internal/components/datepicker"
 	"transactions/internal/components/selectbox"
+	"transactions/internal/components/typography"
 	tpl "transactions/internal/pages/accounting/template"
 )
 
@@ -185,7 +186,7 @@ func (state *State) View(c ui.C, spec Spec) {
 				ui.TextField(c, &state.draft.Amount, "金额", "0.00").Mono()
 			})
 			if state.err != "" {
-				ui.Text(c, state.err).FontSize(11).Color(c.Theme().Danger)
+				typography.Caption(c, state.err).Color(c.Theme().Danger)
 			}
 			ui.Divider(c)
 		})
@@ -226,10 +227,10 @@ func (state *State) templateField(c ui.C, spec Spec) {
 		})
 	})
 	if state.templateMsg != "" {
-		ui.Text(c, state.templateMsg).FontSize(11).Color(c.Theme().Success)
+		typography.Caption(c, state.templateMsg).Color(c.Theme().Success)
 	}
 	if state.templateErr != "" {
-		ui.Text(c, state.templateErr).FontSize(11).Color(c.Theme().Danger)
+		typography.Caption(c, state.templateErr).Color(c.Theme().Danger)
 	}
 }
 

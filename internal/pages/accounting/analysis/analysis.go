@@ -18,6 +18,7 @@ import (
 	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/selectbox"
+	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting/ledger"
@@ -302,8 +303,8 @@ func (m *Model) chartRail(c ui.C) {
 	ui.Column(c).Width(layout.RailWidth).FillHeight().Children(func() {
 		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
 			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
-			ui.Text(c, "图表").FontSize(theme.Metrics.FontSizeM).Weight(gfx.WeightSemibold)
-			ui.Text(c, fmt.Sprintf("%d", len(m.charts))).FontSize(theme.Metrics.FontSizeS).
+			typography.Section(c, "图表")
+			ui.Text(c, fmt.Sprintf("%d", len(m.charts))).FontSize(typography.SizeCaption).
 				Color(theme.MutedForeground).Background(theme.Muted).
 				Radius(theme.Metrics.RadiusItem()).PadX(6).PadY(1)
 			ui.Spacer(c)
@@ -339,9 +340,9 @@ func (m *Model) chartRow(row ui.ListRow) {
 		row.Element.Background(theme.Accent)
 	}
 	ui.Icon(row.C, icons.GripVertical).Size(16, 16).Color(theme.MutedForeground)
-	ui.Text(row.C, chart.Title).FontSize(theme.Metrics.FontSizeM).Grow(1).Ellipsis()
+	typography.Body(row.C, chart.Title).Grow(1).Ellipsis()
 	if chart.ChartType == chartPie {
-		ui.Text(row.C, "饼图").FontSize(theme.Metrics.FontSizeS).Color(theme.MutedForeground)
+		typography.Caption(row.C, "饼图")
 	}
 	remove := ui.Button(row.C, "删除图表 "+chart.Title).
 		Ghost().Icon(icons.Trash2).IconOnly().Tooltip("删除图表")
@@ -363,7 +364,7 @@ func (m *Model) detail(c ui.C) {
 		m.header(c, chart)
 		ui.Divider(c)
 		if m.loadErr != "" {
-			ui.Text(c, m.loadErr).FontSize(12).Color(theme.Danger).PadX(18).PadY(6)
+			typography.Caption(c, m.loadErr).Color(theme.Danger).PadX(18).PadY(6)
 		}
 		ui.Row(c).Grow(1).FillWidth().Children(func() {
 			ui.Scroll(c).Grow(1).FillWidth().Children(func() {
@@ -382,12 +383,12 @@ func (m *Model) header(c ui.C, chart *domain.Chart) {
 	theme := c.Theme()
 	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
 		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
-		ui.Text(c, chart.Title).FontSize(theme.Metrics.FontSizeL).Weight(gfx.WeightSemibold).Shrink(1).Ellipsis()
-		ui.Text(c, chartTypeLabel(chart.ChartType)).FontSize(theme.Metrics.FontSizeS).
+		typography.Title(c, chart.Title).Shrink(1).Ellipsis()
+		ui.Text(c, chartTypeLabel(chart.ChartType)).FontSize(typography.SizeCaption).
 			Color(theme.MutedForeground).Background(theme.Muted).
 			Radius(theme.Metrics.RadiusItem()).PadX(8).PadY(2)
 		if chart.IsPreset {
-			ui.Text(c, "预设").FontSize(theme.Metrics.FontSizeS).Color(theme.MutedForeground)
+			typography.Caption(c, "预设")
 		}
 		ui.Spacer(c)
 		if chart.ChartType == chartLine {
@@ -462,7 +463,7 @@ func (m *Model) summary(c ui.C, chart *domain.Chart) {
 
 func (m *Model) lineSummary(c ui.C) {
 	theme := c.Theme()
-	ui.Text(c, "曲线合计").FontSize(theme.Metrics.FontSizeM).Weight(gfx.WeightSemibold)
+	typography.Section(c, "曲线合计")
 	ui.Row(c).Gap(14).Children(func() {
 		summaryAmount(c, "收入", m.stats.Income, theme.Success)
 		summaryAmount(c, "支出", m.stats.Expense, theme.Danger)
@@ -474,47 +475,45 @@ func (m *Model) lineSummary(c ui.C) {
 		}
 		ui.Row(c).Gap(8).Items(ui.Center).Children(func() {
 			dot(c, seriesColor(*theme, index))
-			ui.Text(c, line.Label).FontSize(theme.Metrics.FontSizeM).Grow(1).Ellipsis()
-			ui.Text(c, domain.CentsToYuan(total)).FontSize(theme.Metrics.FontSizeM).Mono()
+			typography.Body(c, line.Label).Grow(1).Ellipsis()
+			typography.Body(c, domain.CentsToYuan(total)).Mono()
 		})
 	}
 	if len(m.lineData) == 0 {
-		ui.Text(c, "暂无曲线").FontSize(theme.Metrics.FontSizeS).Muted()
+		typography.Body(c, "暂无曲线").Muted()
 	}
 }
 
 // summaryAmount is one 收入 / 支出 figure of the summary: the label stays in the
 // reading face, the number is set on the mono grid so the two columns line up.
 func summaryAmount(c ui.C, label string, cents int64, color gfx.Color) {
-	theme := c.Theme()
 	ui.Row(c).Gap(4).Items(ui.Center).Children(func() {
-		ui.Text(c, label).FontSize(theme.Metrics.FontSizeS).Color(color)
-		ui.Text(c, domain.CentsToYuan(cents)).FontSize(theme.Metrics.FontSizeS).Mono().Color(color)
+		typography.Caption(c, label).Color(color)
+		typography.Caption(c, domain.CentsToYuan(cents)).Mono().Color(color)
 	})
 }
 
 func (m *Model) pieSummary(c ui.C) {
 	theme := c.Theme()
-	ui.Text(c, "分组合计").FontSize(theme.Metrics.FontSizeM).Weight(gfx.WeightSemibold)
-	ui.Text(c, domain.CentsToYuan(m.pie.Total)).FontSize(theme.Metrics.FontSizeL).
-		Mono().Weight(gfx.WeightSemibold)
+	typography.Section(c, "分组合计")
+	typography.Metric(c, domain.CentsToYuan(m.pie.Total))
 	for index, slice := range m.pieSlices {
 		ui.Row(c).Gap(8).Items(ui.Center).Children(func() {
 			dot(c, pieColor(*theme, index))
-			ui.Text(c, slice.Label).FontSize(theme.Metrics.FontSizeM).Grow(1).Ellipsis()
-			ui.Text(c, domain.CentsToYuan(slice.Amount)).FontSize(theme.Metrics.FontSizeS).Mono()
+			typography.Body(c, slice.Label).Grow(1).Ellipsis()
+			typography.Caption(c, domain.CentsToYuan(slice.Amount)).Mono()
 			share := float64(0)
 			if m.pie.Total > 0 {
 				share = float64(slice.Amount) / float64(m.pie.Total) * 100
 			}
-			ui.Text(c, fmt.Sprintf("%.1f%%", share)).FontSize(theme.Metrics.FontSizeS).Muted()
+			typography.Caption(c, fmt.Sprintf("%.1f%%", share))
 		})
 	}
 	if len(m.pieSlices) == 0 {
-		ui.Text(c, pieEmptyDescription(m.pie, *m.selectedChart())).FontSize(theme.Metrics.FontSizeS).Muted()
+		typography.BodyParagraph(c, pieEmptyDescription(m.pie, *m.selectedChart()), 3).Muted()
 	}
 	if m.pie.Total > m.pie.FilteredTotal {
-		ui.Text(c, "多标签的记录会重复计入").FontSize(theme.Metrics.FontSizeS).Muted()
+		typography.Caption(c, "多标签的记录会重复计入")
 	}
 }
 

@@ -1,8 +1,9 @@
 package controls
 
 import (
-	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
+
+	"transactions/internal/components/typography"
 )
 
 // Group is a settings card: a titled surface holding rows separated by
@@ -16,8 +17,7 @@ func Group(c ui.C, title string, rows func()) {
 	metrics := theme.Metrics
 	ui.Column(c).FillWidth().Children(func() {
 		if title != "" {
-			ui.Text(c, title).FontSize(metrics.FontSizeM).Bold().
-				MarginBottom(metrics.GapItem)
+			typography.Section(c, title).MarginBottom(metrics.GapItem)
 		}
 		ui.Column(c).FillWidth().Background(theme.Card).
 			Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).
@@ -37,9 +37,11 @@ func Row(c ui.C, title, description string, control func()) {
 	ui.Row(c).MinHeight(metrics.ControlHeight * 2).Shrink(0).PadX(metrics.PadSurface).
 		Gap(metrics.GapItem * 2).Items(ui.Center).Children(func() {
 		ui.Column(c).Grow(1).Children(func() {
-			ui.Text(c, title).FontSize(metrics.FontSizeM).Weight(gfx.WeightMedium)
+			// No half weight: on a Chinese face 500 draws as 400, so a row's
+			// name would look like its explanation.
+			typography.Body(c, title)
 			if description != "" {
-				ui.Paragraph(c, description, 2).FontSize(metrics.FontSizeS).Muted()
+				typography.CaptionParagraph(c, description, 2)
 			}
 		})
 		if control != nil {

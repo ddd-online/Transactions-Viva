@@ -22,6 +22,7 @@ import (
 	"transactions/internal/components/pagination"
 	"transactions/internal/components/semantic"
 	"transactions/internal/components/tag"
+	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting/ledger"
@@ -325,7 +326,7 @@ func (m *Model) sortHeader(c ui.C, label string, field sortField, width float32,
 		if end {
 			m.sortButton(c, label, field)
 		}
-		ui.Text(c, label).FontSize(11).Muted()
+		typography.Caption(c, label)
 		if !end {
 			m.sortButton(c, label, field)
 		}
@@ -420,11 +421,11 @@ func (m *Model) table(c ui.C) {
 			PadX(layout.Inset).Gap(layout.ColumnGap).Items(ui.Center).
 			Background(theme.Muted).Children(func() {
 			m.sortHeader(c, "日期", sortDate, recordDateWidth, false)
-			ui.Text(c, "类型").Width(recordTypeWidth).FontSize(11).Muted()
-			ui.Text(c, "分类").Width(recordCategoryWidth).TextCenter().FontSize(11).Muted()
-			ui.Text(c, "标签").Width(recordTagsWidth).FontSize(11).Muted()
-			ui.Text(c, "描述").Grow(1).FontSize(11).Muted()
-			ui.Text(c, "标记").Width(recordMarksWidth).TextCenter().FontSize(11).Muted()
+			typography.Caption(c, "类型").Width(recordTypeWidth)
+			typography.Caption(c, "分类").Width(recordCategoryWidth).TextCenter()
+			typography.Caption(c, "标签").Width(recordTagsWidth)
+			typography.Caption(c, "描述").Grow(1)
+			typography.Caption(c, "标记").Width(recordMarksWidth).TextCenter()
 			m.sortHeader(c, "金额", sortAmount, recordAmountWidth, true)
 		})
 		ui.Divider(c)
@@ -450,12 +451,11 @@ func (m *Model) row(r ui.ListRow) {
 		r.Element.Background(theme.Hover)
 	}
 
-	ui.Text(r.C, rec.at.Format("01-02")).Width(recordDateWidth).FontSize(13).Ellipsis()
+	typography.Body(r.C, rec.at.Format("01-02")).Width(recordDateWidth).Ellipsis()
 
 	color := kindColor(*theme, rec.kind)
-	ui.Text(r.C, kindLabel(rec.kind)).Width(recordTypeWidth).FontSize(12).
-		Weight(gfx.WeightMedium).Color(color)
-	ui.Text(r.C, rec.category).Width(recordCategoryWidth).TextCenter().FontSize(12).Ellipsis()
+	typography.Body(r.C, kindLabel(rec.kind)).Width(recordTypeWidth).Color(color)
+	typography.Body(r.C, rec.category).Width(recordCategoryWidth).TextCenter().Ellipsis()
 
 	tag.List(r.C, rec.tags, recordTagsWidth)
 
@@ -463,20 +463,20 @@ func (m *Model) row(r ui.ListRow) {
 	if description == "" {
 		description = "-"
 	}
-	ui.Text(r.C, description).Grow(1).FontSize(13).Ellipsis()
+	typography.Body(r.C, description).Grow(1).Ellipsis()
 	ui.Row(r.C).Width(recordMarksWidth).Items(ui.Center).Justify(ui.Center).Gap(6).
 		Children(func() {
 			if rec.outlier {
 				mark := outlierColor(*theme)
-				ui.Text(r.C, "离群值").FontSize(11).Weight(gfx.WeightMedium).Color(mark).
+				typography.Caption(r.C, "离群值").Color(mark).
 					Background(mark.WithAlpha(0.12)).PadSides(1, 6, 1, 6).Radius(4)
 			}
 			if rec.keyEventDate != "" {
-				ui.Text(r.C, "★").FontSize(12).Color(outlierColor(*theme))
+				ui.Text(r.C, "★").FontSize(typography.SizeCaption).Color(outlierColor(*theme))
 			}
 		})
-	ui.Text(r.C, rec.signedAmount()).Width(recordAmountWidth).TextEnd().Mono().
-		FontSize(13).Weight(gfx.WeightMedium).Color(color)
+	typography.Body(r.C, rec.signedAmount()).Width(recordAmountWidth).TextEnd().Mono().
+		Color(color)
 
 	// The old operation column's three actions live on the row's context menu.
 	id := rec.id
@@ -598,15 +598,15 @@ func (m *Model) footer(c ui.C) {
 		m.stat(c, "转账", m.stats[2], kindColor(*theme, kindTransfer))
 		ui.Spacer(c)
 		if m.notice != "" {
-			ui.Text(c, m.notice).FontSize(11).Muted().MaxWidth(560).Ellipsis()
+			typography.Caption(c, m.notice).MaxWidth(560).Ellipsis()
 		}
 	})
 }
 
 func (m *Model) stat(c ui.C, label string, cents int64, color gfx.Color) {
 	ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
-		ui.Text(c, label).FontSize(11).Muted()
-		ui.Text(c, domain.CentsToYuan(cents)).FontSize(12).Mono().
+		typography.Caption(c, label)
+		ui.Text(c, domain.CentsToYuan(cents)).FontSize(typography.SizeCaption).Mono().
 			Weight(gfx.WeightMedium).Color(color)
 	})
 }

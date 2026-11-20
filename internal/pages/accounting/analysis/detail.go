@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
 	"transactions/internal/repository"
@@ -17,8 +17,8 @@ func (m *Model) linePanel(c ui.C, chart *domain.Chart) {
 	theme := c.Theme()
 	ui.Column(c).FillWidth().Gap(8).Children(func() {
 		ui.Row(c).FillWidth().Items(ui.Center).Gap(8).Children(func() {
-			ui.Text(c, "曲线").FontSize(theme.Metrics.FontSizeM).Weight(gfx.WeightSemibold)
-			ui.Text(c, fmt.Sprintf("%d", len(m.lines))).FontSize(theme.Metrics.FontSizeS).
+			typography.Section(c, "曲线")
+			ui.Text(c, fmt.Sprintf("%d", len(m.lines))).FontSize(typography.SizeCaption).
 				Color(theme.MutedForeground).Background(theme.Muted).
 				Radius(theme.Metrics.RadiusItem()).PadX(6).PadY(1)
 			ui.Spacer(c)
@@ -29,7 +29,7 @@ func (m *Model) linePanel(c ui.C, chart *domain.Chart) {
 			}
 		})
 		if len(m.lines) == 0 {
-			ui.Text(c, "还没有曲线，添加一条之后这里会画出趋势。").FontSize(theme.Metrics.FontSizeS).Muted()
+			typography.BodyParagraph(c, "还没有曲线，添加一条之后这里会画出趋势。", 2).Muted()
 			return
 		}
 		for index := range m.lines {
@@ -38,11 +38,11 @@ func (m *Model) linePanel(c ui.C, chart *domain.Chart) {
 			ui.Row(c).FillWidth().MinHeight(40).PadX(8).Gap(8).Items(ui.Center).
 				Radius(theme.Metrics.RadiusControl).Hover(ui.Look{}.Background(theme.Hover)).Children(func() {
 				dot(c, seriesColor(*theme, index))
-				ui.Text(c, line.Label).FontSize(theme.Metrics.FontSizeM).Weight(gfx.WeightMedium)
-				ui.Text(c, lineTypeLabel(line.TransactionType)).FontSize(theme.Metrics.FontSizeS).
+				typography.Body(c, line.Label)
+				ui.Text(c, lineTypeLabel(line.TransactionType)).FontSize(typography.SizeCaption).
 					Color(theme.MutedForeground).Background(theme.Muted).
 					Radius(theme.Metrics.RadiusItem()).PadX(6).PadY(1)
-				ui.Text(c, conditionSummary(*line)).FontSize(theme.Metrics.FontSizeS).Muted().Grow(1).Ellipsis()
+				typography.Caption(c, conditionSummary(*line)).Grow(1).Ellipsis()
 				if !chart.IsPreset {
 					if ui.Button(c, "编辑曲线 "+line.Label).Ghost().Small().Clicked() {
 						m.openLine(chart, index)

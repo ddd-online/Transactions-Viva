@@ -4,6 +4,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/typography"
 	"transactions/internal/icons"
 )
 
@@ -104,13 +105,11 @@ func (m *Model) navRow(c ui.C, key int, label string, icon gfx.Icon, active bool
 	if active {
 		foreground = theme.AccentForeground
 	}
-	weight := gfx.WeightRegular
-	if active {
-		weight = gfx.WeightMedium
-	}
 	row.Children(func() {
 		ui.Icon(c, icon).Color(foreground)
-		ui.Text(c, label).FontSize(metrics.FontSizeM).Weight(weight).Color(foreground)
+		// The fill and the ink carry the active state: a half weight would
+		// read as no weight change at all on a Chinese face.
+		typography.Body(c, label).Color(foreground)
 	})
 	return row
 }
@@ -136,7 +135,7 @@ func (m *Model) navSubRow(c ui.C, key int, label string, active bool) ui.Box {
 		foreground = theme.AccentForeground
 	}
 	row.Children(func() {
-		ui.Text(c, label).FontSize(metrics.FontSizeM).Color(foreground)
+		typography.Body(c, label).Color(foreground)
 	})
 	return row
 }
