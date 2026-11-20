@@ -147,7 +147,7 @@ func Picker(c ui.C, state *State, spec Spec) {
 				state.shift(spec, -1)
 			}
 		}
-		field := ui.Button(c, triggerText(spec)).Outline().Icon(icons.Clock)
+		field := ui.Button(c, triggerText(spec)).Outline().Icon(icons.Calendar)
 		if spec.Fill {
 			field = field.FillWidth()
 		} else {
@@ -175,7 +175,7 @@ func fieldWidth(canvas *gfx.Canvas, theme *gfx.Theme) float32 {
 		"2026 ~ 2027",
 	} {
 		button := viva.BeginButton(canvas, *theme, gfx.ID{}, gfx.Rect{}).
-			WithIcon(icons.Clock).SizeToFit(sample)
+			WithIcon(icons.Calendar).SizeToFit(sample)
 		width = max(width, button.BoundsWidth())
 	}
 	return width

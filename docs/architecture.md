@@ -130,7 +130,7 @@ main → desktop → pages → components
     `Fill: true` 撑满字段列，`CloseOnPick: true` 选完即收起。
   日期算术（月长、整周、按粒度对齐 / 翻页）与快捷区间都在这个文件里，纯函数、用 UTC 上的
   `time.Time` 做公历运算，不碰时区与夏令时。
-- **只用原生样式**：触发器统一是 `ui.Button(值).Outline().Icon(Clock)`，表单里加 `.FillWidth()`；
+- **只用原生样式**：触发器统一是 `ui.Button(值).Outline().Icon(Calendar)`，表单里加 `.FillWidth()`；
   工具栏不给宽度靠内容，而是给一个固定宽度——按三种粒度最长的范围文本
   （`YYYY-MM-DD ~ YYYY-MM-DD` / `YYYY-MM ~ YYYY-MM` / `YYYY ~ YYYY`）量出来的那个宽度，
   所以换粒度、拉范围时字段不会变宽变窄。
