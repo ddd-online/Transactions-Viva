@@ -1,90 +1,225 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-21T00:04:32+08:00",
+  "generatedAt": "2026-11-21T00:20:00+08:00",
   "title": "Design System: Transactions",
   "extensions": {
     "colorMeta": {
       "primary": {
         "role": "primary",
         "displayName": "Signal Blue",
-        "canonical": "#1447e6",
-        "tonalRamp": ["#0d1a3d", "#122a66", "#173a99", "#1c4acc", "#3a67e0", "#6b90ea", "#a5bdf3", "#e8eefc"]
+        "canonical": "#1d4ed8",
+        "tonalRamp": [
+          "#0b1533",
+          "#122457",
+          "#19337d",
+          "#2042a6",
+          "#2b5ede",
+          "#5e86ea",
+          "#a3bbf4",
+          "#e8eefc"
+        ]
       },
       "canvas": {
         "role": "neutral",
         "displayName": "Shell",
-        "canonical": "#f2ece0",
-        "tonalRamp": ["#1d1a15", "#35312a", "#514b40", "#6e6658", "#8d8474", "#b0a693", "#d6ccba", "#f2ece0"]
+        "canonical": "#f4f4f5",
+        "tonalRamp": [
+          "#18181b",
+          "#2e2e31",
+          "#47474b",
+          "#616166",
+          "#7d7d82",
+          "#a3a3a8",
+          "#cfcfd3",
+          "#f4f4f5"
+        ]
       },
       "rail": {
         "role": "neutral",
         "displayName": "Rail",
-        "canonical": "#f7f2e8",
-        "tonalRamp": ["#211e18", "#3a352c", "#564f43", "#736a59", "#918776", "#b5ab97", "#dbd2c1", "#f7f2e8"]
+        "canonical": "#fafafa",
+        "tonalRamp": [
+          "#1c1c1f",
+          "#323236",
+          "#4b4b50",
+          "#65656b",
+          "#818187",
+          "#a7a7ac",
+          "#d3d3d6",
+          "#fafafa"
+        ]
       },
       "paper": {
         "role": "neutral",
         "displayName": "Paper",
-        "canonical": "#fffdf8",
-        "tonalRamp": ["#1a1813", "#35322a", "#524d41", "#6f6859", "#918876", "#b6ac97", "#ded4c3", "#fffdf8"]
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#1a1a1c",
+          "#303033",
+          "#49494d",
+          "#636367",
+          "#7f7f84",
+          "#a5a5a9",
+          "#d1d1d3",
+          "#ffffff"
+        ]
       },
       "ink": {
         "role": "neutral",
         "displayName": "Ink",
-        "canonical": "#1a1611",
-        "tonalRamp": ["#1a1611", "#332c23", "#50463a", "#6d6152", "#8c8171", "#b0a696", "#d8cec0", "#f6f0e6"]
+        "canonical": "#18181b",
+        "tonalRamp": [
+          "#18181b",
+          "#2f2f32",
+          "#49494c",
+          "#646467",
+          "#808084",
+          "#a6a6a9",
+          "#d2d2d4",
+          "#fafafa"
+        ]
       },
       "income": {
         "role": "secondary",
         "displayName": "Income Green",
-        "canonical": "#12703a",
-        "tonalRamp": ["#06301a", "#0a4626", "#0d5b31", "#12703a", "#3f9761", "#74b98d", "#aad6b9", "#e3f4e9"]
+        "canonical": "#0f6b34",
+        "tonalRamp": [
+          "#042518",
+          "#073a24",
+          "#0a4f30",
+          "#0d5e37",
+          "#0f6b34",
+          "#3d9463",
+          "#7cbe99",
+          "#e0f3e8"
+        ]
       },
       "expense": {
         "role": "secondary",
         "displayName": "Expense Red",
-        "canonical": "#c0271f",
-        "tonalRamp": ["#3a0a07", "#64120e", "#8c1a15", "#a82018", "#c0271f", "#e2665e", "#f2a49e", "#fbe4e1"]
+        "canonical": "#b91c1c",
+        "tonalRamp": [
+          "#380808",
+          "#5e0e0e",
+          "#841414",
+          "#a01818",
+          "#b91c1c",
+          "#e05757",
+          "#f0a0a0",
+          "#fbe2e2"
+        ]
       },
       "transfer": {
         "role": "secondary",
-        "displayName": "Transfer Blue",
-        "canonical": "#2b64c4",
-        "tonalRamp": ["#0b1c3a", "#12305e", "#1a4485", "#2254a8", "#2b64c4", "#6492e0", "#a3c0f0", "#e4eefb"]
+        "displayName": "Transfer Sky",
+        "canonical": "#0369a1",
+        "tonalRamp": [
+          "#011e30",
+          "#023251",
+          "#034672",
+          "#0369a1",
+          "#0384c9",
+          "#4fb2e8",
+          "#9dd4f3",
+          "#e0f3fd"
+        ]
       },
       "outlier": {
         "role": "tertiary",
         "displayName": "Outlier Amber",
-        "canonical": "#94570a",
-        "tonalRamp": ["#332005", "#57360a", "#72470c", "#834f0b", "#94570a", "#bf8131", "#ddb47e", "#f7ead9"]
+        "canonical": "#8a5a06",
+        "tonalRamp": [
+          "#2c1d02",
+          "#4a3104",
+          "#674406",
+          "#7a4f05",
+          "#8a5a06",
+          "#b98120",
+          "#dcb272",
+          "#f8ecd8"
+        ]
       },
       "series-violet": {
         "role": "tertiary",
         "displayName": "Series Violet",
-        "canonical": "#7b4fa5",
-        "tonalRamp": ["#241733", "#3b2553", "#533375", "#68428d", "#7b4fa5", "#a37cc4", "#c8b0de", "#f0e8f8"]
+        "canonical": "#7c3aed",
+        "tonalRamp": [
+          "#1c0f38",
+          "#2e1a5c",
+          "#412480",
+          "#5530b4",
+          "#7c3aed",
+          "#a678f5",
+          "#cbb2fa",
+          "#efe7fd"
+        ]
       }
     },
     "typographyMeta": {
-      "title": { "displayName": "Title", "purpose": "页面里的顶级区块标题（26px），一屏最多一处。" },
-      "subtitle": { "displayName": "Subtitle", "purpose": "面板名与页名（19px）。" },
-      "heading": { "displayName": "Heading", "purpose": "分组标题、卡片标题、设置行标题（14px）。" },
-      "body": { "displayName": "Body", "purpose": "记录描述、表单值、对话框正文。" },
-      "data": { "displayName": "Data", "purpose": "表格单元格、类型字、模板内容。" },
-      "label": { "displayName": "Label", "purpose": "表头、小标题、状态行；中文不放大写、不加字距。" },
-      "amount": { "displayName": "Amount", "purpose": "金额与价格；等宽规则已确认，代码尚未实现。" }
+      "title": {
+        "displayName": "Title",
+        "purpose": "页面里的顶级区块标题（26px），一屏最多一处。"
+      },
+      "subtitle": {
+        "displayName": "Subtitle",
+        "purpose": "面板名与页名（19px）。"
+      },
+      "heading": {
+        "displayName": "Heading",
+        "purpose": "分组标题、卡片标题、设置行标题（14px）。"
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "记录描述、表单值、对话框正文。"
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "表格单元格、类型字、模板内容。"
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "表头、小标题、状态行；中文不放大写、不加字距。"
+      },
+      "amount": {
+        "displayName": "Amount",
+        "purpose": "金额与价格；等宽规则已确认，代码尚未实现。"
+      }
     },
     "shadows": [
-      { "name": "popup", "value": "0 4px 12px rgba(38,28,18,0.10)", "purpose": "菜单、下拉、日期面板；由 Viva 组件绘制，页面不覆盖。" },
-      { "name": "dialog", "value": "0 16px 40px rgba(38,28,18,0.18)", "purpose": "弹窗与确认框，压在遮罩之上。" }
+      {
+        "name": "popup",
+        "value": "0 4px 12px rgba(38,28,18,0.10)",
+        "purpose": "菜单、下拉、日期面板；由 Viva 组件绘制，页面不覆盖。"
+      },
+      {
+        "name": "dialog",
+        "value": "0 16px 40px rgba(38,28,18,0.18)",
+        "purpose": "弹窗与确认框，压在遮罩之上。"
+      }
     ],
     "motion": [
-      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Viva 主题的默认过渡曲线（gfx.DefaultMotion）。" },
-      { "name": "duration-fast", "value": "150ms", "purpose": "悬停、选中、开关的唯一节拍。" }
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Viva 主题的默认过渡曲线（gfx.DefaultMotion）。"
+      },
+      {
+        "name": "duration-fast",
+        "value": "150ms",
+        "purpose": "悬停、选中、开关的唯一节拍。"
+      }
     ],
     "breakpoints": [
-      { "name": "min-window", "value": "960px", "purpose": "窗口最小宽度；更窄的窗口不折行金额，表格改为横向滚动。" },
-      { "name": "min-window-height", "value": "620px", "purpose": "窗口最小高度。" }
+      {
+        "name": "min-window",
+        "value": "960px",
+        "purpose": "窗口最小宽度；更窄的窗口不折行金额，表格改为横向滚动。"
+      },
+      {
+        "name": "min-window-height",
+        "value": "620px",
+        "purpose": "窗口最小高度。"
+      }
     ]
   },
   "components": [
@@ -94,7 +229,7 @@
       "refersTo": "button-primary",
       "description": "每页唯一的主动作：记一笔、新增图表、保存。",
       "html": "<button class=\"ds-btn-primary\"><svg class=\"ds-btn-primary__icon\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M8 3v10M3 8h10\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></svg>记一笔</button>",
-      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:0;border-radius:7.5px;background:#1447e6;color:#f7f4ec;font-size:14px;font-weight:500;line-height:1;transition:background 150ms cubic-bezier(0.4,0,0.2,1);cursor:pointer}.ds-btn-primary__icon{width:16px;height:16px}.ds-btn-primary:hover{background:#1239bd}.ds-btn-primary:active{background:#0f2f9c}.ds-btn-primary:focus-visible{outline:2px solid #6f6656;outline-offset:2px}"
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:0;border-radius:7.5px;background:#1d4ed8;color:#ffffff;font-size:14px;font-weight:500;line-height:1;transition:background 150ms cubic-bezier(0.4,0,0.2,1);cursor:pointer}.ds-btn-primary__icon{width:16px;height:16px}.ds-btn-primary:hover{background:#1a45c2}.ds-btn-primary:active{background:#163ba8}.ds-btn-primary:focus-visible{outline:2px solid #52525b;outline-offset:2px}"
     },
     {
       "name": "Outline Button",
@@ -102,7 +237,7 @@
       "refersTo": "button-outline",
       "description": "工具栏的今天、时间范围与次级动作。",
       "html": "<button class=\"ds-btn-outline\">今天</button>",
-      "css": ".ds-btn-outline{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:1px solid #e7dfd0;border-radius:7.5px;background:#fffdf8;color:#1a1611;font-size:14px;line-height:1;transition:background 150ms cubic-bezier(0.4,0,0.2,1);cursor:pointer}.ds-btn-outline:hover{background:#f8f3ea}.ds-btn-outline:active{background:#f2ece0}.ds-btn-outline:focus-visible{outline:2px solid #6f6656;outline-offset:2px}"
+      "css": ".ds-btn-outline{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:1px solid #e4e4e7;border-radius:7.5px;background:#ffffff;color:#18181b;font-size:14px;line-height:1;transition:background 150ms cubic-bezier(0.4,0,0.2,1);cursor:pointer}.ds-btn-outline:hover{background:#f4f4f5}.ds-btn-outline:active{background:#f4f4f5}.ds-btn-outline:focus-visible{outline:2px solid #52525b;outline-offset:2px}"
     },
     {
       "name": "Icon Button",
@@ -110,7 +245,7 @@
       "refersTo": "button-ghost",
       "description": "标题栏的外观切换与工具栏图标键，32px 见方、无边框。",
       "html": "<button class=\"ds-btn-icon\" aria-label=\"切换到深色模式\"><svg viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M13 9.5A5.5 5.5 0 0 1 6.5 3a5.5 5.5 0 1 0 6.5 6.5Z\" fill=\"currentColor\"/></svg></button>",
-      "css": ".ds-btn-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:7.5px;background:transparent;color:#1a1611;cursor:pointer;transition:background 150ms cubic-bezier(0.4,0,0.2,1)}.ds-btn-icon svg{width:16px;height:16px}.ds-btn-icon:hover{background:#eae3d4}.ds-btn-icon:active{background:#e0d7c5}.ds-btn-icon:focus-visible{outline:2px solid #6f6656;outline-offset:2px}"
+      "css": ".ds-btn-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:7.5px;background:transparent;color:#18181b;cursor:pointer;transition:background 150ms cubic-bezier(0.4,0,0.2,1)}.ds-btn-icon svg{width:16px;height:16px}.ds-btn-icon:hover{background:#e4e4e7}.ds-btn-icon:active{background:#d4d4d8}.ds-btn-icon:focus-visible{outline:2px solid #52525b;outline-offset:2px}"
     },
     {
       "name": "Text Field",
@@ -118,7 +253,7 @@
       "refersTo": "input",
       "description": "弹窗与设置里的单行输入，32px 高、纸白面、暖发丝线描边。",
       "html": "<label class=\"ds-field\"><span class=\"ds-field__label\">模板名称</span><input class=\"ds-field__input\" placeholder=\"例如：工作日午餐\" /></label>",
-      "css": ".ds-field{display:grid;gap:6px;font-size:14px;color:#1a1611}.ds-field__label{font-size:12px;color:#6f6656}.ds-field__input{height:32px;padding:0 12px;border:1px solid #ddd3c1;border-radius:7.5px;background:#fffdf8;color:#1a1611;font-size:14px;transition:border-color 150ms cubic-bezier(0.4,0,0.2,1)}.ds-field__input:hover{border-color:#c9bda8}.ds-field__input:focus{outline:none;border-color:#1447e6;box-shadow:0 0 0 2px #6f6656}"
+      "css": ".ds-field{display:grid;gap:6px;font-size:14px;color:#18181b}.ds-field__label{font-size:12px;color:#52525b}.ds-field__input{height:32px;padding:0 12px;border:1px solid #d4d4d8;border-radius:7.5px;background:#ffffff;color:#18181b;font-size:14px;transition:border-color 150ms cubic-bezier(0.4,0,0.2,1)}.ds-field__input:hover{border-color:#b8b8bd}.ds-field__input:focus{outline:none;border-color:#1d4ed8;box-shadow:0 0 0 2px #52525b}"
     },
     {
       "name": "Navigation Item",
@@ -126,7 +261,7 @@
       "refersTo": "nav-item-active",
       "description": "左侧 204px 导航列的一行；选中用暖 Highlight 底，不用强调色。",
       "html": "<div class=\"ds-nav\"><button class=\"ds-nav-item ds-nav-item--active\"><svg viewBox=\"0 0 16 16\" aria-hidden=\"true\"><rect x=\"2.5\" y=\"4\" width=\"11\" height=\"8\" rx=\"1.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/></svg>记账</button><button class=\"ds-nav-item ds-nav-item--sub ds-nav-item--active\">记录</button><button class=\"ds-nav-item ds-nav-item--sub\">分析</button></div>",
-      "css": ".ds-nav{display:grid;gap:4px;width:204px;padding:8px;background:#f7f2e8;border-radius:11px;font-size:14px}.ds-nav-item{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border:0;border-radius:5.5px;background:transparent;color:#1a1611;font-size:14px;text-align:left;cursor:pointer}.ds-nav-item svg{width:16px;height:16px;flex:none}.ds-nav-item--sub{height:28px;margin-left:26px}.ds-nav-item:hover{background:#eae3d4}.ds-nav-item--active{background:#eae3d4;font-weight:500}.ds-nav-item:focus-visible{outline:2px solid #6f6656;outline-offset:-2px}"
+      "css": ".ds-nav{display:grid;gap:4px;width:204px;padding:8px;background:#fafafa;border-radius:11px;font-size:14px}.ds-nav-item{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border:0;border-radius:5.5px;background:transparent;color:#18181b;font-size:14px;text-align:left;cursor:pointer}.ds-nav-item svg{width:16px;height:16px;flex:none}.ds-nav-item--sub{height:28px;margin-left:26px}.ds-nav-item:hover{background:#e4e4e7}.ds-nav-item--active{background:#e4e4e7;font-weight:500}.ds-nav-item:focus-visible{outline:2px solid #52525b;outline-offset:-2px}"
     },
     {
       "name": "Workspace Card",
@@ -134,7 +269,7 @@
       "refersTo": "workspace-card",
       "description": "整个窗口唯一的一张卡：内容画在它里面，外面只留 7px 边距。",
       "html": "<section class=\"ds-card\"><header class=\"ds-card__toolbar\"><button class=\"ds-pill\">今天</button><button class=\"ds-pill\">日</button><span class=\"ds-card__spacer\"></span><button class=\"ds-card__action\">记一笔</button></header><div class=\"ds-card__row\"><span class=\"ds-card__date\">11-21</span><span class=\"ds-card__kind\">支出</span><span class=\"ds-card__desc\">地铁通勤</span><span class=\"ds-card__amount\">-4.00</span></div></section>",
-      "css": ".ds-card{display:block;background:#fffdf8;border:1px solid #e7dfd0;border-radius:11px;overflow:hidden;font-size:13px;color:#1a1611}.ds-card__toolbar{display:flex;align-items:center;gap:8px;height:56px;padding:0 18px}.ds-card__spacer{flex:1}.ds-pill{height:32px;padding:0 12px;border:1px solid #e7dfd0;border-radius:7.5px;background:#fffdf8;font-size:14px;cursor:pointer}.ds-card__action{height:32px;padding:0 12px;border:0;border-radius:7.5px;background:#1447e6;color:#f7f4ec;font-size:14px;cursor:pointer}.ds-card__row{display:flex;align-items:center;gap:12px;height:48px;padding:0 18px;border-top:1px solid #e7dfd0}.ds-card__row:hover{background:#f8f3ea}.ds-card__date{width:78px}.ds-card__kind{width:64px;font-size:12px;font-weight:500;color:#c0271f}.ds-card__desc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ds-card__amount{width:120px;text-align:right;font-weight:500;color:#c0271f}"
+      "css": ".ds-card{display:block;background:#ffffff;border:1px solid #e4e4e7;border-radius:11px;overflow:hidden;font-size:13px;color:#18181b}.ds-card__toolbar{display:flex;align-items:center;gap:8px;height:56px;padding:0 18px}.ds-card__spacer{flex:1}.ds-pill{height:32px;padding:0 12px;border:1px solid #e4e4e7;border-radius:7.5px;background:#ffffff;font-size:14px;cursor:pointer}.ds-card__action{height:32px;padding:0 12px;border:0;border-radius:7.5px;background:#1d4ed8;color:#ffffff;font-size:14px;cursor:pointer}.ds-card__row{display:flex;align-items:center;gap:12px;height:48px;padding:0 18px;border-top:1px solid #e4e4e7}.ds-card__row:hover{background:#f4f4f5}.ds-card__date{width:78px}.ds-card__kind{width:64px;font-size:12px;font-weight:500;color:#b91c1c}.ds-card__desc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ds-card__amount{width:120px;text-align:right;font-weight:500;color:#b91c1c}"
     },
     {
       "name": "Mark Chip",
@@ -142,19 +277,19 @@
       "refersTo": "mark-chip",
       "description": "离群值这类状态标记：语义色字压在它自己的 12% 底上。",
       "html": "<span class=\"ds-mark\">离群值</span>",
-      "css": ".ds-mark{display:inline-block;padding:1px 6px;border-radius:4px;background:rgba(148,87,10,0.12);color:#94570a;font-size:11px;font-weight:500;line-height:1.5}"
+      "css": ".ds-mark{display:inline-block;padding:1px 6px;border-radius:4px;background:rgba(138,90,6,0.12);color:#8a5a06;font-size:11px;font-weight:500;line-height:1.5}"
     },
     {
       "name": "Dialog",
       "kind": "custom",
       "description": "记录编辑器一类的弹窗：11px 圆角、520px 宽、暖遮罩压住页面。",
       "html": "<div class=\"ds-dialog\" role=\"dialog\" aria-label=\"新建模板\"><h2 class=\"ds-dialog__title\">新建模板</h2><div class=\"ds-dialog__body\"><label class=\"ds-dialog__field\"><span>模板名称</span><input placeholder=\"例如：工作日午餐\" /></label></div><footer class=\"ds-dialog__footer\"><button class=\"ds-dialog__cancel\">取消</button><button class=\"ds-dialog__save\">保存</button></footer></div>",
-      "css": ".ds-dialog{width:520px;max-width:100%;background:#fffdf8;border-radius:11px;box-shadow:0 16px 40px rgba(38,28,18,0.18);overflow:hidden;color:#1a1611;font-size:13px}.ds-dialog__title{margin:0;padding:16px 16px 12px;font-size:14px;font-weight:700}.ds-dialog__body{display:grid;gap:12px;padding:0 16px 16px}.ds-dialog__field{display:grid;gap:6px;font-size:12px;color:#6f6656}.ds-dialog__field input{height:32px;padding:0 12px;border:1px solid #ddd3c1;border-radius:7.5px;font-size:14px;color:#1a1611;background:#fffdf8}.ds-dialog__field input:focus{outline:none;border-color:#1447e6}.ds-dialog__footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid #e7dfd0}.ds-dialog__cancel,.ds-dialog__save{height:32px;padding:0 12px;border-radius:7.5px;font-size:14px;cursor:pointer}.ds-dialog__cancel{border:1px solid #e7dfd0;background:#fffdf8;color:#1a1611}.ds-dialog__save{border:0;background:#1447e6;color:#f7f4ec}"
+      "css": ".ds-dialog{width:520px;max-width:100%;background:#ffffff;border-radius:11px;box-shadow:0 16px 40px rgba(18,18,20,0.22);overflow:hidden;color:#18181b;font-size:13px}.ds-dialog__title{margin:0;padding:16px 16px 12px;font-size:14px;font-weight:700}.ds-dialog__body{display:grid;gap:12px;padding:0 16px 16px}.ds-dialog__field{display:grid;gap:6px;font-size:12px;color:#52525b}.ds-dialog__field input{height:32px;padding:0 12px;border:1px solid #d4d4d8;border-radius:7.5px;font-size:14px;color:#18181b;background:#ffffff}.ds-dialog__field input:focus{outline:none;border-color:#1d4ed8}.ds-dialog__footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid #e4e4e7}.ds-dialog__cancel,.ds-dialog__save{height:32px;padding:0 12px;border-radius:7.5px;font-size:14px;cursor:pointer}.ds-dialog__cancel{border:1px solid #e4e4e7;background:#ffffff;color:#18181b}.ds-dialog__save{border:0;background:#1d4ed8;color:#ffffff}"
     }
   ],
   "narrative": {
     "northStar": "The Quiet Ledger",
-    "overview": "Transactions 是本地优先的个人财务桌面工作台。窗口是一张安静的工作面：灰阶外壳、纸白卡片、一条蓝，其余留给数字与排布。它不表演，只把「这一笔账」和「此刻的状态」说清楚。界面是一座桌面工作台，不是一张海报。密度来自 32px 的控件、48px 的记录行和 11px 的列表标签；克制来自「只有一个强调色、四个语义色，且语义色只出现在数据上」。层次由 1px 发丝线与色差完成，阴影只出现在真正浮起来的东西下面。世界已经落地：internal/desktop/theme.go 是两套完整主题——浅色 Warm Paper（暖灰外壳、纸白卡片、暖墨字）与深色 Warm Ink（暖褐近黑、外壳比纸浅一档、主按钮提亮）。深色不是反相，每一对颜色都在自己的底色上单独挑过，并由 theme_test.go 的对比度闸门盯着（正文与四个数据色 ≥4.5:1，数据色压在自己的 12% 芯片底上也要 ≥4.5:1）。",
+    "overview": "Transactions 是本地优先的个人财务桌面工作台。窗口是一张安静的工作面：白纸、冷灰外壳、石墨正文，一条蓝只给动作，其余留给数字与排布。它不表演，只把「这一笔账」和「此刻的状态」说清楚。界面是一台精密仪器，不是一张海报。密度来自 32px 的控件、48px 的记录行和 11px 的列表标签；克制来自「只有一个强调色、四个语义色，且语义色只出现在数据上」。层次由 1px 发丝线与色差完成，阴影只出现在真正浮起来的东西下面。世界已经落地：internal/desktop/theme.go 是两套完整主题——浅色 Cool Graphite（白纸、冷灰外壳、石墨字）与深色 Cool Ink（石墨纸、更亮的外壳）。导航列永远夹在外壳与纸面之间，深浅两套只是把这把尺子掉了个头。深色不是反相，每一对颜色都在自己的底色上单独挑过，并由 theme_test.go 的对比度闸门盯着（正文与四个数据色 ≥4.5:1，数据色压在自己的 12% 芯片底上也要 ≥4.5:1）。",
     "keyCharacteristics": [
       "一个强调色（Signal Blue）承担全部动作、焦点与选中；没有第二强调色。",
       "灰阶分三层：外壳、导航列、纸面。它们之间只隔 1px 发丝线。",
@@ -164,15 +299,51 @@
       "明暗双主题共用同一套 token 名，深色单独取值，不靠反色推导。"
     ],
     "rules": [
-      { "name": "The One Accent Rule", "body": "全系统只有一个强调色。强调靠位置、字重与留白，不靠第二个颜色。", "section": "colors" },
-      { "name": "The Semantic Silo Rule", "body": "收入 / 支出 / 转账 / 离群值只出现在数据与状态上——金额、类型字、标记、连通性；外壳、导航、标题栏、品牌面永不上色。", "section": "colors" },
-      { "name": "The Theme-Only Colour Rule", "body": "颜色只在 internal/desktop/theme.go 定义一次，页面读 c.Theme()。数据色经 internal/components/semantic 从主题的 Success、Danger 与图表色板取；新页面里不出现一个十六进制。", "section": "colors" },
-      { "name": "The Mono Money Rule", "body": "每一笔金额、每一个价格都用等宽面，列与列对齐。正文里出现的钱也必须换面——数字不是散文。", "section": "typography" },
-      { "name": "The Size Carries the Step Rule", "body": "中文没有 500 与 600 的区别：层级用字号和颜色拉，不要指望加粗。11 → 12 → 13 → 14 → 19 → 26 是全部档位。", "section": "typography" },
-      { "name": "The Label-Not-Annotation Rule", "body": "灰字只在控件自己说不清那个事实时才出现；机制解释进 Tooltip，不进常驻正文。", "section": "typography" },
-      { "name": "The One Card Rule", "body": "一个窗口只有一张卡（工作区）。卡里的一切靠发丝线与留白分组，不做卡片里再套卡片。", "section": "layout" },
-      { "name": "The Fixed Column Rule", "body": "表格列宽固定、金额右对齐、描述列承担唯一的弹性。", "section": "layout" },
-      { "name": "The Hairline Layering Rule", "body": "先用色差和 1px 发丝线分层；只有东西真的离开纸面（浮层、菜单、弹窗）时才出现阴影。", "section": "elevation" }
+      {
+        "name": "The One Accent Rule",
+        "body": "全系统只有一个强调色。强调靠位置、字重与留白，不靠第二个颜色。",
+        "section": "colors"
+      },
+      {
+        "name": "The Semantic Silo Rule",
+        "body": "收入 / 支出 / 转账 / 离群值只出现在数据与状态上——金额、类型字、标记、连通性；外壳、导航、标题栏、品牌面永不上色。",
+        "section": "colors"
+      },
+      {
+        "name": "The Theme-Only Colour Rule",
+        "body": "颜色只在 internal/desktop/theme.go 定义一次，页面读 c.Theme()。数据色经 internal/components/semantic 从主题的 Success、Danger 与图表色板取；新页面里不出现一个十六进制。",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Money Rule",
+        "body": "每一笔金额、每一个价格都用等宽面，列与列对齐。正文里出现的钱也必须换面——数字不是散文。",
+        "section": "typography"
+      },
+      {
+        "name": "The Size Carries the Step Rule",
+        "body": "中文没有 500 与 600 的区别：层级用字号和颜色拉，不要指望加粗。11 → 12 → 13 → 14 → 19 → 26 是全部档位。",
+        "section": "typography"
+      },
+      {
+        "name": "The Label-Not-Annotation Rule",
+        "body": "灰字只在控件自己说不清那个事实时才出现；机制解释进 Tooltip，不进常驻正文。",
+        "section": "typography"
+      },
+      {
+        "name": "The One Card Rule",
+        "body": "一个窗口只有一张卡（工作区）。卡里的一切靠发丝线与留白分组，不做卡片里再套卡片。",
+        "section": "layout"
+      },
+      {
+        "name": "The Fixed Column Rule",
+        "body": "表格列宽固定、金额右对齐、描述列承担唯一的弹性。",
+        "section": "layout"
+      },
+      {
+        "name": "The Hairline Layering Rule",
+        "body": "先用色差和 1px 发丝线分层；只有东西真的离开纸面（浮层、菜单、弹窗）时才出现阴影。",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do 从 c.Theme() 取颜色、从 theme.Metrics 取尺寸；页面里不出现十六进制字面量，数据色经 internal/components/semantic 取。",

@@ -50,7 +50,7 @@ main → desktop → pages → components
 |---|---|---|
 | `main.go` | 入口 | `src/main.tsx` + `electron/main.ts` 的启动部分 |
 | `internal/desktop` | 窗口、标题栏、导航、设置页 | `src/App.tsx`、`src/app-shell.tsx`、`src/app-view.ts` |
-| `internal/desktop/theme.go` | 两套自建主题（Warm Paper / Warm Ink）：全部 token、对比度契约与唯一改色点 | `gfx.LightTheme` / `gfx.DarkTheme` 的几何与 API；配色见 `DESIGN.md`，旧工程 `src/theme` |
+| `internal/desktop/theme.go` | 两套自建主题（Cool Graphite / Cool Ink）：全部 token、对比度契约与唯一改色点 | `gfx.LightTheme` / `gfx.DarkTheme` 的几何与 API；配色见 `DESIGN.md`，旧工程 `src/theme` |
 | `internal/pages/accounting` | 记账分区的四个子功能（记录 / 分析 / 标签 / 模板） | `src/pages/records*`、`charts*`、`category-tag*`、`template*` |
 | `internal/pages/accounting/records` | 记录页：工具栏、表格、分页、统计、空态、行操作 | `src/pages/records.tsx`、`records-table.tsx` |
 | `internal/pages/accounting/records/composer` | 新增 / 编辑记录弹窗（草稿、标签多选、日期选择器） | `src/pages/record-composer.tsx` |

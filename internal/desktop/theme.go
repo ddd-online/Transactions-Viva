@@ -2,19 +2,20 @@ package desktop
 
 import "github.com/vivaui/viva/gfx"
 
-// The application's two themes.
+// The application's two themes: Cool Graphite (light) and Cool Ink (dark).
 //
-// Viva ships a neutral preset per appearance; a product themes it by
-// overriding the tokens it paints with, and that is the whole mechanism: a
-// theme is a value of type gfx.Theme, every page reads it through c.Theme(),
-// and swapping it is swapping the value the window paints with. So this file
-// is the single place the application's color lives: pages name tokens, never
-// hex, and a change here repaints every screen in both appearances.
+// Viva ships a neutral preset per appearance; a product themes it by replacing
+// the value it paints with. That is the whole mechanism: gfx.Theme is a value,
+// every page reads it through c.Theme(), and swapping it is swapping the value
+// the window paints with. So this file is the single place the application's
+// color lives: pages name tokens, never hex, and a change here repaints every
+// screen in both appearances.
 //
-// The world is "warm paper": the content card is a sheet, the navigation rail
-// and the window shell are the desk it lies on, and the single accent stays a
-// signal blue. The dark appearance is not the light one inverted — each pair
-// was picked on its own surface, then measured:
+// The world is a graphite instrument: white paper, cool neutral surfaces, and
+// one blue that means "act". The dark appearance is not the light one
+// inverted — the rail always sits between the shell and the paper, and the two
+// appearances simply point that ladder the other way. Every pair was picked on
+// its own surface and measured:
 //
 //   - body text and the four data colors (income / expense / transfer /
 //     outlier) clear 4.5:1 on the paper (light) or the near-black (dark), and
@@ -23,93 +24,93 @@ import "github.com/vivaui/viva/gfx"
 //   - the primary button's label clears 4.5:1 on the primary fill;
 //   - the focus ring clears 3:1 on the surface it is drawn on.
 //
-// Contrast is why a few values look darker than the old project's tokens: its
-// income green (#16a34a) and expense red (#dc2626) sit at 3.3:1 and 4.0:1 on
-// white, which is fine for a large figure but not for a 12px amount in a
-// table. Warm paper costs a little lightness; the hues are the same.
+// The data hues are darker than the old project's: its income green (#16a34a)
+// and expense red (#dc2626) sit at 3.3:1 and 4.0:1 on white, which is fine for
+// a large figure but not for a 12px amount in a table. The hues are the same;
+// only their lightness changed. Transfer is a sky blue deliberately apart from
+// the action blue, so a transaction type never reads as a button.
 
 // newTheme returns the application theme for the light or dark appearance.
 func newTheme(dark bool) gfx.Theme {
 	if dark {
-		return warmInk()
+		return coolInk()
 	}
-	return warmPaper()
+	return coolGraphite()
 }
 
-// warmPaper is the light appearance: warm paper for content, a slightly deeper
-// warm grey for the shell and the navigation rail, warm ink for text.
-func warmPaper() gfx.Theme {
+// coolGraphite is the light appearance: white paper on a cool grey shell, with
+// graphite text and a single precise blue.
+func coolGraphite() gfx.Theme {
 	return gfx.Theme{
-		Background:          gfx.RGB24(0xfffdf8), // the card: warm paper
-		Foreground:          gfx.RGB24(0x1a1611), // warm ink
-		Card:                gfx.RGB24(0xfffdf8),
-		CardForeground:      gfx.RGB24(0x1a1611),
-		CardElevated:        gfx.RGB24(0xf7f2e8), // the navigation rail
-		Popover:             gfx.RGB24(0xfffefa),
-		PopoverForeground:   gfx.RGB24(0x1a1611),
-		Muted:               gfx.RGB24(0xf2ece0), // the window shell, chips, tracks
-		MutedForeground:     gfx.RGB24(0x6f6656), // secondary text, table headers
-		Border:              gfx.RGB24(0xe7dfd0), // every hairline
-		Hover:               gfx.RGB24(0xf8f3ea), // row hover, just above the paper
-		Input:               gfx.RGB24(0xddd3c1), // field and control strokes
-		Primary:             gfx.RGB24(0x1447e6), // Signal Blue
-		PrimaryForeground:   gfx.RGB24(0xf7f4ec),
-		Selection:           gfx.RGB24(0xd6e0fb),
-		SelectionForeground: gfx.RGB24(0x14110d),
-		Secondary:           gfx.RGB24(0xf0e9dc),
-		SecondaryForeground: gfx.RGB24(0x241f18),
-		Accent:              gfx.RGB24(0xeae3d4), // navigation hover and active row
-		AccentForeground:    gfx.RGB24(0x1a1611),
-		Ring:                gfx.RGB24(0x6f6656), // focus, 5.6:1 on the paper
-		Success:             gfx.RGB24(0x12703a), // income
-		Danger:              gfx.RGB24(0xc0271f), // expense, deletion, errors
-		DangerForeground:    gfx.RGB24(0xfffdf8),
+		Background:          gfx.RGB24(0xffffff), // the card: white paper
+		Foreground:          gfx.RGB24(0x18181b), // graphite
+		Card:                gfx.RGB24(0xffffff),
+		CardForeground:      gfx.RGB24(0x18181b),
+		CardElevated:        gfx.RGB24(0xfafafa), // the navigation rail
+		Popover:             gfx.RGB24(0xffffff),
+		PopoverForeground:   gfx.RGB24(0x18181b),
+		Muted:               gfx.RGB24(0xf4f4f5), // the window shell, chips, tracks
+		MutedForeground:     gfx.RGB24(0x646b76), // secondary text, table headers
+		Border:              gfx.RGB24(0xe4e4e7), // every hairline
+		Hover:               gfx.RGB24(0xf4f4f5), // row hover
+		Input:               gfx.RGB24(0xd4d4d8), // field and control strokes
+		Primary:             gfx.RGB24(0x1d4ed8), // Signal Blue
+		PrimaryForeground:   gfx.RGB24(0xffffff),
+		Selection:           gfx.RGB24(0xc7d7fe),
+		SelectionForeground: gfx.RGB24(0x111827),
+		Secondary:           gfx.RGB24(0xf4f4f5),
+		SecondaryForeground: gfx.RGB24(0x18181b),
+		Accent:              gfx.RGB24(0xe4e4e7), // navigation hover and active row
+		AccentForeground:    gfx.RGB24(0x18181b),
+		Ring:                gfx.RGB24(0x52525b), // focus, 7.7:1 on the paper
+		Success:             gfx.RGB24(0x0f6b34), // income
+		Danger:              gfx.RGB24(0xb91c1c), // expense, deletion, errors
+		DangerForeground:    gfx.RGB24(0xffffff),
 		Chart: [5]gfx.Color{
-			gfx.RGB24(0xc0271f), // expense red
-			gfx.RGB24(0x12703a), // income green
-			gfx.RGB24(0x2b64c4), // transfer blue
-			gfx.RGB24(0x94570a), // outlier amber
-			gfx.RGB24(0x7b4fa5), // violet, the first hue past the data family
+			gfx.RGB24(0xb91c1c), // expense red
+			gfx.RGB24(0x0f6b34), // income green
+			gfx.RGB24(0x0369a1), // transfer sky
+			gfx.RGB24(0x8a5a06), // outlier amber
+			gfx.RGB24(0x7c3aed), // violet, the first hue past the data family
 		},
 		Metrics:    gfx.DefaultMetrics(),
 		Transition: gfx.DefaultMotion(),
 	}
 }
 
-// warmInk is the dark appearance: a near-black warm brown for content, a
-// lifted warm grey for the shell, paper-warm white for text. The accent is a
-// lighter blue because a deep one disappears into the shell, and the danger
-// fill carries ink text for the same reason.
-func warmInk() gfx.Theme {
+// coolInk is the dark appearance: the paper sits between a lighter shell and a
+// slightly darker rail, the accent is lightened so it does not sink, and the
+// danger fill carries ink text because its red is too bright for white.
+func coolInk() gfx.Theme {
 	return gfx.Theme{
-		Background:          gfx.RGB24(0x17130f),
-		Foreground:          gfx.RGB24(0xf3ede2),
-		Card:                gfx.RGB24(0x1d1813),
-		CardForeground:      gfx.RGB24(0xf3ede2),
-		CardElevated:        gfx.RGB24(0x211b15),
-		Popover:             gfx.RGB24(0x221c16),
-		PopoverForeground:   gfx.RGB24(0xf3ede2),
-		Muted:               gfx.RGB24(0x2a231b),
-		MutedForeground:     gfx.RGB24(0xa89d8b),
-		Border:              gfx.RGBA(243, 237, 226, 0.12),
-		Hover:               gfx.RGB24(0x241d16),
-		Input:               gfx.RGBA(243, 237, 226, 0.16),
+		Background:          gfx.RGB24(0x18181b),
+		Foreground:          gfx.RGB24(0xfafafa),
+		Card:                gfx.RGB24(0x1c1c1f),
+		CardForeground:      gfx.RGB24(0xfafafa),
+		CardElevated:        gfx.RGB24(0x1f1f23),
+		Popover:             gfx.RGB24(0x1c1c1f),
+		PopoverForeground:   gfx.RGB24(0xfafafa),
+		Muted:               gfx.RGB24(0x27272a),
+		MutedForeground:     gfx.RGB24(0xa1a1aa),
+		Border:              gfx.RGBA(250, 250, 250, 0.10),
+		Hover:               gfx.RGB24(0x232326),
+		Input:               gfx.RGBA(250, 250, 250, 0.14),
 		Primary:             gfx.RGB24(0x2f5ce0),
-		PrimaryForeground:   gfx.RGB24(0xf6f3ec),
+		PrimaryForeground:   gfx.RGB24(0xfafafa),
 		Selection:           gfx.RGB24(0x2b4a7d),
 		SelectionForeground: gfx.RGB24(0xeef2ff),
-		Secondary:           gfx.RGB24(0x2b241c),
-		SecondaryForeground: gfx.RGB24(0xf3ede2),
-		Accent:              gfx.RGB24(0x2e261d),
-		AccentForeground:    gfx.RGB24(0xf6f0e6),
-		Ring:                gfx.RGB24(0xa89d8b),
-		Success:             gfx.RGB24(0x58b06b),
-		Danger:              gfx.RGB24(0xe2645c),
-		DangerForeground:    gfx.RGB24(0x17130f),
+		Secondary:           gfx.RGB24(0x27272a),
+		SecondaryForeground: gfx.RGB24(0xfafafa),
+		Accent:              gfx.RGB24(0x2a2a2d),
+		AccentForeground:    gfx.RGB24(0xfafafa),
+		Ring:                gfx.RGB24(0xa1a1aa),
+		Success:             gfx.RGB24(0x4ade80),
+		Danger:              gfx.RGB24(0xf87171),
+		DangerForeground:    gfx.RGB24(0x18181b),
 		Chart: [5]gfx.Color{
-			gfx.RGB24(0xe2645c),
-			gfx.RGB24(0x58b06b),
-			gfx.RGB24(0x6f95e8),
+			gfx.RGB24(0xf87171),
+			gfx.RGB24(0x4ade80),
+			gfx.RGB24(0x38bdf8),
 			gfx.RGB24(0xd9a04a),
 			gfx.RGB24(0xb08bd8),
 		},
