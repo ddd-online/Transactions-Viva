@@ -290,7 +290,7 @@ func (m *Model) header(c ui.C) {
 		ui.Row(c).Width(dragColumnWidth)
 		headerText(c, "模板名称", nameWeight, 120)
 		headerCenter(c, "交易类型", typeColumnWidth)
-		headerText(c, "分类", categoryWeight, 90)
+		headerMid(c, "分类", categoryWeight, 90)
 		headerText(c, "标签", tagsWeight, 110)
 		headerText(c, "标记", markWeight, 70)
 		headerText(c, "描述", descriptionWeight, 140)
@@ -300,6 +300,12 @@ func (m *Model) header(c ui.C) {
 
 func headerText(c ui.C, text string, grow, minWidth float32) {
 	typography.Caption(c, text).Grow(grow).Basis(0).MinWidth(minWidth).Ellipsis()
+}
+
+// headerMid is headerText with the caption centred in its column, for a column
+// whose values are centred too.
+func headerMid(c ui.C, text string, grow, minWidth float32) {
+	typography.Caption(c, text).Grow(grow).Basis(0).MinWidth(minWidth).Ellipsis().TextCenter()
 }
 
 func headerCenter(c ui.C, text string, width float32) {
@@ -353,11 +359,16 @@ func (m *Model) row(row ui.ListRow) {
 		chip(row.C, tpl.KindLabel(one.Kind), kindColor(one.Kind, *theme))
 	})
 
+	// The category column is centred: a short, single value between two blocks
+	// of chips, and the same in the header.
 	if one.Category != "" {
 		typography.Body(row.C, one.Category).
-			Grow(categoryWeight).Basis(0).MinWidth(90).Ellipsis()
+			Grow(categoryWeight).Basis(0).MinWidth(90).Ellipsis().TextCenter()
 	} else {
-		dash(row.C).Grow(categoryWeight).Basis(0).MinWidth(90)
+		ui.Row(row.C).Grow(categoryWeight).Basis(0).MinWidth(90).
+			Justify(ui.Center).Children(func() {
+			dash(row.C)
+		})
 	}
 
 	ui.Flow(row.C).Grow(tagsWeight).Basis(0).MinWidth(110).Gap(4).Children(func() {
