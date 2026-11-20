@@ -11,6 +11,68 @@ package icons
 
 import "github.com/vivaui/viva/gfx"
 
+// arrow-down-wide-narrow is a compiled vector icon.
+var ArrowDownWideNarrow = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(3.0, 16.0),
+		gfx.LineTo(7.0, 20.0),
+		gfx.LineTo(11.0, 16.0),
+		gfx.MoveTo(7.0, 20.0),
+		gfx.LineTo(7.0, 4.0),
+		gfx.MoveTo(11.0, 4.0),
+		gfx.LineTo(21.0, 4.0),
+		gfx.MoveTo(11.0, 8.0),
+		gfx.LineTo(18.0, 8.0),
+		gfx.MoveTo(11.0, 12.0),
+		gfx.LineTo(15.0, 12.0),
+	},
+}
+
+// arrow-up-down is a compiled vector icon.
+var ArrowUpDown = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(21.0, 16.0),
+		gfx.LineTo(17.0, 20.0),
+		gfx.LineTo(13.0, 16.0),
+		gfx.MoveTo(17.0, 20.0),
+		gfx.LineTo(17.0, 4.0),
+		gfx.MoveTo(3.0, 8.0),
+		gfx.LineTo(7.0, 4.0),
+		gfx.LineTo(11.0, 8.0),
+		gfx.MoveTo(7.0, 4.0),
+		gfx.LineTo(7.0, 20.0),
+	},
+}
+
+// arrow-up-narrow-wide is a compiled vector icon.
+var ArrowUpNarrowWide = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(3.0, 8.0),
+		gfx.LineTo(7.0, 4.0),
+		gfx.LineTo(11.0, 8.0),
+		gfx.MoveTo(7.0, 4.0),
+		gfx.LineTo(7.0, 20.0),
+		gfx.MoveTo(11.0, 12.0),
+		gfx.LineTo(15.0, 12.0),
+		gfx.MoveTo(11.0, 16.0),
+		gfx.LineTo(18.0, 16.0),
+		gfx.MoveTo(11.0, 20.0),
+		gfx.LineTo(21.0, 20.0),
+	},
+}
+
 // calendar is a compiled vector icon.
 var Calendar = gfx.Icon{
 	ViewBox: 24.0,
@@ -72,19 +134,6 @@ var ChevronRight = gfx.Icon{
 		gfx.MoveTo(9.0, 18.0),
 		gfx.LineTo(15.0, 12.0),
 		gfx.LineTo(9.0, 6.0),
-	},
-}
-
-// chevron-up is a compiled vector icon.
-var ChevronUp = gfx.Icon{
-	ViewBox: 24.0,
-	Stroke:  2.0,
-	Cap:     gfx.CapRound,
-	Join:    gfx.JoinRound,
-	Commands: []gfx.PathCommand{
-		gfx.MoveTo(18.0, 15.0),
-		gfx.LineTo(12.0, 9.0),
-		gfx.LineTo(6.0, 15.0),
 	},
 }
 

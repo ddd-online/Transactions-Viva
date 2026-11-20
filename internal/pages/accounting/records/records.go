@@ -213,49 +213,61 @@ func (m *Model) ledgerName(id string) string {
 	return id
 }
 
-// sortHeader is a column title that orders the table. A click cycles the
-// column: none, descending, ascending. Columns sort in the order they were
-// chosen, so the first one clicked is the primary sort. The arrow's room is
-// reserved while the column is off, so the title does not move when it is
-// turned on.
+// sortHeader is a column title with a square sort button beside it. The
+// button cycles the column: none, descending, ascending. Columns sort in the
+// order they were chosen, so the first one clicked is the primary sort.
 func (m *Model) sortHeader(c ui.C, label string, field sortField, width float32, end bool) {
-	theme := c.Theme()
-	desc, rank := m.sortState(field)
-	row := ui.Row(c).Width(width).Height(26).Items(ui.Center).Gap(4).
-		Radius(theme.Metrics.RadiusItem()).
-		HitWith(ui.ID(c), "按"+label+"排序", gfx.HitOptions{
-			Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
-			Hint: "点击切换 未选 / 降序 / 升序",
-		}).
-		Hover(ui.Look{}.Background(theme.Accent)).
-		Focus(ui.Look{}.Ring(2, theme.Ring))
+	row := ui.Row(c).Width(width).Height(34).Items(ui.Center).Gap(4)
 	if end {
 		row = row.Justify(ui.End)
 	}
 	row.Children(func() {
 		if end {
-			sortArrow(c, theme, desc, rank > 0)
+			m.sortButton(c, label, field)
 		}
 		ui.Text(c, label).FontSize(11).Muted()
 		if !end {
-			sortArrow(c, theme, desc, rank > 0)
+			m.sortButton(c, label, field)
 		}
 	})
-	if row.Clicked() {
-		m.cycleSort(field)
-	}
 }
 
-// sortArrow is the column's direction, invisible but still laid out while the
-// column is not sorting.
-func sortArrow(c ui.C, theme *gfx.Theme, desc, active bool) {
-	glyph := icons.ChevronUp
-	if desc {
-		glyph = icons.ChevronDown
+// sortButton is the square button of a sortable column: a neutral up/down icon
+// while the column is off, a direction icon in the primary color on an active
+// tint once it sorts.
+func (m *Model) sortButton(c ui.C, label string, field sortField) {
+	theme := c.Theme()
+	desc, rank := m.sortState(field)
+	glyph, color := icons.ArrowUpDown, theme.MutedForeground
+	switch {
+	case rank == 0:
+	case desc:
+		glyph, color = icons.ArrowUpNarrowWide, theme.Primary
+	default:
+		glyph, color = icons.ArrowDownWideNarrow, theme.Primary
 	}
-	arrow := ui.Icon(c, glyph).Size(14, 14).Color(theme.MutedForeground)
-	if !active {
-		arrow = arrow.Opacity(0)
+	button := ui.Row(c).Size(24, 24).Items(ui.Center).Justify(ui.Center).
+		Radius(theme.Metrics.RadiusItem()).
+		HitWith(ui.ID(c), "按"+label+"排序", gfx.HitOptions{
+			Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
+			Hint: "点击切换 未选 / 降序 / 升序",
+		}).
+		Focus(ui.Look{}.Ring(2, theme.Ring))
+	if rank == 0 {
+		button = button.Hover(ui.Look{}.Background(theme.Accent)).
+			Pressed(ui.Look{}.Background(theme.Border))
+	} else {
+		tint, hover, pressed := theme.Primary, theme.Primary, theme.Primary
+		tint.Alpha, hover.Alpha, pressed.Alpha = 0.14, 0.22, 0.3
+		button = button.Background(tint).
+			Hover(ui.Look{}.Background(hover)).
+			Pressed(ui.Look{}.Background(pressed))
+	}
+	button.Children(func() {
+		ui.Icon(c, glyph).Size(14, 14).Color(color)
+	})
+	if button.Clicked() {
+		m.cycleSort(field)
 	}
 }
 

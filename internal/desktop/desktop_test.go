@@ -487,12 +487,17 @@ func TestRecordPanelsCloseOnNavigation(t *testing.T) {
 	}
 }
 
-// TestRecordsHeaderSort checks the date and amount column titles cycle through
-// unsorted, descending and ascending, and sort in the order they are clicked.
+// TestRecordsHeaderSort checks the date and amount column titles carry a square
+// icon button that cycles through unsorted, descending and ascending, and that
+// the columns sort in the order they are clicked.
 func TestRecordsHeaderSort(t *testing.T) {
 	driver, _ := open(t)
 	if hasControl(driver, "排序") {
 		t.Fatal("the toolbar still has the old 排序 button")
+	}
+	sortButton, ok := controlBounds(driver, "按金额排序")
+	if !ok || sortButton.Width != 24 || sortButton.Height != 24 {
+		t.Fatalf("the amount sort control is %v, want a 24x24 square button", sortButton)
 	}
 	above := func(first, second string) bool {
 		return labelBoundsOf(t, driver, first).Y < labelBoundsOf(t, driver, second).Y
