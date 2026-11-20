@@ -16,7 +16,7 @@ import (
 
 func main() {
 	source := flag.String("from", "", "旧工作空间目录，或它的 transactions.db")
-	destination := flag.String("to", "", "新工作空间目录（不能已有 transactions.db）")
+	destination := flag.String("to", "", "新工作空间目录（不能已存在 transactions.db）")
 	strict := flag.Bool("strict", false, "遇到孤儿行时中止，不写入目标库")
 	flag.Parse()
 	if *source == "" || *destination == "" {
@@ -29,16 +29,16 @@ func main() {
 	}
 	report, err := store.ImportOld(*destination, sourcePath, *strict)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "导入失败：", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	fmt.Printf("已导入到 %s\n", filepath.Join(*destination, "transactions.db"))
 	fmt.Printf("账本 %d，分类 %d，标签 %d，记录 %d，记录标签 %d，模板 %d，图表 %d\n",
 		report.Ledgers, report.Categories, report.Tags, report.Records, report.RecordTags, report.Templates, report.Charts)
 	if report.SourceSchema > 0 {
-		fmt.Printf("旧库 schema 版本：%d\n", report.SourceSchema)
+		fmt.Printf("旧数据库格式版本：%d\n", report.SourceSchema)
 	}
 	for _, orphan := range report.Orphans {
-		fmt.Println("警告：", orphan)
+		fmt.Println("警告：" + orphan)
 	}
 }

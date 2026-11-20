@@ -213,7 +213,7 @@ func validateChart(chart domain.Chart) error {
 		return fmt.Errorf("%w：图表名称不能为空", repository.ErrInvalid)
 	}
 	if chart.ChartType != "line" && chart.ChartType != "pie" {
-		return fmt.Errorf("%w：图表类型 %q", repository.ErrInvalid, chart.ChartType)
+		return fmt.Errorf("%w：图表类型「%s」无法识别", repository.ErrInvalid, chart.ChartType)
 	}
 	return nil
 }

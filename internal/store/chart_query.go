@@ -21,7 +21,7 @@ func (w *Workspace) ChartData(ctx context.Context, query repository.ChartQuery) 
 		return nil, stats, fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
 	}
 	if query.Granularity != "month" && query.Granularity != "year" {
-		return nil, stats, fmt.Errorf("%w：图表粒度 %q", repository.ErrInvalid, query.Granularity)
+		return nil, stats, fmt.Errorf("%w：图表粒度「%s」无法识别", repository.ErrInvalid, query.Granularity)
 	}
 	start, end, err := chartRange(query.StartDate, query.EndDate)
 	if err != nil {
@@ -42,7 +42,7 @@ func (w *Workspace) ChartData(ctx context.Context, query repository.ChartQuery) 
 	lines := make([]repository.ChartLineData, 0, len(query.Lines))
 	for _, line := range query.Lines {
 		if !validTransactionType(line.TransactionType) {
-			return nil, stats, fmt.Errorf("%w：曲线类型 %q", repository.ErrInvalid, line.TransactionType)
+			return nil, stats, fmt.Errorf("%w：曲线类型「%s」无法识别", repository.ErrInvalid, line.TransactionType)
 		}
 		where := []string{"ledger_id = ?", "transaction_at >= ?", "transaction_at <= ?", "transaction_type = ?"}
 		args := []any{query.LedgerID, start, end, line.TransactionType}
@@ -125,13 +125,13 @@ func (w *Workspace) ChartPie(ctx context.Context, query repository.ChartPieQuery
 		return result, err
 	}
 	if query.GroupField != "transactionType" && query.GroupField != "category" && query.GroupField != "tag" {
-		return result, fmt.Errorf("%w：饼图分组 %q", repository.ErrInvalid, query.GroupField)
+		return result, fmt.Errorf("%w：饼图分组「%s」无法识别", repository.ErrInvalid, query.GroupField)
 	}
 	if query.GroupField != "transactionType" && !validTransactionType(query.GroupTransactionType) {
-		return result, fmt.Errorf("%w：饼图交易类型 %q", repository.ErrInvalid, query.GroupTransactionType)
+		return result, fmt.Errorf("%w：饼图交易类型「%s」无法识别", repository.ErrInvalid, query.GroupTransactionType)
 	}
 	if query.GroupField == "tag" && strings.TrimSpace(query.GroupCategory) == "" {
-		return result, fmt.Errorf("%w：按标签分组需要分类", repository.ErrInvalid)
+		return result, fmt.Errorf("%w：按标签分组时请先选择分类", repository.ErrInvalid)
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -216,7 +216,7 @@ func (w *Workspace) ChartPie(ctx context.Context, query repository.ChartPieQuery
 
 func chartRange(startDate, endDate string) (int64, int64, error) {
 	if strings.TrimSpace(startDate) == "" || strings.TrimSpace(endDate) == "" {
-		return 0, 0, fmt.Errorf("%w：图表需要时间范围", repository.ErrInvalid)
+		return 0, 0, fmt.Errorf("%w：请先选择图表的时间范围", repository.ErrInvalid)
 	}
 	start, err := localDayStart(startDate)
 	if err != nil {
@@ -227,7 +227,7 @@ func chartRange(startDate, endDate string) (int64, int64, error) {
 		return 0, 0, err
 	}
 	if end < start {
-		return 0, 0, fmt.Errorf("%w：时间范围结束早于开始", repository.ErrInvalid)
+		return 0, 0, fmt.Errorf("%w：结束日期不能早于开始日期", repository.ErrInvalid)
 	}
 	return start, end, nil
 }
@@ -235,14 +235,14 @@ func chartRange(startDate, endDate string) (int64, int64, error) {
 func chartLabels(startDate, endDate, granularity string) ([]string, error) {
 	start, err := time.ParseInLocation("2006-01-02", startDate, time.Local)
 	if err != nil {
-		return nil, fmt.Errorf("%w：日期 %q", repository.ErrInvalid, startDate)
+		return nil, fmt.Errorf("%w：日期「%s」无法识别", repository.ErrInvalid, startDate)
 	}
 	end, err := time.ParseInLocation("2006-01-02", endDate, time.Local)
 	if err != nil {
-		return nil, fmt.Errorf("%w：日期 %q", repository.ErrInvalid, endDate)
+		return nil, fmt.Errorf("%w：日期「%s」无法识别", repository.ErrInvalid, endDate)
 	}
 	if end.Before(start) {
-		return nil, fmt.Errorf("%w：时间范围结束早于开始", repository.ErrInvalid)
+		return nil, fmt.Errorf("%w：结束日期不能早于开始日期", repository.ErrInvalid)
 	}
 	var labels []string
 	if granularity == "year" {
@@ -252,7 +252,7 @@ func chartLabels(startDate, endDate, granularity string) ([]string, error) {
 		return labels, nil
 	}
 	if granularity != "month" {
-		return nil, fmt.Errorf("%w：图表粒度 %q", repository.ErrInvalid, granularity)
+		return nil, fmt.Errorf("%w：图表粒度「%s」无法识别", repository.ErrInvalid, granularity)
 	}
 	year, month := start.Year(), start.Month()
 	for year < end.Year() || (year == end.Year() && month <= end.Month()) {

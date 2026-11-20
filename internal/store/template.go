@@ -129,7 +129,7 @@ func validateTemplate(template domain.TransactionTemplate) error {
 		return fmt.Errorf("%w：模板名称不能为空", repository.ErrInvalid)
 	}
 	if !validTransactionType(template.TransactionType) {
-		return fmt.Errorf("%w：交易类型 %q", repository.ErrInvalid, template.TransactionType)
+		return fmt.Errorf("%w：交易类型「%s」无法识别", repository.ErrInvalid, template.TransactionType)
 	}
 	if strings.TrimSpace(template.Category) == "" {
 		return fmt.Errorf("%w：分类不能为空", repository.ErrInvalid)

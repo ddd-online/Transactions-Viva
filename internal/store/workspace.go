@@ -56,7 +56,7 @@ func Open(directory string) (*Workspace, error) {
 	}
 	if existed {
 		if err := quickCheck(db); err != nil {
-			return closeOnError(fmt.Errorf("%w：%s：%v", ErrCorrupt, databasePath, err))
+			return closeOnError(fmt.Errorf("%w：%s（%v）", ErrCorrupt, databasePath, err))
 		}
 	}
 
@@ -65,7 +65,7 @@ func Open(directory string) (*Workspace, error) {
 		return closeOnError(fmt.Errorf("%w：%v", ErrCorrupt, err))
 	}
 	if legacy {
-		return closeOnError(ErrLegacyWorkspace)
+		return closeOnError(fmt.Errorf("%w，请使用旧数据导入工具", ErrLegacyWorkspace))
 	}
 
 	version, hasMeta, err := schemaVersion(db)
@@ -79,7 +79,7 @@ func Open(directory string) (*Workspace, error) {
 		}
 		if count > 0 {
 			if isOldAccountingDB(db) {
-				return closeOnError(ErrOldWorkspace)
+				return closeOnError(fmt.Errorf("%w，请使用旧数据导入工具", ErrOldWorkspace))
 			}
 			return closeOnError(ErrNotWorkspace)
 		}
@@ -89,9 +89,9 @@ func Open(directory string) (*Workspace, error) {
 	}
 	if version > targetVersion() {
 		if isOldAccountingDB(db) {
-			return closeOnError(fmt.Errorf("%w（库格式版本 %d）", ErrOldWorkspace, version))
+			return closeOnError(fmt.Errorf("%w（库格式版本 %d），请使用旧数据导入工具", ErrOldWorkspace, version))
 		}
-		return closeOnError(fmt.Errorf("%w：库格式版本 %d，本程序支持到 %d", ErrVersionTooNew, version, targetVersion()))
+		return closeOnError(fmt.Errorf("%w：当前库格式版本 %d，本程序支持到 %d", ErrVersionTooNew, version, targetVersion()))
 	}
 	if err := applyMigrations(db, databasePath, migrations, version); err != nil {
 		return closeOnError(err)

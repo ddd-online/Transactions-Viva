@@ -96,7 +96,7 @@ func applyMigrations(db *sql.DB, databasePath string, list []migration, current 
 	}
 	target := list[len(list)-1].version
 	if current > target {
-		return fmt.Errorf("%w：库格式版本 %d，本程序支持到 %d", ErrVersionTooNew, current, target)
+		return fmt.Errorf("%w：当前库格式版本 %d，本程序支持到 %d", ErrVersionTooNew, current, target)
 	}
 	if current == target {
 		return nil
@@ -119,7 +119,7 @@ func applyMigrations(db *sql.DB, databasePath string, list []migration, current 
 		}
 		if _, err := tx.Exec(item.sql); err != nil {
 			_ = tx.Rollback()
-			return fmt.Errorf("应用迁移 %d (%s) 失败：%w", item.version, item.name, err)
+			return fmt.Errorf("应用迁移 %d（%s）失败：%w", item.version, item.name, err)
 		}
 		if err := setSchemaVersion(tx, item.version); err != nil {
 			_ = tx.Rollback()

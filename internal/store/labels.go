@@ -113,7 +113,7 @@ func (w *Workspace) CreateCategory(ctx context.Context, ledgerID, name, transact
 			return err
 		}
 		if exists {
-			return fmt.Errorf("%w：分类 %q", repository.ErrDuplicate, name)
+			return fmt.Errorf("%w：分类「%s」", repository.ErrDuplicate, name)
 		}
 		var sortOrder int
 		if err := tx.QueryRowContext(ctx,
@@ -176,7 +176,7 @@ func (w *Workspace) ReorderCategories(ctx context.Context, ledgerID, transaction
 func (w *Workspace) CreateTag(ctx context.Context, ledgerID, name, categoryTransactionType string) error {
 	name = strings.TrimSpace(name)
 	if strings.TrimSpace(ledgerID) == "" || name == "" || !validCategoryTransactionType(categoryTransactionType) {
-		return fmt.Errorf("%w：标签名称或分类键无效", repository.ErrInvalid)
+		return fmt.Errorf("%w：标签名称或分类无效", repository.ErrInvalid)
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -190,7 +190,7 @@ func (w *Workspace) CreateTag(ctx context.Context, ledgerID, name, categoryTrans
 			return err
 		}
 		if exists {
-			return fmt.Errorf("%w：标签 %q", repository.ErrDuplicate, name)
+			return fmt.Errorf("%w：标签「%s」", repository.ErrDuplicate, name)
 		}
 		var sortOrder int
 		if err := tx.QueryRowContext(ctx,
@@ -209,7 +209,7 @@ func (w *Workspace) CreateTag(ctx context.Context, ledgerID, name, categoryTrans
 func (w *Workspace) DeleteTag(ctx context.Context, ledgerID, name, categoryTransactionType string) error {
 	name = strings.TrimSpace(name)
 	if strings.TrimSpace(ledgerID) == "" || name == "" || !validCategoryTransactionType(categoryTransactionType) {
-		return fmt.Errorf("%w：标签名称或分类键无效", repository.ErrInvalid)
+		return fmt.Errorf("%w：标签名称或分类无效", repository.ErrInvalid)
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -230,7 +230,7 @@ func (w *Workspace) DeleteTag(ctx context.Context, ledgerID, name, categoryTrans
 // ReorderTags writes the new display order into sort_order.
 func (w *Workspace) ReorderTags(ctx context.Context, ledgerID, categoryTransactionType string, names []string) error {
 	if strings.TrimSpace(ledgerID) == "" || !validCategoryTransactionType(categoryTransactionType) {
-		return fmt.Errorf("%w：分类键无效", repository.ErrInvalid)
+		return fmt.Errorf("%w：分类无效", repository.ErrInvalid)
 	}
 	db, err := w.dbHandle()
 	if err != nil {

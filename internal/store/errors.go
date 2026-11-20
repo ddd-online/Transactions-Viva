@@ -15,11 +15,11 @@ var (
 	ErrVersionTooNew = errors.New("工作空间格式版本高于本程序支持的版本")
 	// ErrLegacyWorkspace is the pre-v1 source database, which needs the import
 	// tool rather than a direct open.
-	ErrLegacyWorkspace = errors.New("旧版工作空间，请使用导入工具")
+	ErrLegacyWorkspace = errors.New("这是更早版本的工作空间")
 	// ErrOldWorkspace is an old application database (schema versions 1-12)
 	// whose accounting tables match ours but whose schema history is not ours.
 	// It is import-only; opening it as a new workspace would misread versions.
-	ErrOldWorkspace = errors.New("这是旧版 Transactions 工作空间，请使用导入工具导入")
+	ErrOldWorkspace = errors.New("这是旧版 Transactions 工作空间")
 	// ErrWorkspaceMissing is a directory that no longer exists. The application
 	// never recreates it silently: that would turn "missing" into "empty".
 	ErrWorkspaceMissing = errors.New("工作空间目录不存在")

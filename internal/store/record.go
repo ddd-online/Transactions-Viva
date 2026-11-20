@@ -199,7 +199,7 @@ func (w *Workspace) SyncRecord(ctx context.Context, id, targetLedgerID string) e
 		return err
 	}
 	if source.Record.LedgerID == targetLedgerID {
-		return fmt.Errorf("%w：不能同步到同一个账本", repository.ErrInvalid)
+		return fmt.Errorf("%w：记录不能同步到同一个账本", repository.ErrInvalid)
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -227,7 +227,7 @@ func validateRecord(record domain.TransactionRecord) error {
 		return fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
 	}
 	if !validTransactionType(record.TransactionType) {
-		return fmt.Errorf("%w：交易类型 %q", repository.ErrInvalid, record.TransactionType)
+		return fmt.Errorf("%w：交易类型「%s」无法识别", repository.ErrInvalid, record.TransactionType)
 	}
 	if strings.TrimSpace(record.Category) == "" {
 		return fmt.Errorf("%w：分类不能为空", repository.ErrInvalid)
@@ -348,7 +348,7 @@ func recordOrderBy(sorts []repository.RecordSort) (string, error) {
 		case repository.RecordSortAmount:
 			keys = append(keys, "CASE transaction_type WHEN 'expense' THEN -amount_cents ELSE amount_cents END "+direction)
 		default:
-			return "", fmt.Errorf("%w：排序字段 %q", repository.ErrInvalid, sort.Field)
+			return "", fmt.Errorf("%w：排序字段「%s」无法识别", repository.ErrInvalid, sort.Field)
 		}
 	}
 	keys = append(keys, "transaction_at DESC", "transaction_id ASC")
@@ -358,7 +358,7 @@ func recordOrderBy(sorts []repository.RecordSort) (string, error) {
 func localDayStart(value string) (int64, error) {
 	day, err := time.ParseInLocation("2006-01-02", value, time.Local)
 	if err != nil {
-		return 0, fmt.Errorf("%w：日期 %q", repository.ErrInvalid, value)
+		return 0, fmt.Errorf("%w：日期「%s」无法识别", repository.ErrInvalid, value)
 	}
 	return day.Unix(), nil
 }
@@ -366,7 +366,7 @@ func localDayStart(value string) (int64, error) {
 func localDayEnd(value string) (int64, error) {
 	day, err := time.ParseInLocation("2006-01-02", value, time.Local)
 	if err != nil {
-		return 0, fmt.Errorf("%w：日期 %q", repository.ErrInvalid, value)
+		return 0, fmt.Errorf("%w：日期「%s」无法识别", repository.ErrInvalid, value)
 	}
 	return time.Date(day.Year(), day.Month(), day.Day(), 23, 59, 59, 0, time.Local).Unix(), nil
 }

@@ -38,14 +38,14 @@ func ImportOld(destinationDirectory, sourceDatabase string, strict bool) (Import
 		return report, err
 	}
 	if info, err := os.Stat(sourcePath); err != nil || info.IsDir() {
-		return report, fmt.Errorf("导入：旧数据库不存在：%s", sourcePath)
+		return report, fmt.Errorf("导入：旧数据库不存在（%s）", sourcePath)
 	}
 	if err := os.MkdirAll(destinationDirectory, 0o755); err != nil {
 		return report, err
 	}
 	destinationPath := databasePathOf(destinationDirectory)
 	if _, err := os.Stat(destinationPath); err == nil {
-		return report, fmt.Errorf("导入：目标目录已有 transactions.db：%s", destinationPath)
+		return report, fmt.Errorf("导入：目标目录已存在 transactions.db（%s）", destinationPath)
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return report, err
 	}
@@ -56,7 +56,7 @@ func ImportOld(destinationDirectory, sourceDatabase string, strict bool) (Import
 	}
 	defer source.Close()
 	if err := quickCheck(source); err != nil {
-		return report, fmt.Errorf("导入：旧数据库已损坏：%w", err)
+		return report, fmt.Errorf("导入：旧数据库已损坏（%w）", err)
 	}
 	if legacy, err := tableExists(source, "tbl_billadm_schema_migration"); err != nil {
 		return report, err
@@ -74,7 +74,7 @@ func ImportOld(destinationDirectory, sourceDatabase string, strict bool) (Import
 		return report, err
 	}
 	if strict && len(report.Orphans) > 0 {
-		return report, fmt.Errorf("导入：旧库有 %d 处孤儿数据（-strict）：%s", len(report.Orphans), strings.Join(report.Orphans, "；"))
+		return report, fmt.Errorf("导入：旧库有 %d 处孤儿数据（-strict），%s", len(report.Orphans), strings.Join(report.Orphans, "；"))
 	}
 
 	workspace, err := Open(destinationDirectory)
@@ -121,7 +121,7 @@ func ImportOld(destinationDirectory, sourceDatabase string, strict bool) (Import
 		return nil
 	})
 	if err != nil {
-		return report, fmt.Errorf("导入失败：%w", err)
+		return report, fmt.Errorf("导入：写入目标库失败（%w）", err)
 	}
 	return report, nil
 }
@@ -148,7 +148,7 @@ func openOldDatabase(path string) (*sql.DB, error) {
 	db.SetMaxOpenConns(1)
 	if err := db.Ping(); err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("导入：打开旧数据库失败：%w", err)
+		return nil, fmt.Errorf("导入：打开旧数据库失败（%w）", err)
 	}
 	return db, nil
 }
@@ -186,7 +186,7 @@ func oldOrphans(db *sql.DB) ([]string, error) {
 			return nil, err
 		}
 		if count > 0 {
-			orphans = append(orphans, fmt.Sprintf("%s：%d", check.label, count))
+			orphans = append(orphans, fmt.Sprintf("%s（%d）", check.label, count))
 		}
 	}
 	return orphans, nil
