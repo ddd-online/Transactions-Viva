@@ -138,6 +138,8 @@ main → desktop → pages → components
   （`Icon` 变体的 `Ghost` 按钮 + `LabelCenter` 的标题样式），浮层表面取
   `components.PopupRecipe` 的填充、描边、圆角与阴影。这里不写颜色、字号或固定像素尺寸：
   尺寸从 `c.Theme().Metrics` 与 `components.BeginButton` 的度量推出来。
+  日粒度的标题两侧在最外侧多一对 `chevrons-left` / `chevrons-right` 的整年箭头，单箭头
+  仍是翻月；月 / 年粒度只有单箭头（翻年 / 翻十年）。
 - 面板仍画在画布上（`gfx.Canvas` + `HitWithOptions`）而不是 `ui.Popover`：Viva v0.6.5 里
   Popover 在 `ui.Modal` 内能画出来却收不到点击（hit 层被判给弹窗），见下面的「框架缺口」。
   `PushLayer(20)`，与标签多选同一层：弹窗有自己的合成层，面板必须在其上才看得见、点得着。

@@ -75,7 +75,10 @@ type State struct {
 	dismiss gfx.ID
 	prev    gfx.ID
 	next    gfx.ID
-	presets [datePresetCount]gfx.ID
+	// yearPrev and yearNext are the day grid's whole-year arrows; every grain
+	// has the month (or period) arrows above the grid instead.
+	yearPrev, yearNext gfx.ID
+	presets            [datePresetCount]gfx.ID
 }
 
 // NewState builds a picker's state and the identities of its cells.
@@ -183,6 +186,8 @@ func (state *State) bind(c ui.C) {
 	state.dismiss = ui.ID(c)
 	state.prev = ui.ID(c)
 	state.next = ui.ID(c)
+	state.yearPrev = ui.ID(c)
+	state.yearNext = ui.ID(c)
 	for index := range state.presets {
 		state.presets[index] = ui.ID(c)
 	}
@@ -293,7 +298,9 @@ func (state *State) measure(canvas *gfx.Canvas, theme gfx.Theme, spec Spec, anch
 	}
 }
 
-// paintCaption paints the period title between the two arrows every grain has.
+// paintCaption paints the period title between the arrows every grain has. The
+// day grid also gets a pair of double chevrons outside them: the single arrows
+// move a month, the double ones a whole year.
 func (state *State) paintCaption(canvas *gfx.Canvas, theme gfx.Theme, spec Spec, place layout) {
 	visible := state.visibleMonth()
 	title, previous, next := "", "上个月", "下个月"
@@ -307,15 +314,28 @@ func (state *State) paintCaption(canvas *gfx.Canvas, theme gfx.Theme, spec Spec,
 		title = strconv.Itoa(visible.Year()) + " 年 " + strconv.Itoa(int(visible.Month())) + " 月"
 	}
 	arrow := gfx.Rect{Y: place.caption.Y, Width: place.cell, Height: place.caption.Height}
+	arrowGap := place.gap / 2
+	titleInset := place.cell
 	arrow.X = place.caption.X
+	if spec.Grain == ByDay {
+		viva.BeginButton(canvas, theme, state.yearPrev, arrow).
+			Icon().WithIcon(icons.ChevronsLeft).Ghost("上一年")
+		arrow.X += place.cell + arrowGap
+		titleInset += place.cell + arrowGap
+	}
 	viva.BeginButton(canvas, theme, state.prev, arrow).
 		Icon().WithIcon(icons.ChevronLeft).Ghost(previous)
 	arrow.X = place.caption.Right() - place.cell
+	if spec.Grain == ByDay {
+		viva.BeginButton(canvas, theme, state.yearNext, arrow).
+			Icon().WithIcon(icons.ChevronsRight).Ghost("下一年")
+		arrow.X -= place.cell + arrowGap
+	}
 	viva.BeginButton(canvas, theme, state.next, arrow).
 		Icon().WithIcon(icons.ChevronRight).Ghost(next)
 	canvas.LabelCenter(title, gfx.Rect{
-		X: place.caption.X + place.cell, Y: place.caption.Y,
-		Width: place.caption.Width - 2*place.cell, Height: place.caption.Height,
+		X: place.caption.X + titleInset, Y: place.caption.Y,
+		Width: place.caption.Width - 2*titleInset, Height: place.caption.Height,
 	}, gfx.TextStyle{Size: theme.Metrics.FontSizeM, Weight: gfx.WeightMedium, Color: theme.Foreground})
 }
 
@@ -398,6 +418,12 @@ func (state *State) handle(d *ui.DrawContext, spec Spec) {
 	switch {
 	case canvas.Clicked(state.dismiss):
 		state.Open, changed = false, true
+	case canvas.Clicked(state.yearPrev):
+		state.stepYear(-1)
+		changed = true
+	case canvas.Clicked(state.yearNext):
+		state.stepYear(1)
+		changed = true
 	case canvas.Clicked(state.prev):
 		state.step(spec, -1)
 		changed = true
@@ -435,6 +461,11 @@ func (state *State) step(spec Spec, direction int) {
 	default:
 		state.Visible = visible.AddDate(0, direction, 0)
 	}
+}
+
+// stepYear moves the day grid a whole year, keeping the month it shows.
+func (state *State) stepYear(direction int) {
+	state.Visible = state.visibleMonth().AddDate(direction, 0, 0)
 }
 
 // pickCell applies a press on one cell of the grid.

@@ -27,7 +27,8 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   的「框架缺口」）。
   记录行右键打开 ContextMenu（编辑 / 同步到其他账本 / 删除）。行数据、模板与保存都只在
   内存里。工具栏的时间范围用同一个 `datepicker.Picker`（打开 `Grains` / `Periods`：日 / 月 / 年
-  粒度、前后周期、快捷区间，浮层面板不占布局）；分页栏在 `internal/components/pagination`：
+  粒度、前后周期、快捷区间，日粒度的面板标题两侧还有 `chevrons-left` / `chevrons-right`
+  的整年箭头，浮层面板不占布局）；分页栏在 `internal/components/pagination`：
   每页 15 / 30 / 50 的 Select 在 Viva 分页左侧，「共 N 条」在右侧，三者是一个自定义组件。
 - 原来的 `viva init` 示例（计数页）已移除；根目录 `main.go` 现在是真实入口。
 - SQLite 存储、配置持久化尚未接入；其余页面的真实内容也还没迁移（见下面的迁移顺序）。
