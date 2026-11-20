@@ -55,7 +55,17 @@ func (m *Model) chartTable(c ui.C, chart *domain.Chart) {
 		body = emptyTableBody
 	}
 	height := layout.SectionHeaderHeight + layout.TableHeaderHeight + body
-	ui.Column(c).FillWidth().Height(height).Shrink(1).Children(func() {
+	// On a window too short for the plot's minimum plus the whole table, the
+	// table is what gives way: it shrinks first, down to its head and two rows,
+	// and the rows it still holds scroll inside it. Otherwise the column would
+	// push the plot's minimum past the card and the totals band would fall out
+	// of the window.
+	floorBody := float32(min(rows, 2)) * layout.RowHeight
+	if rows == 0 {
+		floorBody = emptyTableBody
+	}
+	floor := min(layout.SectionHeaderHeight+layout.TableHeaderHeight+floorBody, height)
+	ui.Column(c).FillWidth().Basis(height).MinHeight(floor).Shrink(1).Children(func() {
 		m.chartTableHead(c, chart)
 		// The header scrolls with its rows, so a window too narrow for the
 		// columns scrolls the table sideways instead of cutting one off.

@@ -5,7 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/vivaui/viva/app"
 	"github.com/vivaui/viva/gfx"
+	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/domain"
 	"transactions/internal/pages/accounting/ledger"
@@ -201,6 +203,45 @@ func TestPieHoverPicksTheSlice(t *testing.T) {
 	}
 	if value := m.pieSliceValue(noSlice); value != "" {
 		t.Fatalf("value of no slice = %q", value)
+	}
+}
+
+// TestShortFrameKeepsTheTotalsBandInside paints the page at the window's
+// minimum height with a pie whose table is longer than the frame can hold. The
+// table gives way there: the totals band has to stay inside the page, because a
+// band pushed past the frame takes the shell's own bottom rows with it.
+func TestShortFrameKeepsTheTotalsBandInside(t *testing.T) {
+	m := newTestModel(t)
+	m.openCreate()
+	m.form.title = "支出构成"
+	m.form.chartType = "饼图"
+	m.form.groupField = "分类"
+	m.createChart()
+	if len(m.pieSlices) < 6 {
+		t.Fatalf("pie slices = %d, want a table longer than the frame can hold", len(m.pieSlices))
+	}
+	page := ui.NewPage(ui.PageConfig{View: m.View})
+	driver, err := app.NewDriver(page.Config(app.Config{Width: 960, Height: 620}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(driver.Close)
+	frame := driver.Frame()
+	if frame.Height != 620 {
+		t.Fatalf("frame height = %v, want the configured 620", frame.Height)
+	}
+	found := 0
+	for _, text := range driver.Snapshot().Texts {
+		if text.Value != "合计" && !strings.HasPrefix(text.Value, "共 ") {
+			continue
+		}
+		found++
+		if bottom := text.Bounds.Y + text.Bounds.Height; bottom > frame.Height {
+			t.Fatalf("%q is painted at %v, below the %v frame", text.Value, text.Bounds, frame.Height)
+		}
+	}
+	if found == 0 {
+		t.Fatal("the totals band did not paint")
 	}
 }
 
