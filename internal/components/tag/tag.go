@@ -39,7 +39,10 @@ func Chip(c ui.C, label string) ui.Box {
 func List(c ui.C, labels []string, width float32) {
 	theme := c.Theme()
 	if len(labels) == 0 {
-		ui.Text(c, "-").FontSize(theme.Metrics.FontSizeM).Color(theme.MutedForeground)
+		// The dash keeps the column's width. A cell that shrinks to its glyph
+		// would pull the next column left, and one row without tags would break
+		// the table's grid.
+		ui.Text(c, "-").Width(width).FontSize(theme.Metrics.FontSizeM).Color(theme.MutedForeground)
 		return
 	}
 	style := gfx.TextStyle{Size: theme.Metrics.FontSizeS}
