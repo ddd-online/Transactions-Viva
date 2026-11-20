@@ -14,7 +14,9 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 
 - 入口是根目录 `main.go`：只做 `log.Fatal(desktop.Run())`，`viva.toml` 的 `package = "."`。
   开发时 `viva dev .`，一次性运行 `go run .`。注意：`viva dev` 的 reload host 不转发原生
-  文本事件，所有 `ui.TextField` 在它下面都只有光标、不能输入；需要测表单输入时用
+  文本事件，所有 `ui.TextField` 在它下面都只有光标、不能输入；它也不刷新宿主侧的悬停，
+  右键菜单项 / 列表行的 hover 在 dev 下看不出来（`go run .`、打包版和驱动测试都正常，
+  见 `docs/architecture.md` 的「框架缺口」）。需要测表单输入或悬停时用
   `go run .` / `make run` 或打包版。
 - 外壳（标题栏 / 左侧导航 / 设置页）、页面骨架、领域类型与文档已就位。
 - 记账-记录页已迁移前端：工具栏、时间范围、表头排序、表格、分页、收支统计与

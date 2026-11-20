@@ -280,6 +280,12 @@ main → desktop → pages → components
   问题。需要输入文本时用 `go run .` / `make run` 或打包后的原生窗口；不要用 dev host 判断
   表单输入是否可用。Viva 的 conformance 也明确记录了这一点（Native text events in
   `viva dev`：worker protocol does not carry them）。
+- **`viva dev` 下悬停不刷新。** 开发宿主的画面是 worker 的绘制快照，悬停身份由宿主随
+  `PaintRequest` 带回 worker（`Canvas.SetInteraction`）；而 worker 收到一个普通指针移动时，
+  只把它交给应用的 `Config.Pointer`，页面自己有指针通道（`Canvas.ListensForPointer`，例如
+  `ui.Control` 的 Handlers）时才会走指针 pass 重绘。结果是右键菜单项、列表行这类「只靠
+  `Canvas.Hovered()` 变样式」的悬停，在 `viva dev` 里看不到变化；`go run .` / 打包版走真实
+  窗口，悬停正常。判断悬停或悬停底色是否成立要用真实窗口（驱动测试也算），别用 dev host。
 - **`viva dev` 的 reload host 不接收窗口按钮的样式回调。** worker 协议只把 `ClearColor`
   的四个分量送给宿主，`Config.WindowControls` 是函数，过不去；宿主只在 worker 启动时按
   `ClearColor` 的明度选一次按钮墨色（亮底黑字、暗底白字）。所以在开发宿主里用标题栏的
