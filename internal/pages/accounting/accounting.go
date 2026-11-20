@@ -269,6 +269,15 @@ func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
 	return gfx.EventResult{}
 }
 
+// Pointer routes the analysis chart's pointer (its hovered point) and leaves
+// every other page's pointer to the shell.
+func (m *Model) Pointer(event gfx.PointerEvent) gfx.EventResult {
+	if m.tab == tabAnalysis {
+		return m.analysis.Pointer(event)
+	}
+	return gfx.EventResult{}
+}
+
 // Scroll routes the tags multi-select popup's wheel.
 func (m *Model) Scroll(event gfx.ScrollEvent) gfx.EventResult {
 	switch m.tab {

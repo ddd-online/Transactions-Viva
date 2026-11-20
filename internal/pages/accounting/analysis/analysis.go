@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vivaui/viva/components"
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
@@ -73,6 +74,14 @@ type Model struct {
 	pie        repository.ChartPieResult
 	pieSlices  []repository.ChartPieSlice
 	list       ui.ListState
+
+	// The line chart is Viva's area chart: its state keeps the hovered point
+	// and its label caches, its plot turns the pointer into a point, and its
+	// version says when the data and its formatting changed.
+	chartState   components.ChartState
+	chartPlot    components.ChartPlot
+	chartHit     gfx.ID
+	chartVersion uint32
 
 	categories []domain.Category
 	tagsByKind map[string][]string
@@ -207,6 +216,10 @@ func (m *Model) ReloadData() {
 // loadSelected decodes the selected chart's lines and fetches its data.
 func (m *Model) loadSelected() {
 	m.loadErr = ""
+	m.chartVersion++
+	// A new data set starts with no hovered point: the old index would name a
+	// bucket of the previous chart.
+	m.chartState.Clear()
 	m.lines, m.lineData, m.pie, m.pieSlices = nil, nil, repository.ChartPieResult{}, nil
 	m.stats = repository.ChartStatistics{}
 	chart := m.selectedChart()

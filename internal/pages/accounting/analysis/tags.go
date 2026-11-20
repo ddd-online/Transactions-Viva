@@ -161,6 +161,10 @@ func (m *Model) resetTagSelect() {
 // Key routes the tag popup's navigation keys and query while the curve dialog is
 // open. Config.OnKey reaches this through the accounting page.
 func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
+	// A focused chart is stepped with the arrows, Home and End.
+	if !m.chartHit.IsZero() && event.Target == m.chartHit {
+		return m.chartKey(event)
+	}
 	if !m.dialogOpen || m.modal != modalLine {
 		return gfx.EventResult{}
 	}

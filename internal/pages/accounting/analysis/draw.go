@@ -1,9 +1,10 @@
 package analysis
 
 import (
-	"fmt"
 	"math"
+	"strconv"
 
+	"github.com/vivaui/viva/components"
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
@@ -12,127 +13,87 @@ import (
 	"transactions/internal/repository"
 )
 
-// canvas paints the selected chart into its card. The drawing is a small,
-// self-contained canvas chart rather than a browser chart: line and donut
-// charts share the theme's chart palette and the page's summary.
-// canvas is the plot surface. It takes the height the column has left, so the
-// chart grows with the window instead of sitting in a fixed box; the series it
-// draws are listed once, in the inspector.
+// canvas paints the selected chart into its card. A line chart is Viva's own
+// area chart — axes, grid, dots and the hover tooltip are painted by the
+// component — so the page keeps no chart geometry of its own and a hovered
+// point needs no hand-written tip. A pie has no component, so it is still
+// painted here, in the same card and from the same theme palette.
 func (m *Model) canvas(c ui.C, chart *domain.Chart) {
 	theme := c.Theme()
+	if chart.ChartType == chartPie {
+		// A pie has no hover model; forget the line chart's plot so a stale
+		// hover is not carried over.
+		m.chartHit = gfx.ID{}
+		ui.Row(c).FillWidth().Grow(1).MinHeight(160).
+			Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).
+			Background(theme.Card).Children(func() {
+			ui.Slot(c).Fill().Draw(m.drawPie)
+		})
+		return
+	}
+	// The component registers the plot as a hit region with this id; the page's
+	// Pointer turns the pointer over it into the hovered point, and its Key
+	// steps that point with the arrows.
+	m.chartHit = ui.ID(c)
+	label := chart.Title + "的曲线"
 	ui.Row(c).FillWidth().Grow(1).MinHeight(160).
-		Radius(theme.Metrics.RadiusSurface).
-		Border(1, theme.Border).
+		Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).
 		Background(theme.Card).Children(func() {
 		ui.Slot(c).Fill().Draw(func(d *ui.DrawContext) {
-			if chart.ChartType == chartPie {
-				m.drawPie(d)
+			if len(m.lineData) == 0 || !hasLineValues(m.lineData) {
+				d.Canvas.LabelCenter("暂无数据", inset(d.Rect, 18),
+					gfx.TextStyle{Size: typography.SizeBody, Color: d.Theme.MutedForeground})
 				return
 			}
-			m.drawLine(d)
+			m.chartPlot = components.PaintAreaChart(d.Canvas, *d.Theme, inset(d.Rect, 12), m.chartHit,
+				m.areaChart(*d.Theme, label), &m.chartState)
 		})
 	})
 }
 
-func (m *Model) drawLine(d *ui.DrawContext) {
-	theme := d.Theme
-	inner := inset(d.Rect, 18)
-	if len(m.lineData) == 0 || !hasLineValues(m.lineData) {
-		d.Canvas.LabelCenter("暂无数据", inner, gfx.TextStyle{Size: typography.SizeBody, Color: theme.MutedForeground})
-		return
+// areaChart is the selected chart's series as the component wants them: the
+// buckets on the X axis as their labels, one row of yuan values per curve, a
+// line with a dot per point and no fill, and a tooltip that writes money.
+func (m *Model) areaChart(theme gfx.Theme, label string) components.AreaChart {
+	buckets := []repository.ChartPoint(nil)
+	if len(m.lineData) > 0 {
+		buckets = m.lineData[0].Data
 	}
-	plot := gfx.Rect{
-		X: inner.X + 60, Y: inner.Y + 16,
-		Width: inner.Width - 76, Height: inner.Height - 54,
-	}
-	if plot.Width < 40 || plot.Height < 40 {
-		return
-	}
-	maxAmount := int64(0)
-	for _, line := range m.lineData {
-		for _, point := range line.Data {
-			if point.Amount > maxAmount {
-				maxAmount = point.Amount
+	series := make([]components.ChartSeries, len(m.lineData))
+	values := make([][]float32, len(m.lineData))
+	for index, line := range m.lineData {
+		series[index] = components.ChartSeries{
+			Key: line.Label, Label: line.Label, Color: seriesColor(theme, index),
+		}
+		points := make([]float32, len(buckets))
+		for i := range points {
+			if i < len(line.Data) {
+				points[i] = float32(line.Data[i].Amount) / 100
 			}
 		}
+		values[index] = points
 	}
-	if maxAmount <= 0 {
-		maxAmount = 1
-	}
-	// The axis is rounded to a step a reader can hold (0 / 1500 / 3000), so the
-	// top line is a number, not whatever the largest point happened to be.
-	axisTop, axisStep := niceAxis(float64(maxAmount) / 100)
-	for tick := 0; tick <= axisTicks; tick++ {
-		y := plot.Y + plot.Height*float32(tick)/float32(axisTicks)
-		d.Canvas.Fill(gfx.Rect{X: plot.X, Y: y, Width: plot.Width, Height: 1}, theme.Border)
-		value := axisTop - axisStep*float64(tick)
-		d.Canvas.LabelAligned(axisText(value), gfx.Rect{X: inner.X, Y: y - 8, Width: 52, Height: 16},
-			gfx.TextStyle{Size: typography.SizeCaption, Color: theme.MutedForeground, Mono: true}, gfx.AlignRight)
-	}
-
-	labels := m.lineData[0].Data
-	if len(labels) == 0 {
-		return
-	}
-	maxLabels := max(2, int(plot.Width/64))
-	labelStep := max(1, int(math.Ceil(float64(len(labels))/float64(maxLabels))))
-	indices := make([]int, 0, maxLabels+1)
-	for index := 0; index < len(labels); index += labelStep {
-		indices = append(indices, index)
-	}
-	if last := len(labels) - 1; indices[len(indices)-1] != last {
-		if last-indices[len(indices)-1] < labelStep {
-			indices[len(indices)-1] = last
-		} else {
-			indices = append(indices, last)
-		}
-	}
-	for _, index := range indices {
-		x := plot.X
-		if len(labels) > 1 {
-			x += plot.Width * float32(index) / float32(len(labels)-1)
-		} else {
-			x += plot.Width / 2
-		}
-		label := labels[index].Time
-		if len(label) == 7 {
-			label = label[5:]
-		}
-		d.Canvas.LabelCenter(label, gfx.Rect{X: x - 24, Y: plot.Y + plot.Height + 8, Width: 48, Height: 16},
-			gfx.TextStyle{Size: typography.SizeCaption, Color: theme.MutedForeground})
-	}
-
-	for lineIndex, line := range m.lineData {
-		if len(line.Data) == 0 {
-			continue
-		}
-		color := seriesColor(*theme, lineIndex)
-		var path gfx.PathBuilder
-		for index, point := range line.Data {
-			x := plot.Width / 2
-			if len(line.Data) > 1 {
-				x = plot.Width * float32(index) / float32(len(line.Data)-1)
+	return components.AreaChart{
+		Series: series, Values: values,
+		Fill: components.ChartFillNone, Dots: true, Curve: components.ChartCurveLinear,
+		Grid:   components.ChartGridHorizontal,
+		Legend: components.ChartLegendNone,
+		XAxis: components.ChartAxis{Format: func(dst []byte, v float32) []byte {
+			index := int(v + 0.5)
+			if index < 0 || index >= len(buckets) {
+				return dst
 			}
-			y := plot.Height * (1 - float32(point.Amount)/float32(maxAmount))
-			if index == 0 {
-				path.MoveTo(x, y)
-			} else {
-				path.LineTo(x, y)
+			text := buckets[index].Time
+			if len(text) == 7 {
+				text = text[5:]
 			}
-		}
-		d.Canvas.DrawPath(path.Path(plot.Width, plot.Height), plot, gfx.PathStyle{
-			Stroke: color, StrokeWidth: 2, Cap: gfx.CapRound, Join: gfx.JoinRound,
-		})
-		for index, point := range line.Data {
-			x := plot.X
-			if len(line.Data) > 1 {
-				x += plot.Width * float32(index) / float32(len(line.Data)-1)
-			} else {
-				x += plot.Width / 2
-			}
-			y := plot.Y + plot.Height*(1-float32(point.Amount)/100/float32(axisTop))
-			d.Canvas.Rounded(gfx.Rect{X: x - 2.5, Y: y - 2.5, Width: 5, Height: 5}, 2.5, color)
-		}
+			return append(dst, text...)
+		}},
+		ValueFormat: func(dst []byte, v float32) []byte {
+			return strconv.AppendFloat(dst, float64(v), 'f', 2, 32)
+		},
+		Label:   label,
+		Version: m.chartVersion,
 	}
 }
 
@@ -184,40 +145,42 @@ func (m *Model) drawPie(d *ui.DrawContext) {
 	}, gfx.TextStyle{Size: typography.SizeBody, Color: theme.Foreground, Mono: true})
 }
 
-// axisTicks is the number of intervals the amount axis is divided into.
-const axisTicks = 4
-
-// niceAxis picks a rounded top and step for the amount axis: four intervals
-// that cover the range with numbers a reader can hold, so the ticks read
-// 0 / 1500 / 3000 / 4500 / 6000 rather than 0 / 1334 / 2667 / 4001 / 5335.
-func niceAxis(maxValue float64) (top, step float64) {
-	if maxValue <= 0 {
-		return 1, 1 / axisTicks
+// Pointer moves the chart's hovered point under the pointer and clears it when
+// the pointer leaves the plot, so the component paints (or drops) its tooltip.
+func (m *Model) Pointer(event gfx.PointerEvent) gfx.EventResult {
+	if event.Kind != gfx.PointerMove && event.Kind != gfx.PointerExit {
+		return gfx.EventResult{}
 	}
-	rough := maxValue / axisTicks
-	magnitude := math.Pow(10, math.Floor(math.Log10(rough)))
-	for _, candidate := range []float64{1, 1.5, 2, 2.5, 3, 4, 5, 10} {
-		if candidate*magnitude >= rough {
-			step = candidate * magnitude
-			break
-		}
+	previous, active := m.chartState.Index()
+	if event.Kind == gfx.PointerExit || m.chartHit.IsZero() || event.Target != m.chartHit {
+		m.chartState.Clear()
+		// Only repaint: the move belongs to whatever the pointer is over now.
+		return gfx.EventResult{Repaint: active}
 	}
-	if step == 0 {
-		step = 10 * magnitude
+	index := m.chartPlot.IndexAt(event.X)
+	if active && index == previous {
+		return gfx.EventResult{Handled: true}
 	}
-	return step * axisTicks, step
+	m.chartState.Hover(index)
+	return gfx.EventResult{Handled: true, Repaint: true}
 }
 
-// axisText writes an axis value without trailing zeros: 6000 stays 6000 and
-// 4.5 keeps its decimal.
-func axisText(value float64) string {
-	switch {
-	case math.Abs(value-math.Round(value)) < 0.005:
-		return fmt.Sprintf("%.0f", value)
-	case math.Abs(value*10-math.Round(value*10)) < 0.005:
-		return fmt.Sprintf("%.1f", value)
+// chartKey steps the hovered point with the arrow keys, Home and End, the way
+// the component's own demo does.
+func (m *Model) chartKey(event gfx.KeyEvent) gfx.EventResult {
+	if event.Release || m.chartPlot.Count() == 0 {
+		return gfx.EventResult{}
 	}
-	return fmt.Sprintf("%.2f", value)
+	index, active := m.chartState.Index()
+	if !active {
+		index = -1
+	}
+	next, handled := components.ChartStepForKey(event.Key, index, m.chartPlot.Count())
+	if !handled {
+		return gfx.EventResult{}
+	}
+	m.chartState.Hover(next)
+	return gfx.EventResult{Handled: true, Repaint: true}
 }
 
 func inset(rect gfx.Rect, all float32) gfx.Rect {

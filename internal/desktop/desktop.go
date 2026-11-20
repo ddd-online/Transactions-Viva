@@ -207,6 +207,7 @@ func newConfig(m *Model) app.Config {
 		// appearance toggle; a development reload host uses ClearColor here.
 		WindowBorderColor: m.windowBorderColor,
 		OnKey:             m.key,
+		OnPointer:         m.pointer,
 		OnScroll:          m.scroll,
 		TextInput:         m.textInput,
 		// The close button saves the frame and applies the configured behavior.
@@ -224,6 +225,16 @@ func newConfig(m *Model) app.Config {
 func (m *Model) key(event gfx.KeyEvent) gfx.EventResult {
 	if m.section == SectionAccounting {
 		return m.accounting.Key(event)
+	}
+	return gfx.EventResult{}
+}
+
+// pointer gives the analysis chart the pointer over its plot: the chart is
+// painted by a component that registers a hit region, and the page turns the
+// pointer over it into the hovered point.
+func (m *Model) pointer(event gfx.PointerEvent) gfx.EventResult {
+	if m.section == SectionAccounting {
+		return m.accounting.Pointer(event)
 	}
 	return gfx.EventResult{}
 }

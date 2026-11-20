@@ -32,6 +32,8 @@
 
 ![分析：深色](docs/analysis-dark.png)
 
+![分析：悬停查看某个月的数值](docs/analysis-hover.png)
+
 ![设置：账本管理](docs/ledger-management.png)
 
 ![设置：关于软件](docs/scaffold-about.png)

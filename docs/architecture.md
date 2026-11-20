@@ -219,8 +219,11 @@ main → desktop → pages → components
   过滤；
   饼图按交易类型 / 分类 / 标签分组，标签分组会重复计入多标签记录。预设「月度消费趋势 /
   年度消费趋势」首次进入分析页时按账本播种，`app_meta` 留标记，删掉后不再回来；预设只能
-  删除 / 排序，自定义图表可重命名、改粒度 / 分组、增删曲线。图表配置存 `chart` 表，画布
-  与合计使用本项目的 Viva 风格自绘。
+  删除 / 排序，自定义图表可重命名、改粒度 / 分组、增删曲线。图表配置存 `chart` 表；折线图
+  直接交给 `components.PaintAreaChart`（轴、网格、点、悬停竖线与提示框都由组件画，页面只
+  把 `lineData` 换成元与 X 轴标签），指针从 `Config.OnPointer` 进外壳、`accounting.Pointer`
+  转到 `analysis.Pointer`，再用 `ChartPlot.IndexAt` 换算成悬停点；饼图没有对应组件，仍是
+  自绘。
 - 页面自己浮起来的层（选择器面板、标签弹层）在切走分区 / 子功能时由外壳收起：页面实现
   `CloseOverlays()`，`internal/desktop` 的 `selectNav` 在离开前调用它，浮层不会跟着用户
   跑到另一个页面上。
@@ -302,6 +305,10 @@ main → desktop → pages → components
   虽然画在上面（`HitTest` 也能找到它的 hit），普通点击仍被判给弹窗里的控件，面板里什么都
   点不动（右键菜单、Select 的下拉不受影响：它们不走 Popover 这条路径）。所以日期面板是
   用画布自己画的（见「时间选择器」），与标签多选同一套做法。
+- **图表提示框的数值贴住右边框。** `components.PaintChartTooltip` 用 `Canvas.TextWidth`
+  量数值宽度（常规字重），绘制时却用 `WeightMedium`；字重更宽，右侧 10px 内边距被吃掉，
+  最后一位数字贴着边框（数值本身不裁切）。框架已经提供 `TextWidthWeight`，等它用上就
+  自动消失；应用里不要给数值补空格之类的补偿。
 - **`components.Sidebar` 的子菜单两侧都缩进。** `AddSubMenu` 照搬 shadcn 的 `mx-3.5` +
   `px-2.5`：子项在右侧也比一级项再收进 24px，而接口没有宽度 / 缩进的开关；缩进本应只在
   前缘，否则选中的子项底色比一级项短一截，右侧看起来是断的。主内容区又用卡片边框当分隔
