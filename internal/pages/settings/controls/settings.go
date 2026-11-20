@@ -52,7 +52,11 @@ func Row(c ui.C, title, description string, control func()) {
 			}
 		})
 		if control != nil {
-			ui.Row(c).Shrink(0).Items(ui.Center).Justify(ui.End).Children(control)
+			// The control area can hold more than one control (a ledger row's
+			// 当前 mark beside its edit and delete buttons), so its parts keep
+			// the row's item gap instead of touching.
+			ui.Row(c).Shrink(0).Items(ui.Center).Justify(ui.End).
+				Gap(metrics.GapItem).Children(control)
 		}
 	})
 }
