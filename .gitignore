@@ -1,5 +1,22 @@
 # Build output: `viva build`, `go build`, and packaged artifacts.
 /build/
 *.exe
-/.impeccable/mocks
-/.vscode
+/transactions
+*.test
+coverage.out
+
+# A workspace that happens to sit inside the repository: its SQLite database,
+# WAL files and the backup a migration writes.
+/transactions.db
+/transactions.db-*
+/transactions.db.bak
+
+# Local design tooling: the skill's local config and its render mocks.
+/.impeccable/config.local.json
+/.impeccable/mocks/
+
+# Editor and OS clutter.
+/.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
