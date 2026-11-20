@@ -593,21 +593,12 @@ func (m *Model) features(c ui.C, spec Spec) {
 // 工作空间: the icon-free buttons are quiet, and a finished batch reports itself
 // on the line under the card.
 func (m *Model) diaryConfig(c ui.C, spec Spec) {
-	theme := c.Theme()
-	m.diaryBooks(c, spec)
-	ui.Spacer(c).Height(layout.GroupGap)
-	m.diaryTransfer(c, spec)
-	if m.diary.status != "" {
-		typography.Caption(c, m.diary.status).MarginTop(layout.Gap).Color(theme.MutedForeground)
-	}
-	if m.diary.failure != "" {
-		typography.CaptionParagraph(c, m.diary.failure, 4).
-			Color(theme.Danger).MarginTop(layout.Gap)
-	}
-	if spec.ImportDiary == nil {
-		typography.Caption(c, "打开工作空间后才能导入 / 导出日记。").
-			MarginTop(layout.Gap).Color(theme.MutedForeground)
-	}
+	// Two groups, the way 关于软件 stacks 版本信息 / 更新 / 项目: a name over its
+	// block, and the blocks separated by the group gap.
+	ui.Column(c).FillWidth().Gap(layout.GroupGap).Children(func() {
+		m.diaryBooks(c, spec)
+		m.diaryTransfer(c, spec)
+	})
 }
 
 // diaryBooks is 日记本: the workspace's notebooks, one row each with its name,
@@ -803,7 +794,34 @@ func (m *Model) diaryTransfer(c ui.C, spec Spec) {
 				},
 			})
 		})
+		if m.diary.status != "" || m.diary.failure != "" || !ready {
+			ui.Divider(c)
+			m.diaryResultRow(c, ready)
+		}
 	})
+}
+
+// diaryResultRow is the group's last row: what the last command did, or why the
+// two commands are unavailable. It belongs to the 导入导出 card rather than
+// floating under it, so a result reads as part of the group that produced it.
+func (m *Model) diaryResultRow(c ui.C, ready bool) {
+	theme := c.Theme()
+	metrics := theme.Metrics
+	ui.Row(c).Shrink(0).PadX(metrics.PadSurface).PadY(metrics.GapItem * 2).
+		Children(func() {
+			ui.Column(c).Grow(1).Children(func() {
+				switch {
+				case !ready:
+					typography.Caption(c, "打开工作空间后才能导入 / 导出日记。").
+						Color(theme.MutedForeground)
+				case m.diary.status != "":
+					typography.Caption(c, m.diary.status).Color(theme.MutedForeground)
+				}
+				if m.diary.failure != "" {
+					typography.CaptionParagraph(c, m.diary.failure, 4).Color(theme.Danger)
+				}
+			})
+		})
 }
 
 // importNote names the book an import writes into.

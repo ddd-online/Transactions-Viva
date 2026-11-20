@@ -36,25 +36,16 @@ func (m *Model) about(c ui.C, spec Spec) {
 	facts := buildinfo.Read()
 	ui.Column(c).Gap(layout.GroupGap).Children(func() {
 		m.aboutHeader(c, spec, facts)
-		aboutSection(c, "版本信息", func() { m.aboutFacts(c, facts) })
-		aboutSection(c, "更新", func() {
+		controls.Section(c, "版本信息", func() { m.aboutFacts(c, facts) })
+		controls.Section(c, "更新", func() {
 			controls.Group(c, "", func() {
 				controls.Row(c, "检查更新", "新版本检查尚未接入。", func() {
 					typography.Caption(c, "暂未支持")
 				})
 			})
 		})
-		aboutSection(c, "项目", func() { m.aboutLinks(c, spec) })
+		controls.Section(c, "项目", func() { m.aboutLinks(c, spec) })
 		m.aboutColophon(c, spec)
-	})
-}
-
-// aboutSection stacks a section title over its block: the same title-and-card
-// rhythm the other settings sections use.
-func aboutSection(c ui.C, title string, body func()) {
-	ui.Column(c).FillWidth().Gap(layout.Gap).Children(func() {
-		typography.Section(c, title)
-		body()
 	})
 }
 

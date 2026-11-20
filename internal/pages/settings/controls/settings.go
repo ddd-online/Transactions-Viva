@@ -3,8 +3,25 @@ package controls
 import (
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/layout"
 	"transactions/internal/components/typography"
 )
+
+// Section is one settings group: its name over its content, spaced the way
+// 关于软件's groups are — the name, then the block at the row gap. A page that
+// stacks groups separates them with layout.GroupGap, so every settings page
+// reads as the same list of named groups.
+//
+// The body is the group's content, usually a Card or the odd header; an empty
+// name is a group with content only (a card of rows under the page title).
+func Section(c ui.C, title string, body func()) {
+	ui.Column(c).FillWidth().Shrink(0).Gap(layout.Gap).Children(func() {
+		if title != "" {
+			typography.Section(c, title)
+		}
+		body()
+	})
+}
 
 // Group is a settings card: a titled surface holding rows separated by
 // hairlines. It follows the reference application's settings page, where each
@@ -13,10 +30,7 @@ import (
 // The caller declares the rows and the dividers between them, so a row can hold
 // any control without this component guessing.
 func Group(c ui.C, title string, rows func()) {
-	if title != "" {
-		typography.Section(c, title)
-	}
-	Card(c, rows)
+	Section(c, title, func() { Card(c, rows) })
 }
 
 // Card is the bordered surface of a settings card without its title: the rows
