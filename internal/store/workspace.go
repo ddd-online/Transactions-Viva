@@ -96,6 +96,9 @@ func Open(directory string) (*Workspace, error) {
 	if err := applyMigrations(db, databasePath, migrations, version); err != nil {
 		return closeOnError(err)
 	}
+	if err := validateSchemaTables(db); err != nil {
+		return closeOnError(err)
+	}
 	return &Workspace{directory: directory, database: databasePath, db: db}, nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -69,8 +70,11 @@ func schemaVersion(db *sql.DB) (version int, exists bool, err error) {
 	case err != nil:
 		return 0, true, err
 	}
-	fmt.Sscanf(strings.TrimSpace(value), "%d", &version)
-	return version, true, nil
+	parsed, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil || parsed < 0 {
+		parsed = 0
+	}
+	return parsed, true, nil
 }
 
 func setSchemaVersion(tx *sql.Tx, version int) error {
@@ -159,6 +163,24 @@ func userTableCount(db *sql.DB) (int, error) {
 		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
 	).Scan(&count)
 	return count, err
+}
+
+// validateSchemaTables refuses a database that claims a schema version but is
+// missing one of the accounting tables, instead of failing later in a page.
+func validateSchemaTables(db *sql.DB) error {
+	for _, table := range []string{
+		"app_meta", "ledger", "transaction_record", "transaction_record_tag",
+		"category", "tag", "transaction_template",
+	} {
+		exists, err := tableExists(db, table)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return fmt.Errorf("%w：缺少表 %s", ErrCorrupt, table)
+		}
+	}
+	return nil
 }
 
 // databasePathOf is the database inside a workspace directory.
