@@ -95,11 +95,6 @@ var sections = [...]section{
 	{
 		tab:   tabAbout,
 		title: "关于软件",
-		rows: []setting{
-			{"版本", "当前安装的 Transactions 版本。"},
-			{"检查更新", "手动检查新版本，或让应用定期检查。"},
-			{"GitHub", "项目主页与问题反馈。"},
-		},
 	},
 }
 
@@ -134,6 +129,11 @@ type Spec struct {
 	OnCreateLedger func(name, description string) error
 	OnUpdateLedger func(id, name, description string) error
 	OnDeleteLedger func(id string) error
+
+	// OpenURL opens a place outside the window in the user's browser, and
+	// CopyText puts text on the clipboard; 关于软件 uses both.
+	OpenURL  func(target string) error
+	CopyText func(value string) error
 }
 
 // appearanceOptions is the segmented 外观 control, in the old page's order.
@@ -280,6 +280,8 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 					m.ledgers(c, spec)
 				case tabFeatures:
 					m.features(c, spec)
+				case tabAbout:
+					m.about(c, spec)
 				default:
 					m.pending(c, entry)
 				}

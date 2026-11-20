@@ -11,6 +11,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/buildinfo"
 	"transactions/internal/config"
 	"transactions/internal/store/storetest"
 )
@@ -1146,6 +1147,40 @@ func ledgerID(t *testing.T, model *Model, name string) string {
 	}
 	t.Fatalf("no ledger named %q", name)
 	return ""
+}
+
+// TestAboutPageShowsTheBuildAndOpensItsLinks drives 关于软件: the page names this
+// build, copies the same facts for a bug report, and opens the project's two
+// links (and the framework's) in the browser.
+func TestAboutPageShowsTheBuildAndOpensItsLinks(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "设置")
+	click(t, driver, "关于软件")
+	facts := buildinfo.Read()
+	if !shows(driver, "版本信息") || !shows(driver, facts.VersionText()) {
+		t.Fatal("关于软件 does not name the build's version")
+	}
+	if !shows(driver, facts.Platform) || !shows(driver, facts.Runtime) {
+		t.Fatal("关于软件 does not name the platform and the runtime")
+	}
+
+	click(t, driver, "复制版本信息")
+	if got := driver.Clipboard(); !strings.Contains(got, "Transactions "+facts.Version) {
+		t.Fatalf("clipboard = %q", got)
+	}
+
+	click(t, driver, "项目主页")
+	if got, ok := driver.LastOpenedURL(); !ok || got != "https://github.com/ddd-online/Transactions" {
+		t.Fatalf("项目主页 opened %q", got)
+	}
+	click(t, driver, "问题反馈")
+	if got, ok := driver.LastOpenedURL(); !ok || got != "https://github.com/ddd-online/Transactions/issues" {
+		t.Fatalf("问题反馈 opened %q", got)
+	}
+	click(t, driver, "界面由 Viva 绘制")
+	if got, ok := driver.LastOpenedURL(); !ok || got != "https://vivaui.dev" {
+		t.Fatalf("the colophon opened %q", got)
+	}
 }
 
 // TestFeatureSwitchHidesItsSection checks a switch removes the section from the

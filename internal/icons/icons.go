@@ -11,6 +11,39 @@ package icons
 
 import "github.com/vivaui/viva/gfx"
 
+// app-mark is a compiled vector icon.
+var AppMark = gfx.Icon{
+	ViewBox:    562.96,
+	ViewHeight: 444.54,
+	Stroke:     0.0,
+	Cap:        gfx.CapRound,
+	Join:       gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(353.4, 81.53),
+		gfx.LineTo(226.61, 81.53),
+		gfx.LineTo(226.61, 444.54),
+		gfx.LineTo(126.17, 444.54),
+		gfx.LineTo(126.17, 81.53),
+		gfx.LineTo(0.0, 81.53),
+		gfx.LineTo(0.0, 0.0),
+		gfx.LineTo(353.4, 0.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(562.96, 215.45),
+		gfx.CubicTo(551.18, 209.04, 537.44, 205.84, 521.73, 205.84),
+		gfx.CubicTo(500.44, 205.84, 483.81, 213.64, 471.82, 229.25),
+		gfx.CubicTo(459.83, 244.85, 453.84, 266.08, 453.84, 292.95),
+		gfx.LineTo(453.84, 444.54),
+		gfx.LineTo(355.88, 444.54),
+		gfx.LineTo(355.88, 127.1),
+		gfx.LineTo(453.84, 127.1),
+		gfx.LineTo(453.84, 186.0),
+		gfx.LineTo(455.08, 186.0),
+		gfx.CubicTo(470.58, 143.01, 498.48, 121.52, 538.78, 121.52),
+		gfx.CubicTo(549.11, 121.52, 557.17, 122.76, 562.96, 125.24),
+		gfx.ClosePath(),
+	},
+}
+
 // arrow-down-narrow-wide is a compiled vector icon.
 var ArrowDownNarrowWide = gfx.Icon{
 	ViewBox: 24.0,
@@ -234,6 +267,29 @@ var Events = gfx.Icon{
 		gfx.LineTo(8.91, 8.26),
 		gfx.LineTo(12.0, 2.0),
 		gfx.ClosePath(),
+	},
+}
+
+// external-link is a compiled vector icon.
+var ExternalLink = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(15.0, 3.0),
+		gfx.LineTo(21.0, 3.0),
+		gfx.LineTo(21.0, 9.0),
+		gfx.MoveTo(10.0, 14.0),
+		gfx.LineTo(21.0, 3.0),
+		gfx.MoveTo(18.0, 13.0),
+		gfx.LineTo(18.0, 19.0),
+		gfx.CubicTo(18.0, 20.1046, 17.1046, 21.0, 16.0, 21.0),
+		gfx.LineTo(5.0, 21.0),
+		gfx.CubicTo(3.89543, 21.0, 3.0, 20.1046, 3.0, 19.0),
+		gfx.LineTo(3.0, 8.0),
+		gfx.CubicTo(3.0, 6.89543, 3.89543, 6.0, 5.0, 6.0),
+		gfx.LineTo(11.0, 6.0),
 	},
 }
 

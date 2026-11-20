@@ -3,6 +3,8 @@ package desktop
 import (
 	"strings"
 
+	"github.com/vivaui/viva/app"
+
 	"transactions/internal/config"
 	"transactions/internal/pages/settings"
 	storepkg "transactions/internal/store"
@@ -27,7 +29,22 @@ func (m *Model) settingsSpec() settings.Spec {
 		OnCreateLedger:  m.createLedger,
 		OnUpdateLedger:  m.updateLedger,
 		OnDeleteLedger:  m.deleteLedger,
+		OpenURL:         m.openExternalURL,
+		CopyText:        m.copyToClipboard,
 	}
+}
+
+// openExternalURL opens a place outside the window: the About page's project
+// links and the framework's colophon. The platform refuses anything that is not
+// http, https or mailto, and the page shows that refusal as a toast.
+func (m *Model) openExternalURL(target string) error {
+	return app.OpenURL(target)
+}
+
+// copyToClipboard puts the About page's build facts on the clipboard. It goes
+// through the driver under a test, so a run never touches the real clipboard.
+func (m *Model) copyToClipboard(value string) error {
+	return app.SetClipboardText(value)
 }
 
 // The ledger commands belong to the accounting section, which owns the shared

@@ -1,0 +1,5 @@
+<!-- The application's own mark: the "Tr" glyph of the reference application's AppMark.
+     The page draws the rounded plate (theme.Primary) and this glyph on top of it. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="230.52 289.73 562.96 444.54" fill="none" stroke="none" stroke-width="0">
+  <path fill="currentColor" d="M583.92 371.26 L457.13 371.26 L457.13 734.27 L356.69 734.27 L356.69 371.26 L230.52 371.26 L230.52 289.73 L583.92 289.73 Z M793.48 505.18 C781.7 498.77 767.96 495.57 752.25 495.57 C730.96 495.57 714.33 503.37 702.34 518.98 C690.35 534.58 684.36 555.81 684.36 582.68 L684.36 734.27 L586.4 734.27 L586.4 416.83 L684.36 416.83 L684.36 475.73 L685.6 475.73 C701.1 432.74 729 411.25 769.3 411.25 C779.63 411.25 787.69 412.49 793.48 414.97 Z"/>
+</svg>
