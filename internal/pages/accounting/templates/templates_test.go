@@ -92,19 +92,29 @@ func TestKindAndCategoryClearTheirDependants(t *testing.T) {
 	}
 }
 
-func TestToggleTag(t *testing.T) {
+func TestTagSelectionFollowsTheCategory(t *testing.T) {
 	m := New(tpl.NewStore())
-	m.toggleTag("咖啡", true)
-	if !m.hasTag("咖啡") || len(m.form.tags) != 1 {
+	m.openForm()
+	m.form.category = "餐饮美食"
+	m.syncTagOptions()
+	if got := len(m.tagSelect.state.Choices()); got != 4 {
+		t.Fatalf("餐饮美食 choices = %d, want 4", got)
+	}
+	m.tagSelect.state.SetValues([]string{"咖啡", "外卖"})
+	m.syncTags()
+	if len(m.form.tags) != 2 || m.form.tags[0] != "咖啡" {
 		t.Fatalf("tags = %v", m.form.tags)
 	}
-	m.toggleTag("咖啡", true)
-	if len(m.form.tags) != 1 {
-		t.Fatalf("choosing the same tag twice duplicated it: %v", m.form.tags)
+	m.resetTagSelect()
+	if len(m.form.tags) != 0 || len(m.tagSelect.state.Values()) != 0 {
+		t.Fatalf("reset left %v / %v", m.form.tags, m.tagSelect.state.Values())
 	}
-	m.toggleTag("咖啡", false)
-	if m.hasTag("咖啡") || len(m.form.tags) != 0 {
-		t.Fatalf("tags = %v", m.form.tags)
+
+	m.tagSelect.state.SetValues([]string{"咖啡"})
+	m.syncTags()
+	m.changeCategory()
+	if len(m.form.tags) != 0 || len(m.tagSelect.state.Values()) != 0 {
+		t.Fatal("changing the category kept the old tags")
 	}
 }
 

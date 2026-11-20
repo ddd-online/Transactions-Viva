@@ -9,6 +9,7 @@ import (
 
 	viva "github.com/vivaui/viva/components"
 	"github.com/vivaui/viva/gfx"
+	"github.com/vivaui/viva/text"
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/selectbox"
@@ -46,6 +47,10 @@ type Model struct {
 	categories map[string][]string
 	tags       map[string][]string
 
+	// tagSelect is the Viva multi-select behind the form's 标签 field, with the
+	// stable identities its painted hit regions need.
+	tagSelect tagSelect
+
 	formOpen bool
 	form     form
 	fields   formFields
@@ -76,12 +81,31 @@ type formFields struct {
 	mark        ui.FormFieldState
 }
 
+// tagSelect is the form's 标签 multi-select. Its identities come from a tree of
+// its own, so its options and removals do not share scopes with the table.
+type tagSelect struct {
+	tree    gfx.Tree
+	feature gfx.Scope
+	options gfx.Scope
+	removes gfx.Scope
+	input   gfx.ID
+	trigger gfx.ID
+	dismiss gfx.ID
+	scope   gfx.ID
+	state   viva.MultiSelectState
+	values  []string // the options the state was built from
+}
+
 // New returns the 模板 page over the ledger's shared template store.
 func New(store *tpl.Store) *Model {
 	if store == nil {
 		store = tpl.NewStore()
 	}
 	m := &Model{store: store, categories: map[string][]string{}, tags: map[string][]string{}}
+	m.tagSelect.feature = m.tagSelect.tree.Feature("template-tags")
+	m.tagSelect.options = m.tagSelect.tree.Sub(m.tagSelect.feature, m.tagSelect.tree.Name("option"))
+	m.tagSelect.removes = m.tagSelect.tree.Sub(m.tagSelect.feature, m.tagSelect.tree.Name("remove"))
+	m.tagSelect.state.MatchCaseInsensitive = true
 	for kind, groups := range mockCategories {
 		names := make([]string, len(groups))
 		for index, group := range groups {
@@ -121,6 +145,7 @@ func (m *Model) View(c ui.C) {
 // CloseOverlays closes the dialogs when the shell leaves the screen.
 func (m *Model) CloseOverlays() {
 	m.formOpen, m.deleteOpen = false, false
+	m.tagSelect.state.Open = false
 	m.form.err = ""
 }
 
@@ -322,6 +347,15 @@ func (m *Model) closeForm() {
 
 func (m *Model) resetForm() {
 	m.form = form{kind: tpl.KindExpense}
+	m.resetTagSelect()
+}
+
+// resetTagSelect clears the multi-select's query and chosen tags.
+func (m *Model) resetTagSelect() {
+	m.tagSelect.state.Open = false
+	query := &m.tagSelect.state.Query
+	query.ReplaceRange(text.Range{Start: 0, End: query.RuneCount()}, "")
+	m.tagSelect.state.SetValues(nil)
 	m.form.tags = nil
 }
 
@@ -329,13 +363,13 @@ func (m *Model) resetForm() {
 // type.
 func (m *Model) changeKind() {
 	m.form.category = ""
-	m.form.tags = nil
+	m.resetTagSelect()
 	m.form.err = ""
 }
 
 // changeCategory clears the tags: they belong to the category.
 func (m *Model) changeCategory() {
-	m.form.tags = nil
+	m.resetTagSelect()
 	m.form.err = ""
 }
 
@@ -345,28 +379,6 @@ func (m *Model) tagOptions() []string {
 		return nil
 	}
 	return m.tags[tagKey(m.form.kind, m.form.category)]
-}
-
-func (m *Model) hasTag(name string) bool {
-	for _, tag := range m.form.tags {
-		if tag == name {
-			return true
-		}
-	}
-	return false
-}
-
-func (m *Model) toggleTag(name string, on bool) {
-	kept := m.form.tags[:0]
-	for _, tag := range m.form.tags {
-		if tag != name {
-			kept = append(kept, tag)
-		}
-	}
-	m.form.tags = kept
-	if on {
-		m.form.tags = append(m.form.tags, name)
-	}
 }
 
 // save validates the form and appends the tpl. The old dialog requires a
@@ -410,6 +422,7 @@ func (m *Model) formModal(c ui.C) {
 		return
 	}
 	theme := c.Theme()
+	m.syncTagOptions()
 	ui.ModalWith(c, &m.formOpen, "新建模板", ui.ModalSpec{Width: 520}, func() {
 		ui.Column(c).FillWidth().Gap(14).Children(func() {
 			ui.FormField(c, &m.fields.name, "模板名称").FillWidth().Height(64).Children(func() {
@@ -427,7 +440,7 @@ func (m *Model) formModal(c ui.C) {
 				}
 			})
 			ui.FormField(c, &m.fields.tags, "标签").FillWidth().Height(64).Children(func() {
-				m.tagChoices(c)
+				m.tagField(c)
 			})
 			ui.FormField(c, &m.fields.description, "描述").FillWidth().Height(64).Children(func() {
 				ui.TextField(c, &m.form.description, "描述", "请输入描述").FillWidth()
@@ -450,23 +463,117 @@ func (m *Model) formModal(c ui.C) {
 	})
 }
 
-// tagChoices are the 标签 checkboxes of the chosen category, or the hint the old
-// form shows while it has none.
-func (m *Model) tagChoices(c ui.C) {
-	choices := m.tagOptions()
-	if len(choices) == 0 {
-		ui.Text(c, "该分类下暂无标签").FontSize(12).Muted()
-		return
+// tagField paints Viva's multi-select in the 标签 field. It is disabled (with a
+// hint in the placeholder) until the category has tags.
+func (m *Model) tagField(c ui.C) {
+	theme := c.Theme()
+	options := m.tagOptions()
+	disabled := len(options) == 0
+	placeholder := "选择一个或多个标签"
+	switch {
+	case m.form.category == "":
+		placeholder = "请先选择分类"
+	case disabled:
+		placeholder = "该分类下暂无标签"
 	}
-	ui.Flow(c).Gap(8).Children(func() {
-		for _, name := range choices {
-			c.Key(name)
-			on := m.hasTag(name)
-			if ui.Checkbox(c, &on, name).Changed() {
-				m.toggleTag(name, on)
+	// These four are focus and input identities, so they come from the page's
+	// tree (ui.ID) rather than the component's option scopes.
+	m.tagSelect.input = ui.ID(c)
+	m.tagSelect.trigger = ui.ID(c)
+	m.tagSelect.dismiss = ui.ID(c)
+	m.tagSelect.scope = ui.ID(c)
+	// The dialog has its own compositing layer; 20 keeps both the field and its
+	// popup above it.
+	ui.Slot(c).FillWidth().Height(theme.Metrics.ControlHeight).Draw(func(d *ui.DrawContext) {
+		viva.PaintMultiSelect(d.Canvas, *d.Theme, d.Rect, &m.tagSelect.state, viva.MultiSelectOptions{
+			InputID: m.tagSelect.input, TriggerID: m.tagSelect.trigger,
+			DismissID: m.tagSelect.dismiss, Scope: m.tagSelect.scope,
+			OptionIDs: m.tagSelect.options, RemoveIDs: m.tagSelect.removes,
+			Label: "标签", Placeholder: placeholder,
+			EmptyLabel: "没有匹配项", CreatePrefix: "创建：",
+			Viewport: c.Bounds(), Layer: 20, MaxRows: 7, Disabled: disabled,
+		})
+		if disabled {
+			return
+		}
+		changed := false
+		switch {
+		case d.Canvas.Clicked(m.tagSelect.input):
+			m.tagSelect.state.Open, changed = true, true
+		case d.Canvas.Clicked(m.tagSelect.trigger):
+			m.tagSelect.state.Open, changed = !m.tagSelect.state.Open, true
+		case d.Canvas.Clicked(m.tagSelect.dismiss):
+			m.tagSelect.state.Open, changed = false, true
+		default:
+			if index, ok := d.Canvas.ClickedIn(m.tagSelect.options); ok {
+				changed = m.tagSelect.state.Choose(index) || changed
+			}
+			if index, ok := d.Canvas.ClickedIn(m.tagSelect.removes); ok {
+				changed = m.tagSelect.state.Remove(index) || changed
 			}
 		}
+		m.syncTags()
+		if changed {
+			d.Canvas.RequestFrame()
+		}
 	})
+}
+
+// syncTagOptions hands the multi-select its choices when the category changes.
+func (m *Model) syncTagOptions() {
+	values := m.tagOptions()
+	same := len(values) == len(m.tagSelect.values)
+	for index := range values {
+		if !same || values[index] != m.tagSelect.values[index] {
+			same = false
+			break
+		}
+	}
+	if same {
+		return
+	}
+	m.tagSelect.values = append(m.tagSelect.values[:0], values...)
+	choices := make([]viva.MultiSelectOption, len(values))
+	for index, value := range values {
+		choices[index] = viva.MultiSelectOption{Value: value, Label: value}
+	}
+	m.tagSelect.state.SetOptions(choices)
+}
+
+// syncTags copies the multi-select's values into the form.
+func (m *Model) syncTags() {
+	m.form.tags = append(m.form.tags[:0], m.tagSelect.state.Values()...)
+}
+
+// Key routes the multi-select popup's navigation keys while the dialog is open.
+func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
+	if !m.formOpen {
+		return gfx.EventResult{}
+	}
+	if event.Target != m.tagSelect.input &&
+		(!m.tagSelect.state.Open || event.Key != gfx.KeyEscape && event.Key != gfx.KeyTab) {
+		return gfx.EventResult{}
+	}
+	result := m.tagSelect.state.Key(event)
+	m.syncTags()
+	return result
+}
+
+// Scroll moves the multi-select popup while it is open.
+func (m *Model) Scroll(event gfx.ScrollEvent) gfx.EventResult {
+	if !m.formOpen || !m.tagSelect.state.Open || !m.tagSelect.state.Wheel(event) {
+		return gfx.EventResult{}
+	}
+	return gfx.EventResult{Handled: true, Repaint: true}
+}
+
+// TagsEditor is the native editor of the multi-select query while the field has
+// focus, for Config.TextInput.
+func (m *Model) TagsEditor(id gfx.ID) *text.Editor {
+	if !m.formOpen || id != m.tagSelect.input {
+		return nil
+	}
+	return &m.tagSelect.state.Query
 }
 
 // deleteModal is the 删除模板 confirmation.

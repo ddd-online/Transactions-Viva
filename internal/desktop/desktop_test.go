@@ -340,7 +340,14 @@ func TestTemplatesPage(t *testing.T) {
 
 	click(t, driver, "分类")
 	click(t, driver, "餐饮美食")
+	clickRole(t, driver, "标签", gfx.RoleCombobox)
+	if !hasControl(driver, "咖啡") {
+		t.Fatal("the tags multi-select offers no category tag")
+	}
 	click(t, driver, "咖啡")
+	if err := driver.Key(gfx.KeyEscape, 0); err != nil {
+		t.Fatal(err)
+	}
 	click(t, driver, "描述")
 	if err := driver.Type("外带咖啡"); err != nil {
 		t.Fatal(err)

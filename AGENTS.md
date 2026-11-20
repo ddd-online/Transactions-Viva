@@ -41,8 +41,9 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   默认分类与标签都在 `internal/pages/accounting/tags/mock.go`，接入 store 后替换。
 - 记账-模板页已迁移前端：通到版心边缘的表格（拖拽把手 / 模板名称 / 交易类型 / 分类 / 标签 /
   标记 / 描述 / 操作），行可拖拽排序、删除前确认；「新建模板」弹窗按旧工程校验模板名称与分类，
-  标签取所选分类下的多选。模板存在 `internal/pages/accounting/template` 的内存 Store 里，
-  记录页「记一笔」的模板下拉读同一个 Store，模板页新建的模板马上能在弹窗里选到。
+  标签取所选分类下的多选器（Viva `PaintMultiSelect`，与记一笔共用同一套键盘 / 滚轮 / 输入路由）。
+  模板存在 `internal/pages/accounting/template` 的内存 Store 里，记录页「记一笔」的模板下拉
+  读同一个 Store，模板页新建的模板马上能在弹窗里选到。
 - 用户配置已落地：`internal/config` 读写 `~/.transactions.json`（`viva dev` 期间是
   `~/.transactions.dev.json`），逐字段归一化，写回保留未知顶层键，写入走 `.tmp` + rename。
   窗口尺寸 / 位置（关闭时保存）、工作空间、外观、关闭行为、功能开关与账本级覆盖都在里面；

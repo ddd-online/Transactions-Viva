@@ -97,16 +97,22 @@ func (m *Model) View(c ui.C) {
 // Key routes the records page's canvas controls (the tags multi-select) from
 // the shell's Config.OnKey.
 func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
-	if m.tab == tabRecords {
+	switch m.tab {
+	case tabRecords:
 		return m.records.Key(event)
+	case tabTemplates:
+		return m.templates.Key(event)
 	}
 	return gfx.EventResult{}
 }
 
 // Scroll routes the tags multi-select popup's wheel.
 func (m *Model) Scroll(event gfx.ScrollEvent) gfx.EventResult {
-	if m.tab == tabRecords {
+	switch m.tab {
+	case tabRecords:
 		return m.records.Scroll(event)
+	case tabTemplates:
+		return m.templates.Scroll(event)
 	}
 	return gfx.EventResult{}
 }
@@ -114,8 +120,11 @@ func (m *Model) Scroll(event gfx.ScrollEvent) gfx.EventResult {
 // TagsEditor is the native editor behind the tags multi-select while it has
 // focus, for Config.TextInput.
 func (m *Model) TagsEditor(id gfx.ID) *text.Editor {
-	if m.tab == tabRecords {
+	switch m.tab {
+	case tabRecords:
 		return m.records.TagsEditor(id)
+	case tabTemplates:
+		return m.templates.TagsEditor(id)
 	}
 	return nil
 }
