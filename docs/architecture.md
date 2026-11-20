@@ -65,7 +65,7 @@ main → desktop → pages → components
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
 | `internal/pages/events` | 事件画廊、图片、实况照片 | `src/pages/event*` |
 | `internal/pages/diary` | 日记树、正文、导入导出 | `src/pages/diary*` |
-| `internal/pages/settings` | 设置页五个分区 | `src/pages/settings*` |
+| `internal/pages/settings` | 设置页六个分区：通用设置 / 账本管理 / 功能开关 / 数据备份 / 日记配置 / 关于软件 | `src/pages/settings*`、`src/app-menu.tsx` 的「创建账本」 |
 | `internal/components` | 可复用的片段：占位空态（后续的 page header、table cell 等） | `src/components` |
 | `internal/components/datepicker` | 日期 / 时间范围选择器（工具栏与表单同一组件） | `src/components/time-range-picker.tsx`、antd DatePicker |
 | `internal/components/pagination` | 分页栏：页大小 Select + Viva 分页 + 总数 | `src/components/pagination.tsx` |
@@ -136,6 +136,13 @@ main → desktop → pages → components
   Viva 的 `StatusItem`，没有状态区时回退为退出）；网络代理仍是占位。「功能开关」写 `features`
   的全局默认；`ledgerFeatures` 的账本覆盖规则已在 `config` 里，但还没有接到真实账本上。
   关掉的分区立即从 Sidebar 消失，五个全关时落到设置。
+- 账本管理是设置自己的一个分区（排在通用设置之后）：列出工作空间的账本（名称 + 描述），
+  可以新增、编辑（名称与描述一次写入）与删除，标出记账页正在读的那一本。三命令落在
+  `accounting.Model`（`CreateLedger` / `UpdateLedger` / `DeleteLedger`），因为它持有四个记账页
+  共享的 `ledger.Store`：写入后重读列表并重置 store，新建的账本成为当前账本（与旧工程
+  `ledger_create` 一致），删除后 `Reset` 回退到第一本。设置页自己不碰 SQLite，只通过
+  `Spec` 回调外壳。数据库里 `ledger.description` 从 v1 就在；`store.UpdateLedger` 是新的，
+  删除时会连带 `chart` 表（旧工程的级联清单里有，v1 的 `DeleteLedger` 漏了）。
 - 运行入口按模式分叉：`viva dev`（`VIVA_RELOAD_ADDRESS` 存在）必须用 `app.RunCanvas`，开发
   重载 worker 在它内部连接宿主；发布版用 `app.RunApplication`，才能拿到 `*app.Window` /
   `*app.Application` 建 `StatusItem`、隐藏到托盘并处理 `OnCloseRequest`。开发宿主只在自身的
