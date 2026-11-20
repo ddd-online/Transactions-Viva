@@ -1,3 +1,5 @@
 # Build output: `viva build`, `go build`, and packaged artifacts.
 /build/
 *.exe
+/.impeccable/mocks
+/.vscode
