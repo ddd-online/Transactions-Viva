@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-21T00:40:00+08:00",
+  "generatedAt": "2026-11-21T00:36:00+08:00",
   "title": "Design System: Transactions",
   "extensions": {
     "colorMeta": {
@@ -326,7 +326,7 @@
       },
       {
         "name": "The Label-Not-Annotation Rule",
-        "body": "灰字只在控件自己说不清那个事实时才出现；机制解释进 Tooltip，不进常驻正文。",
+        "body": "灰字只在控件自己说不清那个事实时才出现。设置页是一列「标题 + 行 + 控件」，标题下没有说明段落；机制解释进 Tooltip，不进常驻正文。",
         "section": "typography"
       },
       {

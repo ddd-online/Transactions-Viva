@@ -955,7 +955,7 @@ func TestSettingsPageAndThemeToggle(t *testing.T) {
 	driver, model := open(t)
 
 	click(t, driver, "设置")
-	if !shows(driver, "窗口关闭行为") {
+	if !hasControl(driver, "直接退出") {
 		t.Fatal("设置 did not show the settings page")
 	}
 	if model.section != SectionSettings {
@@ -963,7 +963,7 @@ func TestSettingsPageAndThemeToggle(t *testing.T) {
 	}
 
 	click(t, driver, "功能开关")
-	if !shows(driver, "五个开关") {
+	if !hasControl(driver, "记账功能开关") {
 		t.Fatal("功能开关 did not switch the settings section")
 	}
 
@@ -977,7 +977,7 @@ func TestSettingsPageAndThemeToggle(t *testing.T) {
 		t.Fatalf("section after leaving settings = %v", model.section)
 	}
 	click(t, driver, "设置")
-	if !shows(driver, "五个开关") {
+	if !hasControl(driver, "记账功能开关") {
 		t.Fatal("settings did not return to its chosen section")
 	}
 
@@ -996,8 +996,8 @@ func TestSettingsPageAndThemeToggle(t *testing.T) {
 func TestSettingsAppearanceAndCloseBehavior(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "设置")
-	if !shows(driver, "窗口关闭行为") {
-		t.Fatal("通用设置 is missing its explanation")
+	if !hasControl(driver, "直接退出") {
+		t.Fatal("通用设置 is missing its close-behavior choice")
 	}
 
 	click(t, driver, "深色")

@@ -52,7 +52,6 @@ type setting struct {
 type section struct {
 	tab   tab
 	title string
-	note  string
 	rows  []setting
 }
 
@@ -60,17 +59,14 @@ var sections = [...]section{
 	{
 		tab:   tabGeneral,
 		title: "通用设置",
-		note:  "工作空间、外观（跟随系统 / 浅色 / 深色）与窗口关闭行为。",
 	},
 	{
 		tab:   tabFeatures,
 		title: "功能开关",
-		note:  "记账、股票、待办、事件、日记五个开关；关掉的功能从左侧导航消失，设置本身不受开关约束。",
 	},
 	{
 		tab:   tabData,
 		title: "数据备份",
-		note:  "打开工作空间、手动备份、每日自动备份，以及从备份恢复（恢复后重启）。",
 		rows: []setting{
 			{"最近工作空间", "最近打开的本地工作空间，可直接切换。"},
 			{"备份位置", "手动备份与恢复前的副本都放这里。"},
@@ -82,7 +78,6 @@ var sections = [...]section{
 	{
 		tab:   tabDiary,
 		title: "日记配置",
-		note:  "扫描目录、导入与导出日记文件。",
 		rows: []setting{
 			{"扫描目录", "日记文件的来源目录。"},
 			{"导入与导出", "批量导入或导出日记文件。"},
@@ -91,7 +86,6 @@ var sections = [...]section{
 	{
 		tab:   tabAbout,
 		title: "关于软件",
-		note:  "版本、检查更新，以及下载与安装。",
 		rows: []setting{
 			{"版本", "当前安装的 Transactions 版本。"},
 			{"检查更新", "手动检查更新，或让应用定期检查。"},
@@ -222,17 +216,14 @@ func (m *Model) nav(c ui.C) {
 	})
 }
 
-// page is the chosen section: its title, its explanation and its controls.
+// page is the chosen section: its title and its controls.
 func (m *Model) page(c ui.C, entry section, spec Spec) {
-	theme := c.Theme()
 	ui.Scroll(c).Grow(1).FillHeight().Items(ui.Center).Children(func() {
 		ui.Column(c).FillWidth().MaxWidth(columnMax).
 			MarginSides(columnTop, columnMargin, columnBottom, columnMargin).
 			Children(func() {
 				ui.Text(c, entry.title).FontSize(sectionTitle).Bold().
-					LineHeight(32).MarginBottom(layout.Gap)
-				ui.Paragraph(c, entry.note, 3).FontSize(theme.Metrics.FontSizeM).
-					Muted().LineHeight(20).MarginBottom(layout.GroupGap)
+					LineHeight(32).MarginBottom(layout.GroupGap)
 				switch entry.tab {
 				case tabGeneral:
 					m.general(c, spec)
@@ -297,7 +288,9 @@ func (m *Model) features(c ui.C, spec Spec) {
 			entry := entry
 			controls.Row(c, entry.title, "", func() {
 				on := spec.Features.Enabled(entry.key)
-				if ui.Switch(c, &on, entry.title+"功能开关").Changed() {
+				// The row's title already says what this switch is; the label
+				// stays for assistive technology and for the tests.
+				if ui.Switch(c, &on, "").Label(entry.title + "功能开关").Changed() {
 					m.report("保存失败", func() error { return spec.OnFeature(entry.key, on) })
 				}
 			})
