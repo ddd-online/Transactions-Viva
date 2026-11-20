@@ -903,9 +903,19 @@ func TestSettingsCategoriesSwitchThePage(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "设置")
 
-	for _, name := range []string{"通用设置", "功能开关", "数据备份", "日记配置", "关于软件"} {
+	for _, name := range []string{"通用设置", "数据备份", "日记配置", "关于软件"} {
 		if !hasControl(driver, name) {
 			t.Fatalf("settings list has no %q entry", name)
+		}
+	}
+	// 功能开关 is a group of 通用设置 now, not a section of the panel: the rail
+	// has no row for it, and the page the settings open on shows both groups.
+	if hasControl(driver, "功能开关") {
+		t.Fatal("功能开关 is still a section of the settings rail")
+	}
+	for _, name := range []string{"常规", "功能开关"} {
+		if !shows(driver, name) {
+			t.Fatalf("通用设置 has no %q group", name)
 		}
 	}
 
@@ -987,13 +997,18 @@ func TestSettingsPageAndThemeToggle(t *testing.T) {
 		t.Fatalf("section while settings is shown = %v", model.section)
 	}
 
-	click(t, driver, "功能开关")
+	// 功能开关 is 通用设置's second group: its switches are on the page the
+	// settings open on, with no section of their own to visit.
 	if !hasControl(driver, "记账功能开关") {
-		t.Fatal("功能开关 did not switch the settings section")
+		t.Fatal("通用设置 does not show the feature switches")
 	}
 
 	// Settings is a section like any other: another section replaces it, and
 	// the chosen settings section stays for the next visit.
+	click(t, driver, "数据备份")
+	if !shows(driver, "从备份恢复") {
+		t.Fatal("数据备份 did not replace the general settings")
+	}
 	click(t, driver, "记账")
 	if !shows(driver, "记一笔") {
 		t.Fatal("记账 did not replace the settings page")
@@ -1002,7 +1017,7 @@ func TestSettingsPageAndThemeToggle(t *testing.T) {
 		t.Fatalf("section after leaving settings = %v", model.section)
 	}
 	click(t, driver, "设置")
-	if !hasControl(driver, "记账功能开关") {
+	if !shows(driver, "从备份恢复") {
 		t.Fatal("settings did not return to its chosen section")
 	}
 
@@ -1188,9 +1203,8 @@ func TestAboutPageShowsTheBuildAndOpensItsLinks(t *testing.T) {
 func TestFeatureSwitchHidesItsSection(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "设置")
-	click(t, driver, "功能开关")
 	if !hasControl(driver, "记账功能开关") {
-		t.Fatal("功能开关 did not show the five switches")
+		t.Fatal("通用设置 did not show the five switches")
 	}
 
 	click(t, driver, "股票功能开关")
@@ -1227,7 +1241,6 @@ func TestSettingsWritesTheConfigurationFile(t *testing.T) {
 	click(t, driver, "设置")
 	click(t, driver, "深色")
 	click(t, driver, "直接退出")
-	click(t, driver, "功能开关")
 	click(t, driver, "日记功能开关")
 
 	reloaded := config.Load(path).Config()

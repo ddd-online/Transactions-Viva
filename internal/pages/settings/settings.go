@@ -29,7 +29,6 @@ type tab uint8
 const (
 	tabGeneral tab = iota
 	tabLedgers
-	tabFeatures
 	tabData
 	tabDiary
 	tabAbout
@@ -70,10 +69,6 @@ var sections = [...]section{
 	{
 		tab:   tabLedgers,
 		title: "账本管理",
-	},
-	{
-		tab:   tabFeatures,
-		title: "功能开关",
 	},
 	{
 		tab:   tabData,
@@ -349,8 +344,6 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 					m.general(c, spec)
 				case tabLedgers:
 					m.ledgers(c, spec)
-				case tabFeatures:
-					m.features(c, spec)
 				case tabDiary:
 					m.diaryConfig(c, spec)
 				case tabAbout:
@@ -362,14 +355,26 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 	})
 }
 
-// general is 通用设置: the workspace, the appearance, the close behavior and the
-// not-yet-migrated proxy row.
+// general is 通用设置: the application's own preferences and the optional
+// features' switches, each its own named group — the same rhythm as 关于软件
+// (版本信息 / 更新 / 项目) and 日记配置 (日记本 / 导入导出). The switches used to
+// be a section of their own; they act on the navigation rather than on a page of
+// it, so they belong beside the other things the application itself sets.
 func (m *Model) general(c ui.C, spec Spec) {
+	ui.Column(c).FillWidth().Gap(layout.GroupGap).Children(func() {
+		m.generalPreferences(c, spec)
+		m.featureSwitches(c, spec)
+	})
+}
+
+// generalPreferences is 常规: the workspace, the appearance, the close behavior
+// and the not-yet-migrated proxy row.
+func (m *Model) generalPreferences(c ui.C, spec Spec) {
 	trayNote := ""
 	if !spec.TrayAvailable {
 		trayNote = "当前系统没有可用的托盘，选「最小化到托盘」时关闭会直接退出。"
 	}
-	controls.Group(c, "", func() {
+	controls.Group(c, "常规", func() {
 		controls.Row(c, "工作空间", workspaceNote(spec.Workspace), func() {
 			if ui.Button(c, "切换").Secondary().Clicked() {
 				m.report("打开工作空间失败", spec.OnPickWorkspace)
@@ -393,6 +398,28 @@ func (m *Model) general(c ui.C, spec Spec) {
 		controls.Row(c, "网络代理", "行情、涨停池与更新检查走代理。", func() {
 			typography.Caption(c, "暂未支持")
 		})
+	})
+}
+
+// featureSwitches is 功能开关: one switch per optional feature. Turning one off
+// takes its section out of the navigation at once, which is why the group says
+// so rather than leaving the reader to discover it.
+func (m *Model) featureSwitches(c ui.C, spec Spec) {
+	controls.Group(c, "功能开关", func() {
+		for index, entry := range featureRows {
+			if index > 0 {
+				ui.Divider(c)
+			}
+			entry := entry
+			controls.Row(c, entry.title, "", func() {
+				on := spec.Features.Enabled(entry.key)
+				// The row's title already says what this switch is; the label
+				// stays for assistive technology and for the tests.
+				if ui.Switch(c, &on, "").Label(entry.title + "功能开关").Changed() {
+					m.report("保存功能开关失败", func() error { return spec.OnFeature(entry.key, on) })
+				}
+			})
+		}
 	})
 }
 
@@ -563,26 +590,6 @@ func workspaceNote(workspace string) string {
 		return "尚未选择工作空间"
 	}
 	return workspace
-}
-
-// features is 功能开关: one switch per optional feature.
-func (m *Model) features(c ui.C, spec Spec) {
-	controls.Group(c, "", func() {
-		for index, entry := range featureRows {
-			if index > 0 {
-				ui.Divider(c)
-			}
-			entry := entry
-			controls.Row(c, entry.title, "", func() {
-				on := spec.Features.Enabled(entry.key)
-				// The row's title already says what this switch is; the label
-				// stays for assistive technology and for the tests.
-				if ui.Switch(c, &on, "").Label(entry.title + "功能开关").Changed() {
-					m.report("保存功能开关失败", func() error { return spec.OnFeature(entry.key, on) })
-				}
-			})
-		}
-	})
 }
 
 // diaryConfig is 日记配置: the batch import and the scoped export. Both ask the
