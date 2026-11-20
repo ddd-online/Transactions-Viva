@@ -20,11 +20,17 @@ import (
 // The table's columns, shared by the header row and the rows so the two always
 // agree: a name, the type it sums, the condition it matches, and its total.
 const (
-	curveNameWidth    float32 = 240
-	curveTypeWidth    float32 = 80
+	curveNameWidth    float32 = 168
+	curveTypeWidth    float32 = 88
 	curveOutlierWidth float32 = 96
-	curveAmountWidth  float32 = 140
+	curveConditionMin float32 = 200
+	curveAmountWidth  float32 = 128
 	curveActionWidth  float32 = 64
+
+	// curveTableMinWidth is the narrowest the columns go before the table
+	// scrolls sideways instead of clipping a column.
+	curveTableMinWidth float32 = curveNameWidth + curveTypeWidth + curveOutlierWidth +
+		curveConditionMin + curveAmountWidth + curveActionWidth + 5*layout.ColumnGap
 )
 
 // chartTable is the list under the plot: one row per curve that says what the
@@ -43,11 +49,17 @@ func (m *Model) chartTable(c ui.C, chart *domain.Chart) {
 		float32(min(rows, maxRows))*layout.RowHeight
 	ui.Column(c).FillWidth().Height(height).Shrink(1).Children(func() {
 		m.chartTableHead(c, chart)
-		if chart.ChartType == chartPie {
-			m.pieTable(c, chart)
-			return
-		}
-		m.curveTable(c, chart)
+		// The header scrolls with its rows, so a window too narrow for the
+		// columns scrolls the table sideways instead of cutting one off.
+		ui.Scroll(c).Grow(1).FillWidth().Sideways().Scrollbars().Children(func() {
+			ui.Column(c).FillWidth().MinWidth(curveTableMinWidth).Children(func() {
+				if chart.ChartType == chartPie {
+					m.pieTable(c, chart)
+					return
+				}
+				m.curveTable(c, chart)
+			})
+		})
 	})
 }
 
@@ -81,14 +93,14 @@ func (m *Model) curveTable(c ui.C, chart *domain.Chart) {
 		Background(theme.Muted).Children(func() {
 		typography.Caption(c, "名称").Width(curveNameWidth)
 		// The type column is centered: its header and the capsule under it sit
-		// in the middle of the same 80 px, so the column reads as one block.
+		// in the middle of the same cell, so the column reads as one block.
 		ui.Row(c).Width(curveTypeWidth).Justify(ui.Center).Children(func() {
 			typography.Caption(c, "类型")
 		})
 		ui.Row(c).Width(curveOutlierWidth).Justify(ui.Center).Children(func() {
 			typography.Caption(c, "包含离群值")
 		})
-		typography.Caption(c, "条件").Grow(1)
+		typography.Caption(c, "条件").Grow(1).MinWidth(curveConditionMin)
 		ui.Row(c).Width(curveAmountWidth).Justify(ui.End).Children(func() {
 			typography.Caption(c, "合计")
 		})
@@ -110,15 +122,11 @@ func (m *Model) curveTable(c ui.C, chart *domain.Chart) {
 		})
 		return
 	}
-	ui.Scroll(c).Grow(1).FillWidth().Scrollbars().Children(func() {
-		ui.Column(c).FillWidth().Children(func() {
-			for index := range m.lines {
-				line := &m.lines[index]
-				c.KeyInt(index)
-				m.curveRow(c, chart, index, line)
-			}
-		})
-	})
+	for index := range m.lines {
+		line := &m.lines[index]
+		c.KeyInt(index)
+		m.curveRow(c, chart, index, line)
+	}
 }
 
 // curveRow is one curve of the line chart.
@@ -142,7 +150,8 @@ func (m *Model) curveRow(c ui.C, chart *domain.Chart, index int, line *domain.Ch
 			}
 			typography.Body(c, outlier)
 		})
-		typography.Caption(c, conditionSummary(*line)).Grow(1).Ellipsis()
+		typography.Caption(c, conditionSummary(*line)).Grow(1).
+			MinWidth(curveConditionMin).Ellipsis()
 		ui.Row(c).Width(curveAmountWidth).Justify(ui.End).Children(func() {
 			typography.Body(c, domain.CentsToYuan(m.seriesTotal(index))).Mono()
 		})
@@ -186,29 +195,28 @@ func (m *Model) pieTable(c ui.C, chart *domain.Chart) {
 		})
 		return
 	}
-	ui.Scroll(c).Grow(1).FillWidth().Scrollbars().Children(func() {
-		ui.Column(c).FillWidth().Children(func() {
-			for index, slice := range m.pieSlices {
-				share := float64(0)
-				if m.pie.Total > 0 {
-					share = float64(slice.Amount) / float64(m.pie.Total) * 100
-				}
-				ui.Row(c).Height(layout.RowHeight).FillWidth().
-					PadX(layout.BlockGap).Gap(layout.ColumnGap).Items(ui.Center).
-					Radius(theme.Metrics.RadiusControl).
-					Hover(ui.Look{}.Background(theme.Hover)).Children(func() {
-					ui.Row(c).Grow(1).Gap(layout.Gap).Items(ui.Center).Children(func() {
-						dot(c, pieColor(*theme, index))
-						typography.Body(c, slice.Label).Grow(1).Ellipsis()
-					})
-					typography.Body(c, domain.CentsToYuan(slice.Amount)).
-						Width(curveAmountWidth).TextEnd().Mono()
-					typography.Caption(c, fmt.Sprintf("%.1f%%", share)).
-						Width(curveTypeWidth).TextEnd()
-				})
-			}
+	for index, slice := range m.pieSlices {
+		share := float64(0)
+		if m.pie.Total > 0 {
+			share = float64(slice.Amount) / float64(m.pie.Total) * 100
+		}
+		c.KeyInt(index)
+		ui.Row(c).Height(layout.RowHeight).FillWidth().
+			PadX(layout.BlockGap).Gap(layout.ColumnGap).Items(ui.Center).
+			Radius(theme.Metrics.RadiusControl).
+			Hover(ui.Look{}.Background(theme.Hover)).Children(func() {
+			ui.Row(c).Grow(1).Gap(layout.Gap).Items(ui.Center).Children(func() {
+				dot(c, pieColor(*theme, index))
+				typography.Body(c, slice.Label).Grow(1).Ellipsis()
+			})
+			ui.Row(c).Width(curveAmountWidth).Justify(ui.End).Children(func() {
+				typography.Body(c, domain.CentsToYuan(slice.Amount)).Mono()
+			})
+			ui.Row(c).Width(curveTypeWidth).Justify(ui.End).Children(func() {
+				typography.Caption(c, fmt.Sprintf("%.1f%%", share))
+			})
 		})
-	})
+	}
 }
 
 // footer is the band under the table: the range's totals, the same readout the
