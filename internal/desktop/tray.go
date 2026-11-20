@@ -1,6 +1,48 @@
 package desktop
 
-import "github.com/vivaui/viva/app"
+import (
+	"bytes"
+	_ "embed"
+	"image"
+	"image/draw"
+	"image/png"
+	"sync"
+
+	"github.com/vivaui/viva/app"
+)
+
+// trayIconPNG is the status-area icon: the same mark the About page shows —
+// the primary plate with the white "Tr" — rasterized at 64 px so the densest
+// bars stay sharp. The plate is colored rather than a template, because Windows
+// paints a template as-is; the blue plate keeps the white mark visible on both
+// light and dark taskbars.
+//
+// It is derived from icons.AppMark, not drawn by hand: a rounded plate 60 px
+// wide (radius 14) in the theme's primary at the centre of the 64 px canvas,
+// with the glyph 34 px wide in the primary foreground. Rasterize the same
+// shape again (4× and downsample) when the mark or the plate's colour changes.
+//
+//go:embed tray.png
+var trayIconPNG []byte
+
+// trayIcon decodes the embedded image once. A decode failure yields an empty
+// icon: the status area then takes no icon, and closing to the tray falls back
+// to quitting.
+var trayIcon = sync.OnceValue(func() app.StatusIcon {
+	img, err := png.Decode(bytes.NewReader(trayIconPNG))
+	if err != nil {
+		return app.StatusIcon{}
+	}
+	bounds := img.Bounds()
+	straight := image.NewNRGBA(bounds)
+	draw.Draw(straight, bounds, img, bounds.Min, draw.Src)
+	rgba := make([]byte, bounds.Dx()*bounds.Dy()*4)
+	stride := bounds.Dx() * 4
+	for y := 0; y < bounds.Dy(); y++ {
+		copy(rgba[y*stride:(y+1)*stride], straight.Pix[y*straight.Stride:])
+	}
+	return app.StatusIcon{Size: bounds.Dx(), RGBA: rgba}
+})
 
 // addTray puts the application in the system's status area, so closing to the
 // tray leaves a way back. The old application always had this icon; when the
@@ -34,27 +76,4 @@ func (m *Model) showWindow() {
 		return
 	}
 	m.window.Show()
-}
-
-// trayIcon is the placeholder mark for the status area: a T, opaque white on a
-// transparent field, marked as a template so the bar tints it for light and
-// dark. A packaged build replaces it with the product icon.
-func trayIcon() app.StatusIcon {
-	const size = 32
-	pixels := make([]byte, size*size*4)
-	fill := func(left, top, right, bottom int) {
-		for y := top; y < bottom; y++ {
-			for x := left; x < right; x++ {
-				index := (y*size + x) * 4
-				pixels[index+0] = 255
-				pixels[index+1] = 255
-				pixels[index+2] = 255
-				pixels[index+3] = 255
-			}
-		}
-	}
-	// The bar and the stem of a T, with the stem centered under the bar.
-	fill(7, 6, 25, 11)
-	fill(13, 11, 19, 26)
-	return app.StatusIcon{Size: size, RGBA: pixels, Template: true}
 }

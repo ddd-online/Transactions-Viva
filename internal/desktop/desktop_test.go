@@ -1365,21 +1365,35 @@ func TestFirstEnabledSectionFollowsTheSwitches(t *testing.T) {
 	}
 }
 
-// TestTrayIconIsATemplate checks the placeholder status icon is a complete
-// transparent square with a visible mark.
-func TestTrayIconIsATemplate(t *testing.T) {
+// TestTrayIconCarriesTheAppMark checks the status icon is the About page's
+// mark: a colored plate with the white "Tr", its corners transparent, rather
+// than the old template placeholder.
+func TestTrayIconCarriesTheAppMark(t *testing.T) {
 	icon := trayIcon()
-	if icon.Size != 32 || len(icon.RGBA) != 32*32*4 || !icon.Template {
-		t.Fatalf("icon = %+v", icon)
+	if icon.Size != 64 || len(icon.RGBA) != 64*64*4 {
+		t.Fatalf("icon size = %d, %d bytes", icon.Size, len(icon.RGBA))
 	}
-	opaque := 0
-	for index := 3; index < len(icon.RGBA); index += 4 {
-		if icon.RGBA[index] != 0 {
-			opaque++
+	if icon.Template {
+		t.Fatal("the plate is colored, not a template")
+	}
+	if alpha := icon.RGBA[3]; alpha != 0 {
+		t.Fatalf("corner alpha = %d, want transparent", alpha)
+	}
+	blue, white := 0, 0
+	for index := 0; index+3 < len(icon.RGBA); index += 4 {
+		r, g, b, a := icon.RGBA[index], icon.RGBA[index+1], icon.RGBA[index+2], icon.RGBA[index+3]
+		if a < 200 {
+			continue
+		}
+		switch {
+		case b > 150 && r < 90 && g < 130:
+			blue++
+		case r > 230 && g > 230 && b > 230:
+			white++
 		}
 	}
-	if opaque == 0 {
-		t.Fatal("the status icon is empty")
+	if blue == 0 || white == 0 {
+		t.Fatalf("plate pixels = %d, mark pixels = %d", blue, white)
 	}
 }
 
