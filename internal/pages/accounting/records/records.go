@@ -420,7 +420,7 @@ func (m *Model) table(c ui.C) {
 			Background(theme.Muted).Children(func() {
 			m.sortHeader(c, "日期", sortDate, recordDateWidth, false)
 			ui.Text(c, "类型").Width(recordTypeWidth).FontSize(11).Muted()
-			ui.Text(c, "分类").Width(recordCategoryWidth).FontSize(11).Muted()
+			ui.Text(c, "分类").Width(recordCategoryWidth).TextCenter().FontSize(11).Muted()
 			ui.Text(c, "标签").Width(recordTagsWidth).FontSize(11).Muted()
 			ui.Text(c, "描述").Grow(1).FontSize(11).Muted()
 			ui.Text(c, "标记").Width(recordMarksWidth).TextCenter().FontSize(11).Muted()
@@ -454,7 +454,7 @@ func (m *Model) row(r ui.ListRow) {
 	color := kindColor(*theme, rec.kind)
 	ui.Text(r.C, kindLabel(rec.kind)).Width(recordTypeWidth).FontSize(12).
 		Weight(gfx.WeightMedium).Color(color)
-	ui.Text(r.C, rec.category).Width(recordCategoryWidth).FontSize(12).Ellipsis()
+	ui.Text(r.C, rec.category).Width(recordCategoryWidth).TextCenter().FontSize(12).Ellipsis()
 
 	tags := strings.Join(rec.tags, "、")
 	if tags == "" {
