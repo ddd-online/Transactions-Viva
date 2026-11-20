@@ -31,6 +31,11 @@ const (
 	// scrolls sideways instead of clipping a column.
 	curveTableMinWidth float32 = curveNameWidth + curveTypeWidth + curveOutlierWidth +
 		curveConditionMin + curveAmountWidth + curveActionWidth + 5*layout.ColumnGap
+
+	// emptyTableBody is the room the table keeps for its own empty sentence on
+	// a chart with no rows: the sentence must not be cut, and it should not
+	// push the totals band down.
+	emptyTableBody float32 = 96
 )
 
 // chartTable is the list under the plot: one row per curve that says what the
@@ -45,8 +50,11 @@ func (m *Model) chartTable(c ui.C, chart *domain.Chart) {
 		rows = len(m.pieSlices)
 	}
 	const maxRows = 5
-	height := layout.SectionHeaderHeight + layout.TableHeaderHeight +
-		float32(min(rows, maxRows))*layout.RowHeight
+	body := float32(min(rows, maxRows)) * layout.RowHeight
+	if rows == 0 {
+		body = emptyTableBody
+	}
+	height := layout.SectionHeaderHeight + layout.TableHeaderHeight + body
 	ui.Column(c).FillWidth().Height(height).Shrink(1).Children(func() {
 		m.chartTableHead(c, chart)
 		// The header scrolls with its rows, so a window too narrow for the
@@ -117,7 +125,8 @@ func (m *Model) curveTable(c ui.C, chart *domain.Chart) {
 		}
 	})
 	if len(m.lines) == 0 {
-		ui.Row(c).FillWidth().Pad(layout.Inset).Children(func() {
+		ui.Row(c).FillWidth().Height(emptyTableBody).Pad(layout.Inset).
+			Items(ui.Center).Children(func() {
 			typography.CaptionParagraph(c, "还没有曲线。加一条之后，这张表会写出它包含哪些记录、合计多少。", 2).Muted()
 		})
 		return
@@ -190,7 +199,8 @@ func (m *Model) pieTable(c ui.C, chart *domain.Chart) {
 		})
 	})
 	if len(m.pieSlices) == 0 {
-		ui.Row(c).FillWidth().Pad(layout.Inset).Children(func() {
+		ui.Row(c).FillWidth().Height(emptyTableBody).Pad(layout.Inset).
+			Items(ui.Center).Children(func() {
 			typography.CaptionParagraph(c, pieEmptyDescription(m.pie, *m.selectedChart()), 3).Muted()
 		})
 		return
@@ -227,7 +237,9 @@ func (m *Model) footer(c ui.C, chart *domain.Chart) {
 		PadX(layout.Inset).Gap(layout.GroupGap).Items(ui.Center).Children(func() {
 		if chart.ChartType == chartPie {
 			footerStat(c, "合计", m.pie.Total, theme.Foreground)
-			typography.Caption(c, fmt.Sprintf("共 %d 组", len(m.pieSlices)))
+			if len(m.pieSlices) > 0 {
+				typography.Caption(c, fmt.Sprintf("共 %d 组", len(m.pieSlices)))
+			}
 			if m.pie.Total > m.pie.FilteredTotal {
 				ui.Spacer(c)
 				typography.Caption(c, "带多个标签的记录会分别计入每个标签")
