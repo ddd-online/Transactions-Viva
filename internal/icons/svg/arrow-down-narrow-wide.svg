@@ -1,6 +1,6 @@
 <!-- @license lucide-static v0.469.0 - ISC -->
 <svg
-  class="lucide lucide-arrow-up-narrow-wide"
+  class="lucide lucide-arrow-down-narrow-wide"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
   height="24"
@@ -11,9 +11,9 @@
   stroke-linecap="round"
   stroke-linejoin="round"
 >
-  <path d="m3 8 4-4 4 4" />
-  <path d="M7 4v16" />
-  <path d="M11 12h4" />
-  <path d="M11 16h7" />
-  <path d="M11 20h10" />
+  <path d="m3 16 4 4 4-4" />
+  <path d="M7 20V4" />
+  <path d="M11 4h4" />
+  <path d="M11 8h7" />
+  <path d="M11 12h10" />
 </svg>

@@ -244,7 +244,7 @@ func (m *Model) sortButton(c ui.C, label string, field sortField) {
 	case desc:
 		glyph, color = icons.ArrowUpWideNarrow, theme.Primary
 	default:
-		glyph, color = icons.ArrowUpNarrowWide, theme.Primary
+		glyph, color = icons.ArrowDownNarrowWide, theme.Primary
 	}
 	button := ui.Row(c).Size(24, 24).Items(ui.Center).Justify(ui.Center).
 		Radius(theme.Metrics.RadiusItem()).

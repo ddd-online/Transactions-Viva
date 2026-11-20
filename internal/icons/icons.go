@@ -11,6 +11,27 @@ package icons
 
 import "github.com/vivaui/viva/gfx"
 
+// arrow-down-narrow-wide is a compiled vector icon.
+var ArrowDownNarrowWide = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(3.0, 16.0),
+		gfx.LineTo(7.0, 20.0),
+		gfx.LineTo(11.0, 16.0),
+		gfx.MoveTo(7.0, 20.0),
+		gfx.LineTo(7.0, 4.0),
+		gfx.MoveTo(11.0, 4.0),
+		gfx.LineTo(15.0, 4.0),
+		gfx.MoveTo(11.0, 8.0),
+		gfx.LineTo(18.0, 8.0),
+		gfx.MoveTo(11.0, 12.0),
+		gfx.LineTo(21.0, 12.0),
+	},
+}
+
 // arrow-up-down is a compiled vector icon.
 var ArrowUpDown = gfx.Icon{
 	ViewBox: 24.0,
@@ -28,27 +49,6 @@ var ArrowUpDown = gfx.Icon{
 		gfx.LineTo(11.0, 8.0),
 		gfx.MoveTo(7.0, 4.0),
 		gfx.LineTo(7.0, 20.0),
-	},
-}
-
-// arrow-up-narrow-wide is a compiled vector icon.
-var ArrowUpNarrowWide = gfx.Icon{
-	ViewBox: 24.0,
-	Stroke:  2.0,
-	Cap:     gfx.CapRound,
-	Join:    gfx.JoinRound,
-	Commands: []gfx.PathCommand{
-		gfx.MoveTo(3.0, 8.0),
-		gfx.LineTo(7.0, 4.0),
-		gfx.LineTo(11.0, 8.0),
-		gfx.MoveTo(7.0, 4.0),
-		gfx.LineTo(7.0, 20.0),
-		gfx.MoveTo(11.0, 12.0),
-		gfx.LineTo(15.0, 12.0),
-		gfx.MoveTo(11.0, 16.0),
-		gfx.LineTo(18.0, 16.0),
-		gfx.MoveTo(11.0, 20.0),
-		gfx.LineTo(21.0, 20.0),
 	},
 }
 
