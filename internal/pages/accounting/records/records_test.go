@@ -36,8 +36,44 @@ func TestRecordsRefilter(t *testing.T) {
 
 	m.sorts = []sortKey{{field: sortAmount, desc: true}}
 	m.refilter()
-	if m.shown[0].id != "c" {
-		t.Fatalf("amount sort first row = %q, want c", m.shown[0].id)
+	if m.shown[0].id != "b" {
+		t.Fatalf("amount sort first row = %q, want the income b", m.shown[0].id)
+	}
+	if m.shown[2].id != "c" {
+		t.Fatalf("amount sort last row = %q, want the largest expense c", m.shown[2].id)
+	}
+}
+
+// TestAmountSortUsesSignedValues checks an expense sorts as the negative number
+// it reads as, so descending puts -4 above -32.
+func TestAmountSortUsesSignedValues(t *testing.T) {
+	now := time.Now()
+	m := &Model{
+		records: []record{
+			{id: "income", kind: kindIncome, amount: 500, at: now},
+			{id: "expense-small", kind: kindExpense, amount: 100, at: now},
+			{id: "expense-big", kind: kindExpense, amount: 300, at: now},
+			{id: "transfer", kind: kindTransfer, amount: 200, at: now},
+		},
+		rangeStart: "2000-01-01",
+		rangeEnd:   "2100-01-01",
+		sorts:      []sortKey{{field: sortAmount, desc: true}},
+	}
+	m.refilter()
+	want := [4]string{"income", "transfer", "expense-small", "expense-big"}
+	for index, id := range want {
+		if m.shown[index].id != id {
+			t.Fatalf("descending: row %d = %q, want %q", index, m.shown[index].id, id)
+		}
+	}
+
+	m.sorts = []sortKey{{field: sortAmount, desc: false}}
+	m.refilter()
+	want = [4]string{"expense-big", "expense-small", "transfer", "income"}
+	for index, id := range want {
+		if m.shown[index].id != id {
+			t.Fatalf("ascending: row %d = %q, want %q", index, m.shown[index].id, id)
+		}
 	}
 }
 

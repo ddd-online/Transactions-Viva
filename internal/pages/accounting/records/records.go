@@ -242,9 +242,9 @@ func (m *Model) sortButton(c ui.C, label string, field sortField) {
 	switch {
 	case rank == 0:
 	case desc:
-		glyph, color = icons.ArrowUpNarrowWide, theme.Primary
+		glyph, color = icons.ArrowUpWideNarrow, theme.Primary
 	default:
-		glyph, color = icons.ArrowDownWideNarrow, theme.Primary
+		glyph, color = icons.ArrowUpNarrowWide, theme.Primary
 	}
 	button := ui.Row(c).Size(24, 24).Items(ui.Center).Justify(ui.Center).
 		Radius(theme.Metrics.RadiusItem()).
@@ -573,13 +573,15 @@ func (m *Model) refilter() {
 }
 
 // compareRecords orders two rows by one column, ascending: -1 when left comes
-// first, +1 when right does, 0 when they tie.
+// first, +1 when right does, 0 when they tie. The amount is compared as the row
+// shows it, so an expense (a negative number) sorts below income and transfers.
 func compareRecords(left, right record, field sortField) int {
 	if field == sortAmount {
+		leftAmount, rightAmount := signedAmount(left), signedAmount(right)
 		switch {
-		case left.amount < right.amount:
+		case leftAmount < rightAmount:
 			return -1
-		case left.amount > right.amount:
+		case leftAmount > rightAmount:
 			return 1
 		}
 		return 0
@@ -591,6 +593,15 @@ func compareRecords(left, right record, field sortField) int {
 		return 1
 	}
 	return 0
+}
+
+// signedAmount is a row's amount with the sign it reads with: an expense spends,
+// so it is negative; income and transfers stay positive.
+func signedAmount(rec record) int64 {
+	if rec.kind == kindExpense {
+		return -rec.amount
+	}
+	return rec.amount
 }
 
 // dateLayout is the local YYYY-MM-DD form the page compares its dates in.

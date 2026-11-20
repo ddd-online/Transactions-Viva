@@ -509,13 +509,16 @@ func TestRecordsHeaderSort(t *testing.T) {
 	if !above("工资到账", "社保代扣") {
 		t.Fatal("the descending amount sort did not put the largest first")
 	}
+	if !above("地铁通勤", "早餐 · 豆浆油条") {
+		t.Fatal("the descending amount sort put the larger expense first: -4 must sort above -12")
+	}
 	click(t, driver, "按日期排序")
 	if !above("工资到账", "社保代扣") {
 		t.Fatal("the second column took over from the first")
 	}
 	click(t, driver, "按金额排序")
-	if !above("地铁通勤", "工资到账") {
-		t.Fatal("the ascending amount sort did not put the smallest first")
+	if !above("午餐 · 公司楼下", "地铁通勤") {
+		t.Fatal("the ascending amount sort did not put the largest expense first")
 	}
 	click(t, driver, "按金额排序")
 	if !above("社保代扣", "早餐 · 豆浆油条") {
