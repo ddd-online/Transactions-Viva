@@ -181,10 +181,13 @@ func (m *Model) View(c ui.C) {
 // toolbar is the page's actions, laid out like the old page's filter bar: the
 // time range on the left, and the sort beside the primary action on the right.
 func (m *Model) toolbar(c ui.C) {
-	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(10).Items(ui.Center).Children(func() {
+	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(8).Items(ui.Center).Children(func() {
 		if ledger.Picker(c, m.ledgers) {
 			m.syncLedger()
 		}
+		// The same divider the tags and templates toolbars use: the ledger
+		// selector stands apart from the page's own controls.
+		ui.Divider(c).Height(24)
 		if ui.Button(c, "今天").Outline().Clicked() {
 			m.setRange(todayDate(), todayDate(), datepicker.ByDay)
 		}

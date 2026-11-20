@@ -483,6 +483,41 @@ func TestAccountingLedgerIsSharedAcrossPages(t *testing.T) {
 	}
 }
 
+// TestAccountingToolbarStartsAfterTheLedgerDivider checks the ledger selector's
+// trailing divider sits between it and the page's first control, at the same
+// distance on the records and tags pages.
+func TestAccountingToolbarStartsAfterTheLedgerDivider(t *testing.T) {
+	driver, _ := open(t)
+	ledger, ok := controlBounds(driver, "账本")
+	if !ok {
+		t.Fatal("the records page has no 账本 selector")
+	}
+	today, ok := controlBounds(driver, "今天")
+	if !ok {
+		t.Fatal("the records page has no 今天 button")
+	}
+	recordsGap := today.X - ledger.Right()
+
+	click(t, driver, "标签")
+	ledger, ok = controlBounds(driver, "账本")
+	if !ok {
+		t.Fatal("the tags page has no 账本 selector")
+	}
+	expense, ok := controlBounds(driver, "支出")
+	if !ok {
+		t.Fatal("the tags page has no 支出 type card")
+	}
+	tagsGap := expense.X - ledger.Right()
+
+	if diff := recordsGap - tagsGap; diff < -0.5 || diff > 0.5 {
+		t.Fatalf("records gap %.2f does not match the tags gap %.2f", recordsGap, tagsGap)
+	}
+	// gap + 1px divider + gap.
+	if tagsGap < 16.5 || tagsGap > 17.5 {
+		t.Fatalf("the ledger selector is separated by %.2f, want the 8+1+8 divider", tagsGap)
+	}
+}
+
 // TestRecordCategorySelect checks the 分类 field is a single choice among the
 // categories of the chosen type, and that a category already chosen survives a
 // change of type.
