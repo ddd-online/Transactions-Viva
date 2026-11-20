@@ -89,10 +89,6 @@ var sections = [...]section{
 	{
 		tab:   tabDiary,
 		title: "日记配置",
-		rows: []setting{
-			{"扫描目录", "日记文件的来源目录。"},
-			{"导入与导出", "批量导入或导出日记文件。"},
-		},
 	},
 	{
 		tab:   tabAbout,
@@ -136,6 +132,16 @@ type Spec struct {
 	// CopyText puts text on the clipboard; 关于软件 uses both.
 	OpenURL  func(target string) error
 	CopyText func(value string) error
+
+	// DiaryBooks are the open workspace's diary books and ActiveDiaryBook the one
+	// the 日记 page shows; the import and export act on that book.
+	DiaryBooks      []domain.DiaryBook
+	ActiveDiaryBook string
+	// OnCreateDiaryBook adds a book and makes it the active one; the update
+	// rewrites name and description; the delete removes a book with its entries.
+	OnCreateDiaryBook func(name, description string) error
+	OnUpdateDiaryBook func(id, name, description string) error
+	OnDeleteDiaryBook func(id string) error
 
 	// ImportDiary and ExportDiary are 日记配置's two commands: the shell asks the
 	// user for a directory and moves the files, so the page stays free of the
@@ -217,6 +223,30 @@ type Model struct {
 	// diary is 日记配置's own state: what an export covers, the period it
 	// picked, and the last command's status or failures.
 	diary diaryState
+
+	// bookForm is the 新建 / 编辑日记本 dialog; id empty means create.
+	bookForm bookForm
+	// bookDelete is the confirmation for removing one diary book.
+	bookDelete bookDelete
+}
+
+// bookForm is one diary book being created or edited, with the field states its
+// two rows keep across paints.
+type bookForm struct {
+	open        bool
+	id          string
+	name        string
+	description string
+	nameField   ui.FormFieldState
+	descField   ui.FormFieldState
+	err         string
+}
+
+// bookDelete names the diary book a confirmation is open for.
+type bookDelete struct {
+	open bool
+	id   string
+	name string
 }
 
 // diaryState is the 日记配置 section's draft: the export scope, the period it
@@ -261,6 +291,8 @@ func (m *Model) View(c ui.C, spec Spec) {
 	})
 	m.ledgerDialog(c, spec)
 	m.ledgerDeleteDialog(c, spec)
+	m.bookDialog(c, spec)
+	m.bookDeleteDialog(c, spec)
 	ui.Toasts(c, &m.toaster)
 }
 
@@ -562,16 +594,188 @@ func (m *Model) features(c ui.C, spec Spec) {
 // on the line under the card.
 func (m *Model) diaryConfig(c ui.C, spec Spec) {
 	theme := c.Theme()
+	m.diaryBooks(c, spec)
+	ui.Spacer(c).Height(layout.GroupGap)
+	m.diaryTransfer(c, spec)
+	if m.diary.status != "" {
+		typography.Caption(c, m.diary.status).MarginTop(layout.Gap).Color(theme.MutedForeground)
+	}
+	if m.diary.failure != "" {
+		typography.CaptionParagraph(c, m.diary.failure, 4).
+			Color(theme.Danger).MarginTop(layout.Gap)
+	}
+	if spec.ImportDiary == nil {
+		typography.Caption(c, "打开工作空间后才能导入 / 导出日记。").
+			MarginTop(layout.Gap).Color(theme.MutedForeground)
+	}
+}
+
+// diaryBooks is 日记本: the workspace's notebooks, one row each with its name,
+// its description and its commands, then 新建日记本. It follows 账本管理 exactly,
+// including the last-book rule: the diary page always needs one to show.
+func (m *Model) diaryBooks(c ui.C, spec Spec) {
+	theme := c.Theme()
+	metrics := theme.Metrics
+	controls.Group(c, "日记本", func() {
+		if len(spec.DiaryBooks) == 0 {
+			controls.Row(c, "还没有日记本", "打开工作空间后可以在这里新建、重命名或删除日记本。", nil)
+			return
+		}
+		for index := range spec.DiaryBooks {
+			if index > 0 {
+				ui.Divider(c)
+			}
+			one := spec.DiaryBooks[index]
+			controls.Row(c, one.Name, one.Description, func() {
+				if spec.ActiveDiaryBook == one.ID {
+					typography.Caption(c, "当前")
+				}
+				if ui.Button(c, "编辑日记本 "+one.Name).Ghost().Icon(icons.Pencil).
+					IconOnly().Tooltip("编辑名称与描述").Clicked() {
+					m.openBookForm(spec, one.ID)
+				}
+				last := len(spec.DiaryBooks) <= 1
+				remove := ui.Button(c, "删除日记本 "+one.Name).Ghost().Icon(icons.Trash2).
+					IconOnly().Disabled(last)
+				if last {
+					remove = remove.Tooltip("至少保留一本日记本")
+				} else {
+					remove = remove.Tooltip("删除日记本")
+				}
+				if remove.Clicked() {
+					m.bookDelete = bookDelete{open: true, id: one.ID, name: one.Name}
+				}
+			})
+		}
+		ui.Divider(c)
+		ui.Row(c).Height(metrics.ControlHeight + 2*metrics.GapItem).FillWidth().
+			PadX(metrics.PadSurface).Items(ui.Center).Children(func() {
+			if ui.Button(c, "新建日记本").Ghost().Icon(icons.Plus).Clicked() {
+				m.openBookForm(spec, "")
+			}
+		})
+	})
+}
+
+// openBookForm raises the create dialog, or the edit dialog prefilled with the
+// chosen book.
+func (m *Model) openBookForm(spec Spec, id string) {
+	form := bookForm{open: true, id: id}
+	for _, one := range spec.DiaryBooks {
+		if one.ID == id {
+			form.name, form.description = one.Name, one.Description
+		}
+	}
+	m.bookForm = form
+}
+
+// bookDialog is the 新建 / 编辑日记本 form: a name and a description, both
+// trimmed before they are written.
+func (m *Model) bookDialog(c ui.C, spec Spec) {
+	if !m.bookForm.open {
+		return
+	}
+	title, submit := "新建日记本", "创建"
+	if m.bookForm.id != "" {
+		title, submit = "编辑日记本", "保存"
+	}
+	fieldHeight := c.Theme().Metrics.ControlHeight * 2
+	ui.ModalWith(c, &m.bookForm.open, title, ui.ModalSpec{Width: 420}, func() {
+		ui.Column(c).Children(func() {
+			ui.FormField(c, &m.bookForm.nameField, "名称").Height(fieldHeight).Children(func() {
+				ui.TextField(c, &m.bookForm.name, "名称", "例如：旅行日记").AutoFocus()
+			})
+			ui.FormField(c, &m.bookForm.descField, "描述").Height(fieldHeight).Children(func() {
+				ui.TextField(c, &m.bookForm.description, "描述", "例如：出差与旅行")
+			})
+			if m.bookForm.err != "" {
+				typography.Caption(c, m.bookForm.err).Color(c.Theme().Danger)
+			}
+		})
+	}, func() {
+		if ui.Button(c, "取消").Outline().Clicked() {
+			m.bookForm.open = false
+		}
+		if ui.Button(c, submit).Clicked() {
+			m.submitBook(spec)
+		}
+	})
+}
+
+// submitBook writes the form through the shell and keeps the dialog open with
+// the reason when the workspace refuses it.
+func (m *Model) submitBook(spec Spec) {
+	name := strings.TrimSpace(m.bookForm.name)
+	if name == "" {
+		m.bookForm.err = "日记本名称不能为空"
+		return
+	}
+	description := strings.TrimSpace(m.bookForm.description)
+	var err error
+	if m.bookForm.id == "" {
+		if spec.OnCreateDiaryBook == nil {
+			return
+		}
+		err = spec.OnCreateDiaryBook(name, description)
+		if err == nil {
+			m.toaster.Show("日记本已创建", "", ui.ToastSuccess)
+		}
+	} else {
+		if spec.OnUpdateDiaryBook == nil {
+			return
+		}
+		err = spec.OnUpdateDiaryBook(m.bookForm.id, name, description)
+		if err == nil {
+			m.toaster.Show("日记本已保存", "", ui.ToastSuccess)
+		}
+	}
+	if err != nil {
+		m.bookForm.err = err.Error()
+		return
+	}
+	m.bookForm.open = false
+}
+
+// bookDeleteDialog confirms removing a book and every entry in it.
+func (m *Model) bookDeleteDialog(c ui.C, spec Spec) {
+	if !m.bookDelete.open {
+		return
+	}
+	ui.ModalWith(c, &m.bookDelete.open, "删除日记本「"+m.bookDelete.name+"」？", ui.ModalSpec{
+		Width:       420,
+		Description: "这本日记本里的所有日记会一起删除，无法恢复。",
+	}, nil, func() {
+		if ui.Button(c, "取消").Outline().Clicked() {
+			m.bookDelete.open = false
+		}
+		if ui.Button(c, "删除").Destructive().Clicked() {
+			id := m.bookDelete.id
+			if spec.OnDeleteDiaryBook == nil {
+				return
+			}
+			if err := spec.OnDeleteDiaryBook(id); err != nil {
+				m.toaster.Show("删除日记本失败："+err.Error(), "", ui.ToastError)
+				return
+			}
+			m.bookDelete.open = false
+			m.toaster.Show("日记本已删除", "", ui.ToastSuccess)
+		}
+	})
+}
+
+// diaryTransfer is 导入导出: the batch import and the scoped export of the book
+// the 日记 page is showing.
+func (m *Model) diaryTransfer(c ui.C, spec Spec) {
 	ready := spec.ImportDiary != nil && spec.ExportDiary != nil
-	controls.Card(c, func() {
-		controls.Row(c, "导入日记", "按目录批量导入，文件名需为 YYYY-MM-DD.txt。", func() {
+	controls.Group(c, "导入导出", func() {
+		controls.Row(c, "导入日记", importNote(spec), func() {
 			button := ui.Button(c, "批量导入").Secondary().Disabled(!ready)
 			if button.Clicked() {
 				m.importDiary(spec)
 			}
 		})
 		ui.Divider(c)
-		controls.Row(c, "导出日记", "存成 YYYY-MM-DD.txt，之后可以再导入。", func() {
+		controls.Row(c, "导出日记", exportNote(spec), func() {
 			button := ui.Button(c, "批量导出").Secondary().Disabled(!ready)
 			if button.Clicked() {
 				m.exportDiary(spec)
@@ -600,17 +804,33 @@ func (m *Model) diaryConfig(c ui.C, spec Spec) {
 			})
 		})
 	})
-	if m.diary.status != "" {
-		typography.Caption(c, m.diary.status).MarginTop(layout.Gap).Color(theme.MutedForeground)
+}
+
+// importNote names the book an import writes into.
+func importNote(spec Spec) string {
+	if name := activeBookName(spec); name != "" {
+		return "导入到「" + name + "」，文件名需为 YYYY-MM-DD.txt。"
 	}
-	if m.diary.failure != "" {
-		typography.CaptionParagraph(c, m.diary.failure, 4).
-			Color(theme.Danger).MarginTop(layout.Gap)
+	return "按目录批量导入，文件名需为 YYYY-MM-DD.txt。"
+}
+
+// exportNote names the book an export reads.
+func exportNote(spec Spec) string {
+	if name := activeBookName(spec); name != "" {
+		return "把「" + name + "」存成 YYYY-MM-DD.txt，之后可以再导入。"
 	}
-	if !ready {
-		typography.Caption(c, "打开工作空间后才能导入 / 导出日记。").
-			MarginTop(layout.Gap).Color(theme.MutedForeground)
+	return "存成 YYYY-MM-DD.txt，之后可以再导入。"
+}
+
+// activeBookName is the name of the book the diary page shows, "" when none is
+// open.
+func activeBookName(spec Spec) string {
+	for _, book := range spec.DiaryBooks {
+		if book.ID == spec.ActiveDiaryBook {
+			return book.Name
+		}
 	}
+	return ""
 }
 
 // ensurePeriod gives the export a period to start from, at the scope's grain:

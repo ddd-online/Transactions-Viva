@@ -23,10 +23,10 @@ import (
 	"transactions/internal/components/datepicker"
 	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
+	"transactions/internal/components/selectbox"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
-	"transactions/internal/pages/accounting/ledger"
 	"transactions/internal/repository"
 )
 
@@ -54,11 +54,12 @@ const (
 
 // Model is the 日记 page's state.
 type Model struct {
-	repo    repository.Repository
-	ledgers *ledger.Store
-	// ledgerID is the ledger dates, draft and writes belong to. The shared
-	// store may switch it on another page; View notices and reloads.
-	ledgerID string
+	repo repository.Repository
+	// books are the workspace's diary books and bookID the one the editor shows.
+	// They belong to the workspace, not to a ledger: a diary is written into a
+	// book, and the ledger a workspace is reading has nothing to do with it.
+	books  []domain.DiaryBook
+	bookID string
 
 	// dates is the active ledger's entry dates, newest first: the tree's source.
 	dates []domain.DiaryDateItem
@@ -106,12 +107,8 @@ type Model struct {
 
 // New returns the page with today selected and the tree empty; desktop calls
 // SetDataSource once a workspace is open.
-func New(ledgers *ledger.Store) *Model {
-	if ledgers == nil {
-		ledgers = ledger.NewStore()
-	}
+func New() *Model {
 	m := &Model{
-		ledgers:  ledgers,
 		selected: domain.DiaryToday(),
 		expanded: map[string]bool{},
 		pick:     datepicker.NewState(),
@@ -127,15 +124,14 @@ func New(ledgers *ledger.Store) *Model {
 // shared ledger.Store, so the diary follows the 账本 the 记账 pages show.
 func (m *Model) SetDataSource(repo repository.Repository) {
 	m.repo = repo
-	m.ledgerID = ""
+	m.bookID = ""
 	if repo == nil {
-		m.dates, m.rows = nil, nil
+		m.books, m.dates, m.rows = nil, nil, nil
 		m.content, m.mood, m.wordCount = "", "", 0
 		m.phase, m.dirty, m.hasStored = saveSaved, false, false
 		m.errorMessage = ""
 		return
 	}
-	m.ledgerID = m.ledgers.Active()
 	m.Reload()
 }
 
@@ -143,11 +139,16 @@ func (m *Model) SetDataSource(repo repository.Repository) {
 // calls it when the page is shown and after an import brought new entries.
 func (m *Model) Reload() {
 	m.errorMessage = ""
-	if m.repo == nil || m.ledgerID == "" {
+	if m.repo == nil {
+		m.books, m.dates, m.rows = nil, nil, nil
+		return
+	}
+	m.loadBooks()
+	if m.bookID == "" {
 		m.dates, m.rows = nil, nil
 		return
 	}
-	dates, err := m.repo.DiaryDates(context.Background(), m.ledgerID)
+	dates, err := m.repo.DiaryDates(context.Background(), m.bookID)
 	if err != nil {
 		m.errorMessage = "读取日记列表失败：" + err.Error()
 		dates = nil
@@ -158,27 +159,119 @@ func (m *Model) Reload() {
 	m.rebuildRows()
 }
 
-// ChangeLedger reloads after the shell switched the active ledger. The draft
-// belongs to the ledger being left, so it is written first.
-func (m *Model) ChangeLedger() {
-	if m.ledgers.Active() == m.ledgerID {
+// loadBooks reads the workspace's diary books and keeps the current one when it
+// still exists. An empty workspace gets one 默认日记本, the way it gets a
+// 默认账本: the diary page always has a book to write into.
+func (m *Model) loadBooks() {
+	books, err := m.repo.DiaryBooks(context.Background())
+	if err != nil {
+		m.errorMessage = "读取日记本失败：" + err.Error()
 		return
 	}
-	// The draft belongs to the ledger being left.
+	if len(books) == 0 {
+		if _, err := m.repo.CreateDiaryBook(context.Background(), "默认日记本", ""); err != nil {
+			m.errorMessage = "创建默认日记本失败：" + err.Error()
+			return
+		}
+		if books, err = m.repo.DiaryBooks(context.Background()); err != nil {
+			m.errorMessage = "读取日记本失败：" + err.Error()
+			return
+		}
+	}
+	m.books = books
+	for _, book := range books {
+		if book.ID == m.bookID {
+			return
+		}
+	}
+	m.bookID = books[0].ID
+}
+
+// Books are the workspace's diary books, in the order the settings page and the
+// diary toolbar show them.
+func (m *Model) Books() []domain.DiaryBook { return m.books }
+
+// ActiveBook is the id of the book the diary page is showing.
+func (m *Model) ActiveBook() string { return m.bookID }
+
+// BookName is a book's name; an unknown id is shown as written.
+func (m *Model) BookName(id string) string {
+	for _, book := range m.books {
+		if book.ID == id {
+			return book.Name
+		}
+	}
+	return id
+}
+
+// SetBook chooses the book the diary page shows and reloads onto it.
+func (m *Model) SetBook(id string) {
+	if id == m.bookID {
+		return
+	}
 	m.flush()
-	m.ledgerID = m.ledgers.Active()
+	m.bookID = id
+	m.dates, m.rows = nil, nil
+	m.expanded = map[string]bool{}
 	m.loadEntry()
+	if m.repo != nil && m.bookID != "" {
+		if dates, err := m.repo.DiaryDates(context.Background(), m.bookID); err == nil {
+			m.dates = dates
+		} else {
+			m.errorMessage = "读取日记列表失败：" + err.Error()
+		}
+	}
 	m.openAround(m.selected)
 	m.rebuildRows()
-	if m.repo == nil || m.ledgerID == "" {
-		m.dates, m.rows = nil, nil
-		return
+}
+
+// ChangeBook reloads after the settings page added, renamed or removed a book.
+func (m *Model) ChangeBook() { m.Reload() }
+
+// CreateBook adds a book and makes it the one the diary page shows, as 新增账本
+// does for ledgers.
+func (m *Model) CreateBook(name, description string) error {
+	if m.repo == nil {
+		return errNoWorkspace
 	}
-	dates, err := m.repo.DiaryDates(context.Background(), m.ledgerID)
+	created, err := m.repo.CreateDiaryBook(context.Background(), name, description)
 	if err != nil {
-		m.errorMessage = "读取日记列表失败：" + err.Error()
+		return err
 	}
-	m.dates = dates
+	m.bookID = created.ID
+	m.Reload()
+	return nil
+}
+
+// UpdateBook rewrites a book's name and description.
+func (m *Model) UpdateBook(id, name, description string) error {
+	if m.repo == nil {
+		return errNoWorkspace
+	}
+	if err := m.repo.UpdateDiaryBook(context.Background(), id, name, description); err != nil {
+		return err
+	}
+	m.Reload()
+	return nil
+}
+
+// DeleteBook removes a book with its entries and falls back to the first book.
+func (m *Model) DeleteBook(id string) error {
+	if m.repo == nil {
+		return errNoWorkspace
+	}
+	if err := m.repo.DeleteDiaryBook(context.Background(), id); err != nil {
+		return err
+	}
+	if m.bookID == id {
+		m.bookID = ""
+		m.dates, m.rows = nil, nil
+		m.content, m.mood, m.wordCount = "", "", 0
+		m.body.SetText("")
+		m.hasStored, m.dirty, m.phase = false, false, saveSaved
+	}
+	m.Reload()
+	return nil
 }
 
 // CloseOverlays writes a pending draft before the shell hides the page and
@@ -192,8 +285,10 @@ func (m *Model) CloseOverlays() {
 // View paints the toolbar, the date tree and the editor.
 func (m *Model) View(c ui.C) {
 	m.bounds = c.Bounds()
-	if m.ledgerID != m.ledgers.Active() {
-		m.ChangeLedger()
+	if m.repo != nil && len(m.books) == 0 {
+		// No book loaded yet (the page was opened before a workspace, or the
+		// settings page removed the one that was showing).
+		m.Reload()
 	}
 	m.noticeEdits(c.Canvas().Now())
 	m.settleDraft(c)
@@ -210,14 +305,12 @@ func (m *Model) View(c ui.C) {
 	ui.Toasts(c, &m.toaster)
 }
 
-// toolbar is the band above the two columns: the shared ledger, 今天, the date
-// field, and the draft's state with the delete command at the right.
+// toolbar is the band above the two columns: the diary book, 今天, the date field,
+// and the draft's state with the delete command at the right.
 func (m *Model) toolbar(c ui.C) {
 	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
 		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
-		if ledger.Picker(c, m.ledgers) {
-			m.ChangeLedger()
-		}
+		m.bookPicker(c)
 		ui.Divider(c).Height(24)
 		if ui.Button(c, "今天").Secondary().Clicked() {
 			m.selectDate(domain.DiaryToday())
@@ -266,8 +359,8 @@ func (m *Model) rail(c ui.C) {
 		})
 		ui.Divider(c)
 		switch {
-		case m.ledgerID == "":
-			emptystate.Notice(c, "请先创建或选择账本")
+		case m.bookID == "":
+			emptystate.Notice(c, "请先在设置里创建日记本")
 		case len(m.dates) == 0:
 			emptystate.Notice(c, "还没有日记")
 		default:
@@ -397,6 +490,29 @@ func luminance(color gfx.Color) float32 {
 	return 0.2126*color.Red + 0.7152*color.Green + 0.0722*color.Blue
 }
 
+// errNoWorkspace is what the book commands report while no workspace is open;
+// the settings section disables them then, so this only guards a stale click.
+var errNoWorkspace = errors.New("还没有打开工作空间")
+
+// bookPicker is the diary book field at the toolbar's leading edge: the same
+// Select the accounting pages use for 账本, over the workspace's books.
+func (m *Model) bookPicker(c ui.C) {
+	if len(m.books) == 0 {
+		return
+	}
+	ids := make([]string, len(m.books))
+	for index, book := range m.books {
+		ids[index] = book.ID
+	}
+	active := m.bookID
+	if !selectbox.Select(c, &active, ids, m.BookName).Label("日记本").Changed() {
+		return
+	}
+	if active != m.bookID {
+		m.SetBook(active)
+	}
+}
+
 // selectDate switches the editor to another day, writing the draft first.
 func (m *Model) selectDate(date string) {
 	if !domain.IsDiaryDate(date) || date == m.selected {
@@ -412,7 +528,7 @@ func (m *Model) selectDate(date string) {
 
 // askDelete opens the confirmation for the selected day.
 func (m *Model) askDelete() {
-	if m.ledgerID == "" {
+	if m.bookID == "" {
 		return
 	}
 	m.deleting, m.deleteOpen = m.selected, true
@@ -439,10 +555,10 @@ func (m *Model) deleteDialog(c ui.C) {
 
 // deleteDate removes one day from the workspace and from the page.
 func (m *Model) deleteDate(date string) {
-	if m.repo == nil || m.ledgerID == "" {
+	if m.repo == nil || m.bookID == "" {
 		return
 	}
-	if err := m.repo.DeleteDiary(context.Background(), m.ledgerID, date); err != nil {
+	if err := m.repo.DeleteDiary(context.Background(), m.bookID, date); err != nil {
 		m.errorMessage = "删除日记失败：" + err.Error()
 		m.toaster.Show(m.errorMessage, "", ui.ToastError)
 		return
@@ -480,10 +596,10 @@ func (m *Model) loadEntry() {
 	m.dirty, m.phase = false, saveSaved
 	m.body.SetText("")
 	m.noticeNow()
-	if m.repo == nil || m.ledgerID == "" {
+	if m.repo == nil || m.bookID == "" {
 		return
 	}
-	entry, err := m.repo.DiaryEntry(context.Background(), m.ledgerID, m.selected)
+	entry, err := m.repo.DiaryEntry(context.Background(), m.bookID, m.selected)
 	if err != nil {
 		// ErrNotFound is the normal empty day; anything else is worth saying.
 		if !errors.Is(err, repository.ErrNotFound) {
@@ -553,14 +669,14 @@ func (m *Model) settleDraft(c ui.C) {
 // flush writes the draft now. A day without an entry whose draft is empty is not
 // written: opening a date must not create an empty diary for it.
 func (m *Model) flush() {
-	if !m.dirty || m.repo == nil || m.ledgerID == "" {
+	if !m.dirty || m.repo == nil || m.bookID == "" {
 		return
 	}
 	if !m.hasStored && strings.TrimSpace(m.content) == "" && m.mood == "" {
 		m.dirty, m.phase = false, saveSaved
 		return
 	}
-	entry, err := m.repo.SaveDiary(context.Background(), m.ledgerID, m.selected, m.content, m.mood)
+	entry, err := m.repo.SaveDiary(context.Background(), m.bookID, m.selected, m.content, m.mood)
 	if err != nil {
 		m.phase = saveFailed
 		m.errorMessage = "保存日记失败：" + err.Error()

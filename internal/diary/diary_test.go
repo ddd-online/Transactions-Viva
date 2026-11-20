@@ -49,6 +49,17 @@ func TestDecodeTextFallsBackThroughEncodings(t *testing.T) {
 	})
 }
 
+// diaryBook creates one diary book for a test: diaries belong to books now, not
+// to the fixture's ledgers.
+func diaryBook(t *testing.T, fixture *storetest.Fixture) domain.DiaryBook {
+	t.Helper()
+	book, err := fixture.Workspace.CreateDiaryBook(context.Background(), "测试日记本", "")
+	if err != nil {
+		t.Fatalf("CreateDiaryBook: %v", err)
+	}
+	return book
+}
+
 // utf16LE encodes text as UTF-16LE with a byte-order mark.
 func utf16LE(text string) []byte {
 	units := encodeUTF16(text)
@@ -95,41 +106,44 @@ func TestScanFindsOnlyDatedFiles(t *testing.T) {
 	}
 }
 
-func TestImportWritesEveryFileIntoTheLedger(t *testing.T) {
+func TestImportWritesEveryFileIntoTheBook(t *testing.T) {
 	fixture := storetest.Open(t)
+	book := diaryBook(t, fixture)
 	root := t.TempDir()
 	write(t, filepath.Join(root, "2026-01-15.txt"), "今天很好")
 	write(t, filepath.Join(root, "2026-01-16.txt"), "导入的日记")
 
-	result, err := Import(context.Background(), fixture.Workspace, fixture.Home.ID, root)
+	result, err := Import(context.Background(), fixture.Workspace, book.ID, root)
 	if err != nil {
 		t.Fatalf("Import: %v", err)
 	}
 	if result.Imported != 2 || result.Total != 2 || len(result.Failures) != 0 {
 		t.Fatalf("result = %+v", result)
 	}
-	entry, err := fixture.Workspace.DiaryEntry(context.Background(), fixture.Home.ID, "2026-01-15")
+	entry, err := fixture.Workspace.DiaryEntry(context.Background(), book.ID, "2026-01-15")
 	if err != nil || entry.Content != "今天很好" || entry.WordCount != 4 {
 		t.Fatalf("imported = %+v, err=%v", entry, err)
 	}
-	// The other ledger saw nothing.
-	dates, err := fixture.Workspace.DiaryDates(context.Background(), fixture.Travel.ID)
+	// The workspace's other book saw nothing.
+	other := diaryBook(t, fixture)
+	dates, err := fixture.Workspace.DiaryDates(context.Background(), other.ID)
 	if err != nil || len(dates) != 0 {
-		t.Fatalf("travel dates = %+v, err=%v", dates, err)
+		t.Fatalf("other book dates = %+v, err=%v", dates, err)
 	}
 }
 
 func TestExportWritesFilesAndRoundTrips(t *testing.T) {
 	fixture := storetest.Open(t)
+	book := diaryBook(t, fixture)
 	ctx := context.Background()
 	for _, date := range []string{"2026-01-15", "2026-02-01", "2025-12-31"} {
-		if _, err := fixture.Workspace.SaveDiary(ctx, fixture.Home.ID, date, "内容 "+date, "😊"); err != nil {
+		if _, err := fixture.Workspace.SaveDiary(ctx, book.ID, date, "内容 "+date, "😊"); err != nil {
 			t.Fatalf("SaveDiary %s: %v", date, err)
 		}
 	}
 
 	target := filepath.Join(t.TempDir(), "out")
-	result, err := Export(ctx, fixture.Workspace, fixture.Home.ID, target, domain.DiaryExportQuery{Scope: domain.DiaryScopeAll})
+	result, err := Export(ctx, fixture.Workspace, book.ID, target, domain.DiaryExportQuery{Scope: domain.DiaryScopeAll})
 	if err != nil {
 		t.Fatalf("Export: %v", err)
 	}
@@ -146,7 +160,7 @@ func TestExportWritesFilesAndRoundTrips(t *testing.T) {
 
 	// A month export takes only that month.
 	monthly := filepath.Join(t.TempDir(), "month")
-	result, err = Export(ctx, fixture.Workspace, fixture.Home.ID, monthly,
+	result, err = Export(ctx, fixture.Workspace, book.ID, monthly,
 		domain.DiaryExportQuery{Scope: domain.DiaryScopeMonth, Year: 2026, Month: 2})
 	if err != nil || result.Written != 1 {
 		t.Fatalf("monthly result = %+v, err=%v", result, err)
@@ -163,10 +177,11 @@ func TestExportWritesFilesAndRoundTrips(t *testing.T) {
 	if err != nil || len(files) != 1 {
 		t.Fatalf("rescan = %+v, err=%v", files, err)
 	}
-	if _, err := Import(ctx, fixture.Workspace, fixture.Travel.ID, monthly); err != nil {
+	second := diaryBook(t, fixture)
+	if _, err := Import(ctx, fixture.Workspace, second.ID, monthly); err != nil {
 		t.Fatalf("reimport: %v", err)
 	}
-	entry, err := fixture.Workspace.DiaryEntry(ctx, fixture.Travel.ID, "2026-02-01")
+	entry, err := fixture.Workspace.DiaryEntry(ctx, second.ID, "2026-02-01")
 	if err != nil || entry.Content != "内容 2026-02-01" {
 		t.Fatalf("reimported = %+v, err=%v", entry, err)
 	}
@@ -174,10 +189,11 @@ func TestExportWritesFilesAndRoundTrips(t *testing.T) {
 
 func TestImportReportsUnreadableFilesAndKeepsGoing(t *testing.T) {
 	fixture := storetest.Open(t)
+	book := diaryBook(t, fixture)
 	root := t.TempDir()
 	write(t, filepath.Join(root, "2026-01-15.txt"), "可以导入")
 	missing := filepath.Join(root, "2026-01-16.txt")
-	result, err := ImportFiles(context.Background(), fixture.Workspace, fixture.Home.ID, []File{
+	result, err := ImportFiles(context.Background(), fixture.Workspace, book.ID, []File{
 		{Date: "2026-01-15", Path: filepath.Join(root, "2026-01-15.txt")},
 		{Date: "2026-01-16", Path: missing},
 	})
@@ -190,7 +206,7 @@ func TestImportReportsUnreadableFilesAndKeepsGoing(t *testing.T) {
 	if result.Failures[0].Date != "2026-01-16" {
 		t.Fatalf("failure = %+v", result.Failures[0])
 	}
-	entry, err := fixture.Workspace.DiaryEntry(context.Background(), fixture.Home.ID, "2026-01-15")
+	entry, err := fixture.Workspace.DiaryEntry(context.Background(), book.ID, "2026-01-15")
 	if err != nil || entry.Content != "可以导入" {
 		t.Fatalf("the readable file did not import: %+v, err=%v", entry, err)
 	}

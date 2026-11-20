@@ -395,12 +395,10 @@ func TestMigrationBackupRollbackAndVersionChecks(t *testing.T) {
 	path := workspace.DatabasePath()
 
 	base := targetVersion()
-	bad := []migration{
-		{version: 1, name: "init", sql: initSchema},
-		{version: 2, name: "chart", sql: chartSchema},
-		{version: 3, name: "diary", sql: diarySchema},
-		{version: 4, name: "broken", sql: "CREATE TABLE broken (id INTEGER); INSERT INTO missing VALUES (1);"},
-	}
+	// The released list plus one migration that fails on its second statement:
+	// applying it must leave the workspace at the released version.
+	bad := append(append([]migration{}, migrations...),
+		migration{version: base + 1, name: "broken", sql: "CREATE TABLE broken (id INTEGER); INSERT INTO missing VALUES (1);"})
 	if err := applyMigrations(workspace.db, path, bad, base); err == nil {
 		t.Fatal("broken migration succeeded")
 	}

@@ -127,7 +127,17 @@ type KeyEventImage struct {
 	CreatedAt    int64
 }
 
-// DiaryEntry 是一篇日记（按账本、按日期一条）。
+// DiaryBook 是一本日记本。工作空间里可以有很多本，与账本无关：日记只属于日记本。
+type DiaryBook struct {
+	ID          string
+	Name        string
+	Description string
+	SortOrder   int
+	CreatedAt   int64
+	UpdatedAt   int64
+}
+
+// DiaryEntry 是一篇日记（按日记本、按日期一条）。
 type DiaryEntry struct {
 	ID        string
 	Date      string
@@ -136,7 +146,7 @@ type DiaryEntry struct {
 	Mood      string
 	CreatedAt int64
 	UpdatedAt int64
-	LedgerID  string
+	BookID    string
 }
 
 // DiaryDateItem 是日记日期树的一项。

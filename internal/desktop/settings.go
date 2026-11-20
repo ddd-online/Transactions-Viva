@@ -41,7 +41,39 @@ func (m *Model) settingsSpec() settings.Spec {
 		CopyText:        m.copyToClipboard,
 		ImportDiary:     m.importDiary,
 		ExportDiary:     m.exportDiary,
+
+		DiaryBooks:        m.diary.Books(),
+		ActiveDiaryBook:   m.diary.ActiveBook(),
+		OnCreateDiaryBook: m.createDiaryBook,
+		OnUpdateDiaryBook: m.updateDiaryBook,
+		OnDeleteDiaryBook: m.deleteDiaryBook,
 	}
+}
+
+// The diary book commands belong to the diary section, which owns the books the
+// 日记 page reads; the shell only repaints.
+func (m *Model) createDiaryBook(name, description string) error {
+	if err := m.diary.CreateBook(name, description); err != nil {
+		return err
+	}
+	m.invalidate()
+	return nil
+}
+
+func (m *Model) updateDiaryBook(id, name, description string) error {
+	if err := m.diary.UpdateBook(id, name, description); err != nil {
+		return err
+	}
+	m.invalidate()
+	return nil
+}
+
+func (m *Model) deleteDiaryBook(id string) error {
+	if err := m.diary.DeleteBook(id); err != nil {
+		return err
+	}
+	m.invalidate()
+	return nil
 }
 
 // diaryDirectory asks the user for the directory an import reads or an export
@@ -58,7 +90,7 @@ func (m *Model) diaryDirectory(title string) (string, error) {
 // ledger the 日记 page shows. The page is reloaded afterwards so the imported
 // days appear in its tree without a second visit.
 func (m *Model) importDiary() (settings.DiaryImport, error) {
-	if m.workspace == nil || m.ledgers.Active() == "" {
+	if m.workspace == nil || m.diary.ActiveBook() == "" {
 		return settings.DiaryImport{}, errNoDiaryWorkspace
 	}
 	directory, err := m.diaryDirectory("选择日记导入目录")
@@ -68,7 +100,7 @@ func (m *Model) importDiary() (settings.DiaryImport, error) {
 	if directory == "" {
 		return settings.DiaryImport{Canceled: true}, nil
 	}
-	result, err := diarysrv.Import(context.Background(), m.workspace, m.ledgers.Active(), directory)
+	result, err := diarysrv.Import(context.Background(), m.workspace, m.diary.ActiveBook(), directory)
 	if err != nil {
 		return settings.DiaryImport{}, err
 	}
@@ -86,7 +118,7 @@ func (m *Model) importDiary() (settings.DiaryImport, error) {
 // exportDiary writes the shown ledger's diary to a picked directory, filtered by
 // the section's scope. period is one day of the year or month to take.
 func (m *Model) exportDiary(scope domain.DiaryExportScope, period string) (settings.DiaryExport, error) {
-	if m.workspace == nil || m.ledgers.Active() == "" {
+	if m.workspace == nil || m.diary.ActiveBook() == "" {
 		return settings.DiaryExport{}, errNoDiaryWorkspace
 	}
 	directory, err := m.diaryDirectory("选择日记导出目录")
@@ -105,7 +137,7 @@ func (m *Model) exportDiary(scope domain.DiaryExportScope, period string) (setti
 			query.Month = int(parsed.Month())
 		}
 	}
-	result, err := diarysrv.Export(context.Background(), m.workspace, m.ledgers.Active(), directory, query)
+	result, err := diarysrv.Export(context.Background(), m.workspace, m.diary.ActiveBook(), directory, query)
 	if err != nil {
 		return settings.DiaryExport{}, err
 	}

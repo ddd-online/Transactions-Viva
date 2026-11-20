@@ -113,7 +113,7 @@ func NewWithConfig(cfg config.AppConfig, store *config.Store) *Model {
 		stock:       stock.New(),
 		todo:        todo.New(),
 		events:      events.New(),
-		diary:       diary.New(ledgers),
+		diary:       diary.New(),
 		settings:    settings.New(),
 	}
 	// pickDirectory is the platform's directory chooser. Tests replace it, so a

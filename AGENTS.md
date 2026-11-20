@@ -66,25 +66,28 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   标签取所选分类下的多选器（Viva `PaintMultiSelect`，与记一笔共用同一套键盘 / 滚轮 / 输入路由）。
   模板存在 `transaction_template` 表，`internal/pages/accounting/template` 只是同步绘制用的
   缓存；记录页「记一笔」的模板下拉与模板页读同一份缓存，新建的模板马上能在弹窗里选到。
-- 日记页已迁移前端：工具栏是共享账本、今天、日期字段、保存状态与「删除日记」；左栏是
+- 日记页已迁移前端：工具栏是**日记本**（不是账本——日记与账本无关，一本日记本是一本独立的
+  笔记本，工作空间里可以有多本）、今天、日期字段、保存状态与「删除日记」；左栏是
   年 → 月 → 日 的日期树（年 / 月行带篇数，日行带心情 emoji 与字数，点年份或月份展开收起），
   右栏是当天的标题（日期 + 星期 + 字数 + 心情分段）与正文卡。正文是纯文本，心情是五个 emoji
   加一个清除档；**自动保存**：最后一次改动后停 600ms 落库，工具栏依次显示 已保存 / 未保存 /
-  保存失败，切日期、切账本、离开页面与删除前先把草稿写完。字数按 Unicode 码点算。日记按账本
-  隔离（`(ledger_id, date)` 唯一），旧数据里的中文心情读出时映射到同一套 emoji。文字区域用
+  保存失败，切日期、切日记本、离开页面与删除前先把草稿写完。字数按 Unicode 码点算。日记按日记本
+  隔离（`(book_id, date)` 唯一），旧数据里的中文心情读出时映射到同一套 emoji。文字区域用
   `ui.Field`（`ui.TextArea(c, &m.body, …)`）——字符串绑定要到字段声明时才同步，字数那一行在它
   之前声明，只有直接读字段才能在同一个 paint 里数到刚敲的字。
-- 设置 ·「日记配置」已可用：按目录批量导入（递归扫 `YYYY-MM-DD.txt`，编码回退链
-  UTF-8 → UTF-16(BOM) → GBK → 非法字节换 `?`）与按全部 / 年 / 月导出（写 `<date>.txt`，UTF-8）。
+- 设置 ·「日记配置」是两张卡：**日记本**（照账本管理：列名称 + 描述，标出日记页正在读的那本，
+  每行有编辑 / 删除，底部「新建日记本」；最后一本不可删）与 **导入导出**（按目录批量导入，
+  递归扫 `YYYY-MM-DD.txt`，编码回退链 UTF-8 → UTF-16(BOM) → GBK → 非法字节换 `?`；按全部 /
+  年 / 月导出 `<date>.txt`，UTF-8）。导入导出都作用在日记页当前那本上，行说明里写着本名。
   文件与目录由 `internal/diary` 处理，弹目录选择器与回调在 `internal/desktop`，页面只显示结果；
-  导入后日记页重载，不用再切一次页面。
+  日记本的增删改走 `diary.Model`（与账本的增删改走 `accounting.Model` 对称），导入后日记页重载。
 - 用户配置已落地：`internal/config` 读写 `~/.transactions.json`（`viva dev` 期间是
   `~/.transactions.dev.json`），逐字段归一化，写回保留未知顶层键，写入走 `.tmp` + rename。
   窗口尺寸 / 位置（关闭时保存）、工作空间、外观、关闭行为、功能开关与账本级覆盖都在里面；
   `desktop.Run` 启动时加载，设置页的改动立即写回。
-- SQLite 工作空间已落地：目录里的 `transactions.db`，schema v3 含 `app_meta` /
+- SQLite 工作空间已落地：目录里的 `transactions.db`，schema v4 含 `app_meta` /
   `ledger` / `transaction_record` / `transaction_record_tag` / `category` / `tag` /
-  `transaction_template` / `chart` / `diary_entry`（列与旧库兼容，不建股票等表）。打开时 `quick_check`、版本迁移
+  `transaction_template` / `chart` / `diary_book` / `diary_entry`（列与旧库兼容，不建股票等表）。打开时 `quick_check`、版本迁移
   （升级前 `VACUUM INTO <db>.bak`）、拒绝损坏 / 陌生 / 旧版 / 更高版本库。空工作空间
   自动创建「默认账本」并播种默认分类标签；设置里切换工作空间先打开新库，失败保留旧库。
   没有工作空间时内容区显示「打开工作空间」门禁，设置仍可进入。
@@ -130,7 +133,7 @@ internal/pages/          各功能页：accounting、stock、todo、events、dia
   accounting/template/   模板缓存与 domain 互转（按账本存放，记录弹窗与模板页共用）
   accounting/templates/  模板页（表格 / 新建与删除弹窗 / 拖拽排序）
   accounting/analysis/   分析页（图表列表 / 折线图 / 饼图 / 曲线条件 / 合计）
-  diary/                 日记页（日期树 / 正文 / 心情 / 自动保存 / 删除）
+  diary/                 日记页（日记本 / 日期树 / 正文 / 心情 / 自动保存 / 删除）
 internal/diary/          日记文件的导入导出（扫描、编码回退链、写文件），只依赖 domain 与 repository
 internal/components/     可复用的 UI：占位空态，datepicker / pagination / selectbox / semantic 子包
 internal/pages/settings/controls/  只属于设置页的分组卡片 / 设置行
@@ -139,7 +142,7 @@ internal/repository/     页面使用的数据契约（接口 / 查询 / 错误�
 internal/config/         应用配置：形状、默认值、读写与归一化（~/.transactions.json）
 internal/store/          SQLite 工作空间、schema / 迁移 / 仓储 / 旧库导入
   storetest/             测试用的临时工作空间与种子数据
-  schema/                schema SQL（0001_init.sql / 0002_chart.sql / 0003_diary.sql）
+  schema/                schema SQL（0001_init.sql … 0004_diary_book.sql）
 cmd/tr-import/           旧工作空间导入命令
 docs/architecture.md     分层规则、旧模块到新包的映射、迁移顺序
 ```
@@ -190,8 +193,10 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
 - 每个工作空间一个独立 SQLite 数据库；图片资产在工作空间 `data/assets` 下，引用相对路径。
 - 新库 schema 版本在 `app_meta.schema_version`，从 1 连续递增；迁移升级前写
   `transactions.db.bak`。v2 增加 `chart` 表（图表配置与排序），v3 增加 `diary_entry`
-  （每账本每天一篇，`(ledger_id, date)` 唯一；旧库识别不再看 `diary_entry`，改看只有旧工程才有的
-  股票 / 事件表）。新库不建股票表，也不建立
+  （最初每账本每天一篇），v4 把日记从账本上解绑：新增 `diary_book`（日记本：`book_id` / 名称 /
+  描述 / 排序），`diary_entry` 换成 `book_id`、`(book_id, date)` 唯一——v3 里每个有日记的账本
+  迁移成一本同名日记本，没有日记的工作空间得到一本「默认日记本」。（旧库识别不看 `diary_entry`，
+  它从 v3 起是自己的表；只看只有旧工程才有的股票 / 事件表。）新库不建股票表，也不建立
   股票与账本的关联；旧库通过导入工具复制记账表与 chart，不直接打开。
 - 打开工作空间只做 `PRAGMA quick_check`；全量 `integrity_check` 只用于备份与恢复两个显式动作。
   库坏了就报告并引导从备份恢复，不自动修复、不静默建空库。

@@ -26,14 +26,14 @@ func advance(t *testing.T, driver *app.Driver) {
 	}
 }
 
-// TestDiaryPageWritesTheDay drives 日记: the empty ledger's notice, the word
-// count that follows typing, the write that lands after the pause, the tree row
-// the write creates, the mood the row shows, and the delete confirmation.
+// TestDiaryPageWritesTheDay drives 日记: the empty book's notice, the word count
+// that follows typing, the write that lands after the pause, the tree row the
+// write creates, the mood the row shows, and the delete confirmation.
 func TestDiaryPageWritesTheDay(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "日记")
 	if !shows(driver, "还没有日记") {
-		t.Fatal("an empty ledger should say it has no diary")
+		t.Fatal("an empty book should say it has no diary")
 	}
 	today := domain.DiaryToday()
 	if !shows(driver, domain.DiaryDateCn(today)) {
@@ -55,8 +55,8 @@ func TestDiaryPageWritesTheDay(t *testing.T) {
 		t.Fatal("the draft was not written after the pause")
 	}
 
-	ledgerID := model.ledgers.Active()
-	entry, err := model.workspace.DiaryEntry(context.Background(), ledgerID, today)
+	bookID := model.diary.ActiveBook()
+	entry, err := model.workspace.DiaryEntry(context.Background(), bookID, today)
 	if err != nil {
 		t.Fatalf("the diary was not written: %v", err)
 	}
@@ -65,15 +65,14 @@ func TestDiaryPageWritesTheDay(t *testing.T) {
 	}
 
 	// The tree now carries today: the year, the month and the day number.
-	day := fmt.Sprintf("%d", at(today))
-	if !shows(driver, domain.DiaryDateCn(today)) || !containsLabel(driver, day) {
+	if !containsLabel(driver, fmt.Sprintf("%d", dayOf(today))) {
 		t.Fatal("the written day is not in the tree")
 	}
 
-	// The mood is written too, and the tree row shows its emoji.
+	// The mood is written too, and the picker shows the chosen tier.
 	click(t, driver, "开心")
 	advance(t, driver)
-	entry, err = model.workspace.DiaryEntry(context.Background(), ledgerID, today)
+	entry, err = model.workspace.DiaryEntry(context.Background(), bookID, today)
 	if err != nil {
 		t.Fatalf("read the entry: %v", err)
 	}
@@ -86,7 +85,7 @@ func TestDiaryPageWritesTheDay(t *testing.T) {
 		t.Fatal("the delete confirmation did not open")
 	}
 	click(t, driver, "确认删除")
-	if _, err := model.workspace.DiaryEntry(context.Background(), ledgerID, today); err == nil {
+	if _, err := model.workspace.DiaryEntry(context.Background(), bookID, today); err == nil {
 		t.Fatal("the diary survived the confirmation")
 	}
 	if shows(driver, "4 字") {
@@ -97,8 +96,8 @@ func TestDiaryPageWritesTheDay(t *testing.T) {
 	}
 }
 
-// at is the day number of a stored date.
-func at(date string) int {
+// dayOf is the day number of a stored date.
+func dayOf(date string) int {
 	parsed, ok := domain.ParseDiaryDate(date)
 	if !ok {
 		return 0
@@ -106,7 +105,7 @@ func at(date string) int {
 	return parsed.Day()
 }
 
-// containsLabel reports whether any painted label contains the text (a day
+// containsLabel reports whether a label with exactly this text is painted (a day
 // number, a count), where shows checks one label alone.
 func containsLabel(driver *app.Driver, want string) bool {
 	for _, label := range driver.Snapshot().Labels {
@@ -117,50 +116,129 @@ func containsLabel(driver *app.Driver, want string) bool {
 	return false
 }
 
-// TestDiarySwitchKeepsEachLedgerApart checks that the diary follows the shared
-// 账本 choice: switching the ledger on the records page shows that ledger's
-// diary, and the day written there does not appear in the other one.
-func TestDiarySwitchKeepsEachLedgerApart(t *testing.T) {
+// TestDiaryBooksHoldTheirOwnDays checks the point of the diary book: diaries are
+// no longer tied to ledgers, a workspace keeps as many books as it wants, and the
+// toolbar switches between them.
+func TestDiaryBooksHoldTheirOwnDays(t *testing.T) {
 	driver, model := open(t)
-	click(t, driver, "账本")
-	click(t, driver, "旅行账本")
-	if model.ledgers.Active() != model.ledgers.List()[1].ID {
-		t.Fatalf("the ledger did not switch: %q", model.ledgers.Active())
-	}
-
+	today := domain.DiaryToday()
 	click(t, driver, "日记")
 	click(t, driver, "日记正文")
-	if err := driver.Type("路上的日记"); err != nil {
+	if err := driver.Type("第一本的日记"); err != nil {
 		t.Fatal(err)
 	}
 	advance(t, driver)
-	travelID := model.ledgers.Active()
-	if _, err := model.workspace.DiaryEntry(context.Background(), travelID, domain.DiaryToday()); err != nil {
-		t.Fatalf("the travel diary was not written: %v", err)
+	first := model.diary.ActiveBook()
+
+	// A second book through the settings page becomes the diary page's book.
+	click(t, driver, "设置")
+	click(t, driver, "日记配置")
+	click(t, driver, "新建日记本")
+	click(t, driver, "名称")
+	if err := driver.Type("旅行日记"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "创建")
+	if !shows(driver, "日记本已创建") && !hasControl(driver, "编辑日记本 旅行日记") {
+		t.Fatal("the new book is not in the list")
+	}
+	second := model.diary.ActiveBook()
+	if second == first {
+		t.Fatal("creating a book did not make it the diary page's book")
 	}
 
-	// Back to the home ledger: its diary is empty, the travel text is not shown.
-	// The sidebar shows one section's sub-functions at a time, so 记账 has to be
-	// opened again before its 账本 field is on screen.
-	click(t, driver, "记账")
-	click(t, driver, "账本")
-	click(t, driver, "家庭账本")
+	// The new book starts empty, and writing into it leaves the first alone.
 	click(t, driver, "日记")
-	if shows(driver, "路上的日记") {
-		t.Fatal("the other ledger's diary is shown")
-	}
 	if !shows(driver, "还没有日记") {
-		t.Fatal("the home ledger should show its own empty diary")
+		t.Fatal("the new book should start empty")
 	}
-	homeID := model.ledgers.Active()
-	if _, err := model.workspace.DiaryEntry(context.Background(), homeID, domain.DiaryToday()); err == nil {
-		t.Fatal("the travel diary leaked into the home ledger")
+	if shows(driver, "第一本的日记") {
+		t.Fatal("the other book's diary is shown")
+	}
+	click(t, driver, "日记正文")
+	if err := driver.Type("第二本的日记"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	firstEntry, err := model.workspace.DiaryEntry(context.Background(), first, today)
+	if err != nil || firstEntry.Content != "第一本的日记" {
+		t.Fatalf("first book entry = %+v, err=%v", firstEntry, err)
+	}
+	secondEntry, err := model.workspace.DiaryEntry(context.Background(), second, today)
+	if err != nil || secondEntry.Content != "第二本的日记" {
+		t.Fatalf("second book entry = %+v, err=%v", secondEntry, err)
+	}
+
+	// The toolbar's 日记本 field switches back.
+	click(t, driver, "日记本")
+	click(t, driver, "默认日记本")
+	if model.diary.ActiveBook() != first {
+		t.Fatalf("the book did not switch: %q", model.diary.ActiveBook())
+	}
+	if !shows(driver, "第一本的日记") {
+		t.Fatal("switching books did not show the first book's day")
 	}
 }
 
-// TestSettingsDiaryImportAndExport drives 日记配置: importing a directory of
-// YYYY-MM-DD.txt files, exporting the ledger again, and reading what each
-// command reported.
+// TestSettingsDiaryBookManagement drives 日记本 in settings: create, rename and
+// delete a book, and the last book's delete staying disabled.
+func TestSettingsDiaryBookManagement(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "设置")
+	click(t, driver, "日记配置")
+	if !shows(driver, "默认日记本") {
+		t.Fatal("the seeded book is not listed")
+	}
+	// The only book cannot be deleted: the diary page needs one to show.
+	if !hasControl(driver, "删除日记本 默认日记本") {
+		t.Fatal("the book row has no delete command")
+	}
+
+	click(t, driver, "新建日记本")
+	click(t, driver, "名称")
+	if err := driver.Type("随笔"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "创建")
+	if !hasControl(driver, "编辑日记本 随笔") {
+		t.Fatal("the created book is not in the list")
+	}
+
+	click(t, driver, "编辑日记本 随笔")
+	click(t, driver, "名称")
+	if err := driver.SelectText(0, len([]rune("随笔"))); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Type("读书笔记"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "保存")
+	if !hasControl(driver, "编辑日记本 读书笔记") {
+		t.Fatal("the rename did not reach the list")
+	}
+	books, err := model.workspace.DiaryBooks(context.Background())
+	if err != nil || len(books) != 2 || books[1].Name != "读书笔记" {
+		t.Fatalf("books = %+v, err=%v", books, err)
+	}
+
+	click(t, driver, "删除日记本 读书笔记")
+	if !shows(driver, "删除日记本「读书笔记」？") {
+		t.Fatal("the delete confirmation did not open")
+	}
+	click(t, driver, "删除")
+	if hasControl(driver, "编辑日记本 读书笔记") {
+		t.Fatal("the deleted book is still listed")
+	}
+	books, err = model.workspace.DiaryBooks(context.Background())
+	if err != nil || len(books) != 1 || books[0].Name != "默认日记本" {
+		t.Fatalf("books after delete = %+v, err=%v", books, err)
+	}
+}
+
+// TestSettingsDiaryImportAndExport drives 导入导出: importing a directory of
+// YYYY-MM-DD.txt files into the diary page's book, exporting the book again, and
+// reading what each command reported.
 func TestSettingsDiaryImportAndExport(t *testing.T) {
 	driver, model := open(t)
 	source := t.TempDir()
@@ -186,7 +264,7 @@ func TestSettingsDiaryImportAndExport(t *testing.T) {
 	if !shows(driver, "导入 1/1 篇") {
 		t.Fatalf("import status = %q", statusLine(driver))
 	}
-	entry, err := model.workspace.DiaryEntry(context.Background(), model.ledgers.Active(), "2026-02-01")
+	entry, err := model.workspace.DiaryEntry(context.Background(), model.diary.ActiveBook(), "2026-02-01")
 	if err != nil || entry.Content != "导入的日记" {
 		t.Fatalf("imported = %+v, err=%v", entry, err)
 	}
@@ -203,8 +281,7 @@ func TestSettingsDiaryImportAndExport(t *testing.T) {
 		t.Fatalf("exported = %q", raw)
 	}
 
-	// The diary page sees the imported day without another visit: its tree has
-	// the year and the month open, and choosing the day shows it in the editor.
+	// The diary page sees the imported day without another visit.
 	click(t, driver, "日记")
 	click(t, driver, "2026年2月1日，5 字")
 	if !shows(driver, "2026年2月1日") || !shows(driver, "导入的日记") {

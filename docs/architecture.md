@@ -64,7 +64,7 @@ main → desktop → pages → components
 | `internal/pages/stock` | 账户 / 持仓 / 记录 / 心得 / 统计 / 天梯 / 设置 | `src/pages/stock*` |
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
 | `internal/pages/events` | 事件画廊、图片、实况照片 | `src/pages/event*` |
-| `internal/pages/diary` | 日记页：日期树、正文与心情、自动保存、删除 | `src/pages/diary.tsx`、`src/components/diary-tree.tsx`、`mood-picker.tsx`、`shared/domain/diary-tree.ts` |
+| `internal/pages/diary` | 日记页：日记本、日期树、正文与心情、自动保存、删除 | `src/pages/diary.tsx`、`src/components/diary-tree.tsx`、`mood-picker.tsx`、`shared/domain/diary-tree.ts`（日记本是与旧工程不同的地方，见下） |
 | `internal/diary` | 日记文件：递归扫描、编码回退链、写 `<date>.txt`（不依赖 UI，不直接碰 SQLite） | `electron/services/diary.ts` |
 | `internal/pages/settings` | 设置页六个分区：通用设置 / 账本管理 / 功能开关 / 数据备份 / 日记配置 / 关于软件 | `src/pages/settings*`、`src/app-menu.tsx` 的「创建账本」 |
 | `internal/components` | 可复用的片段：占位空态（后续的 page header、table cell 等） | `src/components` |
@@ -92,11 +92,15 @@ main → desktop → pages → components
   版本库都返回明确错误，不静默建空库。
 - schema v1 建记账需要的表：`app_meta`、`ledger`、`transaction_record`、
   `transaction_record_tag`、`category`、`tag`、`transaction_template`；v2 增加 `chart`
-  （图表配置、类型、分组、预设标记与排序）；v3 增加 `diary_entry`（每账本每天一篇，
-  `(ledger_id, date)` 唯一，`content` 为纯文本、`mood` 存 emoji）。列名 / 类型与旧库逐列一致
+  （图表配置、类型、分组、预设标记与排序）；v3 增加 `diary_entry`（最初每账本每天一篇）；
+  v4 把日记从账本上解绑：新增 `diary_book`（`book_id` / 名称 / 描述 / 排序），`diary_entry`
+  换成 `book_id`、`(book_id, date)` 唯一，`content` 为纯文本、`mood` 存 emoji。列名 / 类型与旧库逐列一致
   （金额 `_cents`、时间 `_at`、日期文本、无外键），便于导入工具直接复制；不建股票 / 事件 /
-  待办表，也不建立股票与账本的关联。旧库识别只看本工程永不会建的 `stock_account` / `key_event`
-  ——`diary_entry` 从 v3 起是自己的表，不能再用它判断"这是旧库"。
+  待办表，也不建立股票与账本的关联。v4 的迁移把 v3 里每个「有日记的账本」变成一本同名日记本
+  （`book_id = 'book-' || ledger_id`，纯 SQL 就能跑），没有日记的工作空间得到一本「默认日记本」；
+  写库时 `SaveDiary` 自己检查日记本是否存在——schema 没有外键，这条规则写在仓储里。旧库识别只看
+  本工程永不会建的 `stock_account` / `key_event`：`diary_entry` 从 v3 起是自己的表，不能再用它
+  判断「这是旧库」。
 - 版本：`app_meta.schema_version` 从 1 连续递增，迁移清单在 `internal/store/migrate.go`，
   SQL 内嵌在 `internal/store/schema/`。升级已有库前 `VACUUM INTO <db>.bak`，失败不升级；
   每条迁移与版本更新同事务。新增结构时只追加迁移，不改已发布的 SQL。
@@ -230,8 +234,12 @@ main → desktop → pages → components
   圆心 / 半径把落点换成扇区，提示框借 `components.PaintChartTooltip`，所以两张图的提示框是
   同一个壳）。
 - 日记页（`internal/pages/diary`，旧工程 `diary.tsx` / `diary-tree.tsx` / `services/diary.ts`）：
-  工具栏是共享账本（与记账页同一个 `ledger.Store`）、今天、`datepicker` 的日字段，右侧是安静
-  的保存状态与 `DestructiveOutline` 的「删除日记」；左栏 220px 是 `ui.Tree` 的年 → 月 → 日
+  **日记不再跟账本走**——这是本工程对旧工程的一处有意改动（旧工程一个账本一本日记）。日记属于
+  「日记本」：工作空间里可以有很多本，工具栏最左的选择器选的是日记本，与记账页共享的账本
+  选择器没有关系。`diary.Model` 自己拿着 `Books()` / `ActiveBook()` / `CreateBook` / `UpdateBook` /
+  `DeleteBook`，设置页的「日记本」卡与日记页读的是同一份；切换日记本时先把草稿写完再换
+  （`SetBook` 里先 `flush`），空工作空间第一次打开会自动建一本「默认日记本」。
+  工具栏是日记本、今天、`datepicker` 的日字段，右侧是安静的保存状态与 `Outline` 的「删除日记」；左栏 220px 是 `ui.Tree` 的年 → 月 → 日
   日期树（年 / 月行右侧篇数，日行是日号 + 心情 emoji + 字数，三档共用一个右边缘），右栏是
   日期 + 星期 + 字数 + 心情分段（`ui.Choice`，5 个 emoji 加「—」清除）与正文卡。数据是
   `diary_entry` 表，按 `(ledger_id, date)` 唯一，正文纯文本，心情存 emoji——旧库里的中文心情
@@ -241,13 +249,15 @@ main → desktop → pages → components
   再声明页面，所以写与「已保存」在同一帧里出现。用 `Changed()` 不行：字符串绑定在字段声明时
   才同步，而字数那一行在字段之前声明。切日期 / 切账本 / 离开分区 / 删除前都先 flush；新的一天
   没正文也没心情就不写，打开一个日期不会凭空建一条空日记。
-- 设置 ·「日记配置」（`internal/pages/settings` 的 `diaryConfig`）：导入按目录递归扫
+- 设置 ·「日记配置」（`internal/pages/settings` 的 `diaryConfig`）分两张卡：**日记本**（照账本管理
+  的行：名称 + 描述、当前那本的「当前」、行尾编辑 / 删除图标、底部「新建日记本」；最后一本不可删，
+  增删改都走 `diary.Model`，与账本走 `accounting.Model` 对称）与 **导入导出**。导入按目录递归扫
   `YYYY-MM-DD.txt`（大小写敏感的 `.txt`，日期必须是真实的一天），导出写 `<date>.txt`。
   编码回退链在 `internal/diary/decode.go`：合法 UTF-8 原样（保留 BOM）→ 带 BOM 的 UTF-16 →
   GBK → 非法字节逐段替换成 `?`；GBK 结果含 U+FFFD 说明不是 GBK，继续走最后一步（Go 的 GBK
   解码器不会像旧工程的 `fatal:true` 那样报错）。目录选择器与文件读写由 `internal/desktop`
-  的 `importDiary` / `exportDiary` 调 `internal/diary`，页面只拿结果（"导入 1/1 篇" 与失败清单），
-  导入后调 `diary.Reload()`，切回日记页就能看到。
+  的 `importDiary` / `exportDiary` 调 `internal/diary`，读写的是日记页当前那本（说明里写着本名），
+  页面只拿结果（"导入 1/1 篇" 与失败清单），导入后调 `diary.Reload()`，切回日记页就能看到。
 - 页面自己浮起来的层（选择器面板、标签弹层）在切走分区 / 子功能时由外壳收起：页面实现
   `CloseOverlays()`，`internal/desktop` 的 `selectNav` 在离开前调用它，浮层不会跟着用户
   跑到另一个页面上。

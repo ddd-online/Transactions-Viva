@@ -176,17 +176,28 @@ type Repository interface {
 	// ChartPie aggregates one ledger range by type, category or tag.
 	ChartPie(ctx context.Context, query ChartPieQuery) (ChartPieResult, error)
 
-	// DiaryDates lists one ledger's entry dates, newest first, with the word
+	// DiaryBooks lists the workspace's diary books. They belong to the
+	// workspace, not to a ledger: a diary is written into a book.
+	DiaryBooks(ctx context.Context) ([]domain.DiaryBook, error)
+	CreateDiaryBook(ctx context.Context, name, description string) (domain.DiaryBook, error)
+	// UpdateDiaryBook renames a book and replaces its description; an empty
+	// description clears it.
+	UpdateDiaryBook(ctx context.Context, id, name, description string) error
+	// DeleteDiaryBook removes a book with its entries. The last book stays:
+	// ErrInvalid, as the last ledger's deletion.
+	DeleteDiaryBook(ctx context.Context, id string) error
+
+	// DiaryDates lists one book's entry dates, newest first, with the word
 	// count and mood the 日记 tree paints.
-	DiaryDates(ctx context.Context, ledgerID string) ([]domain.DiaryDateItem, error)
+	DiaryDates(ctx context.Context, bookID string) ([]domain.DiaryDateItem, error)
 	// DiaryEntry reads one day; a day without an entry is ErrNotFound.
-	DiaryEntry(ctx context.Context, ledgerID, date string) (domain.DiaryEntry, error)
+	DiaryEntry(ctx context.Context, bookID, date string) (domain.DiaryEntry, error)
 	// SaveDiary writes one day, replacing the day's entry when it exists (the
 	// row keeps its id and timestamps) and counting the text's code points.
-	SaveDiary(ctx context.Context, ledgerID, date, content, mood string) (domain.DiaryEntry, error)
-	DeleteDiary(ctx context.Context, ledgerID, date string) error
-	// DiaryEntries is one ledger's whole diary, oldest first, for an export.
-	DiaryEntries(ctx context.Context, ledgerID string) ([]domain.DiaryEntry, error)
+	SaveDiary(ctx context.Context, bookID, date, content, mood string) (domain.DiaryEntry, error)
+	DeleteDiary(ctx context.Context, bookID, date string) error
+	// DiaryEntries is one book's whole diary, oldest first, for an export.
+	DiaryEntries(ctx context.Context, bookID string) ([]domain.DiaryEntry, error)
 
 	Templates(ctx context.Context, ledgerID string) ([]domain.TransactionTemplate, error)
 	CreateTemplate(ctx context.Context, template domain.TransactionTemplate) (string, error)
