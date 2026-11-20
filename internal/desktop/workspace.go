@@ -87,7 +87,7 @@ func (m *Model) workspaceGate(c ui.C) {
 					m.workspaceErr = err.Error()
 				}
 			}
-			ui.Text(c, "也可以从左侧进入「应用设置 → 工作空间」选择目录。").FontSize(12).Muted()
+			ui.Text(c, "也可以从左侧进入「设置 → 通用设置 → 工作空间」选择目录。").FontSize(12).Muted()
 		})
 	})
 }

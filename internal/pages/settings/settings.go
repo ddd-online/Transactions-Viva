@@ -1,4 +1,4 @@
-// Package settings is the 应用设置 section. It is a page in the shell's content
+// Package settings is the 设置 section. It is a page in the shell's content
 // area, not a dialog: the application's navigation rail stays visible and the
 // settings replace the functional page, as they do in the reference application.
 //

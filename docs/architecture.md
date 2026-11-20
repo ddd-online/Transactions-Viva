@@ -9,7 +9,7 @@ GPU 直接绘制，没有 Electron、Node 或内嵌浏览器。旧工程
 
 ```text
 main.go                    入口：只做 log.Fatal(desktop.Run())
-  └─ internal/desktop            外壳：窗口、标题栏、导航、底栏、设置页、主题
+  └─ internal/desktop            外壳：窗口、标题栏、导航、设置页、主题
        ├─ internal/pages/*       功能页：accounting / stock / todo / events / diary / settings
        │    ├─ internal/pages/*/controls   只属于该页面的组件
        │    ├─ internal/components/*      可复用的自定义组件（datepicker / pagination / selectbox）
@@ -49,7 +49,7 @@ main → desktop → pages → components
 | 新包 / 文件 | 职责 | 旧工程来源 |
 |---|---|---|
 | `main.go` | 入口 | `src/main.tsx` + `electron/main.ts` 的启动部分 |
-| `internal/desktop` | 窗口、标题栏、导航、底栏 | `src/App.tsx`、`src/app-shell.tsx`、`src/app-view.ts` |
+| `internal/desktop` | 窗口、标题栏、导航、设置页 | `src/App.tsx`、`src/app-shell.tsx`、`src/app-view.ts` |
 | `internal/desktop/theme.go` | 主题选择：Viva 原生浅色 / 深色（旧配色暂不迁移） | `gfx.LightTheme` / `gfx.DarkTheme`；旧配色见 `DESIGN.md`、`src/theme` |
 | `internal/pages/accounting` | 记账分区的四个子功能（记录 / 分析 / 标签 / 模板） | `src/pages/records*`、`charts*`、`category-tag*`、`template*` |
 | `internal/pages/accounting/records` | 记录页：工具栏、表格、分页、统计、空态、行操作 | `src/pages/records.tsx`、`records-table.tsx` |
@@ -109,13 +109,13 @@ main → desktop → pages → components
 ## 页面约定
 
 - 外壳的中栏固定为「左侧 Sidebar + 右侧内容」：Sidebar 是 `internal/desktop/sidebar.go` 里
-  用 `ui` 声明的导航列（204px，与 motty 的 `navigationWidth` 对齐；图标 + 文字，`应用设置`
+  用 `ui` 声明的导航列（204px，与 motty 的 `navigationWidth` 对齐；图标 + 文字，`设置`
   固定在底部；选中状态由 `desktop.Model.section` 持有）。一级项展开自己的子功能时，子功能行
   只缩进前缘，底色右边缘与一级项对齐（理由见「框架缺口」）。页面只负责右侧内容，
   不再自己画导航。
 - 右侧内容是 motty 式的工作区卡片：`RadiusSurface` 圆角、1px 边框、`theme.Background`
-  底色，浮在 `theme.Muted` 的窗口壳上（标题栏、底栏、导航同壳）。卡片顶部贴标题栏、
-  左侧贴导航，右侧与底栏上方各留 7px；导航自身不画右分隔线，由卡片的圆角边框充当边界。
+  底色，浮在 `theme.Muted` 的窗口壳上（标题栏、导航同壳）。卡片顶部贴标题栏、
+  左侧贴导航，右侧与下方各留 7px；导航自身不画右分隔线，由卡片的圆角边框充当边界。
 - 设置是一个普通分区页，不是弹窗：左栏是分区列表，右栏是分区标题 + 分组卡片；卡片里的
   「设置行」是标题 / 说明在左、控件在右的 64px 行。尺寸与分组方式对齐 motty 的设置页
   （208px 分区列、760px 阅读列、32px 页边距），进入设置时左侧主导航保持可见，选中状态由

@@ -900,7 +900,7 @@ func TestSidebarSubItemsShareTheirSectionRowTrailingEdge(t *testing.T) {
 
 func TestSettingsCategoriesSwitchThePage(t *testing.T) {
 	driver, _ := open(t)
-	click(t, driver, "应用设置")
+	click(t, driver, "设置")
 
 	for _, name := range []string{"通用设置", "功能开关", "数据备份", "日记配置", "关于软件"} {
 		if !hasControl(driver, name) {
@@ -938,9 +938,9 @@ func TestWindowBorderFollowsTheme(t *testing.T) {
 func TestSettingsPageAndThemeToggle(t *testing.T) {
 	driver, model := open(t)
 
-	click(t, driver, "应用设置")
+	click(t, driver, "设置")
 	if !shows(driver, "窗口关闭行为") {
-		t.Fatal("应用设置 did not show the settings page")
+		t.Fatal("设置 did not show the settings page")
 	}
 	if model.section != SectionSettings {
 		t.Fatalf("section while settings is shown = %v", model.section)
@@ -960,7 +960,7 @@ func TestSettingsPageAndThemeToggle(t *testing.T) {
 	if model.section != SectionAccounting {
 		t.Fatalf("section after leaving settings = %v", model.section)
 	}
-	click(t, driver, "应用设置")
+	click(t, driver, "设置")
 	if !shows(driver, "五个开关") {
 		t.Fatal("settings did not return to its chosen section")
 	}
@@ -979,7 +979,7 @@ func TestSettingsPageAndThemeToggle(t *testing.T) {
 // settings and checks they reach both the shell and the configuration.
 func TestSettingsAppearanceAndCloseBehavior(t *testing.T) {
 	driver, model := open(t)
-	click(t, driver, "应用设置")
+	click(t, driver, "设置")
 	if !shows(driver, "窗口关闭行为") {
 		t.Fatal("通用设置 is missing its explanation")
 	}
@@ -1010,7 +1010,7 @@ func TestSettingsAppearanceAndCloseBehavior(t *testing.T) {
 // rail immediately, and turning it back on restores it.
 func TestFeatureSwitchHidesItsSection(t *testing.T) {
 	driver, model := open(t)
-	click(t, driver, "应用设置")
+	click(t, driver, "设置")
 	click(t, driver, "功能开关")
 	if !hasControl(driver, "记账功能开关") {
 		t.Fatal("功能开关 did not show the five switches")
@@ -1047,7 +1047,7 @@ func TestSettingsWritesTheConfigurationFile(t *testing.T) {
 	model := NewWithConfig(cfg, store)
 	driver, _ := openModel(t, model)
 
-	click(t, driver, "应用设置")
+	click(t, driver, "设置")
 	click(t, driver, "深色")
 	click(t, driver, "直接退出")
 	click(t, driver, "功能开关")
@@ -1073,7 +1073,7 @@ func TestSettingsFailedWriteKeepsTheOldValue(t *testing.T) {
 	model := NewWithConfig(cfg, config.Load(t.TempDir()))
 	driver, _ := openModel(t, model)
 
-	click(t, driver, "应用设置")
+	click(t, driver, "设置")
 	click(t, driver, "深色")
 	if model.config.Appearance != config.AppearanceLight || model.dark {
 		t.Fatal("a failed write did not restore the appearance")
@@ -1093,7 +1093,7 @@ func TestSettingsWorkspacePicker(t *testing.T) {
 	model.pickWorkspace = func() (string, error) { return directory, nil }
 	driver, _ := openModel(t, model)
 
-	click(t, driver, "应用设置")
+	click(t, driver, "设置")
 	if !shows(driver, "尚未选择工作空间") {
 		t.Fatal("the empty workspace is not reported")
 	}
@@ -1106,9 +1106,6 @@ func TestSettingsWorkspacePicker(t *testing.T) {
 	}
 	if !shows(driver, directory) {
 		t.Fatal("the settings row does not show the chosen directory")
-	}
-	if !shows(driver, filepath.Base(directory)) {
-		t.Fatal("the footer does not show the workspace")
 	}
 }
 

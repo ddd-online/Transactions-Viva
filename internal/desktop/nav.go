@@ -24,7 +24,7 @@ type navEntry struct {
 	icon    gfx.Icon
 }
 
-// navSections is the rail without 应用设置, which sits at the bottom.
+// navSections is the rail without 设置, which sits at the bottom.
 var navSections = [...]navEntry{
 	{SectionAccounting, "记账", icons.Wallet},
 	{SectionStock, "股票", icons.Stock},
@@ -123,7 +123,7 @@ func (m *Model) selectTab(section Section, index int) {
 // Label is the section's name in the title bar and accessible labels.
 func (s Section) Label() string {
 	if s == SectionSettings {
-		return "应用设置"
+		return "设置"
 	}
 	for _, entry := range navSections {
 		if entry.section == s {

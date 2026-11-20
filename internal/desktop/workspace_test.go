@@ -98,7 +98,7 @@ func TestWorkspaceSwitchLoadsTheOtherLedgers(t *testing.T) {
 
 	second := t.TempDir()
 	model.pickWorkspace = func() (string, error) { return second, nil }
-	click(t, driver, "应用设置")
+	click(t, driver, "设置")
 	click(t, driver, "切换")
 	click(t, driver, "记账")
 	if shows(driver, "去程机票") || shows(driver, "早餐 · 豆浆油条") {
@@ -112,7 +112,7 @@ func TestWorkspaceSwitchLoadsTheOtherLedgers(t *testing.T) {
 	}
 
 	model.pickWorkspace = func() (string, error) { return fixture.Workspace.Directory(), nil }
-	click(t, driver, "应用设置")
+	click(t, driver, "设置")
 	click(t, driver, "切换")
 	click(t, driver, "记账")
 	if !shows(driver, "早餐 · 豆浆油条") {

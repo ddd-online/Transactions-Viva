@@ -64,7 +64,7 @@ func (m *Model) navList(c ui.C) {
 			continue
 		}
 		section, selected := entry.section, m.pageTab(entry.section)
-		// The list is keyed apart from the rows and the footer entry, so
+		// The list is keyed apart from the rows and the settings entry, so
 		// opening another section does not hand its state to this column.
 		c.KeyInt(len(navSections)*2 + int(section))
 		ui.Column(c).Gap(gap).PadY(metrics.GapItem / 4).

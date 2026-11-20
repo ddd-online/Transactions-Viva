@@ -1,7 +1,6 @@
 package desktop
 
 import (
-	"path/filepath"
 	"strings"
 
 	"transactions/internal/config"
@@ -169,23 +168,6 @@ func prependWorkspace(directory string, recent []string) []string {
 		}
 	}
 	return next
-}
-
-// workspaceLabel is the footer's workspace name: the last path element, or the
-// not-opened state.
-func (m *Model) workspaceLabel() string {
-	if m.workspace != nil {
-		directory := m.workspace.Directory()
-		name := filepath.Base(directory)
-		if name == "." || name == string(filepath.Separator) {
-			return directory
-		}
-		return name
-	}
-	if m.config.WorkspaceDir != "" {
-		return "工作空间未打开"
-	}
-	return "尚未打开工作空间"
 }
 
 // persist writes the configuration through the store Run loaded. A model

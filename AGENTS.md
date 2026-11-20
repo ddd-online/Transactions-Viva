@@ -14,7 +14,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 
 - 入口是根目录 `main.go`：只做 `log.Fatal(desktop.Run())`，`viva.toml` 的 `package = "."`。
   开发时 `viva dev .`，一次性运行 `go run .`。
-- 外壳（标题栏 / 左侧导航 / 底栏 / 设置页）、页面骨架、领域类型与文档已就位。
+- 外壳（标题栏 / 左侧导航 / 设置页）、页面骨架、领域类型与文档已就位。
 - 记账-记录页已迁移前端：工具栏、时间范围、表头排序、表格、分页、收支统计与
   新增 / 编辑记录弹窗都在。弹窗照旧工程 `record-composer.tsx` 排列模板、日期、类型、分类、
   标签、标记、关联事件日期、描述与金额；字段用 `ui.FormField`，日期与关联事件日期用共享的
@@ -91,7 +91,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 
 ```text
 main.go                  真实入口：只做 log.Fatal(desktop.Run())
-internal/desktop/        应用外壳：窗口、自绘标题栏、Sidebar 导航、底栏、设置页、主题
+internal/desktop/        应用外壳：窗口、自绘标题栏、Sidebar 导航、设置页、主题
 internal/icons/          由 SVG 编译出的矢量图标（viva icons）
 internal/pages/          各功能页：accounting、stock、todo、events、diary、settings
   accounting/records/    记录页本身（表格 / 工具栏 / 分页 / 空态 / 行操作）
@@ -134,7 +134,7 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
 
 ## 迁移顺序
 
-1. **外壳**（已完成）：窗口、标题栏、导航、底栏、主题切换、设置页、页面骨架。
+1. **外壳**（已完成）：窗口、标题栏、导航、主题切换、设置页、页面骨架。
 2. **领域 + 存储**（已完成）：`internal/domain` 核心形状；`internal/store` 用
    `modernc.org/sqlite` 打开工作空间，schema v1 与迁移、账本 / 记录 / 分类标签 / 模板仓储。
 3. **记账**：记录 / 标签 / 模板已接工作空间（记录：SQL 范围过滤 + 内存排序分页；标签：

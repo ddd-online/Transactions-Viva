@@ -1,6 +1,6 @@
 // Package desktop is the application shell: the window, the custom title bar,
-// the left navigation rail, the footer and the section content. Feature pages
-// live in internal/pages and know nothing about the shell.
+// the left navigation rail and the section content. Feature pages live in
+// internal/pages and know nothing about the shell.
 package desktop
 
 import (
@@ -20,10 +20,6 @@ import (
 	"transactions/internal/pages/todo"
 	storepkg "transactions/internal/store"
 )
-
-// Version is the application version shown in the footer. A release build can
-// replace it with -ldflags "-X transactions/internal/desktop.Version=...".
-var Version = "0.1.0"
 
 // Model is the shell's state and the owners of every page's state. A page
 // model is created once and kept, so switching sections preserves its tab,
@@ -176,9 +172,9 @@ func devMode() bool { return os.Getenv("VIVA_RELOAD_ADDRESS") != "" }
 // newConfig is the one place the native window is described. Tests build the
 // same window without opening one.
 func newConfig(m *Model) app.Config {
-	// The window's edge is the shell around the workspace card: the title bar,
-	// the footer and the navigation rail. Windows 11 composites its border around
-	// a custom-titlebar window against the desktop, so the border has to name the
+	// The window's edge is the shell around the workspace card: the title bar
+	// and the navigation rail. Windows 11 composites its border around a
+	// custom-titlebar window against the desktop, so the border has to name the
 	// surface it meets or the desktop shows through as a white seam.
 	edge := m.theme.Muted
 	width, height := m.config.Width, m.config.Height
@@ -285,8 +281,8 @@ func (m *Model) windowControls() app.WindowControlsStyle {
 // shell surface instead of filling the window.
 const contentCardMargin = float32(7)
 
-// page declares the whole window: title bar, navigation, content and footer.
-// The window's own surface is the shell the card floats on.
+// page declares the whole window: title bar, navigation and content. The
+// window's own surface is the shell the card floats on.
 func (m *Model) page(c ui.C) {
 	leading, trailing := app.TitlebarInsets()
 	theme := c.Theme()
@@ -296,7 +292,6 @@ func (m *Model) page(c ui.C) {
 			m.sidebar(c)
 			m.content(c)
 		})
-		m.footer(c)
 	})
 }
 
@@ -321,7 +316,7 @@ func (m *Model) titlebar(c ui.C, leading, trailing float32) {
 
 // content is the active section, in the rounded workspace card the reference
 // application floats on its shell: flush under the title bar and against the
-// navigation rail, with room on the right and above the footer.
+// navigation rail, with room on the right and at the bottom.
 func (m *Model) content(c ui.C) {
 	theme := c.Theme()
 	ui.Column(c).Grow(1).
@@ -351,18 +346,6 @@ func (m *Model) content(c ui.C) {
 			}
 		})
 	m.closeModal(c)
-}
-
-// footer is the 36px band that runs under the whole window.
-func (m *Model) footer(c ui.C) {
-	theme := c.Theme()
-	ui.Row(c).Height(36).FillWidth().Background(theme.Muted).PadX(12).Gap(8).
-		Items(ui.Center).Children(func() {
-		ui.Text(c, "本地优先 · 数据保存在本地工作空间").FontSize(11).Muted()
-		ui.Spacer(c)
-		ui.Text(c, m.workspaceLabel()).FontSize(11).Muted()
-		ui.Text(c, "v"+Version).FontSize(11).Muted().Mono()
-	})
 }
 
 // toggleTheme switches between the light and dark palettes, as an explicit
