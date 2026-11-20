@@ -46,8 +46,9 @@ func (m *Model) deleteRecord(id string) {
 	m.notice = "记录已删除"
 }
 
-// syncTo reports copying the row to another ledger. The mock has one table and
-// no ledger switcher, so the target is reported instead of duplicated visibly.
+// syncTo reports copying the row to another ledger. The mock's records already
+// carry their ledger, but writing the copy is the store's job, so this reports
+// the target instead of duplicating the row.
 func (m *Model) syncTo(id, target string) {
 	rec := m.find(id)
 	if rec == nil {

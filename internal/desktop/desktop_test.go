@@ -252,6 +252,26 @@ func TestRecordsPage(t *testing.T) {
 	})
 }
 
+// TestRecordsLedgerSelect switches the toolbar's 账本 Select and expects the
+// table, the statistics and the pager to follow the chosen ledger.
+func TestRecordsLedgerSelect(t *testing.T) {
+	driver, _ := open(t)
+	if !shows(driver, "早餐 · 豆浆油条") {
+		t.Fatal("the family ledger's rows are not on screen")
+	}
+	click(t, driver, "账本")
+	click(t, driver, "旅行账本")
+	if !shows(driver, "去程机票") {
+		t.Fatal("旅行账本 did not show its rows")
+	}
+	if shows(driver, "早餐 · 豆浆油条") {
+		t.Fatal("the family ledger's row stayed after switching")
+	}
+	if !shows(driver, "共 2 条") {
+		t.Fatal("the travel ledger did not show its today count")
+	}
+}
+
 // TestRecordCategorySelect checks the 分类 field is a single choice among the
 // categories of the chosen type, and that a category already chosen survives a
 // change of type.

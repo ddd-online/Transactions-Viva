@@ -126,6 +126,7 @@ func (m *Model) saveDraft(draft composer.Draft) error {
 	} else {
 		m.records = append(m.records, record{
 			id:           "mock-new-" + time.Now().Format("20060102150405.000000000"),
+			ledgerID:     m.ledgerID,
 			kind:         kind,
 			category:     category,
 			description:  description,

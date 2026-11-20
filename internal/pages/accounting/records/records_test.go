@@ -94,6 +94,63 @@ func TestRecordActions(t *testing.T) {
 	}
 }
 
+func TestLedgerSelectFiltersTheTable(t *testing.T) {
+	m := New()
+	m.rangeStart, m.rangeEnd = "2000-01-01", "2100-01-01"
+	m.refilter()
+	if m.ledgerID != ledgerHome {
+		t.Fatalf("the page starts on %q, want the family ledger", m.ledgerID)
+	}
+	home := len(m.shown)
+	if home == 0 {
+		t.Fatal("the family ledger has no rows")
+	}
+	for _, rec := range m.shown {
+		if rec.ledgerID != ledgerHome {
+			t.Fatalf("row %q leaked from ledger %q", rec.id, rec.ledgerID)
+		}
+	}
+
+	m.ledgerID = ledgerTravel
+	m.refilter()
+	if len(m.shown) == 0 || len(m.shown) == home {
+		t.Fatalf("the travel ledger shows %d rows, the family ledger %d", len(m.shown), home)
+	}
+	for _, rec := range m.shown {
+		if rec.ledgerID != ledgerTravel {
+			t.Fatalf("row %q belongs to ledger %q", rec.id, rec.ledgerID)
+		}
+	}
+	if want := [3]int64{30000, 214000, 0}; m.stats != want {
+		t.Fatalf("travel statistics = %v, want %v", m.stats, want)
+	}
+
+	// A record written from the ledger's page belongs to that ledger.
+	m.rangeStart, m.rangeEnd = "2000-01-01", "2100-01-01"
+	if err := m.saveDraft(composer.Draft{
+		Kind: "支出", Amount: "12.34", Category: "餐饮美食",
+		Description: "旅行早餐", Date: "2026-01-02",
+	}); err != nil {
+		t.Fatalf("saving into the travel ledger: %v", err)
+	}
+	var added *record
+	for index := range m.records {
+		if m.records[index].description == "旅行早餐" {
+			added = &m.records[index]
+		}
+	}
+	if added == nil || added.ledgerID != ledgerTravel {
+		t.Fatalf("the new record = %+v, want the travel ledger", added)
+	}
+
+	// The family ledger still has its own rows and does not see the new one.
+	m.ledgerID = ledgerHome
+	m.refilter()
+	if got := len(m.shown); got != home {
+		t.Fatalf("the family ledger = %d rows, want its original %d", got, home)
+	}
+}
+
 func TestSaveDraftValidates(t *testing.T) {
 	m := New()
 	before := len(m.records)

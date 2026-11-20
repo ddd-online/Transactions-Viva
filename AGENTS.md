@@ -26,7 +26,9 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   的 Select 不收下拉动画的组，弹窗里会把下面的字段带得抖一下，见 `docs/architecture.md`
   的「框架缺口」）。
   记录行右键打开 ContextMenu（编辑 / 同步到其他账本 / 删除）。行数据、模板与保存都只在
-  内存里。工具栏的时间范围用同一个 `datepicker.Picker`（打开 `Grains` / `Periods`：日 / 月 / 年
+  内存里。工具栏最左侧是「账本」Select（mock 两个账本：家庭账本 / 旅行账本）：切换后表格、
+  统计与分页按账本过滤，新记录落到当前账本。工具栏的时间范围用同一个 `datepicker.Picker`
+  （打开 `Grains` / `Periods`：日 / 月 / 年
   粒度、前后周期、快捷区间，日粒度的面板标题两侧还有 `chevrons-left` / `chevrons-right`
   的整年箭头，浮层面板不占布局）；分页栏在 `internal/components/pagination`：
   每页 15 / 30 / 50 的 Select 在 Viva 分页左侧，「共 N 条」在右侧，三者是一个自定义组件。

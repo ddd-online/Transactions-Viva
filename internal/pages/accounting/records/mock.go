@@ -3,13 +3,26 @@ package records
 import (
 	"time"
 
+	"transactions/internal/domain"
 	"transactions/internal/pages/accounting/records/composer"
 )
 
-// mockSyncTargets are the other ledgers a row can be copied to. The real app
-// reads them from the workspace; the mock has no ledger switcher, so syncing
-// reports the chosen target instead of adding a second copy to this table.
-var mockSyncTargets = [...]string{"家庭账本", "旅行账本"}
+// The mock workspace's ledgers. A record carries the ledger it belongs to, as
+// the store's ledger_id will, so switching the toolbar's 账本 Select filters the
+// table and the statistics exactly as the workspace does.
+const (
+	ledgerHome   = "ledger-home"
+	ledgerTravel = "ledger-travel"
+)
+
+// mockLedgers is the workspace's ledger list until the store lands. The names
+// are the ones the 同步到其他账本 submenu offers.
+func mockLedgers() []domain.Ledger {
+	return []domain.Ledger{
+		{ID: ledgerHome, Name: "家庭账本"},
+		{ID: ledgerTravel, Name: "旅行账本"},
+	}
+}
 
 // mockCategory is one 分类 of the composer's 分类 Select: its name and the type
 // it belongs to.
@@ -66,13 +79,9 @@ func mockTemplates() []composer.Template {
 // something to show on any day; they are never persisted. Replace this file
 // with the tr_query path when internal/store lands.
 func mockRecords() []record {
-	now := time.Now()
-	today := now.Format("2006-01-02")
-	at := func(daysAgo, hour, minute int) time.Time {
-		day := now.AddDate(0, 0, -daysAgo)
-		return time.Date(day.Year(), day.Month(), day.Day(), hour, minute, 0, 0, time.Local)
-	}
-	return []record{
+	today := time.Now().Format("2006-01-02")
+	at := mockAt
+	records := []record{
 		{id: "mock-1", kind: kindExpense, category: "餐饮美食", description: "早餐 · 豆浆油条", tags: []string{"日常"}, amount: 1200, at: at(0, 8, 40)},
 		{id: "mock-2", kind: kindExpense, category: "餐饮美食", description: "午餐 · 公司楼下", tags: []string{"日常", "同事"}, amount: 3200, at: at(0, 12, 10), keyEventDate: today},
 		{id: "mock-3", kind: kindExpense, category: "交通出行", description: "地铁通勤", tags: []string{"通勤"}, amount: 400, at: at(0, 18, 35)},
@@ -97,4 +106,28 @@ func mockRecords() []record {
 		{id: "mock-11", kind: kindIncome, category: "工资奖金", description: "年终奖", tags: []string{"奖金"}, amount: 3000000, at: at(90, 9, 0)},
 		{id: "mock-12", kind: kindExpense, category: "休闲娱乐", description: "旅行机票", tags: []string{"旅行"}, amount: 880000, at: at(400, 14, 0)},
 	}
+	// Every seed row above is the family ledger's; the travel ledger has its
+	// own rows so switching the 账本 Select visibly changes the table.
+	for index := range records {
+		records[index].ledgerID = ledgerHome
+	}
+	return append(records, mockTravelRecords()...)
+}
+
+// mockTravelRecords are the rows of the mock workspace's second ledger, dated
+// inside the default (today) range so the switch shows them without a range
+// change.
+func mockTravelRecords() []record {
+	return []record{
+		{id: "mock-travel-1", ledgerID: ledgerTravel, kind: kindExpense, category: "交通出行", description: "去程机票", tags: []string{"旅行"}, amount: 128000, at: mockAt(0, 9, 15)},
+		{id: "mock-travel-2", ledgerID: ledgerTravel, kind: kindExpense, category: "娱乐休闲", description: "民宿两晚", tags: []string{"旅行"}, amount: 86000, at: mockAt(0, 18, 40)},
+		{id: "mock-travel-3", ledgerID: ledgerTravel, kind: kindIncome, category: "红包转账", description: "差旅报销", tags: []string{"旅行"}, amount: 30000, at: mockAt(1, 12, 0)},
+	}
+}
+
+// mockAt is a local clock time daysAgo days back, for the relative mock dates.
+func mockAt(daysAgo, hour, minute int) time.Time {
+	now := time.Now()
+	day := now.AddDate(0, 0, -daysAgo)
+	return time.Date(day.Year(), day.Month(), day.Day(), hour, minute, 0, 0, time.Local)
 }

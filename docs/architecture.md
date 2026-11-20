@@ -82,6 +82,8 @@ main → desktop → pages → components
   `desktop.Model.section` 持有。
 - 记账-记录页是当前唯一有真实前端的页面：工具栏 / 时间范围 / 排序 / 表格 / 分页 /
   收支统计都在 `internal/pages/accounting/records`，行数据来自同包的 `mock.go`，
+  工具栏最左侧的「账本」`selectbox.Select` 在 mock 的两个账本（家庭账本 / 旅行账本）间切换：
+  表格、统计与分页随当前账本过滤，新记录落到当前账本，右键的「同步到其他账本」列出其余账本。
   子包 `records/composer` 的「新增记录 / 编辑记录」弹窗只写内存：模板、日期、类型、分类、
   标签、标记、关联事件日期、描述与金额按旧工程 `record-composer.tsx` 排列，模板也是 mock；
   每个字段用 `ui.FormField`（标题 + 控件的标准表单节奏），日期/事件日期用共享的

@@ -2,8 +2,8 @@
 // its pager and statistics, and the dialog a record is written in (the composer
 // subpackage). Its layout follows the reference application's hosts page.
 //
-// The data is mock for now (mock.go): filtering, sorting and adding a record
-// work on the in-memory slice only. When internal/store lands, refilter becomes a
+// The data is mock for now (mock.go): two ledgers of records, filtered, sorted
+// and added in memory only. When internal/store lands, refilter becomes a
 // tr_query and the mock file goes away.
 package records
 
@@ -18,6 +18,7 @@ import (
 
 	"transactions/internal/components/datepicker"
 	"transactions/internal/components/pagination"
+	"transactions/internal/components/selectbox"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting/records/composer"
@@ -43,6 +44,7 @@ const (
 // tag rows becomes this shape once the data is real.
 type record struct {
 	id           string
+	ledgerID     string
 	kind         string
 	category     string
 	description  string
@@ -68,6 +70,13 @@ type Model struct {
 	shown   []record // every row the current range leaves, already sorted
 
 	stats [3]int64 // 收入 / 支出 / 转账, within the visible rows
+
+	// The workspace's ledgers and the one the table shows. Every record carries
+	// its ledger's id, so a switch only changes this field and refilters.
+	ledgers     []domain.Ledger
+	ledgerIDs   []string
+	ledgerID    string
+	ledgerLabel func(string) string
 
 	// rangeStart and rangeEnd are the visible time range as local dates, both
 	// ends included; rangeGrain is the unit the picker chooses them in.
@@ -107,6 +116,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{
 		records:    mockRecords(),
+		ledgers:    mockLedgers(),
 		templates:  mockTemplates(),
 		rangeStart: todayDate(),
 		rangeEnd:   todayDate(),
@@ -118,6 +128,14 @@ func New() *Model {
 		form:       composer.New(),
 		rangePick:  datepicker.NewState(),
 	}
+	m.ledgerIDs = make([]string, 0, len(m.ledgers))
+	for _, ledger := range m.ledgers {
+		m.ledgerIDs = append(m.ledgerIDs, ledger.ID)
+	}
+	if len(m.ledgerIDs) > 0 {
+		m.ledgerID = m.ledgerIDs[0]
+	}
+	m.ledgerLabel = m.ledgerName
 	m.formSpec = composer.Spec{
 		Categories: m.categoryNames,
 		TagOptions: m.tagOptions,
@@ -154,6 +172,10 @@ func (m *Model) View(c ui.C) {
 // time range on the left, and the sort beside the primary action on the right.
 func (m *Model) toolbar(c ui.C) {
 	ui.Row(c).Height(56).FillWidth().PadX(18).Gap(10).Items(ui.Center).Children(func() {
+		ledger := selectbox.Select(c, &m.ledgerID, m.ledgerIDs, m.ledgerLabel).Label("账本")
+		if ledger.Changed() {
+			m.refilter()
+		}
 		if ui.Button(c, "今天").Outline().Clicked() {
 			m.setRange(todayDate(), todayDate(), datepicker.ByDay)
 		}
@@ -183,6 +205,16 @@ func (m *Model) toolbar(c ui.C) {
 			m.openComposer()
 		}
 	})
+}
+
+// ledgerName is what the toolbar's 账本 Select shows for a ledger id.
+func (m *Model) ledgerName(id string) string {
+	for _, ledger := range m.ledgers {
+		if ledger.ID == id {
+			return ledger.Name
+		}
+	}
+	return id
 }
 
 // sortItem declares one choice of the sort menu and applies it when chosen.
@@ -271,9 +303,12 @@ func (m *Model) row(r ui.ListRow) {
 			m.openEdit(id)
 		}
 		menu.Sub("同步到其他账本", func(sub *ui.MenuItems) {
-			for _, target := range mockSyncTargets {
-				if sub.Item(target).Clicked() {
-					m.syncTo(id, target)
+			for _, target := range m.ledgers {
+				if target.ID == m.ledgerID {
+					continue
+				}
+				if sub.Item(target.Name).Clicked() {
+					m.syncTo(id, target.Name)
 				}
 			}
 		})
@@ -424,6 +459,9 @@ func (m *Model) refilter() {
 	m.shown = m.shown[:0]
 	m.stats = [3]int64{}
 	for _, rec := range m.records {
+		if rec.ledgerID != m.ledgerID {
+			continue
+		}
 		day := rec.at.Format(dateLayout)
 		if m.rangeStart != "" && day < m.rangeStart {
 			continue
