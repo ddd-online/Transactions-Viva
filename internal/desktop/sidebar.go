@@ -18,13 +18,16 @@ const sidebarWidth = float32(204)
 const subItemIndent = float32(26)
 
 // sidebar is the navigation column: one row per section, the expanded section's
-// sub-functions under it, and the settings entry against the bottom edge.
+// sub-functions under it, and the settings entry against the bottom edge. It is
+// painted in the shell's tone, like the title bar above it: the chrome is one
+// color and the workspace card is the only other surface, so the two never meet
+// at a seam in the top-left corner.
 func (m *Model) sidebar(c ui.C) {
 	theme := c.Theme()
 	metrics := theme.Metrics
 	gap := metrics.GapItem / 2
 	ui.Column(c).Width(sidebarWidth).FillHeight().
-		Background(theme.CardElevated).Pad(metrics.GapItem).Gap(gap).Children(func() {
+		Background(theme.Muted).Pad(metrics.GapItem).Gap(gap).Children(func() {
 		// The sections scroll when the window is too short for them; the
 		// settings entry stays against the bottom edge.
 		ui.Scroll(c).Grow(1).Children(func() {

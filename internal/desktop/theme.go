@@ -12,10 +12,11 @@ import "github.com/vivaui/viva/gfx"
 // screen in both appearances.
 //
 // The world is a graphite instrument: white paper, cool neutral surfaces, and
-// one blue that means "act". The dark appearance is not the light one
-// inverted — the rail always sits between the shell and the paper, and the two
-// appearances simply point that ladder the other way. Every pair was picked on
-// its own surface and measured:
+// one blue that means "act". The chrome — title bar, navigation rail and the
+// margin around the card — is a single tone, so the card is the only other
+// surface and the two never meet at a seam. The dark appearance is not the
+// light one inverted: the same ladder simply points the other way. Every pair
+// was picked on its own surface and measured:
 //
 //   - body text and the four data colors (income / expense / transfer /
 //     outlier) clear 4.5:1 on the paper (light) or the near-black (dark), and
@@ -46,10 +47,10 @@ func coolGraphite() gfx.Theme {
 		Foreground:          gfx.RGB24(0x18181b), // graphite
 		Card:                gfx.RGB24(0xffffff),
 		CardForeground:      gfx.RGB24(0x18181b),
-		CardElevated:        gfx.RGB24(0xfafafa), // the navigation rail
+		CardElevated:        gfx.RGB24(0xf4f4f5), // segmented track, above the card
 		Popover:             gfx.RGB24(0xffffff),
 		PopoverForeground:   gfx.RGB24(0x18181b),
-		Muted:               gfx.RGB24(0xf4f4f5), // the window shell, chips, tracks
+		Muted:               gfx.RGB24(0xf4f4f5), // the one chrome tone: title bar, rail, chips
 		MutedForeground:     gfx.RGB24(0x646b76), // secondary text, table headers
 		Border:              gfx.RGB24(0xe4e4e7), // every hairline
 		Hover:               gfx.RGB24(0xf4f4f5), // row hover
@@ -90,7 +91,7 @@ func coolInk() gfx.Theme {
 		CardElevated:        gfx.RGB24(0x1f1f23),
 		Popover:             gfx.RGB24(0x1c1c1f),
 		PopoverForeground:   gfx.RGB24(0xfafafa),
-		Muted:               gfx.RGB24(0x27272a),
+		Muted:               gfx.RGB24(0x27272a), // the one chrome tone: title bar, rail, chips
 		MutedForeground:     gfx.RGB24(0xa1a1aa),
 		Border:              gfx.RGBA(250, 250, 250, 0.10),
 		Hover:               gfx.RGB24(0x232326),
