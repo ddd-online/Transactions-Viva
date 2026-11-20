@@ -48,6 +48,10 @@ type Model struct {
 	tray   *app.StatusItem
 	trayOK bool
 
+	// development is true under `viva dev`'s reload host, which paints only on
+	// its own requests; see requestClose.
+	development bool
+
 	// pickWorkspace chooses the workspace directory; tests replace it.
 	pickWorkspace func() (string, error)
 
@@ -123,9 +127,20 @@ func Run() error {
 	if err != nil {
 		return err
 	}
-	store := config.Load(config.Path(home, devMode()))
+	development := devMode()
+	store := config.Load(config.Path(home, development))
 	model := NewWithConfig(store.Config(), store)
+	model.development = development
 	page := ui.NewPage(ui.PageConfig{Tree: &model.tree, View: model.page, Theme: &model.theme})
+	if development {
+		// `viva dev` drives the page through the reload worker inside
+		// RunCanvas. RunApplication has no such worker: it would open a native
+		// window and the reload host would time out waiting for the connection.
+		// The development host draws its own window, so the tray and the native
+		// close prompt stay a release-build feature; closing in dev uses the
+		// same configured behavior, with "tray" falling back to quit.
+		return app.RunCanvas(page.Config(newConfig(model)), new(gfx.Canvas))
+	}
 	invalidator := &app.Invalidator{}
 	model.invalidator = invalidator
 	return app.RunApplication(func(application *app.Application) error {

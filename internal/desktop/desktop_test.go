@@ -1104,3 +1104,30 @@ func TestTrayIconIsATemplate(t *testing.T) {
 		t.Fatal("the status icon is empty")
 	}
 }
+
+// TestDevelopmentCloseSkipsThePrompt guards the reload worker's limitation: the
+// development host paints on its own schedule, so a prompt raised there would
+// not appear; development closes immediately.
+func TestDevelopmentCloseSkipsThePrompt(t *testing.T) {
+	model := New()
+	model.development = true
+	model.config.WorkspaceDir = t.TempDir()
+	model.config.CloseBehavior = config.CloseAsk
+	closed := false
+	model.requestClose(func() { closed = true })
+	if !closed || model.closeAsk {
+		t.Fatal("development close did not close immediately")
+	}
+}
+
+// TestDevModeFollowsTheReloadHost checks the configuration file split.
+func TestDevModeFollowsTheReloadHost(t *testing.T) {
+	t.Setenv("VIVA_RELOAD_ADDRESS", "")
+	if devMode() {
+		t.Fatal("development mode without a reload host")
+	}
+	t.Setenv("VIVA_RELOAD_ADDRESS", "127.0.0.1:1")
+	if !devMode() {
+		t.Fatal("release mode under a reload host")
+	}
+}

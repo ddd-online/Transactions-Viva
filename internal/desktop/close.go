@@ -14,6 +14,14 @@ import (
 // does — there is nothing to keep running.
 func (m *Model) requestClose(allow func()) {
 	m.saveWindowBounds()
+	if m.development {
+		// The reload worker has no way to ask its host for a frame outside the
+		// host's paint requests, so a prompt raised here would wait for an
+		// unrelated repaint. Development closes immediately; the release build
+		// applies the configured behavior below.
+		allow()
+		return
+	}
 	if m.config.WorkspaceDir == "" {
 		allow()
 		return

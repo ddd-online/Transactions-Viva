@@ -94,6 +94,10 @@ main → desktop → pages → components
   仍是占位。「功能开关」写 `features`（当前还没有打开的账本，所以只写全局默认；
   `ledgerFeatures` 的账本覆盖规则已在 `config` 里，等账本进入外壳后接上），关掉的分区立即从
   Sidebar 消失，五个全关时落到设置。
+- 运行入口按模式分叉：`viva dev`（`VIVA_RELOAD_ADDRESS` 存在）必须用 `app.RunCanvas`，开发
+  重载 worker 在它内部连接宿主；发布版用 `app.RunApplication`，才能拿到 `*app.Window` /
+  `*app.Application` 建 `StatusItem`、隐藏到托盘并处理 `OnCloseRequest`。开发宿主只在自身的
+  绘制请求里重绘，所以开发模式的关闭直接退出，不弹「每次询问」。
 - 记账-记录页：工具栏 / 时间范围 / 表头排序 / 表格 / 分页 /
   收支统计都在 `internal/pages/accounting/records`，行数据来自同包的 `mock.go`，
   工具栏最左侧的「账本」`selectbox.Select` 在 mock 的两个账本（家庭账本 / 旅行账本）间切换：
