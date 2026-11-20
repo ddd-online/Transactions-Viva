@@ -5,7 +5,7 @@
 
 ## 当前状态
 
-项目正在从 Electron + React 迁移到 **Viva + Go**。外壳与记账-记录页的前端已经搭起：
+项目正在从 Electron + React 迁移到 **Viva + Go**。外壳、配置与记账三页已经可用：
 
 - 入口是根目录 `main.go`，已可运行窗口外壳（自绘标题栏、Viva Sidebar 导航、底栏、设置页、
   浅色 / 深色主题）。
