@@ -102,12 +102,15 @@ func coolInk() gfx.Theme {
 		SelectionForeground: gfx.RGB24(0xeef2ff),
 		Secondary:           gfx.RGB24(0x27272a),
 		SecondaryForeground: gfx.RGB24(0xfafafa),
-		Accent:              gfx.RGB24(0x2a2a2d),
-		AccentForeground:    gfx.RGB24(0xfafafa),
-		Ring:                gfx.RGB24(0xa1a1aa),
-		Success:             gfx.RGB24(0x4ade80),
-		Danger:              gfx.RGB24(0xf87171),
-		DangerForeground:    gfx.RGB24(0x18181b),
+		// One step of contrast over whatever surface the row sits on, the same
+		// value as the hairline: on the chrome it lifts to #3c3c3f, on a popover
+		// to #2f2f32. An opaque grey here disappeared into the rail.
+		Accent:           gfx.RGBA(250, 250, 250, 0.10),
+		AccentForeground: gfx.RGB24(0xfafafa),
+		Ring:             gfx.RGB24(0xa1a1aa),
+		Success:          gfx.RGB24(0x4ade80),
+		Danger:           gfx.RGB24(0xf87171),
+		DangerForeground: gfx.RGB24(0x18181b),
 		Chart: [5]gfx.Color{
 			gfx.RGB24(0xf87171),
 			gfx.RGB24(0x4ade80),
