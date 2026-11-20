@@ -19,6 +19,7 @@ import (
 
 	"transactions/internal/components/datepicker"
 	"transactions/internal/components/pagination"
+	"transactions/internal/components/semantic"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting/ledger"
@@ -714,46 +715,9 @@ func kindValue(label string) string {
 	return kindExpense
 }
 
-// The old project's semantic data colors (DESIGN.md / tokens.css), kept exact
-// in both appearances: Viva's Success and Danger are close, but the records
-// table and its footer must match the old project's income / expense /
-// transfer hues.
-var (
-	incomeLight   = gfx.RGB24(0x16a34a)
-	expenseLight  = gfx.RGB24(0xdc2626)
-	transferLight = gfx.RGB24(0x3b82f6)
-	incomeDark    = gfx.RGB24(0x4ade80)
-	expenseDark   = gfx.RGB24(0xf87171)
-	transferDark  = gfx.RGB24(0x60a5fa)
-	outlierLight  = gfx.RGB24(0xd97706)
-	outlierDark   = gfx.RGB24(0xfbbf24)
-)
+// kindColor and outlierColor are the theme's data tokens, reached through the
+// shared semantic package: the table, the type chips and the analysis charts
+// read the same three colors, in both appearances.
+func outlierColor(theme gfx.Theme) gfx.Color { return semantic.Outlier(theme) }
 
-func outlierColor(theme gfx.Theme) gfx.Color {
-	if theme.Background.Red < 0.5 {
-		return outlierDark
-	}
-	return outlierLight
-}
-
-func kindColor(theme gfx.Theme, kind string) gfx.Color {
-	dark := theme.Background.Red < 0.5
-	switch kind {
-	case kindIncome:
-		if dark {
-			return incomeDark
-		}
-		return incomeLight
-	case kindExpense:
-		if dark {
-			return expenseDark
-		}
-		return expenseLight
-	case kindTransfer:
-		if dark {
-			return transferDark
-		}
-		return transferLight
-	}
-	return theme.MutedForeground
-}
+func kindColor(theme gfx.Theme, kind string) gfx.Color { return semantic.Kind(theme, kind) }

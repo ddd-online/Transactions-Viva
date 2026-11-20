@@ -3,34 +3,36 @@ name: Transactions
 description: 本地优先的个人财务桌面工作台——安静的灰阶外壳里，数字是唯一的主角
 colors:
   primary: "#1447e6"
-  primary-dark: "#193cb8"
-  primary-foreground: "#eff6ff"
-  canvas: "#f5f5f5"
-  canvas-dark: "#262626"
-  rail: "#f7f7f7"
-  rail-dark: "#1c1c1c"
-  paper: "#ffffff"
-  paper-dark: "#0a0a0a"
-  ink: "#0a0a0a"
-  ink-dark: "#fafafa"
-  ink-muted: "#737373"
-  ink-muted-dark: "#a1a1a1"
-  hairline: "#e5e5e5"
-  hairline-dark: "rgba(255, 255, 255, 0.10)"
-  field: "#e5e5e5"
-  field-dark: "rgba(255, 255, 255, 0.15)"
-  selection: "#b5d3ff"
-  selection-dark: "#264f78"
-  highlight: "#e6e6e6"
-  highlight-dark: "#343434"
-  income: "#16a34a"
-  income-dark: "#4ade80"
-  expense: "#dc2626"
-  expense-dark: "#f87171"
-  transfer: "#3b82f6"
-  transfer-dark: "#60a5fa"
-  outlier: "#d97706"
-  outlier-dark: "#fbbf24"
+  primary-dark: "#2f5ce0"
+  primary-foreground: "#f7f4ec"
+  canvas: "#f2ece0"
+  canvas-dark: "#2a231b"
+  rail: "#f7f2e8"
+  rail-dark: "#211b15"
+  paper: "#fffdf8"
+  paper-dark: "#17130f"
+  ink: "#1a1611"
+  ink-dark: "#f3ede2"
+  ink-muted: "#6f6656"
+  ink-muted-dark: "#a89d8b"
+  hairline: "#e7dfd0"
+  hairline-dark: "rgba(243, 237, 226, 0.12)"
+  field: "#ddd3c1"
+  field-dark: "rgba(243, 237, 226, 0.16)"
+  selection: "#d6e0fb"
+  selection-dark: "#2b4a7d"
+  highlight: "#eae3d4"
+  highlight-dark: "#2e261d"
+  income: "#12703a"
+  income-dark: "#58b06b"
+  expense: "#c0271f"
+  expense-dark: "#e2645c"
+  transfer: "#2b64c4"
+  transfer-dark: "#6f95e8"
+  outlier: "#94570a"
+  outlier-dark: "#d9a04a"
+  series-violet: "#7b4fa5"
+  series-violet-dark: "#b08bd8"
 typography:
   title:
     fontSize: "26px"
@@ -131,7 +133,7 @@ Transactions 是本地优先的个人财务桌面工作台。窗口是一张安�
 
 界面是一座桌面工作台，不是一张海报。密度来自 32px 的控件、48px 的记录行和 11px 的列表标签；克制来自「只有一个强调色、四个语义色，且语义色只出现在数据上」。层次由 1px 发丝线与色差完成，阴影只出现在真正浮起来的东西下面。
 
-有一件事今天还看不见：中性色要往暖里走（暖灰纸面），而现在的壳仍是 Viva 默认的冷灰。方向已确认、代码未实现；所以暖色只从 `internal/desktop/theme.go` 一处落地，页面里不要先散着改。
+有一套世界已经落地：`internal/desktop/theme.go` 里是两套完整主题——浅色 **Warm Paper**（暖灰外壳、纸白卡片、暖墨字）与深色 **Warm Ink**（暖褐近黑、提亮一档的中性色）。页面只读 token；深色不是浅色的反相，每一对颜色都在自己的底色上单独挑过，并由 `theme_test.go` 盯着对比度（正文与四个数据色 ≥4.5:1，数据色压在自己的 12% 芯片底上也要 ≥4.5:1）。
 
 **Key Characteristics:**
 
@@ -148,31 +150,32 @@ Transactions 是本地优先的个人财务桌面工作台。窗口是一张安�
 
 ### Primary
 
-- **Signal Blue**（`#1447e6`，深色 `#193cb8`）：主按钮、活动排序按钮、选中的页签与账本、链接、焦点强调。前景 `#eff6ff` 是它的字色——蓝面上永远压近白色，不压纯白以外的灰度。
+- **Signal Blue**（`#1447e6`，深色 `#2f5ce0`）：主按钮、活动排序按钮、选中的页签与账本、链接、焦点强调。前景 `#f7f4ec` 是它的字色（6.2:1）。深色下它反而提亮一档，因为深蓝会沉进暖黑的外壳。
 - 选中底用主色的 14% alpha（`Primary.WithAlpha(0.14)`），hover 加一档到 22%，按下 30%。同一套透明度出现在排序按钮、活动筛选与图表曲线选中上。
 
 ### Neutral
 
-- **Shell Gray**（`#f5f5f5`，深色 `#262626`）：窗口底、标题栏、状态行背后的那层。它永远是最外的一层，卡片浮在它上面。
-- **Rail Gray**（`#f7f7f7`，深色 `#1c1c1c`）：左侧导航列。比外壳浅一档，靠色差而不是边框与内容分开。
-- **Paper**（`#ffffff`，深色 `#0a0a0a`）：内容卡片、弹窗、输入框。整个窗口只有一块纸。
-- **Ink**（`#0a0a0a`，深色 `#fafafa`）：正文与图标。次要文字 `#737373`（深色 `#a1a1a1`）承担标签、表头、占位说明。
-- **Hairline**（`#e5e5e5`，深色 `rgba(255,255,255,0.10)`）：所有分隔——表头底线、行分隔、卡片描边。输入框描边用同一值。
-- **Highlight**（`#e6e6e6`，深色 `#343434`）：导航与菜单行的悬停 / 选中底。它由 Viva 的 `Accent` 改写而来，比库里的默认值深，因为默认值在纸白上几乎读不出悬停。
+- **Shell**（`#f2ece0`，深色 `#2a231b`）：窗口底、标题栏、状态行背后那层。它永远是最外的一层，卡片浮在它上面。
+- **Rail**（`#f7f2e8`，深色 `#211b15`）：左侧导航列，永远夹在外壳与纸面之间——浅色下比外壳浅，深色下比外壳深。靠色差而不是边框与内容分开。
+- **Paper**（`#fffdf8`，深色 `#17130f`）：内容卡片、弹窗、输入框。整个窗口只有一块纸；深色下它是比外壳更暗的一层。
+- **Ink**（`#1a1611`，深色 `#f3ede2`）：正文与图标。次要文字 `#6f6656`（深色 `#a89d8b`）承担标签、表头、占位说明——在纸面上 5.6:1 / 6.9:1，在 Muted 底上 4.8:1 / 5.8:1。
+- **Hairline**（`#e7dfd0`，深色 `rgba(243,237,226,0.12)`）：所有分隔——表头底线、行分隔、卡片描边。输入框的描边深一档（`#ddd3c1` / `rgba(243,237,226,0.16)`）。
+- **Highlight**（`#eae3d4`，深色 `#2e261d`）：导航与菜单行的悬停 / 选中底。比 Viva 的默认 `Accent` 深一档，否则它在纸面上几乎读不出悬停。
 
 ### Semantic (data and state only)
 
-- **Income**（`#16a34a`，深色 `#4ade80`）：收入金额、收入类型字、完成的勾。
-- **Expense**（`#dc2626`，深色 `#f87171`）：支出金额、删除确认、危险动作。
-- **Transfer**（`#3b82f6`，深色 `#60a5fa`）：转账金额与类型。
-- **Outlier**（`#d97706`，深色 `#fbbf24`）：离群值标记、关联事件日期星标、警告状态。
-- 每个语义色的胶囊底是它自己的 12% alpha，不是另取一个米色。
+- **Income**（`#12703a`，深色 `#58b06b`）：收入金额、收入类型字、完成的勾。主题的 `Success`。
+- **Expense**（`#c0271f`，深色 `#e2645c`）：支出金额、删除确认、危险动作。主题的 `Danger`。
+- **Transfer**（`#2b64c4`，深色 `#6f95e8`）：转账金额与类型。图表色板的第三位，刻意不是强调蓝——蓝属于动作，不属于交易类型。
+- **Outlier**（`#94570a`，深色 `#d9a04a`）：离群值标记、关联事件日期星标、警告状态。图表色板的第四位。
+- 四个色都比旧工程的取色深一档：`#16a34a` 在纸上是 3.3:1、`#dc2626` 是 4.0:1，做 13px 金额不够。色相没动，只是压到正文对比度以内。
+- 每个语义色压在自己 12% alpha 的胶囊底上，并且仍要 ≥4.5:1——页面通过 `internal/components/semantic` 读，不写死。
 
-### Direction: Warm Paper（已确认，尚未实现）
+### The Two Appearances
 
-中性色往暖里走：外壳从冷灰换成暖灰纸面，纸白微微偏米，墨色偏暖黑。强调蓝与四个语义色不动——温度只由中性色提供，不能靠加第二个彩色。
+浅色是 **Warm Paper**：暖灰外壳、纸白卡片、暖墨正文。深色是 **Warm Ink**：暖褐近黑当纸，外壳反而比纸浅一档，主按钮提亮，危险色换成亮红——所以深色里的实心危险按钮压的是墨色字，而不是白字。
 
-提案值（迁移时的起点，不是现在的代码）：外壳 `#f4f1ec`、导航 `#f7f4ef`、纸面 `#fffdfa`、发丝线 `#e7e2d9`、墨色 `#1a1815`、次要文字 `#6f675c`。落地时必须成对给出深色值，并按对比度复核，而不是把浅色反相。
+两套共用同一组 token 名，深色值单独挑、不由浅色反相。`internal/desktop/theme_test.go` 是对比度闸门：它把两套主题的正文、次要文字、四个数据色（含 12% 芯片底）、主按钮字色、焦点环、图表线逐条量一遍，任何一条掉出阈值都会让测试失败。
 
 ### Named Rules
 
@@ -180,7 +183,7 @@ Transactions 是本地优先的个人财务桌面工作台。窗口是一张安�
 
 **The Semantic Silo Rule.** 收入 / 支出 / 转账 / 离群值只出现在数据与状态上——金额、类型字、标记、连通性；外壳、导航、标题栏、品牌面永不上色。
 
-**The Theme-Only Colour Rule.** 颜色只在 `theme.go` 定义一次。页面读 `c.Theme()`，不写字面量十六进制；暖色迁移只改主题层，页面一行都不用动。
+**The Theme-Only Colour Rule.** 颜色只在 `internal/desktop/theme.go` 定义一次，页面读 `c.Theme()`。数据色（收入 / 支出 / 转账 / 离群值）经 `internal/components/semantic` 从主题的 `Success`、`Danger` 与图表色板取；新页面里不出现一个十六进制。
 
 ## Typography
 
@@ -230,7 +233,7 @@ Transactions 是本地优先的个人财务桌面工作台。窗口是一张安�
 
 发丝线分层：表面之间用色差加 1px 边框分开，卡片本身不带阴影。阴影只出现在真正浮起来的层——菜单、下拉、弹窗、对话框；它们由 Viva 的组件画，页面不自己加 `Shadow`。
 
-内容是平的，焦点是立体的：键盘焦点用 2px `theme.Ring` 环（导航行 3px；浅色 `#a1a1a1`、深色 `#737373`），画在控件外侧，不改变布局。今天的焦点环是中性灰而不是蓝——这是现状，不是目标；新页面先用 `theme.Ring`，等主题层统一换色。
+内容是平的，焦点是立体的：键盘焦点用 2px `theme.Ring` 环（导航行 3px；浅色 `#6f6656` 5.6:1、深色 `#a89d8b` 6.9:1），画在控件外侧，不改变布局。环是暖墨色而不是蓝：蓝环会和「选中」的强调色抢同一个意思。
 
 ### Shadow Vocabulary
 
@@ -295,7 +298,7 @@ Transactions 是本地优先的个人财务桌面工作台。窗口是一张安�
 
 ### Do:
 
-- **Do** 从 `c.Theme()` 取颜色、从 `theme.Metrics` 取尺寸；页面里不出现十六进制字面量（语义色的明暗对由共享 helper 提供，例如 `kindColor`）。
+- **Do** 从 `c.Theme()` 取颜色、从 `theme.Metrics` 取尺寸；页面里不出现十六进制字面量，数据色经 `internal/components/semantic` 取。
 - **Do** 用 32px 控件、7.5px 控件圆角、11px 卡片圆角这三档把界面钉住。
 - **Do** 金额右对齐、列宽固定；实现等宽规则时，整列一起换，不留半列等宽。
 - **Do** 把语义色限制在数据与状态上。
@@ -307,7 +310,7 @@ Transactions 是本地优先的个人财务桌面工作台。窗口是一张安�
 
 - **Don't** 引入第二个强调色；强调靠位置与字号。
 - **Don't** 用语义色涂导航、标题栏或任何 chrome。
-- **Don't** 在页面里硬编码新的灰或暖色——暖色迁移只发生在 `internal/desktop/theme.go`。
+- **Don't** 在页面里硬编码颜色——每套主题只在 `internal/desktop/theme.go` 定义一次。
 - **Don't** 用阴影搭层级（卡片静止无阴影），也不做「卡片套卡片」。
 - **Don't** 给按下态加位移、缩放或涟漪；Viva 的控件用颜色回应，整个应用保持一致。
 - **Don't** 让数字列随内容变宽或折行；窄窗优先收内边距与横向滚动。

@@ -208,34 +208,35 @@ func TestCategoryNamesFollowTheType(t *testing.T) {
 	}
 }
 
-func TestTypeColorsMatchTheOldProject(t *testing.T) {
-	light, dark := gfx.LightTheme(), gfx.DarkTheme()
+func TestTypeColorsFollowTheTheme(t *testing.T) {
+	// The page reads the theme's data tokens, so a theme change is the only
+	// place these colors are set. Give the theme distinctive values and check
+	// the wiring, not the hues (those are measured in internal/desktop).
+	theme := gfx.LightTheme()
+	theme.Success = gfx.RGB24(0x112233)
+	theme.Danger = gfx.RGB24(0x445566)
+	theme.Chart[2] = gfx.RGB24(0x778899)
 	cases := []struct {
-		name  string
-		theme gfx.Theme
-		kind  string
-		want  gfx.Color
+		name string
+		kind string
+		want gfx.Color
 	}{
-		{"light income", light, kindIncome, gfx.RGB24(0x16a34a)},
-		{"light expense", light, kindExpense, gfx.RGB24(0xdc2626)},
-		{"light transfer", light, kindTransfer, gfx.RGB24(0x3b82f6)},
-		{"dark income", dark, kindIncome, gfx.RGB24(0x4ade80)},
-		{"dark expense", dark, kindExpense, gfx.RGB24(0xf87171)},
-		{"dark transfer", dark, kindTransfer, gfx.RGB24(0x60a5fa)},
+		{"income", kindIncome, theme.Success},
+		{"expense", kindExpense, theme.Danger},
+		{"transfer", kindTransfer, theme.Chart[2]},
 	}
 	for _, test := range cases {
-		if got := kindColor(test.theme, test.kind); got != test.want {
+		if got := kindColor(theme, test.kind); got != test.want {
 			t.Errorf("%s = %v, want %v", test.name, got, test.want)
 		}
 	}
 }
 
-func TestOutlierColorMatchesTheOldProject(t *testing.T) {
-	if got := outlierColor(gfx.LightTheme()); got != gfx.RGB24(0xd97706) {
-		t.Errorf("light outlier color = %v", got)
-	}
-	if got := outlierColor(gfx.DarkTheme()); got != gfx.RGB24(0xfbbf24) {
-		t.Errorf("dark outlier color = %v", got)
+func TestOutlierColorFollowsTheTheme(t *testing.T) {
+	theme := gfx.DarkTheme()
+	theme.Chart[3] = gfx.RGB24(0xaabbcc)
+	if got := outlierColor(theme); got != theme.Chart[3] {
+		t.Errorf("outlier color = %v", got)
 	}
 }
 

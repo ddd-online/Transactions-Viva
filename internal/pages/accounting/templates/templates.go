@@ -14,6 +14,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/selectbox"
+	"transactions/internal/components/semantic"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting/ledger"
 	tpl "transactions/internal/pages/accounting/template"
@@ -413,29 +414,12 @@ func dash(c ui.C) ui.Box {
 	return ui.Text(c, "-").FontSize(theme.Metrics.FontSizeM).Color(theme.MutedForeground)
 }
 
-// kindColor is the type chip's hue: 支出 red, 收入 green, 转账 blue.
-func kindColor(kind string, theme gfx.Theme) gfx.Color {
-	switch kind {
-	case tpl.KindIncome:
-		return theme.Success
-	case tpl.KindTransfer:
-		return theme.Primary
-	}
-	return theme.Danger
-}
+// kindColor and outlierColor come from the same semantic package the records
+// table and the analysis charts use: 支出 red, 收入 green, 转账 blue (its own
+// series hue, not the action accent), 离群值 amber.
+func kindColor(kind string, theme gfx.Theme) gfx.Color { return semantic.Kind(theme, kind) }
 
-// The 离群值 mark has no theme color; it keeps the old project's amber.
-var (
-	outlierLight = gfx.RGB24(0xd97706)
-	outlierDark  = gfx.RGB24(0xfbbf24)
-)
-
-func outlierColor(theme gfx.Theme) gfx.Color {
-	if theme.Background.Red < 0.5 {
-		return outlierDark
-	}
-	return outlierLight
-}
+func outlierColor(theme gfx.Theme) gfx.Color { return semantic.Outlier(theme) }
 
 // openForm and closeForm reset the form; the type and category are 支出 and
 // nothing, as the old dialog starts.

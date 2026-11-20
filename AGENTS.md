@@ -109,7 +109,7 @@ internal/pages/          各功能页：accounting、stock、todo、events、dia
   accounting/template/   模板缓存与 domain 互转（按账本存放，记录弹窗与模板页共用）
   accounting/templates/  模板页（表格 / 新建与删除弹窗 / 拖拽排序）
   accounting/analysis/   分析页（图表列表 / 折线图 / 饼图 / 曲线条件 / 合计）
-internal/components/     可复用的 UI：占位空态，以及 datepicker / pagination / selectbox 子包
+internal/components/     可复用的 UI：占位空态，datepicker / pagination / selectbox / semantic 子包
 internal/pages/settings/controls/  只属于设置页的分组卡片 / 设置行
 internal/domain/         纯领域规则与数据形状：金额、记录、账本、事件、日记、待办、股票
 internal/repository/     页面使用的数据契约（接口 / 查询 / 错误），不依赖 SQLite
