@@ -7,7 +7,6 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/typography"
-	"transactions/internal/stocklimit"
 
 	storepkg "transactions/internal/store"
 )
@@ -55,7 +54,7 @@ func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 			m.diary.SetDataSource(m.workspace)
 			m.events.SetDataSource(m.workspace)
 			_ = m.stock.SetRepository(m.workspace)
-			m.stock.SetLimitService(stocklimit.NewService(m.workspace, stocklimit.NewEastmoneySource(), m.stock.QuoteFetcher()))
+			m.stock.SetLimitService(m.stockLimitService(m.workspace))
 		}
 		return err
 	}
@@ -72,14 +71,14 @@ func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 			m.diary.SetDataSource(m.workspace)
 			m.events.SetDataSource(m.workspace)
 			_ = m.stock.SetRepository(m.workspace)
-			m.stock.SetLimitService(stocklimit.NewService(m.workspace, stocklimit.NewEastmoneySource(), m.stock.QuoteFetcher()))
+			m.stock.SetLimitService(m.stockLimitService(m.workspace))
 		}
 		if workspace != m.workspace {
 			_ = workspace.Close()
 		}
 		return err
 	}
-	m.stock.SetLimitService(stocklimit.NewService(workspace, stocklimit.NewEastmoneySource(), m.stock.QuoteFetcher()))
+	m.stock.SetLimitService(m.stockLimitService(workspace))
 	previous := m.workspace
 	m.workspace = workspace
 	m.workspaceErr = ""
