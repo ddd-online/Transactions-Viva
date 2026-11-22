@@ -252,25 +252,26 @@ func fundHeader(c ui.C) {
 	theme := c.Theme()
 	ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().PadX(layout.BlockGap).
 		Gap(layout.ColumnGap).Items(ui.Center).Background(theme.Muted).Children(func() {
-		ui.Text(c, "日期").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(92)
-		ui.Text(c, "事件").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(110)
-		ui.Text(c, "金额变化").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(120).TextEnd()
-		ui.Text(c, "现金余额").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(120).TextEnd()
-		ui.Text(c, "备注").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Grow(1)
+		ui.Text(c, "日期").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(92).TextCenter()
+		ui.Text(c, "事件").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(240)
+		ui.Text(c, "金额变化").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(104).TextEnd()
+		ui.Text(c, "现金余额").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(104).TextEnd()
+		ui.Text(c, "备注").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Grow(1).MinWidth(0).TextEnd()
 	})
 }
 
 func fundRow(c ui.C, record domain.StockFundRecord) {
 	theme := c.Theme()
-	ui.Row(c).Height(layout.RowHeight).FillWidth().PadX(layout.BlockGap).
+	ui.Row(c).MinHeight(layout.RowHeight).FillWidth().PadX(layout.BlockGap).
 		Gap(layout.ColumnGap).Items(ui.Center).Children(func() {
-		ui.Text(c, record.RecordDate).FontSize(typography.SizeBody).Mono().Width(92)
-		ui.Text(c, record.EventText).FontSize(typography.SizeBody).Width(110).Ellipsis()
+		ui.Text(c, record.RecordDate).FontSize(typography.SizeBody).Mono().Width(92).TextCenter()
+		ui.Text(c, record.EventText).FontSize(typography.SizeBody).Width(240).MaxLines(2)
 		ui.Text(c, signedMoney(record.AmountChangeCents)).FontSize(typography.SizeBody).Mono().
-			Width(120).TextEnd().Color(pnlColor(*theme, record.AmountChangeCents))
+			Width(104).TextEnd().Color(pnlColor(*theme, record.AmountChangeCents))
 		ui.Text(c, money(record.CashBalanceCents)).FontSize(typography.SizeBody).Mono().
-			Width(120).TextEnd()
-		ui.Text(c, record.Remark).FontSize(typography.SizeBody).Muted().Grow(1).Ellipsis()
+			Width(104).TextEnd()
+		ui.Text(c, record.Remark).FontSize(typography.SizeBody).Muted().
+			Grow(1).MinWidth(0).TextEnd().Ellipsis()
 	})
 }
 
