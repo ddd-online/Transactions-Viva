@@ -273,7 +273,15 @@ func (state *State) measure(canvas *gfx.Canvas, theme gfx.Theme, spec Spec, anch
 		gridHeight += metrics.FontSizeS + gap // the weekday row
 	}
 
-	width := float32(gridColumns)*metrics.ControlHeight + float32(gridColumns-1)*gap
+	cellWidth := float32(metrics.ControlHeight)
+	// Two-digit days must fit inside a cell's button padding, not just inside
+	// the column: a 32px cell with the default 10px side padding leaves 12px
+	// for the label and clips "28" / "30". Widen the whole panel to the label's
+	// measured width once, and every grain uses those wider cells.
+	if sample := viva.BeginButton(canvas, theme, gfx.ID{}, gfx.Rect{}).SizeToFit("00"); sample.BoundsWidth() > cellWidth {
+		cellWidth = sample.BoundsWidth()
+	}
+	width := float32(gridColumns)*cellWidth + float32(gridColumns-1)*gap
 	presetsHeight := viva.BeginButton(nil, theme, gfx.ID{}, gfx.Rect{}).Small().BoundsHeight()
 	presetsWidth := float32(0)
 	for _, preset := range datePresets(spec.Grain, spec.CloseOnPick) {
