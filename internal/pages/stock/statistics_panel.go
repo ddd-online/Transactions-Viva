@@ -253,9 +253,7 @@ func (p *statisticsPanel) View(c ui.C) {
 }
 
 func (p *statisticsPanel) toolbar(c ui.C) {
-	ui.Flow(c).FillWidth().MinHeight(layout.ToolbarHeight).
-		PadX(layout.Inset).PadY(6).Gap(layout.Gap).LineGap(layout.Gap).
-		Items(ui.Center).Children(func() {
+	contents := func() {
 		// The account and the 统计 / 明细 pane stay together: a wrapped toolbar
 		// must not leave the divider alone at the end of a line.
 		ui.Row(c).Gap(layout.Gap).Items(ui.Center).Children(func() {
@@ -324,7 +322,17 @@ func (p *statisticsPanel) toolbar(c ui.C) {
 			p.tag = tag
 			p.filterChanged()
 		}
-	})
+	}
+	if c.Bounds().Width >= 1100 {
+		// One line: a Row centers the select boxes and the segmented choices
+		// on the toolbar's mid-line instead of leaving them at the Flow's top.
+		ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
+			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(contents)
+		return
+	}
+	ui.Flow(c).FillWidth().MinHeight(layout.ToolbarHeight).
+		PadX(layout.Inset).PadY(6).Gap(layout.Gap).LineGap(layout.Gap).
+		Items(ui.Center).Children(contents)
 }
 
 // applyRecent is the field's Enter: only a positive whole number becomes the
