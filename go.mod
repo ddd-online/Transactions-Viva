@@ -6,6 +6,7 @@ tool github.com/vivaui/viva/cmd/viva
 
 require (
 	github.com/vivaui/viva v0.6.5
+	golang.org/x/image v0.44.0
 	golang.org/x/text v0.44.0
 	modernc.org/sqlite v1.62.0
 )
