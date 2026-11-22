@@ -538,14 +538,17 @@ func (p *statisticsPanel) drawChart(d *ui.DrawContext) {
 	area := statInset(d.Rect, 12)
 	progress := p.chartAnim.Progress(d.Canvas,
 		"stats:"+strconv.FormatUint(uint64(p.chartVersion), 10), chartanim.Duration)
-	revealing := progress < 1
-	if revealing {
-		d.Canvas.Clip(gfx.Rect{X: area.X, Y: area.Y, Width: area.Width * progress, Height: area.Height})
-	}
 	p.chartPlot = viva.PaintAreaChart(d.Canvas, *d.Theme, area,
 		p.chartHit, p.areaChart(*d.Theme), &p.chartState)
-	if revealing {
-		d.Canvas.Unclip()
+	if progress < 1 {
+		// Cover the un-revealed part of the plot instead of clipping the whole
+		// chart: the axis labels and the grid's frame stay whole while the
+		// data unfolds left to right.
+		plot := p.chartPlot.Plot
+		d.Canvas.Fill(gfx.Rect{
+			X: plot.X + plot.Width*progress, Y: plot.Y,
+			Width: plot.Width * (1 - progress), Height: plot.Height,
+		}, d.Theme.Card)
 	}
 	p.drawHover(d)
 }

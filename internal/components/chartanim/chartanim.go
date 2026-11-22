@@ -13,8 +13,10 @@ import (
 	"github.com/vivaui/viva/gfx"
 )
 
-// Duration is the reveal used by statistics and analysis charts.
-const Duration = 420 * time.Millisecond
+// Duration is the reveal used by statistics and analysis charts. It is a
+// routine state change on an Operate surface, so it stays short enough to
+// repeat while switching metrics or ranges.
+const Duration = 320 * time.Millisecond
 
 // State is one chart's reveal progress. Keep it in the page model: it survives
 // paints but belongs to one chart.

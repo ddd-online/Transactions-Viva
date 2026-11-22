@@ -68,14 +68,16 @@ func (m *Model) canvas(c ui.C, chart *domain.Chart) {
 			}
 			plot := inset(d.Rect, 12)
 			progress := m.chartProgress(d)
-			revealing := progress < 1
-			if revealing {
-				d.Canvas.Clip(gfx.Rect{X: plot.X, Y: plot.Y, Width: plot.Width * progress, Height: plot.Height})
-			}
 			m.chartPlot = components.PaintAreaChart(d.Canvas, *d.Theme, plot, m.chartHit,
 				m.areaChart(*d.Theme, label), &m.chartState)
-			if revealing {
-				d.Canvas.Unclip()
+			if progress < 1 {
+				// The axis labels stay whole while the data unfolds: cover the
+				// un-revealed plot interior rather than clipping the chart.
+				revealed := m.chartPlot.Plot
+				d.Canvas.Fill(gfx.Rect{
+					X: revealed.X + revealed.Width*progress, Y: revealed.Y,
+					Width: revealed.Width * (1 - progress), Height: revealed.Height,
+				}, d.Theme.Card)
 			}
 		})
 	})
@@ -199,14 +201,21 @@ func (m *Model) drawPie(d *ui.DrawContext) {
 	}, hole, theme.Card)
 	// The hole carries the total only where the hole is wider than the figure:
 	// in a short card the number would spill across the ring, and the footer
-	// already states the range's total.
+	// already states the range's total. It fades in behind the sweeping ring;
+	// painted at full strength on the first frame it looked like a number
+	// floating in an empty card.
+	labelFade := max(0, min(1, (progress-0.25)/0.5))
 	total := domain.CentsToYuan(m.pie.Total)
-	amount := gfx.TextStyle{Size: typography.SizeBody, Color: theme.Foreground, Mono: true}
+	amount := gfx.TextStyle{
+		Size: typography.SizeBody, Color: d.Fade(theme.Foreground.WithAlpha(labelFade)), Mono: true,
+	}
 	if d.Canvas.TextWidthStyle(total, amount) <= hole*2-8 {
 		d.Canvas.LabelCenter("合计", gfx.Rect{
 			X: pie.X + center - radius/2, Y: pie.Y + center - 18,
 			Width: radius, Height: 18,
-		}, gfx.TextStyle{Size: typography.SizeCaption, Color: theme.MutedForeground})
+		}, gfx.TextStyle{
+			Size: typography.SizeCaption, Color: d.Fade(theme.MutedForeground.WithAlpha(labelFade)),
+		})
 		d.Canvas.LabelCenter(total, gfx.Rect{
 			X: pie.X + center - radius/2, Y: pie.Y + center,
 			Width: radius, Height: 22,
