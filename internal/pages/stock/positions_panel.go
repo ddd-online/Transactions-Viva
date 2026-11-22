@@ -783,7 +783,7 @@ func (p *positionsPanel) tradesSection(c ui.C, position *domain.StockPosition) {
 		height := layout.TableHeaderHeight +
 			layout.RowHeight*float32(len(trades)) + 12
 		ui.Scroll(c).Height(height).Sideways().Scrollbars().Children(func() {
-			ui.Column(c).Width(positionsTradeTableWidth).Children(func() {
+			ui.Column(c).FillWidth().MinWidth(positionsTradeTableWidth).Children(func() {
 				p.tradeHeader(c)
 				for _, trade := range trades {
 					p.tradeRow(c, trade)
@@ -805,7 +805,9 @@ func (p *positionsPanel) tradeHeader(c ui.C) {
 		positionsTradeHeaderCell(c, "成交金额", 84, true)
 		positionsTradeHeaderCell(c, "费用", 64, true)
 		positionsTradeHeaderCell(c, "资金变动", 90, true)
-		positionsTradeHeaderCell(c, "操作", 64, false)
+		ui.Spacer(c)
+		ui.Text(c, "操作").FontSize(typography.SizeCaption).Width(64).
+			TextCenter().Color(theme.MutedForeground)
 	})
 }
 
@@ -839,6 +841,7 @@ func (p *positionsPanel) tradeRow(c ui.C, trade domain.StockTrade) {
 			Mono().Width(64).TextEnd()
 		ui.Text(c, signedMoney(cash)).FontSize(typography.SizeBody).
 			Mono().Width(90).TextEnd().Color(pnlColor(*theme, cash))
+		ui.Spacer(c)
 		ui.Row(c).Width(64).Gap(2).Items(ui.Center).Children(func() {
 			if ui.Button(c, "编辑").Ghost().Small().IconOnly().
 				Icon(icons.Pencil).Tooltip("编辑成交").Clicked() {
