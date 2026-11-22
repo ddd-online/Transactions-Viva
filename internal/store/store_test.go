@@ -491,7 +491,7 @@ func TestOpenRejectsBadWorkspaces(t *testing.T) {
 		if _, err := db.Exec(initSchema); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := db.Exec("CREATE TABLE stock_account (id TEXT)"); err != nil {
+		if _, err := db.Exec("CREATE TABLE stock_account (id TEXT, ledger_id TEXT)"); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := db.Exec("INSERT INTO app_meta(key, value) VALUES ('schema_version', '12')"); err != nil {

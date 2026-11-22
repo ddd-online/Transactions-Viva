@@ -37,8 +37,8 @@ func oldFixture(t *testing.T) string {
 		"INSERT INTO chart (chart_id, ledger_id, title, granularity, chart_lines, chart_type, group_field, group_transaction_type, group_category, is_preset, sort_order, created_at, updated_at) " +
 			"VALUES ('c1', 'l1', '月度消费趋势', 'month', '[]', 'line', '', '', '', 1, 0, 1000, 1000)",
 		"INSERT INTO app_meta (key, value) VALUES ('schema_version', '12')",
-		"CREATE TABLE stock_account (id TEXT)",
-		"INSERT INTO stock_account (id) VALUES ('s1')",
+		"CREATE TABLE stock_account (id TEXT, ledger_id TEXT)",
+		"INSERT INTO stock_account (id, ledger_id) VALUES ('s1', 'l1')",
 	}
 	for _, statement := range statements {
 		if _, err := db.Exec(statement); err != nil {

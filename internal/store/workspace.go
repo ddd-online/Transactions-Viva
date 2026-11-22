@@ -149,17 +149,36 @@ func quickCheck(db *sql.DB) error {
 // isOldAccountingDB recognizes the old application's database so opening it can
 // point at the import tool instead of a generic version error.
 //
-// The tables are the ones this workspace never creates. Diary (v3) and event
-// (v5) tables exist here too, so their presence says nothing about a foreign
-// database; the stock and todo tables are the old application's alone.
+// The identity key (app_id) is what this application writes from schema v6 on;
+// the old database never has it. A v6 database whose app_meta went missing still
+// has the new stock_account shape (no ledger_id column), so the old table name
+// alone is no longer a marker. todo_item is the old application's alone until
+// the todo section is migrated.
 func isOldAccountingDB(db *sql.DB) bool {
-	for _, table := range []string{"stock_account", "todo_item"} {
+	if hasAppID(db) {
+		return false
+	}
+	for _, table := range []string{"todo_item"} {
 		exists, err := tableExists(db, table)
 		if err == nil && exists {
 			return true
 		}
 	}
+	// Old stock_account is per ledger and therefore has ledger_id; the v6 shape
+	// does not. This keeps an old database with no todo rows recognizable.
+	if exists, err := tableExists(db, "stock_account"); err == nil && exists {
+		if hasLedger, columnErr := tableHasColumn(db, "stock_account", "ledger_id"); columnErr == nil && hasLedger {
+			return true
+		}
+	}
 	return false
+}
+
+// hasAppID reports whether app_meta carries this application's identity key.
+func hasAppID(db *sql.DB) bool {
+	var value string
+	err := db.QueryRow("SELECT value FROM app_meta WHERE key = 'app_id'").Scan(&value)
+	return err == nil && strings.TrimSpace(value) != ""
 }
 
 // Directory is the workspace directory.
