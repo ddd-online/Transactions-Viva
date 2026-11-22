@@ -34,6 +34,10 @@ const (
 	tradeAmountWidth = float32(80)
 	tradeFeeWidth    = float32(62)
 	tradeActionWidth = float32(60)
+
+	// Below this window width the round header gives up its single line: the
+	// round, its stats, the P&L and the two controls no longer fit together.
+	recordsRoundHeaderSingleRowWidth float32 = 1200
 )
 
 // recordsPanel is 股票 · 记录: the closed stocks on the left and the chosen
@@ -601,42 +605,83 @@ func (p *recordsPanel) roundHeader(c ui.C, round domain.StockRoundDetail) {
 		head.Background(theme.Accent)
 	}
 	head.Children(func() {
-		ui.Row(c).FillWidth().Gap(6).Items(ui.Center).Children(func() {
-			glyph := icons.ChevronRight
-			if expanded {
-				glyph = icons.ChevronDown
-			}
-			ui.Icon(c, glyph).Size(13, 13).Color(theme.MutedForeground)
-			ui.Text(c, "第 "+strconv.Itoa(round.Round.RoundNo)+" 轮").
-				FontSize(typography.SizeBody).Weight(gfx.WeightMedium)
-			typography.Caption(c, recordRoundRange(round.Round)).Grow(1).Ellipsis()
-			ui.Text(c, money(round.PnlCents)).FontSize(typography.SizeBody).
-				Mono().Color(pnlColor(*theme, round.PnlCents))
-			ui.Text(c, historyPercent(round.PnlRate)).
-				FontSize(typography.SizeCaption).Mono().
-				Color(historyRateColor(*theme, round.PnlRate))
-		})
-		ui.Row(c).FillWidth().Gap(8).Items(ui.Center).Children(func() {
-			typography.Caption(c, strconv.Itoa(len(round.Trades))+" 笔成交")
-			typography.Caption(c, "费用")
-			ui.Text(c, money(round.FeeCents)).FontSize(typography.SizeCaption).Mono()
-			ui.Spacer(c)
-			tag := p.roundTagValue(round.Round)
-			if selectbox.Select(c, tag, p.roundTagChoices(*tag),
-				func(value string) string { return value }).
-				Small().Width(88).Label("标签").Changed() {
-				p.saveRoundTag(round.Round.ID, *tag)
-			}
-			if p.openRound != nil {
-				if ui.Button(c, "记心得").Small().Secondary().Clicked() {
-					p.openRound(round.Round.StockCode, round.Round.ID)
-				}
-			}
+		if c.Bounds().Width >= recordsRoundHeaderSingleRowWidth {
+			ui.Row(c).FillWidth().Gap(layout.Gap).Items(ui.Center).
+				Justify(ui.Between).Children(func() {
+				recordRoundTitle(c, round, expanded, *theme)
+				recordRoundStats(c, round)
+				recordRoundPnl(c, round, *theme)
+				p.roundControls(c, round)
+			})
+			return
+		}
+		ui.Column(c).FillWidth().Gap(6).Children(func() {
+			ui.Row(c).FillWidth().Gap(layout.Gap).Items(ui.Center).Children(func() {
+				recordRoundTitle(c, round, expanded, *theme)
+				ui.Spacer(c)
+				recordRoundStats(c, round)
+			})
+			ui.Row(c).FillWidth().Gap(layout.Gap).Items(ui.Center).Children(func() {
+				recordRoundPnl(c, round, *theme)
+				ui.Spacer(c)
+				p.roundControls(c, round)
+			})
 		})
 	})
 	if head.Clicked() {
 		p.toggleRound(round.Round.ID)
 	}
+}
+
+// recordRoundTitle is the round's name and date range, with the disclosure mark.
+func recordRoundTitle(c ui.C, round domain.StockRoundDetail, expanded bool, theme gfx.Theme) {
+	ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
+		glyph := icons.ChevronRight
+		if expanded {
+			glyph = icons.ChevronDown
+		}
+		ui.Icon(c, glyph).Size(13, 13).Color(theme.MutedForeground)
+		ui.Text(c, "第 "+strconv.Itoa(round.Round.RoundNo)+" 轮").
+			FontSize(typography.SizeBody).Weight(gfx.WeightMedium)
+		typography.Caption(c, recordRoundRange(round.Round))
+	})
+}
+
+// recordRoundStats is how much the round traded and what it cost.
+func recordRoundStats(c ui.C, round domain.StockRoundDetail) {
+	ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
+		typography.Caption(c, strconv.Itoa(len(round.Trades))+" 笔成交")
+		typography.Caption(c, "费用")
+		ui.Text(c, money(round.FeeCents)).FontSize(typography.SizeCaption).Mono()
+	})
+}
+
+// recordRoundPnl is the round's settled profit and its rate.
+func recordRoundPnl(c ui.C, round domain.StockRoundDetail, theme gfx.Theme) {
+	ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
+		ui.Text(c, money(round.PnlCents)).FontSize(typography.SizeBody).
+			Mono().Color(pnlColor(theme, round.PnlCents))
+		ui.Text(c, historyPercent(round.PnlRate)).
+			FontSize(typography.SizeCaption).Mono().
+			Color(historyRateColor(theme, round.PnlRate))
+	})
+}
+
+// roundControls are the round's editable tag and the 记心得 entry.
+func (p *recordsPanel) roundControls(c ui.C, round domain.StockRoundDetail) {
+	ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
+		tag := p.roundTagValue(round.Round)
+		if selectbox.Select(c, tag, p.roundTagChoices(*tag),
+			func(value string) string { return value }).
+			Small().Width(88).Label("标签").Changed() {
+			p.saveRoundTag(round.Round.ID, *tag)
+		}
+		if p.openRound != nil {
+			if ui.Button(c, "记心得").Small().Secondary().Clicked() {
+				p.openRound(round.Round.StockCode, round.Round.ID)
+			}
+		}
+	})
 }
 
 // roundTagValue keeps one stable string per round: a Select's state is keyed by
