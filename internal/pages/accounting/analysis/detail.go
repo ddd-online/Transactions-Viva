@@ -129,7 +129,7 @@ func (m *Model) curveTable(c ui.C, chart *domain.Chart) {
 		// an empty cell there left a blank strip after 合计; without the
 		// column, 合计 is the rightmost column and sits on the table edge.
 		if !chart.IsPreset {
-			ui.Row(c).Width(curveActionWidth).Justify(ui.End).Children(func() {
+			ui.Row(c).Width(curveActionWidth).Justify(ui.Center).Children(func() {
 				typography.Caption(c, "操作")
 			})
 		}
@@ -174,7 +174,7 @@ func (m *Model) curveRow(c ui.C, chart *domain.Chart, index int, line *domain.Ch
 			typography.Body(c, domain.CentsToYuan(m.seriesTotal(index))).Mono()
 		})
 		if !chart.IsPreset {
-			ui.Row(c).Width(curveActionWidth).Gap(2).Justify(ui.End).Children(func() {
+			ui.Row(c).Width(curveActionWidth).Gap(2).Justify(ui.Center).Children(func() {
 				if ui.Button(c, "编辑曲线 "+line.Label).Ghost().Small().Icon(icons.Pencil).
 					IconOnly().Tooltip("编辑曲线").Clicked() {
 					m.openLine(chart, index)
