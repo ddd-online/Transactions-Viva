@@ -358,11 +358,7 @@ func (p *positionsPanel) View(c ui.C) {
 		ui.Row(c).Grow(1).Children(func() {
 			p.rail(c)
 			ui.Divider(c)
-			ui.Scroll(c).Grow(1).Children(func() {
-				ui.Column(c).Pad(layout.Inset).Gap(layout.BlockGap).Children(func() {
-					p.detail(c)
-				})
-			})
+			p.detailColumn(c)
 		})
 	})
 	p.dialogs(c)
@@ -391,12 +387,19 @@ func (p *positionsPanel) toolbar(c ui.C) {
 func (p *positionsPanel) rail(c ui.C) {
 	ui.Column(c).Width(layout.RailWidth).MinWidth(layout.RailWidth).Shrink(0).
 		FillHeight().Children(func() {
+		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
+			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+			typography.Section(c, "持仓")
+			typography.Caption(c, strconv.Itoa(len(p.positions))+" 只")
+			ui.Spacer(c)
+		})
+		ui.Divider(c)
 		if len(p.positions) == 0 {
 			emptystate.Notice(c, "当前没有持仓")
 			return
 		}
 		ui.Scroll(c).Grow(1).Children(func() {
-			ui.Column(c).Gap(4).PadSides(layout.Inset, 4, 4, 4).Children(func() {
+			ui.Column(c).Gap(4).PadSides(4, 8, 4, 8).Children(func() {
 				for i := range p.positions {
 					if i > 0 {
 						ui.Divider(c)
@@ -503,29 +506,39 @@ func (p *positionsPanel) selectPosition(code string) {
 
 // ------------------------------------------------------------------ 右栏
 
-func (p *positionsPanel) detail(c ui.C) {
-	position := p.selectedPosition()
-	if position == nil {
-		if len(p.positions) == 0 {
-			ui.Column(c).Gap(4).PadY(layout.GroupGap).Children(func() {
-				typography.Section(c, "当前没有持仓")
-				typography.Body(c, "点顶部「建仓」记录第一笔买入。").Muted()
+// detailColumn is the right side: a fixed 44 px header like the records page,
+// then the scrollable metrics, ledger and reviews.
+func (p *positionsPanel) detailColumn(c ui.C) {
+	ui.Column(c).Grow(1).FillHeight().MinWidth(0).Children(func() {
+		position := p.selectedPosition()
+		if position == nil {
+			ui.Scroll(c).Grow(1).Children(func() {
+				ui.Column(c).Pad(layout.Inset).Gap(layout.BlockGap).Children(func() {
+					if len(p.positions) == 0 {
+						typography.Section(c, "当前没有持仓")
+						typography.Body(c, "点顶部「建仓」记录第一笔买入。").Muted()
+					}
+				})
 			})
+			return
 		}
-		return
-	}
-	p.detailHeader(c, position)
-	ui.Divider(c)
-	p.detailMetrics(c, position)
-	p.feeLine(c, position)
-	ui.Divider(c)
-	p.ledgerSection(c, position)
-	ui.Divider(c)
-	p.dailySection(c, position)
-	ui.Divider(c)
-	p.roundSection(c, position)
-	ui.Divider(c)
-	p.tradesSection(c, position)
+		p.detailHeader(c, position)
+		ui.Divider(c)
+		ui.Scroll(c).Grow(1).Children(func() {
+			ui.Column(c).Pad(layout.Inset).Gap(layout.BlockGap).Children(func() {
+				p.detailMetrics(c, position)
+				p.feeLine(c, position)
+				ui.Divider(c)
+				p.ledgerSection(c, position)
+				ui.Divider(c)
+				p.dailySection(c, position)
+				ui.Divider(c)
+				p.roundSection(c, position)
+				ui.Divider(c)
+				p.tradesSection(c, position)
+			})
+		})
+	})
 }
 
 func (p *positionsPanel) detailHeader(c ui.C, position *domain.StockPosition) {
@@ -534,7 +547,8 @@ func (p *positionsPanel) detailHeader(c ui.C, position *domain.StockPosition) {
 	if strings.TrimSpace(name) == "" {
 		name = position.StockCode
 	}
-	ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().Gap(layout.Gap).Items(ui.Center).Children(func() {
+	ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
+		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
 		ui.Text(c, name).FontSize(typography.SizeSection).Bold().Ellipsis()
 		ui.Text(c, position.StockCode).FontSize(typography.SizeCaption).
 			Mono().Color(theme.MutedForeground).Shrink(0)
