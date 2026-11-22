@@ -420,7 +420,8 @@ func (p *recordsPanel) toolbar(c ui.C) {
 // price and accumulated profit, then the round count, last close and rate.
 func (p *recordsPanel) historyRail(c ui.C) {
 	theme := c.Theme()
-	ui.Column(c).Width(layout.RailWidth).FillHeight().Background(theme.Muted).
+	ui.Column(c).Width(layout.RailWidth).MinWidth(layout.RailWidth).Shrink(0).
+		FillHeight().Background(theme.Muted).
 		Children(func() {
 			ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
 				PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {

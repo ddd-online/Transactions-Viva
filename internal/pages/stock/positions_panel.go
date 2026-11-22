@@ -389,7 +389,8 @@ func (p *positionsPanel) toolbar(c ui.C) {
 // ------------------------------------------------------------------ 左栏
 
 func (p *positionsPanel) rail(c ui.C) {
-	ui.Column(c).Width(layout.RailWidth).FillHeight().Children(func() {
+	ui.Column(c).Width(layout.RailWidth).MinWidth(layout.RailWidth).Shrink(0).
+		FillHeight().Children(func() {
 		if len(p.positions) == 0 {
 			emptystate.Notice(c, "当前没有持仓")
 			return

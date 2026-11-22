@@ -27,7 +27,7 @@ func (m *Model) sidebar(c ui.C) {
 	theme := c.Theme()
 	metrics := theme.Metrics
 	gap := metrics.GapItem / 2
-	ui.Column(c).Width(sidebarWidth).FillHeight().
+	ui.Column(c).Width(sidebarWidth).MinWidth(sidebarWidth).Shrink(0).FillHeight().
 		Background(theme.Muted).Pad(metrics.GapItem).Gap(gap).Children(func() {
 		// The sections scroll when the window is too short for them; the
 		// settings entry stays against the bottom edge.

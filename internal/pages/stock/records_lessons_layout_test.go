@@ -7,6 +7,7 @@ import (
 	"github.com/vivaui/viva/app"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/layout"
 	"transactions/internal/domain"
 	"transactions/internal/repository"
 )
@@ -124,14 +125,16 @@ func TestRecordsPanelFitsMinimumWindow(t *testing.T) {
 
 	snapshot := driver.Snapshot()
 	assertFitsWidth(t, snapshot)
-	var expanded bool
-	for _, hit := range snapshot.Hits {
-		if hit.Label == "收起第 6 轮" {
-			expanded = true
-		}
-	}
-	if !expanded {
+	round, ok := snapshotHit(driver, "收起第 6 轮")
+	if !ok {
 		t.Fatal("the largest round is not expanded by default")
+	}
+	// The 240 px history rail must keep its width when the expanded round's
+	// table raises the detail's minimum width; otherwise the stock cards
+	// compress and their text is clipped.
+	if round.Bounds.X < layout.RailWidth {
+		t.Fatalf("the history rail shrank to %.0f px, want at least %.0f",
+			round.Bounds.X, layout.RailWidth)
 	}
 	if !clickLabel(driver, "展开第 1 轮") {
 		t.Fatal("no control to expand round 1")
