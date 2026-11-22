@@ -547,22 +547,20 @@ func (p *recordsPanel) detailHead(c ui.C, detail *domain.StockHistoryDetail) {
 	if name == "" || name == detail.History.StockCode {
 		name = detail.History.StockCode
 	}
-	ui.Column(c).FillWidth().PadSides(layout.Inset, layout.Inset, 10, 10).
-		Gap(4).Children(func() {
-		ui.Row(c).FillWidth().Gap(8).Items(ui.Center).Children(func() {
-			typography.Section(c, name).Ellipsis()
-			typography.Caption(c, detail.History.StockCode).Mono()
-			ui.Spacer(c)
-			typography.Caption(c, fmt.Sprintf("%d 胜 %d 负 · %d 轮",
-				detail.WinCount, detail.LossCount, len(detail.Rounds)))
-		})
-		ui.Row(c).FillWidth().Gap(10).Items(ui.Center).Children(func() {
+	ui.Row(c).FillWidth().PadSides(layout.Inset, layout.Inset, 10, 10).
+		Gap(8).Items(ui.Center).Children(func() {
+		typography.Section(c, name).Ellipsis()
+		typography.Caption(c, detail.History.StockCode).Mono()
+		ui.Spacer(c)
+		ui.Row(c).Shrink(0).Gap(10).Items(ui.Center).Children(func() {
 			typography.Caption(c, "累计盈亏")
 			ui.Text(c, money(detail.TotalPnl)).FontSize(typography.SizeBody).
 				Mono().Color(pnlColor(*theme, detail.TotalPnl))
 			ui.Text(c, historyPercent(detail.TotalPnlRate)).
 				FontSize(typography.SizeCaption).Mono().
 				Color(historyRateColor(*theme, detail.TotalPnlRate))
+			typography.Caption(c, fmt.Sprintf("%d 胜 %d 负 · %d 轮",
+				detail.WinCount, detail.LossCount, len(detail.Rounds)))
 		})
 	})
 }
@@ -1123,7 +1121,7 @@ func (p *recordsPanel) deleteModal(c ui.C) {
 func (p *recordsPanel) footer(c ui.C) {
 	theme := c.Theme()
 	ui.Row(c).Height(layout.FooterHeight).FillWidth().PadX(layout.Inset).
-		Gap(layout.GroupGap).Items(ui.Center).Children(func() {
+		Gap(layout.GroupGap).Items(ui.Center).Justify(ui.Between).Children(func() {
 		historyFooterMetric(c, "已实现盈亏", money(p.summary.TotalPnl),
 			pnlColor(*theme, p.summary.TotalPnl))
 		historyFooterMetric(c, "累计盈亏率", historyPercent(p.summary.TotalPnlRate),
