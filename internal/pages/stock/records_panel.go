@@ -419,31 +419,29 @@ func (p *recordsPanel) toolbar(c ui.C) {
 // historyRail is the 240 px list of closed stocks. Its cards carry the current
 // price and accumulated profit, then the round count, last close and rate.
 func (p *recordsPanel) historyRail(c ui.C) {
-	theme := c.Theme()
 	ui.Column(c).Width(layout.RailWidth).MinWidth(layout.RailWidth).Shrink(0).
-		FillHeight().Background(theme.Muted).
-		Children(func() {
-			ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
-				PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
-				typography.Section(c, "已清仓")
-				typography.Caption(c, strconv.Itoa(len(p.histories))+" 只")
-				ui.Spacer(c)
-			})
-			ui.Divider(c)
-			if len(p.histories) == 0 {
-				if p.errorMessage == "" {
-					emptystate.Notice(c, "还没有已清仓的交易历史")
-				} else {
-					ui.Spacer(c).Grow(1)
-				}
-				return
-			}
-			ui.List(c, &p.historyList, len(p.histories), p.historyRow).
-				Label("已清仓股票").Grow(1)
-			if p.historyList.Changed() {
-				p.chooseHistory(p.historyList.Selected())
-			}
+		FillHeight().Children(func() {
+		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
+			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+			typography.Section(c, "已清仓")
+			typography.Caption(c, strconv.Itoa(len(p.histories))+" 只")
+			ui.Spacer(c)
 		})
+		ui.Divider(c)
+		if len(p.histories) == 0 {
+			if p.errorMessage == "" {
+				emptystate.Notice(c, "还没有已清仓的交易历史")
+			} else {
+				ui.Spacer(c).Grow(1)
+			}
+			return
+		}
+		ui.List(c, &p.historyList, len(p.histories), p.historyRow).
+			Label("已清仓股票").Grow(1)
+		if p.historyList.Changed() {
+			p.chooseHistory(p.historyList.Selected())
+		}
+	})
 }
 
 func (p *recordsPanel) historyRow(row ui.ListRow) {
@@ -466,7 +464,7 @@ func (p *recordsPanel) historyRow(row ui.ListRow) {
 	if active {
 		labelColor = theme.Foreground
 	}
-	row.Element.MinHeight(78).FillWidth().PadSides(12, 12, 8, 8).Gap(4).
+	row.Element.MinHeight(78).FillWidth().PadX(12).PadY(8).Gap(4).
 		MarginSides(4, 8, 0, 8).
 		Radius(theme.Metrics.RadiusControl).Background(background).
 		Border(1, theme.Border).
@@ -552,8 +550,8 @@ func (p *recordsPanel) detailHead(c ui.C, detail *domain.StockHistoryDetail) {
 	if name == "" || name == detail.History.StockCode {
 		name = detail.History.StockCode
 	}
-	ui.Row(c).FillWidth().PadSides(layout.Inset, layout.Inset, 10, 10).
-		Gap(8).Items(ui.Center).Children(func() {
+	ui.Row(c).FillWidth().Height(layout.SectionHeaderHeight).
+		PadX(layout.Inset).Gap(8).Items(ui.Center).Children(func() {
 		typography.Section(c, name).Ellipsis()
 		typography.Caption(c, detail.History.StockCode).Mono()
 		ui.Spacer(c)
@@ -598,7 +596,7 @@ func (p *recordsPanel) roundHeader(c ui.C, round domain.StockRoundDetail) {
 	if expanded {
 		action = "收起"
 	}
-	head := ui.Column(c).FillWidth().PadSides(12, 12, 8, 8).Gap(4).
+	head := ui.Column(c).FillWidth().PadX(12).PadY(8).Gap(4).
 		Background(theme.Muted).
 		HitWith(ui.ID(c), fmt.Sprintf("%s第 %d 轮", action, round.Round.RoundNo),
 			gfx.HitOptions{Role: gfx.RoleButton, Selected: expanded}).
@@ -724,7 +722,7 @@ func (p *recordsPanel) toggleRound(roundID string) {
 }
 
 func (p *recordsPanel) roundBody(c ui.C, round domain.StockRoundDetail) {
-	ui.Column(c).FillWidth().Gap(10).PadBottom(10).Children(func() {
+	ui.Column(c).FillWidth().Children(func() {
 		p.ledgerSection(c, round)
 		ui.Divider(c)
 		p.dailyReviews(c, round)
@@ -743,8 +741,8 @@ func (p *recordsPanel) roundBody(c ui.C, round domain.StockRoundDetail) {
 // header, an optional action, and the content under it. The four sections of a
 // round share this head so their name size, header height and gap match.
 func (p *recordsPanel) recordSection(c ui.C, name string, action func(), body func()) {
-	ui.Column(c).FillWidth().Gap(layout.Gap).Children(func() {
-		ui.Row(c).FillWidth().Height(layout.SectionHeaderHeight).PadX(12).
+	ui.Column(c).FillWidth().Gap(4).PadBottom(8).Children(func() {
+		ui.Row(c).FillWidth().PadX(12).PadTop(8).
 			Items(ui.Center).Children(func() {
 			typography.Section(c, name)
 			ui.Spacer(c)
