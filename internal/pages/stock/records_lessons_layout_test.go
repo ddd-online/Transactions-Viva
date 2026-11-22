@@ -272,6 +272,23 @@ func TestLessonsPanelFitsMinimumWindow(t *testing.T) {
 
 	snapshot := driver.Snapshot()
 	assertFitsWidth(t, snapshot)
+	var indexNameY, roundY float32
+	for _, text := range snapshot.Texts {
+		switch text.Value {
+		case "浦发银行 600000":
+			if indexNameY == 0 {
+				indexNameY = text.Bounds.Y + text.Bounds.Height/2
+			}
+		case "第 6 轮":
+			roundY = text.Bounds.Y + text.Bounds.Height/2
+		}
+	}
+	if indexNameY == 0 || roundY == 0 {
+		t.Fatalf("source line missing: name %.1f, round %.1f", indexNameY, roundY)
+	}
+	if diff := indexNameY - roundY; diff > 1 || diff < -1 {
+		t.Fatalf("stock name and round are on different lines: %.1f vs %.1f", indexNameY, roundY)
+	}
 	var create, edit bool
 	for _, hit := range snapshot.Hits {
 		switch hit.Label {

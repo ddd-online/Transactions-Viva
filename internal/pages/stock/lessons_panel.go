@@ -234,9 +234,11 @@ func (p *lessonsPanel) sourceCell(c ui.C, lesson *domain.StockLesson) {
 			typography.Body(c, "未关联交易轮次").Muted().Ellipsis()
 			return
 		}
-		typography.Body(c, historyStockTitle(lesson.StockName, lesson.StockCode)).
-			Ellipsis()
-		typography.Caption(c, "第 "+strconv.Itoa(lesson.RoundNo)+" 轮")
+		ui.Row(c).FillWidth().Gap(6).Items(ui.Center).Children(func() {
+			typography.Body(c, historyStockTitle(lesson.StockName, lesson.StockCode)).
+				Ellipsis().Shrink(1).MinWidth(0)
+			typography.Caption(c, "第 "+strconv.Itoa(lesson.RoundNo)+" 轮").Shrink(0)
+		})
 		if !lesson.SourceAvailable {
 			typography.Caption(c, "来源轮次已删除").
 				Color(semantic.Outlier(*theme))
