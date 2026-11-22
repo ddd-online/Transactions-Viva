@@ -209,10 +209,10 @@ func (p *accountPanel) metrics(c ui.C, overview domain.StockOverview) {
 		{"可用现金", money(overview.AvailableCash), nil},
 		{"仓位", percentOrDash(overview.PositionRatio), nil},
 	}
-	ui.Flow(c).Gap(layout.Gap).LineGap(layout.Gap).Children(func() {
+	ui.Grid(c, 300).FillWidth().Gap(layout.Gap).Children(func() {
 		for _, metric := range metrics {
 			metric := metric
-			ui.Column(c).Width(150).Gap(4).Children(func() {
+			ui.Column(c).Gap(4).Children(func() {
 				typography.Caption(c, metric.label)
 				value := ui.Text(c, metric.value).FontSize(typography.SizeBody).Mono()
 				if metric.pnl != nil {

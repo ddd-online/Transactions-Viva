@@ -24,8 +24,8 @@ const lessonTextLimit = 80
 
 // Column widths of the lesson table. The 心得 cell takes the rest.
 const (
-	lessonSourceWidth = float32(260)
-	lessonActionWidth = float32(112)
+	lessonSourceWidth = float32(240)
+	lessonActionWidth = float32(160)
 )
 
 // lessonsPanel is 股票 · 心得: the account's one-sentence lessons, their linked
@@ -223,7 +223,7 @@ func (p *lessonsPanel) lessonRow(c ui.C, lesson *domain.StockLesson) {
 		Gap(layout.ColumnGap).Items(ui.Center).
 		Hover(ui.Look{}.Background(theme.Hover)).Children(func() {
 		ui.Text(c, lesson.Text).FontSize(typography.SizeBody).
-			MaxLines(2).Grow(1).MinWidth(0)
+			Basis(0).Grow(1).MinWidth(0).MaxLines(2)
 		p.sourceCell(c, lesson)
 		p.actionsCell(c, lesson)
 	})
@@ -233,16 +233,13 @@ func (p *lessonsPanel) lessonRow(c ui.C, lesson *domain.StockLesson) {
 func (p *lessonsPanel) sourceCell(c ui.C, lesson *domain.StockLesson) {
 	theme := c.Theme()
 	ui.Column(c).Width(lessonSourceWidth).Gap(2).Children(func() {
-		typography.Caption(c, "关联交易")
 		if lesson.RoundID == "" {
 			typography.Body(c, "未关联交易轮次").Muted().Ellipsis()
 			return
 		}
-		ui.Row(c).FillWidth().Gap(4).Items(ui.Center).Children(func() {
-			typography.Body(c, historyStockTitle(lesson.StockName, lesson.StockCode)).
-				Grow(1).Ellipsis()
-			typography.Caption(c, "第 "+strconv.Itoa(lesson.RoundNo)+" 轮")
-		})
+		typography.Body(c, historyStockTitle(lesson.StockName, lesson.StockCode)).
+			Ellipsis()
+		typography.Caption(c, "第 "+strconv.Itoa(lesson.RoundNo)+" 轮")
 		if !lesson.SourceAvailable {
 			typography.Caption(c, "来源轮次已删除").
 				Color(semantic.Outlier(*theme))

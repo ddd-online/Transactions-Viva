@@ -55,9 +55,6 @@ const (
 	statisticsGroupSize = 5
 	// statisticsDetailSize is the detail table's page size.
 	statisticsDetailSize = 15
-	// statisticsCardWidth and the gap keep four cards in the 960 px window's
-	// content column.
-	statisticsCardWidth = 168
 	// statisticsChartHeight is the curve card's height; the page scrolls, so the
 	// curve never gets squeezed below the old page's 360 px floor.
 	statisticsChartHeight = 380
@@ -406,7 +403,7 @@ func (p *statisticsPanel) cards(c ui.C) {
 	kelly := domain.KellyPercent(latest.Span, latest.WinCount, latest.PnlRatio)
 	avgWinColor := semantic.Expense(*theme)
 	avgLossColor := semantic.Income(*theme)
-	ui.Flow(c).FillWidth().Gap(layout.Gap).LineGap(layout.BlockGap).Children(func() {
+	ui.Grid(c, 300).FillWidth().Gap(layout.Gap).Children(func() {
 		p.card(c, pnlLabel, "", money(latest.TotalPnl), statScope(p.strategy, latest.Span),
 			typography.SizeTitle, statColor(*theme, latest.TotalPnl))
 		p.card(c, "凯利值", "按胜率与盈亏比算出的下注比例", kellyText(kelly), kellyCaption(kelly),
@@ -437,7 +434,7 @@ func (p *statisticsPanel) card(c ui.C, label, hint, value, caption string, size 
 	if hint != "" {
 		id = ui.ID(c)
 	}
-	column := ui.Column(c).Width(statisticsCardWidth).Gap(4)
+	column := ui.Column(c).Gap(4)
 	if hint != "" {
 		column = column.HitWith(id, label, gfx.HitOptions{SkipFocus: true}).
 			Tooltip(hint)

@@ -109,10 +109,10 @@ func (p *ladderPanel) CloseOverlays() { p.pick.Open = false }
 // View declares the screen.
 func (p *ladderPanel) View(c ui.C) {
 	p.bounds = c.Bounds()
+	p.ensure(c)
+	p.ensureOpen(c)
 	ui.Column(c).Fill().Children(func() {
 		p.toolbar(c)
-		p.ensure(c)
-		p.ensureOpen(c)
 		switch {
 		case p.actionError != "":
 			typography.Caption(c, p.actionError).Color(c.Theme().Danger).

@@ -244,6 +244,13 @@ func (m *Model) openLessonForRound(code, roundID string) {
 	m.lessons.OpenForRound(code, roundID)
 }
 
+// SetAccount selects an account by id; the settings page and tests use it.
+func (m *Model) SetAccount(id string) {
+	if m.accounts.setActive(id) {
+		m.dataChanged()
+	}
+}
+
 // Tabs are the section's second-level navigation entries.
 func (m *Model) Tabs() []string { return tabLabels[:] }
 
