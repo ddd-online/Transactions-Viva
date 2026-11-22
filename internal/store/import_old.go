@@ -24,6 +24,13 @@ type ImportReport struct {
 	RecordTags      int
 	Templates       int
 	Charts          int
+	StockAccounts   int
+	StockFunds      int
+	StockPositions  int
+	StockTrades     int
+	StockRounds     int
+	StockLessons    int
+	StockLadderDays int
 	Events          int
 	EventImages     int
 	EventImageFiles int
@@ -101,6 +108,20 @@ func ImportOld(destinationDirectory, sourceDatabase string, strict bool) (Import
 	if err != nil {
 		return report, err
 	}
+	if hasAppID(source) {
+		return report, errors.New("导入：这是新版工作空间，不能作为旧库导入")
+	}
+	if exists, err := tableExists(source, "stock_account"); err != nil {
+		return report, err
+	} else if exists {
+		hasLedger, err := tableHasColumn(source, "stock_account", "ledger_id")
+		if err != nil {
+			return report, err
+		}
+		if !hasLedger {
+			return report, errors.New("导入：这是新版工作空间，不能作为旧库导入")
+		}
+	}
 	workspace, err := Open(destinationDirectory)
 	if err != nil {
 		return report, err
@@ -153,6 +174,17 @@ func ImportOld(destinationDirectory, sourceDatabase string, strict bool) (Import
 			report.MergedEvents = merged
 			eventImages = images
 		}
+		stock, err := copyStock(source, tx)
+		if err != nil {
+			return err
+		}
+		report.StockAccounts = stock.Accounts
+		report.StockFunds = stock.Funds
+		report.StockPositions = stock.Positions
+		report.StockTrades = stock.Trades
+		report.StockRounds = stock.Rounds
+		report.StockLessons = stock.Lessons
+		report.StockLadderDays = stock.LadderDays
 		return nil
 	})
 	if err != nil {
