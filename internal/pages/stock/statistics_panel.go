@@ -274,6 +274,9 @@ func (p *statisticsPanel) toolbar(c ui.C) {
 				p.chartAt = gfx.Point{}
 			}
 		})
+		// The account and pane stay left; the settlement filters sit at the
+		// right edge of the toolbar.
+		ui.Spacer(c)
 		if ui.Choice(c, &p.rangeMode, statisticsRangeValues[:], func(value statisticsRange) string {
 			return statisticsRangeLabels[value]
 		}).Changed() {
