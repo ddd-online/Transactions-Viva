@@ -222,6 +222,15 @@ func TestStatisticsSummaryCardsAndCurve(t *testing.T) {
 	if p.chartPlot.Count() != len(repo.stats.Points) {
 		t.Fatalf("chart points = %d, want %d", p.chartPlot.Count(), len(repo.stats.Points))
 	}
+	if !driver.Transitioning() {
+		t.Fatal("the curve did not start its reveal")
+	}
+	if err := driver.Advance(500 * time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+	if driver.Transitioning() {
+		t.Fatal("the curve did not settle after its reveal")
+	}
 
 	// At the window's minimum width every summary text stays inside the frame.
 	snapshot := driver.Snapshot()

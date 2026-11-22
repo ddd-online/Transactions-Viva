@@ -11,6 +11,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/chartanim"
 	"transactions/internal/components/datepicker"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/pagination"
@@ -109,6 +110,7 @@ type statisticsPanel struct {
 	chartHit     gfx.ID
 	chartAt      gfx.Point
 	chartVersion uint32
+	chartAnim    chartanim.State
 }
 
 var _ panel = (*statisticsPanel)(nil)
@@ -533,8 +535,18 @@ func (p *statisticsPanel) drawChart(d *ui.DrawContext) {
 			gfx.TextStyle{Size: typography.SizeBody, Color: d.Theme.MutedForeground})
 		return
 	}
-	p.chartPlot = viva.PaintAreaChart(d.Canvas, *d.Theme, statInset(d.Rect, 12),
+	area := statInset(d.Rect, 12)
+	progress := p.chartAnim.Progress(d.Canvas,
+		"stats:"+strconv.FormatUint(uint64(p.chartVersion), 10), chartanim.Duration)
+	revealing := progress < 1
+	if revealing {
+		d.Canvas.Clip(gfx.Rect{X: area.X, Y: area.Y, Width: area.Width * progress, Height: area.Height})
+	}
+	p.chartPlot = viva.PaintAreaChart(d.Canvas, *d.Theme, area,
 		p.chartHit, p.areaChart(*d.Theme), &p.chartState)
+	if revealing {
+		d.Canvas.Unclip()
+	}
 	p.drawHover(d)
 }
 

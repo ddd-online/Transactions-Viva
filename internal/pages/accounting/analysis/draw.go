@@ -9,6 +9,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/chartanim"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/repository"
@@ -65,10 +66,27 @@ func (m *Model) canvas(c ui.C, chart *domain.Chart) {
 					gfx.TextStyle{Size: typography.SizeBody, Color: d.Theme.MutedForeground})
 				return
 			}
-			m.chartPlot = components.PaintAreaChart(d.Canvas, *d.Theme, inset(d.Rect, 12), m.chartHit,
+			plot := inset(d.Rect, 12)
+			progress := m.chartProgress(d)
+			revealing := progress < 1
+			if revealing {
+				d.Canvas.Clip(gfx.Rect{X: plot.X, Y: plot.Y, Width: plot.Width * progress, Height: plot.Height})
+			}
+			m.chartPlot = components.PaintAreaChart(d.Canvas, *d.Theme, plot, m.chartHit,
 				m.areaChart(*d.Theme, label), &m.chartState)
+			if revealing {
+				d.Canvas.Unclip()
+			}
 		})
 	})
+}
+
+// chartProgress is the one-shot reveal keyed by the selected chart and its
+// data version. The key changes on a new range, chart or chart type, so the
+// curve/sweep starts again.
+func (m *Model) chartProgress(d *ui.DrawContext) float32 {
+	key := "analysis:" + m.selectedID + ":" + strconv.FormatUint(uint64(m.chartVersion), 10)
+	return m.chartAnim.Progress(d.Canvas, key, chartanim.Duration)
 }
 
 // areaChart is the selected chart's series as the component wants them: the
@@ -145,21 +163,34 @@ func (m *Model) drawPie(d *ui.DrawContext) {
 		Cursor: gfx.PointerCursorCrosshair,
 		Value:  m.pieSliceValue(m.pieHover),
 	})
+	progress := m.chartProgress(d)
+	sweep := 2 * math.Pi * float64(progress)
+	cursor := 0.0
 	start := float64(-math.Pi / 2)
 	for index, slice := range m.pieSlices {
 		angle := float64(slice.Amount) / float64(m.pie.Total) * 2 * math.Pi
-		var path gfx.PathBuilder
-		path.MoveTo(center, center)
-		steps := max(3, int(angle/0.08))
-		for step := 0; step <= steps; step++ {
-			a := start + angle*float64(step)/float64(steps)
-			path.LineTo(center+float32(math.Cos(a))*radius, center+float32(math.Sin(a))*radius)
+		if cursor >= sweep {
+			break
 		}
-		path.Close()
-		d.Canvas.DrawPath(path.Path(size, size), pie, gfx.PathStyle{
-			Fill: pieColor(*theme, index), Stroke: theme.Card, StrokeWidth: 2,
-		})
+		visible := angle
+		if cursor+angle > sweep {
+			visible = sweep - cursor
+		}
+		if visible > 0 {
+			var path gfx.PathBuilder
+			path.MoveTo(center, center)
+			steps := max(3, int(visible/0.08))
+			for step := 0; step <= steps; step++ {
+				a := start + visible*float64(step)/float64(steps)
+				path.LineTo(center+float32(math.Cos(a))*radius, center+float32(math.Sin(a))*radius)
+			}
+			path.Close()
+			d.Canvas.DrawPath(path.Path(size, size), pie, gfx.PathStyle{
+				Fill: pieColor(*theme, index), Stroke: theme.Card, StrokeWidth: 2,
+			})
+		}
 		start += angle
+		cursor += angle
 	}
 	hole := radius * pieHoleRatio
 	d.Canvas.Rounded(gfx.Rect{
@@ -181,7 +212,7 @@ func (m *Model) drawPie(d *ui.DrawContext) {
 			Width: radius, Height: 22,
 		}, amount)
 	}
-	if m.pieHover >= 0 && m.pieHover < len(m.pieSlices) {
+	if progress >= 1 && m.pieHover >= 0 && m.pieHover < len(m.pieSlices) {
 		m.pieTooltip(d)
 	}
 }

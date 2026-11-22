@@ -15,6 +15,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/chartanim"
 	"transactions/internal/components/datepicker"
 	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
@@ -82,6 +83,7 @@ type Model struct {
 	chartPlot    components.ChartPlot
 	chartHit     gfx.ID
 	chartVersion uint32
+	chartAnim    chartanim.State
 
 	// The pie has no component, so the page keeps its own hover: the wedge
 	// under the pointer, where that pointer is (the tip follows it), the region

@@ -4,6 +4,7 @@ import (
 	"math"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vivaui/viva/app"
 	"github.com/vivaui/viva/gfx"
@@ -104,6 +105,30 @@ func TestCreatePieChart(t *testing.T) {
 		if strings.TrimSpace(slice.Label) == "" {
 			t.Fatalf("slice without a label: %+v", slice)
 		}
+	}
+}
+
+func TestPieChartAnimatesAndSettles(t *testing.T) {
+	m := newTestModel(t)
+	m.openCreate()
+	m.form.title = "支出构成"
+	m.form.chartType = "饼图"
+	m.form.groupField = "分类"
+	m.createChart()
+	page := ui.NewPage(ui.PageConfig{View: m.View})
+	driver, err := app.NewDriver(ui.Configure(page, app.Config{Width: 960, Height: 620}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(driver.Close)
+	if !driver.Transitioning() {
+		t.Fatal("the pie did not start its sweep")
+	}
+	if err := driver.Advance(500 * time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+	if driver.Transitioning() {
+		t.Fatal("the pie did not settle after its sweep")
 	}
 }
 
