@@ -857,7 +857,7 @@ func TestSidebarExpandsOneSectionAtATime(t *testing.T) {
 	if hasControl(driver, "历史") {
 		t.Fatal("事件 did not collapse 待办")
 	}
-	if !shows(driver, "按日期浏览事件") {
+	if !hasControl(driver, "新增事件") {
 		t.Fatal("事件 did not show its screen")
 	}
 

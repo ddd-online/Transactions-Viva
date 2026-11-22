@@ -63,7 +63,9 @@ main → desktop → pages → components
 | `internal/pages/accounting/analysis` | 分析页：图表列表、折线 / 饼图、曲线条件、明细表与合计带 | `src/pages/charts.tsx`、`chart-*`、`antv-*-chart.tsx` |
 | `internal/pages/stock` | 账户 / 持仓 / 记录 / 心得 / 统计 / 天梯 / 设置 | `src/pages/stock*` |
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
-| `internal/pages/events` | 事件画廊、图片、实况照片 | `src/pages/event*` |
+| `internal/pages/events` | 事件页：年份列表、身份色、图片画廊与灯箱、跨账本关联交易（事件是工作空间级数据） | `src/pages/events*`、`event-*`、`electron/services/key-event.ts` |
+| `internal/assets` | 工作空间图片资产：路径校验、落盘 / 删除 / 另存、解码、EXIF 方向与缩略图 | `electron/services/assets.ts`、`image-import.ts`、`image-resize.ts`、`heic-decode.ts` |
+| `internal/events` | 事件图片的导入 / 删除编排：实况照片配对、逐张报告、清文件 | `electron/services/key-event.ts` 的 `addImage` / `deleteImage` |
 | `internal/pages/diary` | 日记页：日记本、日期树、正文与心情、自动保存、删除 | `src/pages/diary.tsx`、`src/components/diary-tree.tsx`、`mood-picker.tsx`、`shared/domain/diary-tree.ts`（日记本是与旧工程不同的地方，见下） |
 | `internal/diary` | 日记文件：递归扫描、编码回退链、写 `<date>.txt`（不依赖 UI，不直接碰 SQLite） | `electron/services/diary.ts` |
 | `internal/pages/settings` | 设置页五个分区：通用设置 / 账本管理 / 数据备份 / 日记配置 / 关于软件（通用设置页内再分「常规」与「功能开关」两组） | `src/pages/settings*`、`src/app-menu.tsx` 的「创建账本」 |
@@ -94,20 +96,24 @@ main → desktop → pages → components
   `transaction_record_tag`、`category`、`tag`、`transaction_template`；v2 增加 `chart`
   （图表配置、类型、分组、预设标记与排序）；v3 增加 `diary_entry`（最初每账本每天一篇）；
   v4 把日记从账本上解绑：新增 `diary_book`（`book_id` / 名称 / 描述 / 排序），`diary_entry`
-  换成 `book_id`、`(book_id, date)` 唯一，`content` 为纯文本、`mood` 存 emoji。列名 / 类型与旧库逐列一致
-  （金额 `_cents`、时间 `_at`、日期文本、无外键），便于导入工具直接复制；不建股票 / 事件 /
-  待办表，也不建立股票与账本的关联。v4 的迁移把 v3 里每个「有日记的账本」变成一本同名日记本
-  （`book_id = 'book-' || ledger_id`，纯 SQL 就能跑），没有日记的工作空间得到一本「默认日记本」；
-  写库时 `SaveDiary` 自己检查日记本是否存在——schema 没有外键，这条规则写在仓储里。旧库识别只看
-  本工程永不会建的 `stock_account` / `key_event`：`diary_entry` 从 v3 起是自己的表，不能再用它
-  判断「这是旧库」。
+  换成 `book_id`、`(book_id, date)` 唯一，`content` 为纯文本、`mood` 存 emoji。v5 增加 `key_event`
+  与 `key_event_image`：**事件属于工作空间，不按账本隔离**，`key_event.date` 唯一，两张表都没有
+  `ledger_id`，图片路径仍是相对 `data/assets`。列名 / 类型与旧库逐列一致（金额 `_cents`、时间
+  `_at`、日期文本、无外键），便于导入工具直接复制；不建股票 / 待办表，也不建立股票与账本的关联。
+  v4 的迁移把 v3 里每个「有日记的账本」变成一本同名日记本（`book_id = 'book-' || ledger_id`，
+  纯 SQL 就能跑），没有日记的工作空间得到一本「默认日记本」；写库时 `SaveDiary` 自己检查日记本
+  是否存在——schema 没有外键，这条规则写在仓储里。旧库识别只看本工程永不会建的 `stock_account` /
+  `todo_item`：`diary_entry`（v3）与 `key_event`（v5）都已经是本工程自己的表，不能再用它们判断
+  「这是旧库」。
 - 版本：`app_meta.schema_version` 从 1 连续递增，迁移清单在 `internal/store/migrate.go`，
   SQL 内嵌在 `internal/store/schema/`。升级已有库前 `VACUUM INTO <db>.bak`，失败不升级；
   每条迁移与版本更新同事务。新增结构时只追加迁移，不改已发布的 SQL。
 - `internal/repository` 是页面看到的数据契约：账本、`Labels` 快照（分类 + 标签 + 计数）、
-  记录（按账本 + 本地日期范围）、模板，以及各自的写入 / 删除 / 排序。页面只调用接口，不写
-  SQL；`internal/store` 用编译期断言实现该接口。记录写入与标签关联、删除与关联清理、分类
-  删除与其标签、标签删除与记录关联都在单事务里。
+  记录（按账本 + 本地日期范围）、模板、日记本与日记、事件与事件图片，以及各自的写入 / 删除 /
+  排序。事件另有一条 `KeyEventRecords(date)`：工作空间里 `key_event_date` 等于该日期的记录，
+  跨账本、带标签，事件页的右栏用它。页面只调用接口，不写 SQL；`internal/store` 用编译期断言
+  实现该接口。记录写入与标签关联、删除与关联清理、分类删除与其标签、标签删除与记录关联、
+  删事件与它的图片行都在单事务里；删账本只删账本自己的数据，不碰工作空间级的事件。
 - 新建账本在同一个事务里写入旧工程的 19 个分类 / 57 个标签。空工作空间由
   `accounting.SetRepository` 创建「默认账本」；导入的旧库已有账本时不重复播种。
 - 记录范围查询把本地 `YYYY-MM-DD` 两端换算成当天 00:00:00 / 23:59:59（含结束日），SQL 只
@@ -250,6 +256,17 @@ main → desktop → pages → components
   再声明页面，所以写与「已保存」在同一帧里出现。用 `Changed()` 不行：字符串绑定在字段声明时
   才同步，而字数那一行在字段之前声明。切日期 / 切账本 / 离开分区 / 删除前都先 flush；新的一天
   没正文也没心情就不写，打开一个日期不会凭空建一条空日记。
+- 事件页（`internal/pages/events`，旧工程 `events.tsx` / `event-*.tsx` / `services/key-event.ts`）：
+  **事件不再跟账本走**，这是本工程对旧工程的第二处有意改动（旧工程一条事件属于一个账本）。事件属于
+  整个工作空间，每个日期一条（`key_event.date` 唯一），所以工具栏没有账本选择器；页面的数据源是
+  `repository.Repository`，图片的选取 / 落盘 / 删除经 `Commands` 交给 `internal/desktop`，页面自己不碰
+  文件系统。布局是工具栏（年 `datepicker` + 关联交易开关 + 新增事件）+ 事件列表（3px 身份色条、标题 /
+  日期 / 30 字摘要，右上删除）+ 详情（20 档色点、主图与缩略图、纯文本正文、添加图片 / 编辑描述）+ 关联
+  交易；两侧栏宽按窗口 `clamp` 在 200–280 / 180–280。右侧关联交易是 `KeyEventRecords(date)`——工作空间里
+  `key_event_date` 等于该日期的记录，跨账本，行里标账本名。图片解码与缩略图在 `internal/assets`：页面
+  只通过 `LoadImage` 拿到 `gfx.Bitmap`，在选中变化时解码并缓存，`Draw` 里只画；主图 contain、同图模糊
+  24px 垫底，缩略图 160×90 cover；灯箱是 `ui.Control`，滚轮缩放、拖动、左右键切图。删事件 / 删图先删行
+  再删文件（`internal/events`），删账本不会碰事件——事件不属于账本。
 - 设置 ·「日记配置」（`internal/pages/settings` 的 `diaryConfig`）分两张卡：**日记本**（照账本管理
   的行：名称 + 描述、当前那本的「当前」、行尾编辑 / 删除图标、底部「新建日记本」；最后一本不可删，
   增删改都走 `diary.Model`，与账本走 `accounting.Model` 对称）与 **导入导出**。导入按目录递归扫
@@ -355,6 +372,15 @@ main → desktop → pages → components
   量数值宽度（常规字重），绘制时却用 `WeightMedium`；字重更宽，右侧 10px 内边距被吃掉，
   最后一位数字贴着边框（数值本身不裁切）。框架已经提供 `TextWidthWeight`，等它用上就
   自动消失；应用里不要给数值补空格之类的补偿。
+- **没有内建的图片解码与缩放 API。** `ui.Slot` / `gfx.Bitmap` 只负责画，解码、EXIF 方向、缩放都归应用。
+  `internal/assets` 用标准库 `image/jpeg|png|gif` 与 `golang.org/x/image/webp`、`x/image/draw` 解码成
+  `gfx.Bitmap`（预乘 BGRA）；缩略图 300px 宽 JPEG q75；主图解码后最长边缩到 2048 再画，且只在选中变化时
+  解码，`Draw` 里不读文件。GIF 只画第一帧（灯箱与画廊都不播动画）。
+- **没有 HEIC / HEIF 解码。** 平台没有可用的 HEVC 解码器，`internal/assets` 按 ftyp 品牌识别后明确拒绝
+  （「HEIC 图片暂不支持，请先转换为 JPEG 后添加」）；旧工作空间里的展示图本来就是导入时转码的 JPEG，
+  因此旧数据照常显示，`original_path` 指向的 HEIC 原图照常复制、只是不画。
+- **没有视频控件，实况照片只存不播。** 照片与同名视频一起导入、`motion_path` 落库，界面只显示「实况」
+  角标与说明。Viva 有内嵌浏览器（`app.WebHost`），但本项目明确不要内嵌浏览器，所以不用它绕。
 - **`components.Sidebar` 的子菜单两侧都缩进。** `AddSubMenu` 照搬 shadcn 的 `mx-3.5` +
   `px-2.5`：子项在右侧也比一级项再收进 24px，而接口没有宽度 / 缩进的开关；缩进本应只在
   前缘，否则选中的子项底色比一级项短一截，右侧看起来是断的。主内容区又用卡片边框当分隔

@@ -87,6 +87,12 @@ type Model struct {
 	// pickDirectory is the platform's directory chooser, for the workspace and
 	// the diary import / export; tests replace it.
 	pickDirectory func(title string) (string, error)
+
+	// pickImages and pickSaveFile are the platform's image dialogs for the 事件
+	// page. Tests queue answers through the driver; a run opens the real
+	// pickers.
+	pickImages   func() ([]string, error)
+	pickSaveFile func(options app.SaveFileOptions) (string, error)
 }
 
 // New returns the shell with the default configuration, pinned to the light
@@ -122,6 +128,21 @@ func NewWithConfig(cfg config.AppConfig, store *config.Store) *Model {
 		return app.OpenDirectory(app.OpenDirectoryOptions{Title: title})
 	}
 	m.pickWorkspace = func() (string, error) { return m.pickDirectory("选择工作空间") }
+	m.pickImages = func() ([]string, error) {
+		return app.OpenFiles(app.OpenFileOptions{
+			Title:         "添加事件图片",
+			AllowMultiple: true,
+			Filters: []app.FileFilter{{
+				Name:    "图片与实况视频",
+				Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.heic;*.heif;*.mov;*.mp4;*.m4v;*.webm",
+			}},
+		})
+	}
+	m.pickSaveFile = func(options app.SaveFileOptions) (string, error) {
+		return app.SaveFile(options)
+	}
+	m.events.SetLinksOpen(cfg.KeyEventLinkedOpen)
+	m.events.SetCommands(m.eventCommands())
 	m.refreshTheme()
 	m.section = m.firstEnabledSection()
 	if m.section != SectionSettings {

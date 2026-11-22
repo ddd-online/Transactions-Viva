@@ -71,6 +71,10 @@ func (m *Model) closeOverlays(section Section) {
 		page = m.stock
 	case SectionTodo:
 		page = m.todo
+	case SectionEvents:
+		page = m.events
+	case SectionDiary:
+		page = m.diary
 	}
 	if closer, ok := page.(interface{ CloseOverlays() }); ok {
 		closer.CloseOverlays()
@@ -88,6 +92,13 @@ func (m *Model) openSection(section Section) {
 		m.expanded, m.expandedOpen = section, true
 	} else {
 		m.expandedOpen = false
+	}
+	if section == SectionEvents && previous != section {
+		// Events belong to the workspace, so they can change without this page
+		// (the import tool, another process). Entering the section rereads the
+		// year instead of trusting what it held when the workspace opened; a
+		// click on the section already open keeps the draft being edited.
+		m.events.Reload()
 	}
 	m.closeLeft(previous, tab)
 }

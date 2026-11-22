@@ -10,7 +10,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 整体迁移到 **Viva + Go**：没有 Electron、没有 Node、没有内嵌浏览器，窗口与控件由 GPU
 直接绘制。**行为、文案、交互、数据契约一律以旧工程为准，先追平再改进。**
 
-当前阶段：**外壳、配置与通用设置、记账四页、日记与 SQLite 数据层已落地；记账四页与日记读写工作空间；旧数据可导入；股票、待办、事件仍是占位。**
+当前阶段：**外壳、配置与通用设置、记账四页、事件与日记、SQLite 数据层已落地；记账四页、事件与日记读写工作空间；旧数据可导入；股票、待办仍是占位。**
 
 - 入口是根目录 `main.go`：只做 `log.Fatal(desktop.Run())`，`viva.toml` 的 `package = "."`。
   开发时 `viva dev .`，一次性运行 `go run .`。注意：`viva dev` 的 reload host 不转发原生
@@ -75,6 +75,17 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   隔离（`(book_id, date)` 唯一），旧数据里的中文心情读出时映射到同一套 emoji。文字区域用
   `ui.Field`（`ui.TextArea(c, &m.body, …)`）——字符串绑定要到字段声明时才同步，字数那一行在它
   之前声明，只有直接读字段才能在同一个 paint 里数到刚敲的字。
+- 事件页已迁移前端：工具条是年份（年粒度 Picker，带前后周期）与「新增事件」，右侧是可收起的
+  关联交易开关；主体是 事件列表 + 详情 + 关联交易 三栏（两侧宽度随窗口在 200–280 / 180–280 之间收放）。
+  **事件属于工作空间，与账本无关**（每个日期一条，`key_event.date` 唯一），所以这一页没有账本选择器；
+  列表卡是 3px 身份色条 + 标题（无标题显示日期）+ 日期圆点 + 30 字摘要，右上删除；详情是 20 档身份色 +
+  「使用默认颜色」、主图 / 160×90 缩略图、「保存图片」、纯文本正文，以及 添加图片 / 编辑描述 / 取消 / 保存。
+  图片落在 `data/assets/key_events/<日期>/`：展示图原字节 + 300px 宽 JPEG 缩略图；支持 JPEG / PNG / GIF /
+  WebP，HEIC 明确拒绝；实况照片的照片与同名视频一起存（`motion_path`），只显示「实况」角标、不播放。
+  大图预览支持滚轮缩放、拖动、左右切图与 Esc。右侧关联交易是工作空间里 `key_event_date` 等于该日期的
+  记录（跨账本，行里标账本名）；收起的开关写配置 `keyEventLinkedOpen`。图片的选取 / 落盘 / 删除走
+  `internal/events` 与 `internal/assets`，由 `internal/desktop` 接平台对话框；页面只拿
+  `repository.Repository` 与 `Commands`。
 - 设置 ·「日记配置」是两组：**日记本**（照账本管理：列名称 + 描述——两者的描述行都由
   `describe()` 兜底，没写描述时显示「还没有描述」而不是少一行；标出日记页正在读的那本，
   每行有编辑 / 删除，底部「新建日记本」；最后一本不可删）与 **导入导出**（按目录批量导入，
@@ -88,9 +99,11 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   `~/.transactions.dev.json`），逐字段归一化，写回保留未知顶层键，写入走 `.tmp` + rename。
   窗口尺寸 / 位置（关闭时保存）、工作空间、外观、关闭行为、功能开关与账本级覆盖都在里面；
   `desktop.Run` 启动时加载，设置页的改动立即写回。
-- SQLite 工作空间已落地：目录里的 `transactions.db`，schema v4 含 `app_meta` /
+- SQLite 工作空间已落地：目录里的 `transactions.db`，schema v5 含 `app_meta` /
   `ledger` / `transaction_record` / `transaction_record_tag` / `category` / `tag` /
-  `transaction_template` / `chart` / `diary_book` / `diary_entry`（列与旧库兼容，不建股票等表）。打开时 `quick_check`、版本迁移
+  `transaction_template` / `chart` / `diary_book` / `diary_entry` / `key_event` /
+  `key_event_image`（列与旧库兼容，不建股票等表）。事件与旧库不同：**不带 `ledger_id`，
+  `date` 唯一**，一个工作空间只有一份。打开时 `quick_check`、版本迁移
   （升级前 `VACUUM INTO <db>.bak`）、拒绝损坏 / 陌生 / 旧版 / 更高版本库。空工作空间
   自动创建「默认账本」并播种默认分类标签；设置里切换工作空间先打开新库，失败保留旧库。
   没有工作空间时内容区显示「打开工作空间」门禁，设置仍可进入。
@@ -110,7 +123,8 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 - 原来的 `viva init` 示例（计数页）已移除；根目录 `main.go` 现在是真实入口。
 - 旧数据导入工具：`go run ./cmd/tr-import -from <旧工作空间或 transactions.db> -to <新目录>`
   只读旧库，复制账本 / 分类 / 标签 / 记录 / 记录标签 / 模板，保留 ID、时间戳、排序与空值，
-  报告孤儿行（`-strict` 中止）；旧库的股票、事件、日记、待办不导入，`chart` 表有则一并复制。
+  报告孤儿行（`-strict` 中止）；旧库的股票、日记、待办不导入，`chart` 表有则一并复制；事件与事件图片
+  会导入：旧库按账本存的事件按日期合并（同一天保留 `updated_at` 最新的一条，其余写进报告），图片文件一起复制。
 - 其余页面的真实内容还没迁移（见下面的迁移顺序）。
 
 ## 参考对象
@@ -141,6 +155,8 @@ internal/pages/          各功能页：accounting、stock、todo、events、dia
   accounting/analysis/   分析页（图表列表 / 折线图 / 饼图 / 曲线条件 / 合计）
   diary/                 日记页（日记本 / 日期树 / 正文 / 心情 / 自动保存 / 删除）
 internal/diary/          日记文件的导入导出（扫描、编码回退链、写文件），只依赖 domain 与 repository
+internal/assets/         工作空间图片资产：路径校验、落盘 / 删除 / 另存、解码、EXIF 方向与缩略图
+internal/events/         事件图片的导入 / 删除编排：实况配对、逐张报告、清文件
 internal/components/     可复用的 UI：占位空态，datepicker / pagination / selectbox / semantic 子包
 internal/pages/settings/controls/  只属于设置页的分组卡片 / 设置行
 internal/domain/         纯领域规则与数据形状：金额、记录、账本、事件、日记、待办、股票
@@ -148,7 +164,7 @@ internal/repository/     页面使用的数据契约（接口 / 查询 / 错误�
 internal/config/         应用配置：形状、默认值、读写与归一化（~/.transactions.json）
 internal/store/          SQLite 工作空间、schema / 迁移 / 仓储 / 旧库导入
   storetest/             测试用的临时工作空间与种子数据
-  schema/                schema SQL（0001_init.sql … 0004_diary_book.sql）
+  schema/                schema SQL（0001_init.sql … 0005_key_event.sql）
 cmd/tr-import/           旧工作空间导入命令
 docs/architecture.md     分层规则、旧模块到新包的映射、迁移顺序
 ```
@@ -183,7 +199,7 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
    分析：图表持久化、折线 / 饼图 SQL 聚合、曲线条件与合计；标签：分类标签 CRUD / 计数 /
    排序；模板：CRUD / 排序 / 记录弹窗下拉）；记录的条件筛选（标签 / 描述）还没接入列表。
 4. **待办**：卡片、四象限、六档紧急度 / 重要度、进度记录、历史。
-5. **事件**：事件画廊、图片资产、实况照片。（日记已完成：树、心情、正文、导入导出。）
+5. **事件**（已完成）：事件画廊、图片资产与关联交易；实况照片只存不播（Viva 没有视频控件）。
 6. **股票**：账户、持仓、成交记录、轮次、费用算法、统计、天梯、设置。
 7. **设置与数据**：配置持久化、通用设置与五个功能开关、工作空间打开与旧数据导入已完成；
    网络代理、数据备份 / 恢复、更新检查还在后面。
@@ -197,13 +213,17 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
   `Milli` 结尾）；时间恒为 Unix 秒（`At`）；日期恒为本地 `YYYY-MM-DD`（`Date`）。
 - 配置是用户数据：生产 `~/.transactions.json`，开发 `~/.transactions.dev.json`；升级 / 降级都必须保留未知键。
 - 每个工作空间一个独立 SQLite 数据库；图片资产在工作空间 `data/assets` 下，引用相对路径。
+- 事件属于工作空间，不属于账本：`key_event.date` 唯一，图片在 `data/assets/key_events/<date>/`；
+  记录上的 `key_event_date` 是普通日期文本，关联面板跨账本。旧库按账本存的事件在导入时按日期合并。
 - 新库 schema 版本在 `app_meta.schema_version`，从 1 连续递增；迁移升级前写
   `transactions.db.bak`。v2 增加 `chart` 表（图表配置与排序），v3 增加 `diary_entry`
   （最初每账本每天一篇），v4 把日记从账本上解绑：新增 `diary_book`（日记本：`book_id` / 名称 /
   描述 / 排序），`diary_entry` 换成 `book_id`、`(book_id, date)` 唯一——v3 里每个有日记的账本
-  迁移成一本同名日记本，没有日记的工作空间得到一本「默认日记本」。（旧库识别不看 `diary_entry`，
-  它从 v3 起是自己的表；只看只有旧工程才有的股票 / 事件表。）新库不建股票表，也不建立
-  股票与账本的关联；旧库通过导入工具复制记账表与 chart，不直接打开。
+  迁移成一本同名日记本，没有日记的工作空间得到一本「默认日记本」。v5 增加 `key_event` /
+  `key_event_image`：事件属于工作空间，`key_event.date` 唯一，两张表都不带 `ledger_id`。
+  （旧库识别不看 `diary_entry` / `key_event`，它们从 v3 / v5 起是本工程自己的表；只看只有旧工程
+  才有的股票 / 待办表。）新库不建股票表，也不建立股票与账本的关联；旧库通过导入工具复制记账表、
+  chart 与事件，不直接打开。
 - 打开工作空间只做 `PRAGMA quick_check`；全量 `integrity_check` 只用于备份与恢复两个显式动作。
   库坏了就报告并引导从备份恢复，不自动修复、不静默建空库。
 - 恢复必然重启；恢复前的当前数据先另存为 `pre-restore-*`；手动备份是「库 + assets」目录，
