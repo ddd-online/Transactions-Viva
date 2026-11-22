@@ -176,7 +176,6 @@ func (p *accountPanel) toolbar(c ui.C) {
 		if p.accounts.picker(c) && p.onChange != nil {
 			p.onChange()
 		}
-		ui.Divider(c).Height(24)
 		ui.Spacer(c)
 		if ui.Button(c, "支取").Outline().Clicked() {
 			p.openAmount(actionWithdraw)

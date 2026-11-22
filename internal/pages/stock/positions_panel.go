@@ -374,7 +374,6 @@ func (p *positionsPanel) toolbar(c ui.C) {
 				p.onChange()
 			}
 		}
-		ui.Divider(c).Height(24)
 		ui.Spacer(c)
 		if ui.Button(c, "建仓").Clicked() {
 			p.openTrade(domain.TradeOpen, nil)

@@ -198,7 +198,6 @@ func (p *lessonsPanel) toolbar(c ui.C) {
 				p.Reload()
 			}
 		}
-		ui.Divider(c).Height(24)
 		ui.Spacer(c)
 		if ui.Button(c, "新建心得").Icon(icons.Plus).Clicked() {
 			p.openNew()

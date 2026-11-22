@@ -439,7 +439,6 @@ func (p *recordsPanel) toolbar(c ui.C) {
 				p.Reload()
 			}
 		}
-		ui.Divider(c).Height(24)
 		ui.Spacer(c)
 	})
 }
