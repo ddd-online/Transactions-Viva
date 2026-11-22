@@ -81,22 +81,22 @@ func (m *Model) stockSettingsSection(c ui.C, spec Spec) {
 		}
 		stock := spec.Stock
 
-		controls.Group(c, "交易", func() {
+		controls.Group(c, "交易与复盘", func() {
 			m.stockTagsRow(c, spec, stock)
 			ui.Divider(c)
-			controls.Row(c, "本轮复盘模板", "最多 200 字；留空用内置模板。", func() {
+			controls.Row(c, "本轮复盘模板", "最多 200 字；留空使用内置模板。", func() {
 				if ui.Button(c, "修改").Secondary().Clicked() {
 					m.openStockTemplate(stock, false)
 				}
 			})
 			ui.Divider(c)
-			controls.Row(c, "每日复盘模板", "最多 200 字；留空用内置模板。", func() {
+			controls.Row(c, "每日复盘模板", "最多 200 字；留空使用内置模板。", func() {
 				if ui.Button(c, "修改").Secondary().Clicked() {
 					m.openStockTemplate(stock, true)
 				}
 			})
 			ui.Divider(c)
-			controls.Row(c, "交易费用设置", stockFeeSummary(stock.Fee), func() {
+			controls.Row(c, "交易费用", stockFeeSummary(stock.Fee), func() {
 				if ui.Button(c, "修改").Secondary().Clicked() {
 					m.stock.feeForm = stockFeeFormOf(stock.Fee)
 					m.stock.feeError = ""
@@ -106,29 +106,33 @@ func (m *Model) stockSettingsSection(c ui.C, spec Spec) {
 		})
 
 		controls.Group(c, "数据管理", func() {
-			controls.Row(c, "操作记录",
-				"追加本金 / 支取 / 利息归本 / 建仓 / 加仓 / 减仓 / 清仓 各记一条，最多保留最近 10 条；回滚撤销最近一次操作。",
+			controls.Row(c, "最近操作",
+				"追加本金、支取、利息归本和每笔委托各记一条，保留最近 10 条；回滚会撤销最近一次操作。",
 				func() {
 					if ui.Button(c, "查看记录").Secondary().Clicked() {
 						m.stock.operationsOpen = true
 					}
-					if ui.Button(c, "回滚").Secondary().Disabled(len(stock.Operations) == 0).Clicked() {
+					rollback := ui.Button(c, "回滚").Secondary().Disabled(len(stock.Operations) == 0)
+					if len(stock.Operations) == 0 {
+						rollback = rollback.Tooltip("暂无可回滚的操作")
+					}
+					if rollback.Clicked() {
 						m.rollbackStock(spec)
 					}
 				})
 			ui.Divider(c)
-			controls.Row(c, "归档",
-				"把当前账户的本金、资金记录、交易与轮次/复盘迁到一个新账户；原账户只保留交易标签、复盘模板与费用设置。需先清空全部持仓。",
+			controls.Row(c, "归档到新账户",
+				"把当前账户的本金、资金记录和全部股票数据迁到新账户；原账户只保留标签、模板和费用设置。归档前请先清空全部持仓。",
 				func() {
-					if ui.Button(c, "归档").Secondary().Clicked() {
+					if ui.Button(c, "归档到新账户").Secondary().Clicked() {
 						m.stock.archiveOpen, m.stock.archiveError, m.stock.archiveName = true, "", ""
 					}
 				})
 			ui.Divider(c)
-			controls.Row(c, "重置",
-				"清空当前账户的股票数据（账户本金、持仓、交易记录、资金记录、费用设置、交易标签与复盘模板），此操作不可恢复。",
+			controls.Row(c, "重置股票数据",
+				"清空当前账户的全部股票数据，包括本金、资金、持仓、成交、轮次、复盘、心得、标签、模板与费用设置。此操作不可恢复。",
 				func() {
-					if ui.Button(c, "重置").Destructive().Clicked() {
+					if ui.Button(c, "重置股票数据").Destructive().Clicked() {
 						m.stock.resetOpen = true
 					}
 				})
@@ -143,7 +147,7 @@ func (m *Model) stockTagsRow(c ui.C, spec Spec, stock *StockConfig) {
 		Items(ui.Center).Children(func() {
 		ui.Column(c).Grow(1).Gap(4).Children(func() {
 			typography.Body(c, "交易标签").FillWidth().Ellipsis()
-			typography.CaptionParagraph(c, "最多 20 个、每个 8 字；删除不影响历史记录。", 2)
+			typography.CaptionParagraph(c, "最多 20 个，每个最多 8 个字；删除标签不会改动历史成交。", 2)
 			if len(stock.Tags) > 0 {
 				ui.Flow(c).Gap(4).LineGap(4).Children(func() {
 					for _, tag := range stock.Tags {
@@ -168,7 +172,7 @@ func (m *Model) stockTagsRow(c ui.C, spec Spec, stock *StockConfig) {
 			if field.Submitted() {
 				m.addStockTag(spec, stock)
 			}
-			if ui.Button(c, "添加").Secondary().Clicked() {
+			if ui.Button(c, "添加标签").Secondary().Clicked() {
 				m.addStockTag(spec, stock)
 			}
 		})
@@ -234,8 +238,11 @@ func (m *Model) stockTemplateDialogFor(c ui.C, spec Spec, daily bool) {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 			ui.TextArea(c, draft, title, "留空使用内置模板").Height(height)
 			ui.Row(c).Gap(layout.Gap).Items(ui.Center).Children(func() {
-				typography.Caption(c, fmt.Sprintf("%d / %d 字",
-					utf8.RuneCountInString(*draft), domain.StockReviewTemplateMaxChars))
+				count := utf8.RuneCountInString(*draft)
+				counter := typography.Caption(c, fmt.Sprintf("%d / %d 字", count, domain.StockReviewTemplateMaxChars))
+				if count > domain.StockReviewTemplateMaxChars {
+					counter.Color(c.Theme().Danger)
+				}
 				ui.Spacer(c)
 				if *errText != "" {
 					typography.Caption(c, *errText).Color(c.Theme().Danger)
@@ -278,7 +285,7 @@ func (m *Model) saveStockTemplate(spec Spec, daily bool) {
 		return
 	}
 	m.stock.templateOpen = false
-	m.toaster.Show("复盘模板已保存", "", ui.ToastSuccess)
+	m.toaster.Show("本轮复盘模板已保存", "", ui.ToastSuccess)
 }
 
 func (m *Model) resetStockTemplate(spec Spec, daily bool) {
@@ -314,7 +321,7 @@ func (m *Model) stockFeeDialog(c ui.C, spec Spec) {
 	if !m.stock.feeOpen {
 		return
 	}
-	ui.ModalWith(c, &m.stock.feeOpen, "交易费用设置", ui.ModalSpec{Width: 640}, func() {
+	ui.ModalWith(c, &m.stock.feeOpen, "交易费用", ui.ModalSpec{Width: 640}, func() {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 			ui.Grid(c, 250).FillWidth().Gap(layout.BlockGap).Children(func() {
 				stockFeeField(c, "佣金费率", "万分之", &m.stock.feeForm.commission, "2.354")
@@ -322,7 +329,7 @@ func (m *Model) stockFeeDialog(c ui.C, spec Spec) {
 				stockFeeField(c, "印花税", "%", &m.stock.feeForm.stamp, "0.05")
 				stockFeeField(c, "过户费", "%", &m.stock.feeForm.transfer, "0.001")
 			})
-			typography.CaptionParagraph(c, "建仓时按这里的值预填；建仓之后本轮费率固定，改动只影响新轮次。", 2)
+			typography.CaptionParagraph(c, "建仓时按这里的值预填；建仓后本轮费率固定，修改只影响之后新建的轮次。", 2)
 			if m.stock.feeError != "" {
 				typography.Caption(c, m.stock.feeError).Color(c.Theme().Danger)
 			}
@@ -353,22 +360,22 @@ func (m *Model) saveStockFee(spec Spec) {
 	}
 	commission, err := parseStockFeeNumber(m.stock.feeForm.commission)
 	if err != nil {
-		m.stock.feeError = "佣金费率必须是数字"
+		m.stock.feeError = "佣金费率请填数字，例如 2.354"
 		return
 	}
 	stamp, err := parseStockFeeNumber(m.stock.feeForm.stamp)
 	if err != nil {
-		m.stock.feeError = "印花税必须是数字"
+		m.stock.feeError = "印花税请填数字，例如 0.05"
 		return
 	}
 	transfer, err := parseStockFeeNumber(m.stock.feeForm.transfer)
 	if err != nil {
-		m.stock.feeError = "过户费必须是数字"
+		m.stock.feeError = "过户费请填数字，例如 0.001"
 		return
 	}
 	minCommission, err := domain.YuanToCents(m.stock.feeForm.minCommission)
 	if err != nil {
-		m.stock.feeError = "最低佣金输入无效"
+		m.stock.feeError = "最低佣金请填金额，例如 5.00"
 		return
 	}
 	fee := domain.RoundFee{
@@ -458,7 +465,7 @@ func (m *Model) stockArchiveDialog(c ui.C, spec Spec) {
 		if ui.Button(c, "取消").Outline().Clicked() {
 			m.stock.archiveOpen = false
 		}
-		if ui.Button(c, "归档").Clicked() {
+		if ui.Button(c, "归档到新账户").Clicked() {
 			m.submitStockArchive(spec)
 		}
 	})
@@ -485,14 +492,14 @@ func (m *Model) stockResetDialog(c ui.C, spec Spec) {
 	if !m.stock.resetOpen {
 		return
 	}
-	ui.ModalWith(c, &m.stock.resetOpen, "重置全部股票数据", ui.ModalSpec{
+	ui.ModalWith(c, &m.stock.resetOpen, "重置股票数据", ui.ModalSpec{
 		Width:       420,
-		Description: "将清空当前账户的股票数据，且不可恢复。",
+		Description: "清空当前账户的全部股票数据（本金、资金、持仓、成交、轮次、复盘、心得与设置），且不可恢复。",
 	}, nil, func() {
 		if ui.Button(c, "取消").Outline().Clicked() {
 			m.stock.resetOpen = false
 		}
-		if ui.Button(c, "重置").Destructive().Clicked() {
+		if ui.Button(c, "重置股票数据").Destructive().Clicked() {
 			if spec.OnResetStockAccount == nil {
 				return
 			}
@@ -507,7 +514,7 @@ func (m *Model) stockResetDialog(c ui.C, spec Spec) {
 }
 
 func stockFeeSummary(fee domain.StockFeeSetting) string {
-	return fmt.Sprintf("佣金 万%s · 最低 ¥%s · 印花税 %s%% · 过户费 %s%%",
+	return fmt.Sprintf("佣金 万分之 %s · 最低 ¥%s · 印花税 %s%% · 过户费 %s%%",
 		trimNumber(fee.CommissionRate*10000), domain.CentsToYuan(fee.MinCommission),
 		trimNumber(fee.StampDutyRate*100), trimNumber(fee.TransferFeeRate*100))
 }
