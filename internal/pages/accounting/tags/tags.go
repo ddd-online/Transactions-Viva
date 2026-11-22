@@ -1,6 +1,6 @@
 // Package tags is the 记账 · 标签 screen: the categories of a transaction type on
 // the left and the tags of the chosen category on the right, with add, delete
-// and drag reordering. It follows the old application's category-tag page; the
+// and drag reordering. It follows the application's category-tag page; the
 // rows come from internal/store through repository.Repository.
 package tags
 
@@ -316,7 +316,7 @@ func (m *Model) typeCard(c ui.C, k kind) {
 }
 
 // selectKind switches the transaction type and clears the chosen category, as
-// the old page does.
+// the page does.
 func (m *Model) selectKind(k kind) {
 	if m.kind == k {
 		return

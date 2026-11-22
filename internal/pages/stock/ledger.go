@@ -59,7 +59,7 @@ type ledgerSheet struct {
 	BuyPrice string
 	BuyCost  string
 
-	// Closed says the round has been sold out; sell numbers are shown only then.
+	// Closed says the round has been sout; sell numbers are shown only then.
 	Closed    bool
 	SellPrice string
 	SellNet   string

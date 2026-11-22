@@ -68,7 +68,7 @@ func stockFeeFormOf(fee domain.StockFeeSetting) stockFeeForm {
 	}
 }
 
-// stockSettingsSection is 设置 · 股票设置: the stock tab's old 设置 screen,
+// stockSettingsSection is 设置 · 股票设置: the stock tab's 设置 screen,
 // moved into the settings page and laid out as groups of settings rows.
 func (m *Model) stockSettingsSection(c ui.C, spec Spec) {
 	groups := []controls.GroupSpec{{

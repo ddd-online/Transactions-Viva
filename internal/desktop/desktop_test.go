@@ -448,7 +448,7 @@ func TestRecordsLedgerSelect(t *testing.T) {
 	}
 }
 
-// TestAccountingLedgerIsSharedAcrossPages switches the ledger on each migrated
+// TestAccountingLedgerIsSharedAcrossPages switches the ledger on each accounting
 // 记账 page and checks the other pages follow it.
 func TestAccountingLedgerIsSharedAcrossPages(t *testing.T) {
 	driver, _ := open(t)
@@ -717,8 +717,8 @@ func TestRecordsRowContextMenu(t *testing.T) {
 	}
 }
 
-// TestRecordsEmptyState checks the empty state is the theme's, with the old
-// page's actions under it.
+// TestRecordsEmptyState checks the empty state is the theme's, with the page's
+// actions under it.
 func TestRecordsEmptyState(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, time.Now().Format("2006-01-02"))
@@ -1088,7 +1088,7 @@ func TestSettingsAppearanceAndCloseBehavior(t *testing.T) {
 
 // TestSettingsManagesLedgers drives 账本管理, the settings section under 通用设置:
 // create a ledger with a description, rename it, and delete it. The new ledger becomes the one the
-// accounting pages read, as the old application's 创建账本 did.
+// accounting pages read, as the application's 创建账本 did.
 func TestSettingsManagesLedgers(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "设置")
@@ -1324,7 +1324,7 @@ func TestSettingsWorkspacePicker(t *testing.T) {
 }
 
 // TestPrependWorkspaceKeepsFiveDistinctPaths checks the recent-list rule the
-// old configuration service applied.
+// configuration service applied.
 func TestPrependWorkspaceKeepsFiveDistinctPaths(t *testing.T) {
 	recent := []string{"a", "b", "c", "d", "e"}
 	next := prependWorkspace("c", recent)
@@ -1404,7 +1404,7 @@ func TestFirstEnabledSectionFollowsTheSwitches(t *testing.T) {
 
 // TestTrayIconCarriesTheAppMark checks the status icon is the About page's
 // mark: a colored plate with the white "Tr", its corners transparent, rather
-// than the old template placeholder.
+// than the template placeholder.
 func TestTrayIconCarriesTheAppMark(t *testing.T) {
 	icon := trayIcon()
 	if icon.Size != 64 || len(icon.RGBA) != 64*64*4 {

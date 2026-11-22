@@ -3,7 +3,7 @@
 //
 // It is the event page's file side. The page itself holds no file system code;
 // the shell calls these functions and paints the result. Images are grouped the
-// way the old application did it: iPhone's live photo arrives as a still and a
+// way the application did it: iPhone's live photo arrives as a still and a
 // same-named .MOV, every other still stands alone, and a video without its
 // still is reported instead of guessed at.
 package events
@@ -120,7 +120,7 @@ func addOne(ctx context.Context, repo repository.Repository, workspaceDir, date 
 	}
 	if files.DisplayFormat == assets.FormatHEIC {
 		// HEIC is decoded once, here: the display copy becomes JPEG (92, as the
-		// old application transcoded) and the original bytes are kept beside
+		// application transcoded) and the original bytes are kept beside
 		// it, so a paint never runs the HEVC decoder again and the best copy
 		// is never lost.
 		display, err := assets.EncodeJPEG(picture, assets.DisplayJPEGQuality)
@@ -156,7 +156,7 @@ func addOne(ctx context.Context, repo repository.Repository, workspaceDir, date 
 
 // groupFiles sorts picked paths into live-photo pairs. A still is recognized by
 // its bytes, so a renamed photo still imports; a motion part is recognized by
-// its extension, as the old application did. Files are paired by the lowercased
+// its extension, as the application did. Files are paired by the lowercased
 // file stem, and the first of each kind wins.
 func groupFiles(paths []string) (groups []picked, unsupported, orphanMotions []string, err error) {
 	type pair struct {

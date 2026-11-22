@@ -13,7 +13,7 @@ package semantic
 
 import "github.com/vivaui/viva/gfx"
 
-// The transaction types, spelled as the old project stores them.
+// The transaction types, spelled as the project stores them.
 const (
 	KindExpense  = "expense"
 	KindIncome   = "income"

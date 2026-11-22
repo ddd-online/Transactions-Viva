@@ -52,7 +52,7 @@ var (
 )
 
 const (
-	// statisticsGroupSize is the old app's group size: every five settlements.
+	// statisticsGroupSize is the app's group size: every five settlements.
 	statisticsGroupSize = 5
 	// statisticsDetailSize is the detail table's page size.
 	statisticsDetailSize = 15
@@ -104,7 +104,7 @@ type statisticsPanel struct {
 
 	// The curve is Viva's area chart. The state keeps the hovered point, the
 	// plot turns the pointer into a point, and the custom tooltip adds the stock
-	// name the old chart's tip carried.
+	// name the chart's tip carried.
 	chartState   viva.ChartState
 	chartPlot    viva.ChartPlot
 	chartHit     gfx.ID
@@ -336,7 +336,7 @@ func (p *statisticsPanel) toolbar(c ui.C) {
 }
 
 // applyRecent is the field's Enter: only a positive whole number becomes the
-// new limit; an empty field means no limit, as it did in the old page.
+// new limit; an empty field means no limit, as it did in the page.
 func (p *statisticsPanel) applyRecent() {
 	text := strings.TrimSpace(p.recentText)
 	if text == "" {
@@ -611,7 +611,7 @@ func (p *statisticsPanel) chartColor(theme gfx.Theme) gfx.Color {
 }
 
 // drawHover paints the crosshair, the point and the tooltip of the hovered
-// settlement. The component's own tooltip is off because the old tip also named
+// settlement. The component's own tooltip is off because the tip also named
 // the stock, which the axis label has no room for.
 func (p *statisticsPanel) drawHover(d *ui.DrawContext) {
 	points := p.chartPoints()
@@ -920,7 +920,7 @@ func statTooltipTitle(strategy domain.StockStatisticsStrategy, point domain.Stoc
 	return title
 }
 
-// statPercent writes a percentage with the old table's two decimals.
+// statPercent writes a percentage with the table's two decimals.
 func statPercent(value float64) string {
 	if math.Abs(value) < 0.005 {
 		value = 0
@@ -974,7 +974,7 @@ func winLossCaption(point domain.StockStatisticsPoint) string {
 	return caption
 }
 
-// winLossText is the detail table's spelling: the old table separated the
+// winLossText is the detail table's spelling: the table separated the
 // counts with spaces, not the summary's middle dots.
 func winLossText(point domain.StockStatisticsPoint) string {
 	text := strconv.Itoa(point.WinCount) + " 胜 " + strconv.Itoa(point.LossCount) + " 负"
@@ -990,7 +990,7 @@ func statColor(theme gfx.Theme, value int64) *gfx.Color {
 }
 
 // statChartValue is a metric in the curve's unit: money is drawn in yuan (the
-// points hold cents), everything else keeps its own unit.
+// points hcents), everything else keeps its own unit.
 func statChartValue(metric domain.StockMetric, point domain.StockStatisticsPoint) float64 {
 	value := domain.MetricValue(metric, point)
 	if domain.MetricKind(metric) == domain.ChartValueMoney {
@@ -1008,7 +1008,7 @@ func metricYBounds(metric domain.StockMetric, points []domain.StockStatisticsPoi
 }
 
 // statPointValue is the tooltip's value line, in the metric's own format. Money
-// keeps the old chart tip's sign in front of the symbol (-¥1.00).
+// keeps the chart tip's sign in front of the symbol (-¥1.00).
 func statPointValue(metric domain.StockMetric, point domain.StockStatisticsPoint) string {
 	switch domain.MetricKind(metric) {
 	case domain.ChartValuePercent:
@@ -1024,7 +1024,7 @@ func statPointValue(metric domain.StockMetric, point domain.StockStatisticsPoint
 }
 
 // statAppendYAxis writes the value axis without a currency sign or grouping, as
-// the old chart did: whole numbers, percent as a percent, and a drawdown with
+// the chart did: whole numbers, percent as a percent, and a drawdown with
 // its meaningful two decimals.
 func statAppendYAxis(dst []byte, metric domain.StockMetric, value float32) []byte {
 	switch domain.MetricKind(metric) {

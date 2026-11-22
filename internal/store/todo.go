@@ -12,18 +12,6 @@ import (
 
 var _ repository.TodoRepository = (*Workspace)(nil)
 
-// normalizeTodoScope folds todo rows written by the per-ledger build into the
-// workspace scope. The columns stay for the v1 file shape; the values do not
-// carry meaning anymore.
-func normalizeTodoScope(ctx context.Context, db *sql.DB) error {
-	for _, table := range []string{"todo_card", "todo_item", "todo_progress"} {
-		if _, err := db.ExecContext(ctx, "UPDATE "+table+" SET ledger_id = '' WHERE ledger_id <> ''"); err != nil {
-			return fmt.Errorf("合并工作空间待办失败：%w", err)
-		}
-	}
-	return nil
-}
-
 const todoCardColumns = "id, ledger_id, title, created_at, updated_at, sort_order"
 const todoItemColumns = "id, ledger_id, card_id, title, start_date, due_date, urgency, importance, status, completed_at, created_at, updated_at"
 const todoProgressColumns = "id, ledger_id, item_id, content, created_at, done"

@@ -1,7 +1,6 @@
 # 发布流程
 
-发布规范沿用旧工程 `D:\github\Transactions\build\` 的约定：版本、标签、正文、产物名与清理
-都由脚本检查，不靠记忆。当前仓库把构建系统从 Electron 换成了 Viva，但流程与模板保持一致。
+发布规范：版本、标签、正文、产物名与清理都由脚本检查，不靠记忆。构建与发布使用 Viva 与 GitHub Release。
 
 **发布不是默认动作。** 日常修改只 commit；只有用户在当次对话里明确要求“发布 / 推送 /
 创建 release”时，才执行 push、打标签、创建 GitHub Release。发布前必须完成下方第 3 节的
@@ -79,5 +78,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -File build/release.ps1 -Tag vX.Y.
 ## 5. 发布后
 
 - 打开 GitHub Release，确认只有一个 `.exe` 资产，正文只有当前版本。
-- 在旧版本应用里检查一次更新：应识别新 tag、显示同一份 release 正文，并下载校验安装器。
+- 在已安装的上一版本应用里检查一次更新：应识别新 tag、显示同一份 release 正文，并下载校验安装器。
 - 不要修改已发布标签或已上传的安装器；有问题就发下一版。

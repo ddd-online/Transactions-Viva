@@ -36,7 +36,7 @@ func (w *Workspace) ResetStockAccount(ctx context.Context, accountID string) err
 }
 
 // ArchiveStockAccount moves one account's data into a new account. It refuses
-// while any round is still open, mirroring the old archive command.
+// while any round is still open, mirroring the archive command.
 func (w *Workspace) ArchiveStockAccount(ctx context.Context, accountID, name string) (domain.StockAccount, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -82,7 +82,7 @@ func (w *Workspace) ArchiveStockAccount(ctx context.Context, accountID, name str
 			created.SortOrder, created.CreatedAt, created.UpdatedAt); err != nil {
 			return fmt.Errorf("创建归档账户失败：%w", err)
 		}
-		// Copy the fee setting; tags / review templates stay on the old account.
+		// Copy the fee setting; tags / review templates stay on the account.
 		var feeID string
 		var commission, stamp, transfer float64
 		var minCommission int64

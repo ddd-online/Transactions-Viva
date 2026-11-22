@@ -1,6 +1,6 @@
 package domain
 
-// 核心记账模型。字段名沿用旧工程的 camelCase 语义，Go 里用导出的 PascalCase；
+// 核心记账模型。字段名沿用本项目的 camelCase 语义，Go 里用导出的 PascalCase；
 // 与 SQLite 列名（snake_case）的映射放在 store 层，模型本身不认识数据库。
 //
 // 能空的值用指针或空串表达：金额与时间的 0 是真实值，不能拿 0 当 NULL。
@@ -22,7 +22,7 @@ type TransactionRecord struct {
 	TransactionType string // income / expense / transfer
 	Category        string
 	Description     string
-	Flags           string // 标记集 JSON，保持旧库的字符串形态
+	Flags           string // 标记集 JSON，保持现有库的字符串形态
 	KeyEventDate    string // 关联的事件日期（空串 = 不关联）
 	TransactionAt   int64  // 发生时间（Unix 秒）
 	CreatedAt       int64

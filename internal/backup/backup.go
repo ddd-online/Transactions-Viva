@@ -396,7 +396,7 @@ func (s *Service) Restore(ctx context.Context, workspace *store.Workspace, backu
 		}
 	}
 	if err := copyFile(database, workspace.DatabasePath()); err != nil {
-		// The old database is already gone. Put the pre-restore snapshot back so
+		// The database is already gone. Put the pre-restore snapshot back so
 		// the caller can reopen a complete workspace instead of creating an empty
 		// one on the next Open.
 		_ = copyFile(prePath, workspace.DatabasePath())

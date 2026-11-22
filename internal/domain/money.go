@@ -11,7 +11,7 @@ import (
 // 恒为整数「厘」（1/1000 元）。两者只在计算成交额时相遇一次。
 //
 // 这些函数是「金额恒为整数分」纪律的守门人，行为是硬契约（含负号、".5"、
-// 第三位小数四舍五入这类输入），迁移时不要凭感觉改写。
+// 第三位小数四舍五入这类输入），不要凭感觉改写。
 
 var (
 	// ErrInvalidMoney 表示输入不是金额文本。
@@ -30,7 +30,7 @@ func CentsToYuan(cents int64) string {
 // YuanToCents 把界面输入框里的元文本转成分。
 //
 // 允许前后空格与负号；整数部分可省略（".5"）；小数最多取 3 位，第 3 位四舍五入到分；
-// 空串与纯空白按 0 处理（旧行为的兼容点）。非数字输入返回 ErrInvalidMoney，
+// 空串与纯空白按 0 处理。非数字输入返回 ErrInvalidMoney，
 // 超出 int64 范围返回 ErrMoneyOverflow。
 func YuanToCents(input string) (int64, error) {
 	trimmed := strings.TrimSpace(input)

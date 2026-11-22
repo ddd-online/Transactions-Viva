@@ -1,6 +1,6 @@
 // Package config defines and persists the application configuration: the
 // window frame, the last workspace, appearance, feature switches and backup
-// policy. It is the Go port of the old project's shared/types/config.ts.
+// policy. It is the Go port of the project's shared/types/config.ts.
 //
 // The file is ~/.transactions.json in production and ~/.transactions.dev.json
 // while `viva dev` runs (its reload host sets VIVA_RELOAD_ADDRESS). Reads are
@@ -38,7 +38,7 @@ func Path(home string, dev bool) string {
 }
 
 // ProxyMode is how outbound requests reach the network. There is no SOCKS or
-// PAC support, matching the old application.
+// PAC support, matching the application.
 type ProxyMode string
 
 const (
@@ -76,7 +76,7 @@ const (
 	FeatureTodo       FeatureKey = "todo"
 )
 
-// FeatureKeys are the features in the old settings page's row order.
+// FeatureKeys are the features in the settings page's row order.
 var FeatureKeys = [...]FeatureKey{
 	FeatureAccounting, FeatureStock, FeatureKeyEvent, FeatureDiary, FeatureTodo,
 }
@@ -147,7 +147,7 @@ type FeatureFlags struct {
 }
 
 // AppConfig is everything the configuration file holds. Pointers keep "not
-// set" distinct from a real 0, as the old TypeScript x/y fields did.
+// set" distinct from a real 0.
 type AppConfig struct {
 	Width                 int                     `json:"width"`
 	Height                int                     `json:"height"`
@@ -168,7 +168,7 @@ type AppConfig struct {
 }
 
 // Default returns the configuration a fresh install starts from. The values
-// match the old project's defaultConfig().
+// match the project's defaultConfig().
 func Default() AppConfig {
 	return AppConfig{
 		Width:                 1500,
@@ -210,7 +210,7 @@ func (c AppConfig) EffectiveFeatures(ledgerID string) FeatureFlags {
 
 // SetFeature turns a feature on or off for a ledger, or for the defaults when
 // ledgerID is empty, and returns the flags it wrote. The first change to a
-// ledger copies the current defaults into its entry, as the old service did, so
+// ledger copies the current defaults into its entry, as the service did, so
 // "this ledger differs in one switch" stays predictable; ledgers never changed
 // still follow the defaults.
 func (c *AppConfig) SetFeature(ledgerID string, key FeatureKey, enabled bool) (FeatureFlags, error) {
@@ -264,7 +264,7 @@ func (s *Store) Path() string { return s.path }
 func (s *Store) Config() AppConfig { return s.config }
 
 // Save writes cfg and remembers it. The write is atomic: a temporary file in
-// the same directory replaces the old one, so a crash cannot leave half a
+// the same directory replaces the one, so a crash cannot leave half a
 // configuration behind. Unknown top-level keys in the file survive.
 func (s *Store) Save(cfg AppConfig) error {
 	if s.path == "" {
@@ -465,7 +465,7 @@ func normalizeCloseBehavior(value string) CloseBehavior {
 }
 
 // normalizeAppearance treats an unknown appearance as following the system;
-// the old application did the same when it applied the mode.
+// the application did the same when it applied the mode.
 func normalizeAppearance(value string) Appearance {
 	switch Appearance(value) {
 	case AppearanceLight, AppearanceDark, AppearanceSystem:

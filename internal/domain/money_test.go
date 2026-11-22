@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// 这些用例直接搬自旧工程 tests/unit/money.spec.ts：行为是硬契约，
-// 迁移时不应该「顺手」改变取整或格式化的结果。
+// 这些用例直接搬自本项目 tests/unit/money.spec.ts：行为是硬契约，
+// 不应该「顺手」改变取整或格式化的结果。
 
 func TestCentsToYuan(t *testing.T) {
 	cases := []struct {

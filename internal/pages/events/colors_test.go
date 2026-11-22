@@ -9,9 +9,9 @@ import (
 
 // The surfaces an event's bar and dot are painted on: the page paper and the
 // card, which are both white in the light appearance. The muted chrome tone is
-// not one of them — the rails and the detail pane sit on the card — and the old
-// project measured its palette against paper white and its canvas, not a tinted
-// hover. Dark uses the page background and the card.
+// not one of them — the rails and the detail pane sit on the card. The palette
+// is measured against paper white and the canvas, not a tinted hover. Dark uses
+// the page background and the card.
 var (
 	lightSurfaces = []gfx.Color{gfx.RGB24(0xffffff), gfx.RGB24(0xffffff)}
 	darkSurfaces  = []gfx.Color{gfx.RGB24(0x18181b), gfx.RGB24(0x1c1c1f)}
@@ -38,7 +38,7 @@ func luminance(c gfx.Color) float64 {
 	return 0.2126*linear(c.Red) + 0.7152*linear(c.Green) + 0.0722*linear(c.Blue)
 }
 
-// TestEveryToneClearsThreeToOne is the old project's unit test for the palette:
+// TestEveryToneClearsThreeToOne is the project's unit test for the palette:
 // a 6px dot and a 3px bar are meaningful graphics (WCAG 1.4.11), so every tone
 // must clear 3:1 on both light surfaces and, after the dark lift, on both dark
 // ones. 4.5:1 would be text, which these are not.

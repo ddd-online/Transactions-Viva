@@ -11,7 +11,7 @@ import (
 	"transactions/internal/repository"
 )
 
-// newID is the id shape the store writes: the UUID the old application used.
+// newID is the id shape the store writes: the UUID the application used.
 func newID() string { return ids.New() }
 
 func nowUnix() int64 { return time.Now().Unix() }

@@ -396,7 +396,7 @@ func (s Section) feature() config.FeatureKey {
 }
 
 // sectionEnabled reports whether a feature switch lets the section show.
-// Settings is always available, as in the old application.
+// Settings is always available, as in the application.
 func (m *Model) sectionEnabled(section Section) bool {
 	if section == SectionSettings {
 		return true

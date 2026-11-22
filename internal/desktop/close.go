@@ -11,7 +11,7 @@ import (
 
 // requestClose is the window's close button. It saves the frame first, then
 // applies the configured behavior: quit, hide to the status area, or ask. A
-// workspace that is not open yet closes straight away, as the old application
+// workspace that is not open yet closes straight away, as the application
 // does — there is nothing to keep running.
 func (m *Model) requestClose(allow func()) {
 	m.saveWindowBounds()
@@ -74,7 +74,7 @@ func (m *Model) closeModal(c ui.C) {
 		return
 	}
 	ui.ModalWith(c, &m.closeAsk, "关闭选项", ui.ModalSpec{Width: 440}, func() {
-		// The old dialog's three lines, kept apart: a single Text does not wrap,
+		// The dialog's three lines, kept apart: a single Text does not wrap,
 		// so the tail of the second line was clipped by the modal's edge. Each
 		// line wraps on its own, and the long ones are allowed the lines they
 		// need instead of an ellipsis.

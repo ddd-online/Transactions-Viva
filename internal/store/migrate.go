@@ -37,12 +37,6 @@ var migrations = []migration{
 
 func targetVersion() int { return migrations[len(migrations)-1].version }
 
-// lastPreReleaseSchemaVersion is the last schema version used before 0.1.0
-// collapsed the history into v1. A database at that version already has every
-// table v1 needs; Open adopts it as v1 after taking a backup instead of
-// stranding data written by a development build.
-const lastPreReleaseSchemaVersion = 7
-
 // validateMigrations checks the contract: versions start at 1 and increase by
 // one with no holes.
 func validateMigrations(list []migration) error {
@@ -132,27 +126,6 @@ func applyMigrations(db *sql.DB, databasePath string, list []migration, current 
 		if err := tx.Commit(); err != nil {
 			return fmt.Errorf("提交迁移 %d 失败：%w", item.version, err)
 		}
-	}
-	return nil
-}
-
-// adoptPreReleaseSchema rewrites a pre-0.1.0 database version to v1 after a
-// backup. It runs only when every v1 table is already present, so it never
-// converts a partial or foreign database.
-func adoptPreReleaseSchema(db *sql.DB, databasePath string) error {
-	if err := backupDatabase(db, databasePath); err != nil {
-		return fmt.Errorf("合并版本前备份失败：%w", err)
-	}
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	if _, err := tx.Exec("UPDATE app_meta SET value = '1' WHERE key = 'schema_version'"); err != nil {
-		_ = tx.Rollback()
-		return fmt.Errorf("写入 v1 格式版本失败：%w", err)
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("提交 v1 格式版本失败：%w", err)
 	}
 	return nil
 }

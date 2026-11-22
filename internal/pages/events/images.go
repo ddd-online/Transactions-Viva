@@ -48,7 +48,7 @@ func (m *Model) bitmap(relative string) (gfx.Bitmap, bool) {
 }
 
 // cached is bitmap without decoding: a draw only reads what ensureBitmaps put
-// here. The page may change selection while an old frame is still painting, and
+// here. The page may change selection while a frame is still painting, and
 // a draw that decoded would put the photo it is leaving back into the cache.
 func (m *Model) cached(relative string) (gfx.Bitmap, bool) {
 	bitmap, ok := m.bits[relative]

@@ -39,7 +39,7 @@ type StockTradeUpdate struct {
 // StockRepository is the workspace data the 股票 section uses. Every stock row
 // is scoped by an account id; the market ladder tables are workspace-level.
 //
-// The interface grows with each migrated screen; the account methods are the
+// The interface grows with each implemented screen; the account methods are the
 // foundation every other stock read/write uses.
 type StockRepository interface {
 	StockAccounts(ctx context.Context) ([]domain.StockAccount, error)
@@ -124,7 +124,7 @@ type StockRepository interface {
 	// ResetStockAccount clears the account's holdings / trades / settings and
 	// sets its principal to zero; the named account itself stays.
 	ResetStockAccount(ctx context.Context, accountID string) error
-	// ArchiveStockAccount moves the account's data to a new account; the old
+	// ArchiveStockAccount moves the account's data to a new account; the source
 	// account keeps its name and settings but loses the data and principal.
 	ArchiveStockAccount(ctx context.Context, accountID, name string) (domain.StockAccount, error)
 

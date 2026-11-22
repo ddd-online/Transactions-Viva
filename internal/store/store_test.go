@@ -467,46 +467,6 @@ func TestOpenRejectsBadWorkspaces(t *testing.T) {
 		}
 	})
 
-	t.Run("legacy database", func(t *testing.T) {
-		directory := t.TempDir()
-		db, err := sql.Open("sqlite", filepath.Join(directory, "transactions.db"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := db.Exec("CREATE TABLE tbl_billadm_schema_migration (version INTEGER)"); err != nil {
-			t.Fatal(err)
-		}
-		db.Close()
-		if _, err := Open(directory); !errors.Is(err, ErrLegacyWorkspace) {
-			t.Fatalf("error = %v", err)
-		}
-	})
-
-	t.Run("old accounting database", func(t *testing.T) {
-		directory := t.TempDir()
-		db, err := sql.Open("sqlite", filepath.Join(directory, "transactions.db"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		legacy, err := os.ReadFile(filepath.Join("testdata", "legacy_schema.sql"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := db.Exec(string(legacy)); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := db.Exec("CREATE TABLE stock_account (id TEXT, ledger_id TEXT)"); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := db.Exec("INSERT INTO app_meta(key, value) VALUES ('schema_version', '12')"); err != nil {
-			t.Fatal(err)
-		}
-		db.Close()
-		if _, err := Open(directory); !errors.Is(err, ErrOldWorkspace) {
-			t.Fatalf("error = %v", err)
-		}
-	})
-
 	t.Run("missing directory", func(t *testing.T) {
 		if _, err := Open(filepath.Join(t.TempDir(), "missing")); !errors.Is(err, ErrWorkspaceMissing) {
 			t.Fatalf("error = %v", err)

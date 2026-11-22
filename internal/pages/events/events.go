@@ -1,13 +1,10 @@
 // Package events is the 事件 section: a workspace's key events, one per local
 // date, with colour, body and photo assets, and the transactions whose 关联事件
-// 日期 names the day. It is migrated from the old project's src/pages/events*,
-// event-* and electron/services/key-event.
+// 日期 names the day.
 //
-// Events belong to the workspace, not to a ledger. The old application stored
-// one event per (ledger, date) and the page followed the ledger; a ledger was
-// never what an event was about, so this page has no ledger picker and every
-// workspace has one set of events. Records stay per ledger, and the linked panel
-// shows the records of every ledger that name the day.
+// Events belong to the workspace, not to a ledger, so this page has no ledger
+// picker and every workspace has one set of events. Records stay per ledger,
+// and the linked panel shows the records of every ledger that name the day.
 //
 // The page owns no SQL and no files: a workspace reaches it as
 // repository.Repository through SetDataSource, and picking, storing and deleting
@@ -34,8 +31,8 @@ import (
 )
 
 // The page's measurements. The left rail uses the shared page rail width so it
-// lines up with every other section; the linked-trades rail keeps the old
-// page's clamp because it is a secondary pane, not a section rail.
+// lines up with every other section; the linked-trades rail keeps its own clamp
+// because it is a secondary pane, not a section rail.
 const (
 	linksMin       float32 = 180
 	linksMax       float32 = 280
@@ -154,8 +151,8 @@ type Model struct {
 	// bits caches the current day's decoded thumbnails; bitErrs remembers the
 	// paths that could not be decoded so a paint does not retry them.
 	// displayPath is the one full photo the stage and the lightbox paint, and
-	// blurID/blurBitmap the one backdrop behind it. A gallery can hold hundreds
-	// of pictures and a year can hold hundreds of days: keeping every viewed
+	// blurID/blurBitmap the one backdrop behind it. A gallery can hhundreds
+	// of pictures and a year can hhundreds of days: keeping every viewed
 	// full photo and every backdrop is not a cache, it is a leak.
 	bits          map[string]gfx.Bitmap
 	bitErrs       map[string]string
@@ -285,7 +282,7 @@ func (m *Model) View(c ui.C) {
 }
 
 // toolbar is the band above the panes: the year, the linked rail's switch and
-// 新增事件. The old page read the active ledger from the title bar's menu; this
+// 新增事件. The page read the active ledger from the title bar's menu; this
 // page has no ledger, so the band holds nothing about one.
 func (m *Model) toolbar(c ui.C) {
 	layout.Toolbar(c, func() {
@@ -570,7 +567,7 @@ func (m *Model) saveContent() {
 	m.reloadList()
 }
 
-// changeColor stores a tone at once, as the old swatches did: colour is a switch,
+// changeColor stores a tone at once, as the swatches did: colour is a switch,
 // not part of the body draft. A failed write puts the previous tone back.
 func (m *Model) changeColor(value string) {
 	if m.repo == nil || !m.hasEvent || value == m.color {

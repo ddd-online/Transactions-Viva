@@ -19,7 +19,7 @@ import (
 	"transactions/internal/repository"
 )
 
-// lessonTextLimit is the old project's STOCK_LESSON_TEXT_MAX.
+// lessonTextLimit is the project's STOCK_LESSON_TEXT_MAX.
 const lessonTextLimit = 80
 
 // Column widths of the lesson table. The 心得 cell takes the rest.

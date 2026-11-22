@@ -12,7 +12,7 @@ import (
 )
 
 // Key events: the workspace's memories, one event per local date. They are not
-// ledger data — the old application stored one event per (ledger, date) and the
+// ledger data — the application stored one event per (ledger, date) and the
 // page followed the ledger, but a ledger was never what an event was about, so
 // this schema keeps a single set for the whole workspace.
 //
@@ -269,7 +269,7 @@ func (w *Workspace) KeyEventRecords(ctx context.Context, date string) ([]reposit
 }
 
 // scanKeyEvent reads one row; title, content and colour are nullable because
-// the old database allowed NULL there.
+// the database allowed NULL there.
 func scanKeyEvent(row interface{ Scan(...any) error }) (domain.KeyEvent, error) {
 	var event domain.KeyEvent
 	var title, content, color sql.NullString

@@ -46,7 +46,7 @@ func (m *Model) linksPanel(c ui.C, width float32) {
 }
 
 // linkedRow is one transaction: description (or category), signed amount, tags
-// and the ledger and day it belongs to. It is read-only, like the old rail. The
+// and the ledger and day it belongs to. It is read-only, like the rail. The
 // amount owns a fixed column and the description ellipsizes: a long title must
 // not push the number out of the rail.
 func (m *Model) linkedRow(c ui.C, entry *repository.RecordEntry) {

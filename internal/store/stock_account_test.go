@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 
 	"transactions/internal/repository"
@@ -141,35 +140,5 @@ func TestFutureSchemaIsRejected(t *testing.T) {
 	}
 	if _, err := Open(directory); !errors.Is(err, ErrVersionTooNew) {
 		t.Fatalf("future version = %v", err)
-	}
-}
-
-func TestPreReleaseSchemaIsAdoptedAsV1(t *testing.T) {
-	directory := t.TempDir()
-	workspace, err := Open(directory)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := workspace.db.Exec("UPDATE app_meta SET value = '7' WHERE key = 'schema_version'"); err != nil {
-		t.Fatal(err)
-	}
-	if err := workspace.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	adopted, err := Open(directory)
-	if err != nil {
-		t.Fatalf("Open pre-release: %v", err)
-	}
-	defer adopted.Close()
-	version, _, _ := schemaVersion(adopted.db)
-	if version != targetVersion() || version != 1 {
-		t.Fatalf("adopted version = %d, want 1", version)
-	}
-	if !hasAppID(adopted.db) {
-		t.Fatal("app_id missing after adoption")
-	}
-	if _, err := os.Stat(databasePathOf(directory) + ".bak"); err != nil {
-		t.Fatalf("adoption backup: %v", err)
 	}
 }

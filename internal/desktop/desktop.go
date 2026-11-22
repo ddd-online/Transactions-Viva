@@ -265,7 +265,7 @@ func newConfig(m *Model) app.Config {
 		Height:    height,
 		MinWidth:  MinimumWindowWidth,
 		MinHeight: MinimumWindowHeight,
-		// The old application draws its own 36px title bar; Viva draws the
+		// The application draws its own 36px title bar; Viva draws the
 		// window buttons on Windows and Linux, and keeps the macOS traffic lights.
 		WindowMode:     app.WindowCustomTitlebar,
 		TitlebarHeight: 36,
@@ -461,7 +461,7 @@ func (m *Model) content(c ui.C) {
 
 // toggleTheme switches between the light and dark palettes, as an explicit
 // appearance choice; from 跟随系统 the first click pins the opposite of what is
-// on screen, as the old titlebar toggle did.
+// on screen, as the titlebar toggle did.
 func (m *Model) toggleTheme() {
 	next := config.AppearanceDark
 	if m.dark {

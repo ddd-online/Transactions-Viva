@@ -1,7 +1,6 @@
 package store
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -61,14 +60,6 @@ func Open(directory string) (*Workspace, error) {
 		}
 	}
 
-	legacy, err := tableExists(db, "tbl_billadm_schema_migration")
-	if err != nil {
-		return closeOnError(fmt.Errorf("%w：%v", ErrCorrupt, err))
-	}
-	if legacy {
-		return closeOnError(fmt.Errorf("%w，请使用旧数据导入工具", ErrLegacyWorkspace))
-	}
-
 	version, hasMeta, err := schemaVersion(db)
 	if err != nil {
 		return closeOnError(fmt.Errorf("%w：%v", ErrCorrupt, err))
@@ -79,9 +70,6 @@ func Open(directory string) (*Workspace, error) {
 			return closeOnError(fmt.Errorf("%w：%v", ErrCorrupt, err))
 		}
 		if count > 0 {
-			if isOldAccountingDB(db) {
-				return closeOnError(fmt.Errorf("%w，请使用旧数据导入工具", ErrOldWorkspace))
-			}
 			return closeOnError(ErrNotWorkspace)
 		}
 		version = 0
@@ -89,23 +77,7 @@ func Open(directory string) (*Workspace, error) {
 		return closeOnError(ErrNotWorkspace)
 	}
 	if version > targetVersion() {
-		if isOldAccountingDB(db) {
-			return closeOnError(fmt.Errorf("%w（库格式版本 %d），请使用旧数据导入工具", ErrOldWorkspace, version))
-		}
-		if version <= lastPreReleaseSchemaVersion {
-			// Development builds before 0.1.0 used incremental versions up to 7.
-			// Their final schema is this release's v1; keep the data and make
-			// the version honest instead of refusing the workspace.
-			if err := validateSchemaTables(db); err != nil {
-				return closeOnError(fmt.Errorf("旧版工作空间无法合并为 v1：%w", err))
-			}
-			if err := adoptPreReleaseSchema(db, databasePath); err != nil {
-				return closeOnError(err)
-			}
-			version = targetVersion()
-		} else {
-			return closeOnError(fmt.Errorf("%w：当前库格式版本 %d，本程序支持到 %d", ErrVersionTooNew, version, targetVersion()))
-		}
+		return closeOnError(fmt.Errorf("%w：当前库格式版本 %d，本程序支持到 %d", ErrVersionTooNew, version, targetVersion()))
 	}
 	if err := applyMigrations(db, databasePath, migrations, version); err != nil {
 		return closeOnError(err)
@@ -113,13 +85,10 @@ func Open(directory string) (*Workspace, error) {
 	if err := validateSchemaTables(db); err != nil {
 		return closeOnError(err)
 	}
-	if err := normalizeTodoScope(context.Background(), db); err != nil {
-		return closeOnError(err)
-	}
 	return &Workspace{directory: directory, database: databasePath, db: db}, nil
 }
 
-// applyPragmas sets the old application's connection contract. WAL keeps reads
+// applyPragmas sets the application's connection contract. WAL keeps reads
 // and writes from blocking each other; the app uses a single connection.
 func applyPragmas(db *sql.DB) error {
 	if _, err := db.Exec("PRAGMA journal_mode = WAL"); err != nil {
@@ -161,34 +130,6 @@ func quickCheck(db *sql.DB) error {
 		return fmt.Errorf("%s", strings.Join(problems, "；"))
 	}
 	return nil
-}
-
-// isOldAccountingDB recognizes the old application's database so opening it can
-// point at the import tool instead of a generic version error.
-//
-// The identity key (app_id) is what this application writes from schema v6 on;
-// the old database never has it. A v6 database whose app_meta went missing still
-// has the new stock_account shape (no ledger_id column), so the old table name
-// alone is no longer a marker. todo_item is the old application's alone until
-// the todo section is migrated.
-func isOldAccountingDB(db *sql.DB) bool {
-	if hasAppID(db) {
-		return false
-	}
-	for _, table := range []string{"todo_item"} {
-		exists, err := tableExists(db, table)
-		if err == nil && exists {
-			return true
-		}
-	}
-	// Old stock_account is per ledger and therefore has ledger_id; the v6 shape
-	// does not. This keeps an old database with no todo rows recognizable.
-	if exists, err := tableExists(db, "stock_account"); err == nil && exists {
-		if hasLedger, columnErr := tableHasColumn(db, "stock_account", "ledger_id"); columnErr == nil && hasLedger {
-			return true
-		}
-	}
-	return false
 }
 
 // hasAppID reports whether app_meta carries this application's identity key.

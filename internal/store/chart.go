@@ -14,7 +14,7 @@ import (
 const chartColumns = "chart_id, ledger_id, title, granularity, chart_lines, chart_type, group_field, " +
 	"group_transaction_type, group_category, is_preset, sort_order, created_at, updated_at"
 
-// EnsureChartPresets seeds the old application's two preset charts for a
+// EnsureChartPresets seeds the application's two preset charts for a
 // ledger, once. app_meta keeps a marker so a deleted preset stays deleted.
 func (w *Workspace) EnsureChartPresets(ctx context.Context, ledgerID string) error {
 	if strings.TrimSpace(ledgerID) == "" {

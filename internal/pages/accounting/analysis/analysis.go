@@ -230,7 +230,7 @@ func (m *Model) ReloadData() {
 func (m *Model) loadSelected() {
 	m.loadErr = ""
 	m.chartVersion++
-	// A new data set starts with no hover: the old index would name a bucket of
+	// A new data set starts with no hover: the index would name a bucket of
 	// the previous chart, or a wedge that is no longer there.
 	m.chartState.Clear()
 	m.pieHover = noSlice

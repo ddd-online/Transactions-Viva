@@ -37,7 +37,7 @@ var _ Fetcher = (*TencentFetcher)(nil)
 const (
 	tencentBaseURL = "http://qt.gtimg.cn"
 	quoteTimeout   = 3 * time.Second
-	// Field indexes in the Tencent payload, matching the old project.
+	// Field indexes in the Tencent payload, matching the project.
 	fieldName      = 1
 	fieldCode      = 2
 	fieldLatest    = 3
@@ -150,8 +150,8 @@ func (f *TencentFetcher) fetch(ctx context.Context, target string) (string, erro
 	}
 	text, err := simplifiedchinese.GBK.NewDecoder().Bytes(body)
 	if err != nil {
-		// A malformed byte should not hide the rest of the payload; the old
-		// client fell back to UTF-8 and kept the (possibly garbled) names.
+		// A malformed byte should not hide the rest of the payload; fall back to
+		// UTF-8 and keep the (possibly garbled) names.
 		return string(body), nil
 	}
 	return string(text), nil
@@ -263,7 +263,7 @@ func parseDecimal(raw string) (float64, bool) {
 	return value, true
 }
 
-// parseQuoteTime parses YYYYMMDDHHMMSS. The old implementation read the
+// parseQuoteTime parses YYYYMMDDHHMMSS. The implementation read the
 // timestamp as UTC (NaiveDateTime::and_utc), and the quote time is only used as
 // "when this snapshot was taken", so the same interpretation is kept.
 func parseQuoteTime(raw string) (int64, bool) {

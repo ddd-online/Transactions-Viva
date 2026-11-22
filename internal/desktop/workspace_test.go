@@ -85,7 +85,7 @@ func TestWorkspaceGateOpensADirectory(t *testing.T) {
 }
 
 // TestWorkspaceSwitchLoadsTheOtherLedgers checks that switching workspaces
-// closes the old database and shows the new workspace's own data.
+// closes the database and shows the new workspace's own data.
 func TestWorkspaceSwitchLoadsTheOtherLedgers(t *testing.T) {
 	fixture := storetest.Open(t)
 	model := New()

@@ -25,7 +25,7 @@ import "github.com/vivaui/viva/gfx"
 //   - the primary button's label clears 4.5:1 on the primary fill;
 //   - the focus ring clears 3:1 on the surface it is drawn on.
 //
-// The data hues are darker than the old project's: its income green (#16a34a)
+// The data hues are darker than the project's: its income green (#16a34a)
 // and expense red (#dc2626) sit at 3.3:1 and 4.0:1 on white, which is fine for
 // a large figure but not for a 12px amount in a table. The hues are the same;
 // only their lightness changed. Transfer is a sky blue deliberately apart from

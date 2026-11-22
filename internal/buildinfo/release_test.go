@@ -8,8 +8,8 @@ import (
 	"testing"
 )
 
-// TestReleaseNotesMatchVersion mirrors the old project's static guard: a release
-// body may hold only the current version, or the updater shows an old changelog.
+// TestReleaseNotesMatchVersion mirrors the project's static guard: a release
+// body may honly the current version, or the updater shows a changelog.
 func TestReleaseNotesMatchVersion(t *testing.T) {
 	path := filepath.Join("..", "..", "build", "release_notes.md")
 	data, err := os.ReadFile(path)

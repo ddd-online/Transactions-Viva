@@ -1,7 +1,7 @@
 // Package templates is the 记账 · 模板 screen: the ledger's record templates in a
-// table, with 新建模板, delete and drag reordering. It follows the old
-// application's templates page; the rows live in internal/store and the shared
-// template cache keeps them available while the page paints.
+// table, with 新建模板, delete and drag reordering. The rows live in
+// internal/store and the shared template cache keeps them available while the
+// page paints.
 package templates
 
 import (
@@ -25,7 +25,7 @@ import (
 )
 
 // Table metrics: the fixed columns, the row gutter and the table's horizontal
-// padding. The flexible columns share the rest by weight, with the old table's
+// padding. The flexible columns share the rest by weight, with the table's
 // minimum widths.
 const (
 	dragColumnWidth   = float32(36)
@@ -394,7 +394,7 @@ func chip(c ui.C, text string, color gfx.Color) {
 		PadX(8).PadY(2).Radius(theme.Metrics.RadiusItem())
 }
 
-// dash is the old table's empty cell: a muted hyphen.
+// dash is the table's empty cell: a muted hyphen.
 func dash(c ui.C) ui.Box {
 	theme := c.Theme()
 	return ui.Text(c, "-").FontSize(typography.SizeBody).Color(theme.MutedForeground)
@@ -408,7 +408,7 @@ func kindColor(kind string, theme gfx.Theme) gfx.Color { return semantic.Kind(th
 func outlierColor(theme gfx.Theme) gfx.Color { return semantic.Outlier(theme) }
 
 // openForm and closeForm reset the form; the type and category are 支出 and
-// nothing, as the old dialog starts.
+// nothing, as the dialog starts.
 func (m *Model) openForm() {
 	m.resetForm()
 	m.formOpen = true
@@ -455,7 +455,7 @@ func (m *Model) tagOptions() []string {
 	return m.tags[tagKey(m.form.kind, m.form.category)]
 }
 
-// save validates the form and appends the tpl. The old dialog requires a
+// save validates the form and appends the tpl. The dialog requires a
 // name and a category, in that order.
 func (m *Model) save() {
 	name := strings.TrimSpace(m.form.name)

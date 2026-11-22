@@ -45,7 +45,7 @@ var trayIcon = sync.OnceValue(func() app.StatusIcon {
 })
 
 // addTray puts the application in the system's status area, so closing to the
-// tray leaves a way back. The old application always had this icon; when the
+// tray leaves a way back. The application always had this icon; when the
 // platform has no status area the close behavior falls back to quitting.
 func (m *Model) addTray(application *app.Application) bool {
 	item, err := application.AddStatusItem(app.StatusItemConfig{

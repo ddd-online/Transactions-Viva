@@ -97,8 +97,8 @@ func (w *Workspace) UpdateLedger(ctx context.Context, id, name, description stri
 	return nil
 }
 
-// DeleteLedger removes the ledger and its data. The new schema keeps the old
-// application's no-foreign-key rule, so the cascade is explicit and ordered.
+// DeleteLedger removes the ledger and its data. The schema has no foreign keys,
+// so the cascade is explicit and ordered.
 func (w *Workspace) DeleteLedger(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
@@ -108,7 +108,7 @@ func (w *Workspace) DeleteLedger(ctx context.Context, id string) error {
 		return err
 	}
 	return inTx(ctx, db, func(tx *sql.Tx) error {
-		// The old application's list, minus the stock, event and diary tables
+		// The application's list, minus the stock, event and diary tables
 		// this schema does not create. The charts belong to the ledger too:
 		// without this line they would outlive it as orphan rows.
 		statements := []string{

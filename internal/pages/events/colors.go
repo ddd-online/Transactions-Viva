@@ -9,16 +9,15 @@ import (
 
 // eventTone is one of the twenty identity colours an event can wear. The
 // hexadecimals are content, not chrome: the one the user picks is stored in
-// key_event.color, so this list is the authority (the old project's
-// src/theme/event-colors.ts). Changing a value needs a migration for the rows
+// key_event.color, so this list is the authority. Changing a value affects rows
 // already carrying it.
 type eventTone struct {
 	value string
 	name  string
 }
 
-// eventTones is the old palette in its order, including the two colours the old
-// project darkened for a 3:1 contrast on paper (#B08534 土黄, #C17C33 橘黄).
+// eventTones is the palette in its order, including the two colours darkened
+// for a 3:1 contrast on paper (#B08534 土黄, #C17C33 橘黄).
 var eventTones = [...]eventTone{
 	{"#D9705A", "砖红"},
 	{"#C25460", "玫红"},
@@ -43,12 +42,12 @@ var eventTones = [...]eventTone{
 }
 
 // toneLift is how far a tone is mixed toward white in the dark appearance. The
-// old stylesheet lifted by 32% in sRGB with color-mix, so the lift happens on
+// stylesheet lifted by 32% in sRGB with color-mix, so the lift happens on
 // the 8-bit channels rather than in linear light.
 const toneLift = 0.32
 
 // toneColor resolves a stored colour for painting. An empty value means the
-// theme's primary (使用默认颜色); an unparseable one (old data, a hand-edited
+// theme's primary (使用默认颜色); an unparseable one (existing data, a hand-edited
 // row) falls back to the primary rather than painting nothing.
 func toneColor(value string, theme gfx.Theme) gfx.Color {
 	red, green, blue, ok := parseHexColor(value)
@@ -75,7 +74,7 @@ func lift(channel uint8) uint8 {
 }
 
 // parseHexColor reads "#RRGGBB" (the stored form). The short form is not
-// something the palette or the old application ever wrote.
+// something the palette or the application ever wrote.
 func parseHexColor(value string) (uint8, uint8, uint8, bool) {
 	value = strings.TrimSpace(value)
 	if len(value) != 7 || value[0] != '#' {

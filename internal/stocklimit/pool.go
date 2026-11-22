@@ -120,7 +120,7 @@ func (s *EastmoneySource) now() time.Time {
 
 // flexNumber reads a number that the undocumented endpoint might send as a
 // JSON number, a numeric string, null or a malformed value. Malformed values
-// become 0, matching the old client's finiteNumber fallback.
+// become 0, matching the client's finiteNumber fallback.
 type flexNumber float64
 
 func (n *flexNumber) UnmarshalJSON(data []byte) error {
@@ -214,9 +214,9 @@ func poolTradeDate(value flexNumber) string {
 }
 
 // parseLimitPoolPayload parses the pool JSON. A bad JSON body, a non-zero rc or
-// a missing pool array is an error. Per-entry validation follows the old
-// client: six-digit codes only, level below 1 becomes 1, duplicate codes keep
-// the first row, and entries are sorted by first seal time then code.
+// a missing pool array is an error. Entries keep six-digit codes only, level
+// below 1 becomes 1, duplicate codes keep the first row, and entries are sorted
+// by first seal time then code.
 func parseLimitPoolPayload(text string) (*limitPoolPayload, error) {
 	var raw rawLimitPayload
 	if err := json.Unmarshal([]byte(text), &raw); err != nil {

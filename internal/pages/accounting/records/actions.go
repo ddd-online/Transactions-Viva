@@ -21,7 +21,7 @@ func (m *Model) deleteView(c ui.C) {
 	if m.deletingID == "" {
 		return
 	}
-	// The old confirmation was the question alone. The description states
+	// The confirmation was the question alone. The description states
 	// the one fact the title does not; a body line repeating it only made the
 	// dialog longer.
 	ui.ModalWith(c, &m.deleteConfirm, "删除这条记录？", ui.ModalSpec{

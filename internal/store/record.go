@@ -127,9 +127,8 @@ func (w *Workspace) CreateRecord(ctx context.Context, record domain.TransactionR
 	return record.TransactionID, nil
 }
 
-// UpdateRecord keeps the record id and replaces its tag links. The old
-// application deleted and re-created the row; keeping the id is deliberate and
-// invisible in the UI.
+// UpdateRecord keeps the record id and replaces its tag links; keeping the id
+// is deliberate and invisible in the UI.
 func (w *Workspace) UpdateRecord(ctx context.Context, record domain.TransactionRecord, tags []string) error {
 	if strings.TrimSpace(record.TransactionID) == "" {
 		return fmt.Errorf("%w：记录 id 不能为空", repository.ErrInvalid)
@@ -192,7 +191,7 @@ func (w *Workspace) DeleteRecord(ctx context.Context, id string) error {
 }
 
 // SyncRecord copies a record to another ledger with a new id. The key-event
-// date is not copied, matching the old row action.
+// date is not copied, matching the row action.
 func (w *Workspace) SyncRecord(ctx context.Context, id, targetLedgerID string) error {
 	source, err := w.Record(ctx, id)
 	if err != nil {

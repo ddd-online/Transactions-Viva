@@ -61,7 +61,7 @@ type recordsPanel struct {
 	summary     domain.StockHistorySummary
 	selected    string
 	// accountID is the account the loaded data belongs to; a reload after a
-	// switch elsewhere in the section drops the old selection and overlays.
+	// switch elsewhere in the section drops the selection and overlays.
 	accountID string
 	// defaultedFor names the stock whose default expansion (the largest round)
 	// has already been chosen, so a reload does not reopen a round the user
@@ -791,7 +791,7 @@ func (p *recordsPanel) recordSection(c ui.C, name string, action func(), body fu
 }
 
 // tradeTable is the read-only trade table of one round. Editing and deleting
-// are the optional actions; a close fill cannot be edited, as in the old page.
+// are the optional actions; a close fill cannot be edited, as in the page.
 func (p *recordsPanel) tradeTable(c ui.C, round domain.StockRoundDetail) {
 	ui.Column(c).FillWidth().Children(func() {
 		layout.TableHeader(c, layout.TableHeaderSpec{Height: 30, PadX: 12, Gap: 4}, func(c ui.C) {
@@ -1201,7 +1201,7 @@ func (p *recordsPanel) changed() {
 // assembleRecordHistory folds the store's flat rows into the left cards, one
 // detail per closed stock and the footer summary. The list and summary use every
 // trade of a round (the 0-share close marker is amount-free), while the expanded
-// detail shows and counts only the fills that really traded, as the old page
+// detail shows and counts only the fills that really traded, as the page
 // does.
 func assembleRecordHistory(
 	histories []domain.StockTradeHistory,
@@ -1340,7 +1340,7 @@ func ledgerViewOf(entry domain.StockLedgerEntry, trades []domain.StockTrade) dom
 }
 
 // historyDate / historyShortDateTime render Unix seconds in the local zone,
-// matching the old project's day / minute formats.
+// matching the project's day / minute formats.
 func historyDate(at int64) string {
 	if at <= 0 {
 		return "—"

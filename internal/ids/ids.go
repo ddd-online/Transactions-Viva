@@ -1,5 +1,5 @@
 // Package ids makes the identifiers this application stores. They are RFC 4122
-// version 4 UUID strings, the shape the old application used for ledgers,
+// version 4 UUID strings, the shape the application used for ledgers,
 // records, templates, diary books and event images. The store and the event
 // image service both name rows, so the generator lives on its own instead of in
 // one of them.

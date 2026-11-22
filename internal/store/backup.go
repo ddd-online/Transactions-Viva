@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// DBProbe is what opening a candidate snapshot read-only told us. A probe never
+// DBProbe is what opening a candidate snapshot read-only tus. A probe never
 // repairs or changes the file: a failed open is reported, not created.
 type DBProbe struct {
 	Opened        bool
@@ -86,7 +86,7 @@ func (w *Workspace) SnapshotTo(ctx context.Context, target string) error {
 		return fmt.Errorf("创建备份目录失败：%w", err)
 	}
 	if err := os.Remove(target); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("清理旧备份文件失败：%w", err)
+		return fmt.Errorf("清理备份文件失败：%w", err)
 	}
 	escaped := strings.ReplaceAll(target, "'", "''")
 	if _, err := w.db.ExecContext(ctx, "VACUUM INTO '"+escaped+"'"); err != nil {

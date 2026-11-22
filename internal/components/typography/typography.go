@@ -9,7 +9,7 @@
 // this application uses: the reference's 12/13/14 sat one pixel apart, so caption
 // and reading text were the only two jobs they could name here, and the dense
 // template table reads at the body size like every other table. Their measurement
-// of the platform faces holds here too: Chinese ships only Regular and Bold — 500
+// of the platform faces holds here too: Chinese ships only Regular and B— 500
 // and 600 resolve to the same face as 400 and 700 — so a Chinese heading is Bold
 // and the step from body to label comes from size and colour, never from a half
 // weight. Medium (500) is kept for Latin, digits and the mono face, where a real

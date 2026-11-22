@@ -1,9 +1,8 @@
 package store
 
-// defaultCategory is one seeded category and its tags. The list is copied
-// verbatim from the old application's electron/services/category.ts
-// DEFAULT_DATA: 19 categories and 57 tags. Changing it changes the data every
-// new ledger starts with, so it is a data contract, not a convenience.
+// defaultCategory is one seeded category and its tags. The list is 19
+// categories and 57 tags. Changing it changes the data every new ledger starts
+// with, so it is a data contract, not a convenience.
 type defaultCategory struct {
 	name string
 	tags []string

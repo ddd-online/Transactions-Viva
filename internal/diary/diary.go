@@ -1,5 +1,5 @@
 // Package diary moves diary files between a directory and a ledger: the batch
-// import and export behind the old application's settings · 日记配置 section.
+// import and export behind the application's settings · 日记配置 section.
 //
 // Both directions are `.txt` only. A file imports when its name is a real
 // `YYYY-MM-DD.txt`, and an export writes exactly that name, so an exported
@@ -104,7 +104,7 @@ func ImportFiles(ctx context.Context, repo repository.Repository, ledgerID strin
 			result.Failures = append(result.Failures, FileError{Date: file.Date, Message: "读取文件失败 " + err.Error()})
 			continue
 		}
-		// An imported file carries no mood: the old import left the day's mood
+		// An imported file carries no mood: the import left the day's mood
 		// as it found it, which for a new day is empty.
 		if _, err := repo.SaveDiary(ctx, ledgerID, file.Date, DecodeText(raw), ""); err != nil {
 			result.Failures = append(result.Failures, FileError{Date: file.Date, Message: err.Error()})

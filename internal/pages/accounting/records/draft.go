@@ -52,7 +52,7 @@ func (m *Model) openEdit(id string) {
 }
 
 // categoryNames is the 分类 Select's choices for a type, plus the draft's own
-// category when it belongs to another type: the old form kept its text when the
+// category when it belongs to another type: the form kept its text when the
 // type changed, and the Select needs the value among its choices.
 func (m *Model) categoryNames(kind, current string) []string {
 	names := m.categoryList[:0]
@@ -185,7 +185,7 @@ func (m *Model) saveTemplate(one tpl.Template) (tpl.Template, error) {
 	return one, nil
 }
 
-// recordFlags is the stored JSON shape the old application used for a record's
+// recordFlags is the stored JSON shape the application used for a record's
 // 离群值 mark.
 func recordFlags(outlier bool) string {
 	if outlier {

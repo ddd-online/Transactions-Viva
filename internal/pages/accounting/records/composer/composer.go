@@ -45,7 +45,7 @@ type Draft struct {
 type Spec struct {
 	// Categories is the 分类 choices for a type, in the page's order. current is
 	// the draft's own category, which the list keeps even when it belongs to
-	// another type: the old form's autocomplete kept its text when the type
+	// another type: the form's autocomplete kept its text when the type
 	// changed.
 	Categories func(kind, current string) []string
 	// TagOptions are the 标签 choices under a type and category; the dialog
@@ -248,7 +248,7 @@ func (state *State) wideFormField(c ui.C, field *ui.FormFieldState, label string
 
 // formFieldHeight is the compact form row: the FormField title and its 32 px
 // control. FormField reserves description and error rows by default, which this
-// dialog does not use, so the fixed row keeps the old modal's density.
+// dialog does not use, so the fixed row keeps the modal's density.
 const formFieldHeight float32 = 64
 
 // dateSpec is the dialog's single-day picker: the toolbar's DatePicker fixed to

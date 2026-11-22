@@ -40,7 +40,7 @@ func TestDecodeTextFallsBackThroughEncodings(t *testing.T) {
 	t.Run("invalid bytes become question marks", func(t *testing.T) {
 		// A stray byte is one replacement; a character cut off by the end of the
 		// file is one for the cut sequence and one for its orphaned tail, which
-		// is how the old decoder counted them.
+		// is how the decoder counted them.
 		raw := []byte{'a', 0xff, 'b', 0xe4, 0xbd}
 		got := DecodeText(raw)
 		if got != "a?b??" {

@@ -10,9 +10,8 @@ import (
 	"transactions/internal/repository"
 )
 
-// Diary books: a workspace's notebooks. They are independent of ledgers, which is
-// the point: the diary used to hang off the ledger a workspace was reading, so a
-// writer with two ledgers had two diaries. A book is what a diary belongs to now.
+// Diary books: a workspace's notebooks. They are independent of ledgers, so a
+// writer can keep a separate notebook for each part of life.
 
 const diaryBookColumns = "book_id, name, description, sort_order, created_at, updated_at"
 
@@ -195,9 +194,9 @@ func (w *Workspace) DiaryEntry(ctx context.Context, bookID, date string) (domain
 // SaveDiary writes one day's entry and returns the row as stored.
 //
 // Same book and date is an update: the row keeps its id, created_at and
-// updated_at (the old DAO's ON CONFLICT clause listed only content, word_count
+// updated_at (the DAO's ON CONFLICT clause listed only content, word_count
 // and mood), and the word count is the text's length in code points. The mood is
-// written as the page holds it; a legacy Chinese mood is normalized by
+// written as the page holds it; a Chinese mood is normalized by
 // domain.NormalizeDiaryMood where it is shown, not here.
 func (w *Workspace) SaveDiary(ctx context.Context, bookID, date, content, mood string) (domain.DiaryEntry, error) {
 	if strings.TrimSpace(bookID) == "" {

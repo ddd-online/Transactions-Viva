@@ -9,11 +9,11 @@ import (
 
 // 日记：每个账本每个本地日期一篇，正文是纯文本，心情存一个 emoji。
 //
-// 三条从旧工程继承下来的规则：
+// 三条规则：
 //
-//   - 字数按 Unicode 码点算（不是字节，也不是字素簇），与旧工程的
+//   - 字数按 Unicode 码点算（不是字节，也不是字素簇），与
 //     `Array.from(text).length` 同口径；
-//   - 旧数据里的中文心情（烦躁 / 焦虑 / 难过 / 平静 / 开心）读出时映射到同一套
+//   - 现有数据里的中文心情（烦躁 / 焦虑 / 难过 / 平静 / 开心）读出时映射到同一套
 //     emoji，写回时一律写 emoji；
 //   - 日期是严格的 `YYYY-MM-DD`：恰好十个 ASCII 字符、零填充、日期真实存在
 //     （`2026-1-01`、`2026/01/01`、`2026-02-29` 都不合法）。
@@ -28,7 +28,7 @@ type DiaryMood struct {
 	Label string
 }
 
-// DiaryMoods are the five moods in the old picker's order. The emoji is what
+// DiaryMoods are the five moods in the picker's order. The emoji is what
 // the database stores; the label is only ever shown.
 var DiaryMoods = [...]DiaryMood{
 	{Emoji: "😤", Label: "烦躁"},
@@ -38,9 +38,9 @@ var DiaryMoods = [...]DiaryMood{
 	{Emoji: "😊", Label: "开心"},
 }
 
-// legacyDiaryMoods maps the Chinese moods old rows may hold onto the emoji the
+// chineseDiaryMoods maps stored Chinese mood labels onto the emoji the
 // picker shows. It is read-only history: writes always store the emoji.
-var legacyDiaryMoods = map[string]string{
+var chineseDiaryMoods = map[string]string{
 	"烦躁": "😤",
 	"焦虑": "😰",
 	"难过": "😢",
@@ -49,10 +49,10 @@ var legacyDiaryMoods = map[string]string{
 }
 
 // NormalizeDiaryMood resolves a stored mood to the emoji the page paints: a
-// legacy Chinese name becomes its emoji, anything else (an emoji, an unknown
+// Chinese name becomes its emoji, anything else (an emoji, an unknown
 // string, "") is returned unchanged.
 func NormalizeDiaryMood(value string) string {
-	if emoji, ok := legacyDiaryMoods[value]; ok {
+	if emoji, ok := chineseDiaryMoods[value]; ok {
 		return emoji
 	}
 	return value
@@ -71,7 +71,7 @@ func DiaryMoodLabel(emoji string) string {
 }
 
 // DiaryWordCount is the text's length in Unicode code points, the figure the
-// old page counted beside the editor.
+// page counted beside the editor.
 func DiaryWordCount(text string) int { return utf8.RuneCountInString(text) }
 
 // ParseDiaryDate reads a strict local date. ok is false for anything but an
@@ -162,7 +162,7 @@ func (scope DiaryExportScope) Label() string {
 	return "全部"
 }
 
-// DiaryExportScopeNames are the choices in the old page's order.
+// DiaryExportScopeNames are the choices in the page's order.
 var DiaryExportScopeNames = [...]DiaryExportScope{
 	DiaryScopeAll, DiaryScopeYear, DiaryScopeMonth,
 }
@@ -176,7 +176,7 @@ type DiaryExportQuery struct {
 }
 
 // Includes reports whether an entry date passes the query. A date that does not
-// parse is never exported, as in the old service.
+// parse is never exported, as in the service.
 func (query DiaryExportQuery) Includes(date string) bool {
 	parsed, ok := ParseDiaryDate(date)
 	if !ok {

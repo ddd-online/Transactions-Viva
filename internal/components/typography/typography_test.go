@@ -13,7 +13,7 @@ import (
 // rawSize finds a text size written as a number where a role belongs: a
 // FontSize literal, or a canvas TextStyle's Size literal. The reference
 // application's scale exists so that no page has to name a number; a page that
-// does is how the old 11 / 19 / 22 / 24 / 26 drift accumulated.
+// does is how the 11 / 19 / 22 / 24 / 26 drift accumulated.
 var rawSize = regexp.MustCompile(`FontSize\(\s*[0-9]|(^|[^A-Za-z])Size:\s*[0-9]`)
 
 // TestEveryTextUsesARole walks the application's own code and fails on a size

@@ -14,8 +14,8 @@ import (
 )
 
 // Pending is the honest state of a screen whose structure exists but whose
-// content has not been migrated yet. It names what will live there, so the
-// scaffold never pretends to hold data.
+// content has not been implemented yet. It names what will live there, so the
+// scaffnever pretends to hexisting data.
 func Pending(c ui.C, title, note string) {
 	metrics := c.Theme().Metrics
 	ui.Column(c).Grow(1).FillWidth().Pad(metrics.PadSurface * 2).Gap(metrics.GapItem).Center().Children(func() {

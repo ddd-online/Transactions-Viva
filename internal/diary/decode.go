@@ -8,7 +8,7 @@ import (
 	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
-// DecodeText reads a diary file's bytes. The order is the old service's, and it
+// DecodeText reads a diary file's bytes. The order is the service's, and it
 // matters: a file that is valid UTF-8 is taken as it is (a UTF-8 byte-order mark
 // included, so an exported file re-imports byte for byte), then a UTF-16 file
 // with a mark, then GBK, and only then is a file whose bytes are not any of those
@@ -46,7 +46,7 @@ func decodeUTF16(raw []byte) (string, bool) {
 		return "", false
 	}
 	body := raw[2:]
-	// An odd trailing byte has no partner; it is dropped, as the old decoder's
+	// An odd trailing byte has no partner; it is dropped, as the decoder's
 	// two-byte chunks did.
 	body = body[:len(body)-len(body)%2]
 	units := make([]uint16, len(body)/2)
@@ -96,8 +96,7 @@ func shapeOf(first byte) *utf8Shape {
 
 // replaceInvalidUTF8 decodes what it can and writes `?` for each sequence that is
 // not valid, so a partly corrupt file still opens with its readable text in
-// place. A sequence is abandoned at the byte that broke it, which is how the old
-// decoder's error length behaved.
+// place. A sequence is abandoned at the byte that broke it.
 func replaceInvalidUTF8(raw []byte) string {
 	output := make([]rune, 0, len(raw))
 	for index := 0; index < len(raw); {
@@ -116,8 +115,7 @@ func replaceInvalidUTF8(raw []byte) string {
 		skip := 0
 		for offset := 1; offset < shape.length; offset++ {
 			if index+offset >= len(raw) {
-				// The file ends inside a character: one byte goes, as the old
-				// decoder did when its error length was unknown.
+				// The file ends inside a character: one byte is skipped.
 				skip = 1
 				break
 			}

@@ -1,6 +1,6 @@
 // Package stocklimit turns the Eastmoney limit-up pool into the 连板天梯.
 //
-// Cache discipline (the old project's behaviour):
+// Cache discipline (the project's behaviour):
 //   - a closed day (a past day, or today after 15:00) is read from the local
 //     cache and only fetched when missing or explicitly refreshed; a fetched
 //     closed day is written back;

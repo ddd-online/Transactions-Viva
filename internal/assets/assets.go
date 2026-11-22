@@ -32,7 +32,7 @@ import (
 )
 
 // Limits protect a local application from a picture it cannot afford to decode.
-// The old project had no caps because a browser did the decoding; here the
+// The project had no caps because a browser did the decoding; here the
 // process does it, so a 200 megapixel panorama is refused with a sentence
 // instead of exhausting memory.
 const (
@@ -53,7 +53,7 @@ const (
 	// ViewJPEGQuality is the JPEG quality of that view copy.
 	ViewJPEGQuality = 85
 	// DisplayJPEGQuality is the JPEG quality of a HEIC still's display copy.
-	// The old application transcoded at 92: close to the original's look while
+	// The application transcoded at 92: close to the original's look while
 	// still a format every platform draws without a codec.
 	DisplayJPEGQuality = 92
 )
@@ -119,7 +119,7 @@ type Files struct {
 	Motion    []byte
 	MotionExt string
 	// Original is the HEIC/HEIF source when Display is a JPEG made from it.
-	// The old application kept the original beside its display copy so the
+	// The application kept the original beside its display copy so the
 	// best-quality bytes are never lost.
 	Original       []byte
 	OriginalFormat Format
@@ -288,7 +288,7 @@ func checkName(name string) error {
 }
 
 // motionExtension reports whether ext is one of the live photo video formats
-// the old application kept.
+// the application kept.
 func motionExtension(ext string) bool {
 	switch ext {
 	case "mov", "mp4", "m4v", "webm":

@@ -15,7 +15,7 @@ func TestDiaryWordCountCountsCodePoints(t *testing.T) {
 		{"a b", 3},
 		{"😐", 1},
 		{"😤😰😢😐😊", 5},
-		// A newline is a code point: the old page counted it too.
+		// A newline is a code point: the page counted it too.
 		{"a\nb", 3},
 	}
 	for _, one := range cases {
@@ -60,7 +60,7 @@ func TestDiaryMoodNormalization(t *testing.T) {
 		t.Fatalf("label = %q", DiaryMoodLabel("😢"))
 	}
 	if DiaryMoodLabel("开心") != "开心" {
-		t.Fatalf("legacy label = %q", DiaryMoodLabel("开心"))
+		t.Fatalf("Chinese label = %q", DiaryMoodLabel("开心"))
 	}
 	if DiaryMoodLabel("x") != "" {
 		t.Fatalf("unknown label = %q", DiaryMoodLabel("x"))
@@ -96,7 +96,7 @@ func TestDiaryExportQueryIncludes(t *testing.T) {
 	if !query.Includes("2026-02-01") || query.Includes("2026-03-01") || query.Includes("2025-02-01") {
 		t.Fatal("the month scope takes one calendar month of one year")
 	}
-	// A month without a year binds nothing, as the old service's 0 meant.
+	// A month without a year binds nothing, as the service's 0 meant.
 	query = DiaryExportQuery{Scope: DiaryScopeMonth, Month: 2}
 	if !query.Includes("2019-02-01") {
 		t.Fatal("a month scope without a year should not filter the year")

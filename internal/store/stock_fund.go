@@ -15,7 +15,7 @@ import (
 const stockFundColumns = "id, account_id, record_date, event_type, event_text, amount_change_cents, " +
 	"cash_balance_cents, net_pnl_cents, remark, created_at"
 
-// StockAccountSummary is the cash formula the old application used:
+// StockAccountSummary is the cash formula the application used:
 // principal + interest + sell net − withdrawn − position cost.
 func (w *Workspace) StockAccountSummary(ctx context.Context, accountID string) (domain.StockAccountSummary, error) {
 	db, err := w.dbHandle()
@@ -61,7 +61,7 @@ func (w *Workspace) StockAccountSummary(ctx context.Context, accountID string) (
 	return summary, nil
 }
 
-// StockFundRecords reads one page in the old order: date desc, created desc.
+// StockFundRecords reads one page in the order: date desc, created desc.
 func (w *Workspace) StockFundRecords(ctx context.Context, accountID string, page, pageSize int) (domain.StockFundPage, error) {
 	db, err := w.dbHandle()
 	if err != nil {

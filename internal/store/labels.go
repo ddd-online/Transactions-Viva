@@ -129,7 +129,7 @@ func (w *Workspace) CreateCategory(ctx context.Context, ledgerID, name, transact
 }
 
 // DeleteCategory deletes the category and its tags. Record-tag associations are
-// deliberately left alone, as the old service did.
+// deliberately left alone.
 func (w *Workspace) DeleteCategory(ctx context.Context, ledgerID, name, transactionType string) error {
 	if strings.TrimSpace(ledgerID) == "" || strings.TrimSpace(name) == "" || !validTransactionType(transactionType) {
 		return fmt.Errorf("%w：分类名称或交易类型无效", repository.ErrInvalid)
@@ -262,7 +262,7 @@ func rowExists(ctx context.Context, tx *sql.Tx, query string, args ...any) (bool
 	return true, nil
 }
 
-// validCategoryTransactionType accepts the old "分类名:交易类型" key shape used
+// validCategoryTransactionType accepts the "分类名:交易类型" key shape used
 // by tag.category_transaction_type.
 func validCategoryTransactionType(value string) bool {
 	index := strings.LastIndex(value, ":")

@@ -1,7 +1,7 @@
 // Package accounting is the 记账 section: 记录, 分析, 标签 and 模板. The four
 // sub-functions are the section's second-level navigation (the shell's
 // Sidebar), so this page only declares the chosen screen. Each screen is
-// migrated from the old project's src/pages/records*, charts*, category-tag*
+// shared shell for the accounting screens.
 // and template*.
 package accounting
 
@@ -62,7 +62,7 @@ func New() *Model { return NewWithLedgers(ledger.NewStore()) }
 
 // NewWithLedgers returns the section over a ledger store the shell also gives to
 // the 日记 page, so one 账本 choice is shared by every page that reads a ledger.
-// The migrated pages share one store, so their 账本 Selectors always agree, and
+// The accounting pages share one store, so their 账本 Selectors always agree, and
 // the records dialog and the 模板 page share one template cache. desktop calls
 // SetRepository once a workspace is open.
 func NewWithLedgers(ledgers *ledger.Store) *Model {
@@ -81,7 +81,7 @@ func NewWithLedgers(ledgers *ledger.Store) *Model {
 }
 
 // SetRepository connects the section to a workspace. An empty workspace gets a
-// 「默认账本」 with the old application's default categories and tags, so the
+// 「默认账本」 with the application's default categories and tags, so the
 // records page is usable immediately. Switching to nil clears the pages.
 func (m *Model) SetRepository(repo repository.Repository) error {
 	m.CloseOverlays()
@@ -129,8 +129,8 @@ func (m *Model) Ledgers() []domain.Ledger { return m.ledgers.List() }
 // ActiveLedger is the id the accounting pages are reading.
 func (m *Model) ActiveLedger() string { return m.ledgers.Active() }
 
-// CreateLedger adds a ledger to the workspace, makes it the active one (the old
-// application's 创建账本 did the same) and reloads the pages onto it.
+// CreateLedger adds a ledger to the workspace, makes it the active one and
+// reloads the pages onto it.
 func (m *Model) CreateLedger(name, description string) error {
 	if m.repo == nil {
 		return errNoWorkspace

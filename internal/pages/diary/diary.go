@@ -1,8 +1,7 @@
-// Package diary is the 日记 section: one entry per ledger per local date, a
+// Package diary is the 日记 section: one entry per book per local date, a
 // year → month → day tree of the dates that have one, and an editor for the day
-// the tree has selected. It is migrated from the old project's src/pages/diary,
-// src/components/diary-tree and electron/services/diary; the entry shape, the
-// mood values and the strict YYYY-MM-DD dates come from internal/domain.
+// the tree has selected. The entry shape, mood values and strict YYYY-MM-DD
+// dates come from internal/domain.
 //
 // The page owns no SQL and no files: a workspace reaches it as
 // repository.Repository through SetDataSource, and importing or exporting diary
@@ -31,7 +30,7 @@ import (
 )
 
 // saveDelay is how long the editor waits after the last change before it writes.
-// The old page used the same 600 ms: long enough that typing a sentence is one
+// The page used the same 600 ms: long enough that typing a sentence is one
 // write, short enough that 已保存 is honest by the time the user looks at it.
 const saveDelay = 600 * time.Millisecond
 
@@ -411,7 +410,7 @@ type moodRow struct {
 	name  string
 }
 
-// moodRows are the picker's six choices in the old picker's order: 清除 first,
+// moodRows are the picker's six choices in the picker's order: 清除 first,
 // then the five moods. The names are the accessible labels — ui.Choice would
 // name each segment by its emoji alone, and a screen reader would read a face.
 var moodRows = [...]moodRow{
@@ -527,7 +526,7 @@ func (m *Model) askDelete() {
 	m.deleting, m.deleteOpen = m.selected, true
 }
 
-// deleteDialog confirms removing one day's entry, the question the old page
+// deleteDialog confirms removing one day's entry, the question the page
 // asked in a popover beside the button.
 func (m *Model) deleteDialog(c ui.C) {
 	if !m.deleteOpen {

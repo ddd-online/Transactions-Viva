@@ -1,10 +1,7 @@
 -- schema v1 for Transactions 0.1.0.
 --
 -- This is the application's only schema version: every feature the 0.1.0 build
--- ships is created here in one pass, so a fresh workspace needs no migration
--- steps. The table shapes stay column-for-column compatible with the old
--- Electron project's accounting schema, which is what internal/store/import_old.go
--- copies from; the old project's database is never opened directly.
+-- ships is created here in one pass.
 --
 -- Units follow the domain contract:
 --   amounts = integer cents (columns ending _cents)
@@ -12,8 +9,7 @@
 --   times   = Unix seconds (columns ending _at)
 --   dates   = local "YYYY-MM-DD" (columns ending _date)
 --
--- No foreign keys: old workspaces may contain orphan rows, and deletes are
--- explicit transactions in the store layer.
+-- No foreign keys: deletes are explicit transactions in the store layer.
 
 -- table app_meta
 CREATE TABLE app_meta (
@@ -468,9 +464,8 @@ CREATE TABLE stock_limit_quote (
   PRIMARY KEY (trade_date, stock_code)
 );
 
--- todo_card / todo_item / todo_progress are workspace-wide. ledger_id stays
--- in the v1 table shape for old workspaces; the application never filters by
--- it and writes '' for new rows.
+-- todo_card / todo_item / todo_progress are workspace-wide. ledger_id is
+-- reserved; the application never filters by it and writes '' for new rows.
 -- table todo_card
 CREATE TABLE todo_card (
   id TEXT PRIMARY KEY,
@@ -519,8 +514,7 @@ CREATE TABLE todo_progress (
 -- index idx_todo_progress_item
 CREATE INDEX idx_todo_progress_item ON todo_progress(ledger_id, item_id, created_at);
 
--- Identity key: the import tool uses it to tell a current workspace from the
--- old Electron database.
+-- Identity key: marks this workspace as a Transactions database.
 INSERT OR IGNORE INTO app_meta (key, value) VALUES ('app_id', 'transactions-viva');
 
 -- Every workspace opens with one diary book; the diary page no longer depends

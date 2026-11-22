@@ -1,7 +1,5 @@
 // Package stock is the 股票 section. It owns the workspace's stock accounts and
-// the seven screens; the old project's per-ledger stock data becomes one account
-// per old ledger when imported. Stock accounts belong to the workspace, not to a
-// ledger.
+// the seven screens. Stock accounts belong to the workspace, not to a ledger.
 package stock
 
 import (
@@ -421,7 +419,7 @@ func (m *Model) View(c ui.C) {
 }
 
 // metricRows lays readings out four to a row at every supported window size.
-// The old Grid fell back to two columns at 960 and pushed the chart or the cash
+// The Grid fell back to two columns at 960 and pushed the chart or the cash
 // table below the fold; four columns keeps the page's primary content visible.
 func metricRows(c ui.C, total int, item func(ui.C, int)) {
 	const perRow = 4

@@ -6,7 +6,7 @@ import (
 )
 
 // Format is an image format recognized by its bytes. The name is the MIME type
-// the old application used; the extension and whether the application can draw
+// the application used; the extension and whether the application can draw
 // it follow from it.
 type Format string
 
@@ -19,7 +19,7 @@ const (
 )
 
 // Extension is the file extension the format is stored under. HEIC has one even
-// though this application cannot decode it: old workspaces may still hold the
+// though this application cannot decode it: workspaces may still hthe
 // original file next to its JPEG display copy.
 func (format Format) Extension() string {
 	switch format {
@@ -80,8 +80,7 @@ var heifBrands = map[string]bool{
 
 var avifBrands = map[string]bool{"avif": true, "avis": true}
 
-// isHeic reports whether the bytes are an ISO BMFF HEIC/HEIF still. The old
-// application's shared/domain/image-signature.ts did the same check.
+// isHeic reports whether the bytes are an ISO BMFF HEIC/HEIF still.
 func isHeic(data []byte) bool {
 	brands := ftypBrands(data)
 	if len(brands) == 0 {

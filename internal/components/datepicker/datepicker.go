@@ -42,7 +42,7 @@ func (grain Grain) Name() string {
 	return "日"
 }
 
-// dateGrains are the grain choices, in the old picker's order.
+// dateGrains are the grain choices, in the picker's order.
 var dateGrains = [...]Grain{ByDay, ByMonth, ByYear}
 
 // dateWeekdays are the day grid's columns; the week starts on Monday.
@@ -588,7 +588,7 @@ type datePreset struct {
 	label, from, to string
 }
 
-// datePresets are the shortcuts of a grain, as the old picker offered them. A
+// datePresets are the shortcuts of a grain, as the picker offered them. A
 // field that picks one day offers 今天 alone.
 func datePresets(grain Grain, single bool) [datePresetCount]datePreset {
 	var presets [datePresetCount]datePreset
@@ -638,7 +638,7 @@ func datePresets(grain Grain, single bool) [datePresetCount]datePreset {
 
 // rangeAfterPick is the range a press on from..to leaves: an open range takes
 // the pick as its start, a pick before the start turns the range around, and a
-// finished range starts a new one with it (the old picker's rule).
+// finished range starts a new one with it (the picker's rule).
 func rangeAfterPick(start, end, from, to string) (string, string) {
 	switch {
 	case start == "" || end != "":

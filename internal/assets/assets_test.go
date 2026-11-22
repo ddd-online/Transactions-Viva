@@ -455,7 +455,7 @@ func TestLoadReportsAMissingFile(t *testing.T) {
 	}
 }
 
-// TestDecodeRealHEICFixtures decodes the two HEIC files the old application
+// TestDecodeRealHEICFixtures decodes the two HEIC files the application
 // shipped as its own test fixtures: a flat 64 px tile and a 512 px gradient.
 // They were produced by libheif, so they prove the decoder against another
 // encoder's output, not only against the one this module also ships.

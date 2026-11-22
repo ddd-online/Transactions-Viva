@@ -280,7 +280,7 @@ func (m *Model) View(c ui.C) {
 	m.deleteView(c)
 }
 
-// toolbar is the page's actions, laid out like the old page's filter bar: the
+// toolbar is the page's actions, laid out like the page's filter bar: the
 // time range on the left, and the sort beside the primary action on the right.
 func (m *Model) toolbar(c ui.C) {
 	layout.Toolbar(c, func() {
@@ -471,7 +471,7 @@ func (m *Model) row(r ui.ListRow) {
 	typography.Body(r.C, rec.signedAmount()).Width(recordAmountWidth).TextEnd().Mono().
 		Color(color)
 
-	// The old operation column's three actions live on the row's context menu.
+	// The operation column's three actions live on the row's context menu.
 	id := rec.id
 	ui.ContextMenu(r.C, r.Element, func(menu *ui.MenuItems) {
 		if menu.Item("编辑记录").Clicked() {
@@ -501,7 +501,7 @@ const emptyActionCount = 3
 var emptyActions = [emptyActionCount]string{"上月", "今年", "记一笔"}
 
 // empty is what the content area says when the time range matches nothing: the
-// theme's empty state, with the actions the old page offered underneath it.
+// theme's empty state, with the actions the page offered underneath it.
 func (m *Model) empty(c ui.C) {
 	theme := c.Theme()
 	var ids [emptyActionCount]gfx.ID
@@ -664,7 +664,7 @@ func (m *Model) refilter() {
 // dateLayout is the local YYYY-MM-DD form the page compares its dates in.
 const dateLayout = "2006-01-02"
 
-// todayDate is today as the page's ranges hold it.
+// todayDate is today as the page's ranges hit.
 func todayDate() string { return time.Now().Format(dateLayout) }
 
 // setRange applies a new visible range from a control of the page. The next

@@ -165,7 +165,7 @@ func (m *Model) gallery(c ui.C, grow float32) {
 }
 
 // stage is the selected picture shown whole, over a blurred copy of itself. The
-// old page's grid: contain the photo (never crop it) and let the same photo
+// page's grid: contain the photo (never crop it) and let the same photo
 // blurred fill the bars at its sides.
 func (m *Model) stage(c ui.C) {
 	theme := c.Theme()

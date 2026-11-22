@@ -12,7 +12,7 @@ import (
 	"transactions/internal/repository"
 )
 
-// StockStatistics computes the old application's settlements statistics:
+// StockStatistics computes the application's settlements statistics:
 // the time axis is the close time, win rate includes ties in the denominator,
 // and max drawdown is a cash-flow-neutral cumulative P&L curve.
 func (w *Workspace) StockStatistics(ctx context.Context, query domain.StockStatisticsQuery) (domain.StockStatistics, error) {
@@ -246,7 +246,7 @@ func buildStockPoint(settlements []domain.StockSettlement, windowBase int64, seq
 }
 
 func roundHistoryName(round domain.StockTradeRound, rounds []domain.StockTradeRound) string {
-	// Kept for callers that already hold a round slice; the statistics path uses
+	// Kept for callers that already ha round slice; the statistics path uses
 	// the history names loaded above.
 	return round.StockCode
 }

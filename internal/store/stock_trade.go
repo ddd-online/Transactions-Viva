@@ -20,7 +20,7 @@ const stockTradeColumns = "id, account_id, stock_code, stock_name, trade_type, r
 	"round_commission_rate, round_min_commission_cents, round_stamp_duty_rate, round_transfer_fee_rate"
 
 // CreateStockOrder records one order (one or more fills). It is the transactional
-// counterpart of the old stock_trade_create command.
+// counterpart of the stock_trade_create command.
 func (w *Workspace) CreateStockOrder(ctx context.Context, request repository.StockOrderRequest) ([]domain.StockTrade, error) {
 	db, err := w.dbHandle()
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 )
 
 // addDialog is 新增事件: a day and an optional title. 新增 without a day is
-// disabled, as the old dialog's confirm was.
+// disabled, as the dialog's confirm was.
 func (m *Model) addDialog(c ui.C) {
 	ui.ModalWith(c, &m.add.open, "新增事件", ui.ModalSpec{Width: 420}, func() {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {

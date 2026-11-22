@@ -11,7 +11,7 @@ import (
 
 // RefreshStockName updates every display copy of a stock name for one account.
 // The history collection's updated_at stays put, so a rename does not reorder
-// the records page; fund record text and operation logs keep the old snapshot.
+// the records page; fund record text and operation logs keep the snapshot.
 func (w *Workspace) RefreshStockName(ctx context.Context, accountID, stockCode, stockName string) error {
 	stockCode, stockName = strings.TrimSpace(stockCode), strings.TrimSpace(stockName)
 	if stockCode == "" || stockName == "" {

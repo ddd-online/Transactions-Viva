@@ -157,7 +157,7 @@ type Repository interface {
 	UpdateRecord(ctx context.Context, record domain.TransactionRecord, tags []string) error
 	DeleteRecord(ctx context.Context, id string) error
 	// SyncRecord copies a record and its tags to another ledger with a new id;
-	// the key-event date is not copied, as the old row action did.
+	// the key-event date is not copied.
 	SyncRecord(ctx context.Context, id, targetLedgerID string) error
 
 	// EnsureChartPresets seeds a ledger's two preset charts once. A marker in

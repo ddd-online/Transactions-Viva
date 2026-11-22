@@ -126,7 +126,7 @@ type positionsTradeFill struct {
 	lots  string
 }
 
-// positionsFeeForm is the four fee inputs of 建仓, in the units the old form
+// positionsFeeForm is the four fee inputs of 建仓, in the units the form
 // showed: commission in 万分之, the minimum in yuan, the two rates in percent.
 type positionsFeeForm struct {
 	commission string

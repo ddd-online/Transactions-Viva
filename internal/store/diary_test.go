@@ -43,7 +43,7 @@ func TestDiarySaveReadAndDelete(t *testing.T) {
 	}
 
 	// Saving the same day again replaces the text but keeps the row's identity
-	// and, as the old DAO did, its timestamps.
+	// and its timestamps.
 	again, err := workspace.SaveDiary(ctx, bookID, "2026-01-15", "今天很好，明天继续", "😊")
 	if err != nil {
 		t.Fatalf("SaveDiary again: %v", err)

@@ -266,7 +266,7 @@ func chartLabels(startDate, endDate, granularity string) ([]string, error) {
 }
 
 // chartConditions builds the OR of the line's condition items. An empty item
-// matches every row, as the old query engine did.
+// matches every row.
 func chartConditions(items []domain.QueryConditionItem) string {
 	if len(items) == 0 {
 		return ""

@@ -46,7 +46,7 @@ func KindValue(label string) string {
 
 // Template is one shortcut for a record's repeating fields. The mark is stored
 // for the list, but applying a template leaves the draft's mark alone, as the
-// old dialog does.
+// dialog does.
 type Template struct {
 	ID          string
 	LedgerID    string
@@ -113,7 +113,7 @@ func FromDomain(one domain.TransactionTemplate) Template {
 }
 
 // ToDomain converts a page template to the stored shape. Tags become a JSON
-// array and the mark becomes the old flags string ("outlier" or empty).
+// array and the mark becomes the flags string ("outlier" or empty).
 func ToDomain(one Template) domain.TransactionTemplate {
 	return domain.TransactionTemplate{
 		TemplateID:      one.ID,
@@ -128,7 +128,7 @@ func ToDomain(one Template) domain.TransactionTemplate {
 }
 
 // ParseTags reads the tags JSON array. A null or malformed value is empty, as
-// the old service did.
+// the service did.
 func ParseTags(raw string) []string {
 	if strings.TrimSpace(raw) == "" {
 		return nil
@@ -152,7 +152,7 @@ func EncodeTags(tags []string) string {
 	return string(encoded)
 }
 
-// OutlierOf reads the old template flags. Templates stored "outlier" as a bare
+// OutlierOf reads the template flags. Templates stored "outlier" as a bare
 // string; imported data may also carry the record JSON shape.
 func OutlierOf(flags string) bool {
 	flags = strings.TrimSpace(flags)

@@ -44,7 +44,7 @@ const (
 	navEntrySpace = float32(4)
 )
 
-// setting is one row of a not-yet-migrated section. label is the row's name and
+// setting is one row of a not-yet-implemented section. label is the row's name and
 // note its explanation.
 type setting struct {
 	title string
@@ -219,7 +219,7 @@ type DiaryExport struct {
 	Failures []string
 }
 
-// appearanceOptions is the segmented 外观 control, in the old page's order.
+// appearanceOptions is the segmented 外观 control, in the page's order.
 var appearanceOptions = [...]config.Appearance{
 	config.AppearanceLight, config.AppearanceDark, config.AppearanceSystem,
 }
@@ -249,7 +249,7 @@ func closeBehaviorLabel(value config.CloseBehavior) string {
 	return "每次询问"
 }
 
-// featureRows are the five feature switches in the old settings page's order.
+// featureRows are the five feature switches in the settings page's order.
 var featureRows = [...]struct {
 	key   config.FeatureKey
 	title string
@@ -1208,7 +1208,7 @@ func (m *Model) exportDiary(spec Spec) {
 	m.diary.failure = strings.Join(result.Failures, "\n")
 }
 
-// pending is a section whose controls are migrated in a later stage: each row
+// pending is a section whose controls are implemented in a later stage: each row
 // reports that rather than pretending to work.
 func (m *Model) pending(c ui.C, entry section) {
 	controls.Page(c, entry.title, controls.GroupSpec{Body: func() {

@@ -116,7 +116,7 @@ func TestAssembleRecordHistory(t *testing.T) {
 	}
 }
 
-// TestRecordsPanelSortsCardsByLastClose keeps the left rail in the old page's
+// TestRecordsPanelSortsCardsByLastClose keeps the left rail in the page's
 // order: the most recently closed stock first, DAO order on ties.
 func TestRecordsPanelSortsCardsByLastClose(t *testing.T) {
 	older := domain.StockTradeHistory{ID: "h1", StockCode: "600000", StockName: "浦发银行"}

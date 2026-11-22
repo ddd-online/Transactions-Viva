@@ -55,7 +55,7 @@ func Decode(data []byte) (image.Image, error) {
 		picture, err = png.Decode(bytes.NewReader(data))
 	case FormatGIF:
 		// A GIF's animation has no place in a still gallery; its first frame
-		// is what the old browser <img> would show before playing it.
+		// is what the browser <img> would show before playing it.
 		picture, err = gif.Decode(bytes.NewReader(data))
 	case FormatWebP:
 		picture, err = webp.Decode(bytes.NewReader(data))
@@ -92,7 +92,7 @@ func ImageConfig(data []byte) (image.Config, error) {
 
 // EncodeJPEG writes a picture as an opaque JPEG, for the display copy of a HEIC
 // still. The alpha channel, when there is one, is composited over white, the way
-// the old renderer's canvas did before its JPEG encode.
+// the renderer's canvas did before its JPEG encode.
 func EncodeJPEG(picture image.Image, quality int) ([]byte, error) {
 	rgba := toRGBA(picture)
 	if rgba.Rect.Dx() <= 0 || rgba.Rect.Dy() <= 0 {
