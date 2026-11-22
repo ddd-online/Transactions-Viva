@@ -26,14 +26,13 @@ const (
 	tabLessons
 	tabStatistics
 	tabLadder
-	tabSettings
 )
 
 var tabs = [...]tab{
-	tabAccount, tabPositions, tabRecords, tabLessons, tabStatistics, tabLadder, tabSettings,
+	tabAccount, tabPositions, tabRecords, tabLessons, tabStatistics, tabLadder,
 }
 
-var tabLabels = [...]string{"账户", "持仓", "记录", "心得", "统计", "天梯", "设置"}
+var tabLabels = [...]string{"账户", "持仓", "记录", "心得", "统计", "天梯"}
 
 // panel is one screen of the section. Every account-aware panel shares the
 // account store.
@@ -56,7 +55,6 @@ type Model struct {
 	lessons      *lessonsPanel
 	statistics   *statisticsPanel
 	ladder       *ladderPanel
-	settings     *settingsPanel
 
 	toaster ui.Toaster
 }
@@ -74,7 +72,6 @@ func New(quotes stockquote.Fetcher) *Model {
 		lessons:      newLessonsPanel(accounts),
 		statistics:   newStatisticsPanel(accounts),
 		ladder:       newLadderPanel(nil),
-		settings:     newSettingsPanel(accounts),
 	}
 	m.records.setQuotes(quotes)
 	m.accountPanel.onChange = m.dataChanged
@@ -90,9 +87,6 @@ func New(quotes stockquote.Fetcher) *Model {
 	m.statistics.onChange = m.dataChanged
 	m.statistics.toaster = &m.toaster
 	m.statistics.onOpenRound = m.openRound
-	m.settings.toaster = &m.toaster
-	m.settings.onChange = m.dataChanged
-	m.settings.onAccountsChanged = func() { _ = m.loadAccounts(false) }
 	return m
 }
 
@@ -107,7 +101,6 @@ func (m *Model) SetRepository(repo repository.StockRepository) error {
 		m.records.setRepository(nil)
 		m.lessons.setRepository(nil)
 		m.statistics.setRepository(nil)
-		m.settings.setRepository(nil)
 		return nil
 	}
 	if err := m.loadAccounts(true); err != nil {
@@ -118,7 +111,6 @@ func (m *Model) SetRepository(repo repository.StockRepository) error {
 	m.records.setRepository(repo)
 	m.lessons.setRepository(repo)
 	m.statistics.setRepository(repo)
-	m.settings.setRepository(repo)
 	m.dataChanged()
 	return nil
 }
@@ -229,7 +221,6 @@ func (m *Model) dataChanged() {
 	m.records.Reload()
 	m.lessons.Reload()
 	m.statistics.Reload()
-	m.settings.Reload()
 }
 
 // openRound selects a round on the records screen.
@@ -249,6 +240,109 @@ func (m *Model) SetAccount(id string) {
 	if m.accounts.setActive(id) {
 		m.dataChanged()
 	}
+}
+
+// StockSettings reads the active account's settings for the shell's settings
+// page. It is a snapshot, not a second cache.
+func (m *Model) StockSettings() ([]string, domain.StockReviewSetting, domain.StockFeeSetting, []domain.StockOperation, error) {
+	if m.repo == nil || m.ActiveAccount() == "" {
+		return nil, domain.StockReviewSetting{}, domain.StockFeeSetting{}, nil, fmt.Errorf("还没有股票账户")
+	}
+	ctx := context.Background()
+	tags, err := m.repo.StockTradeTags(ctx, m.ActiveAccount())
+	if err != nil {
+		return nil, domain.StockReviewSetting{}, domain.StockFeeSetting{}, nil, err
+	}
+	review, err := m.repo.StockReviewTemplates(ctx, m.ActiveAccount())
+	if err != nil {
+		return nil, domain.StockReviewSetting{}, domain.StockFeeSetting{}, nil, err
+	}
+	fee, err := m.repo.StockFeeSetting(ctx, m.ActiveAccount())
+	if err != nil {
+		return nil, domain.StockReviewSetting{}, domain.StockFeeSetting{}, nil, err
+	}
+	operations, err := m.repo.StockOperations(ctx, m.ActiveAccount())
+	if err != nil {
+		return nil, domain.StockReviewSetting{}, domain.StockFeeSetting{}, nil, err
+	}
+	return tags, review, fee, operations, nil
+}
+
+// SaveStockTags writes the active account's tags.
+func (m *Model) SaveStockTags(tags []string) ([]string, error) {
+	if m.repo == nil {
+		return nil, fmt.Errorf("还没有打开工作空间")
+	}
+	saved, err := m.repo.SaveStockTradeTags(context.Background(), m.ActiveAccount(), tags)
+	if err == nil {
+		m.dataChanged()
+	}
+	return saved, err
+}
+
+// SaveStockReviewTemplate writes one or both review templates.
+func (m *Model) SaveStockReviewTemplate(template string, daily *string) (domain.StockReviewSetting, error) {
+	if m.repo == nil {
+		return domain.StockReviewSetting{}, fmt.Errorf("还没有打开工作空间")
+	}
+	saved, err := m.repo.SaveStockReviewTemplate(context.Background(), m.ActiveAccount(), template, daily)
+	if err == nil {
+		m.dataChanged()
+	}
+	return saved, err
+}
+
+// SaveStockFee writes the active account's fee setting.
+func (m *Model) SaveStockFee(fee domain.RoundFee) error {
+	if m.repo == nil {
+		return fmt.Errorf("还没有打开工作空间")
+	}
+	if _, err := m.repo.SaveStockFeeSetting(context.Background(), m.ActiveAccount(), fee); err != nil {
+		return err
+	}
+	m.dataChanged()
+	return nil
+}
+
+// RollbackStockOperation undoes the active account's newest operation.
+func (m *Model) RollbackStockOperation() (domain.StockOperationRollback, error) {
+	if m.repo == nil {
+		return domain.StockOperationRollback{}, fmt.Errorf("还没有打开工作空间")
+	}
+	outcome, err := m.repo.RollbackStockOperation(context.Background(), m.ActiveAccount())
+	if err == nil {
+		m.dataChanged()
+	}
+	return outcome, err
+}
+
+// ArchiveAccount moves the active account's data to a new account and selects it.
+func (m *Model) ArchiveAccount(name string) error {
+	if m.repo == nil {
+		return fmt.Errorf("还没有打开工作空间")
+	}
+	created, err := m.repo.ArchiveStockAccount(context.Background(), m.ActiveAccount(), name)
+	if err != nil {
+		return err
+	}
+	if err := m.loadAccounts(false); err != nil {
+		return err
+	}
+	m.accounts.setActive(created.ID)
+	m.dataChanged()
+	return nil
+}
+
+// ResetAccount clears the active account's stock data.
+func (m *Model) ResetAccount() error {
+	if m.repo == nil {
+		return fmt.Errorf("还没有打开工作空间")
+	}
+	if err := m.repo.ResetStockAccount(context.Background(), m.ActiveAccount()); err != nil {
+		return err
+	}
+	m.dataChanged()
+	return nil
 }
 
 // Tabs are the section's second-level navigation entries.
@@ -280,8 +374,6 @@ func (m *Model) SelectTab(index int) {
 		m.statistics.Reload()
 	case tabLadder:
 		m.ladder.Reload()
-	case tabSettings:
-		m.settings.Reload()
 	}
 }
 
@@ -293,7 +385,6 @@ func (m *Model) CloseOverlays() {
 	m.lessons.CloseOverlays()
 	m.statistics.CloseOverlays()
 	m.ladder.CloseOverlays()
-	m.settings.CloseOverlays()
 }
 
 // Pointer is the statistics chart's hover.
@@ -316,8 +407,6 @@ func (m *Model) View(c ui.C) {
 		m.statistics.View(c)
 	case tabLadder:
 		m.ladder.View(c)
-	case tabSettings:
-		m.settings.View(c)
 	}
 	ui.Toasts(c, &m.toaster)
 }

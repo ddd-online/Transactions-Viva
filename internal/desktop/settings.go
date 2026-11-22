@@ -22,6 +22,7 @@ var errNoDiaryWorkspace = errors.New("还没有打开工作空间")
 // shell owns the configuration, the theme and the navigation, so every write
 // goes through here.
 func (m *Model) settingsSpec() settings.Spec {
+	stock, stockErr := m.stockSettingsConfig()
 	return settings.Spec{
 		Workspace:       m.config.WorkspaceDir,
 		Appearance:      m.config.Appearance,
@@ -40,13 +41,22 @@ func (m *Model) settingsSpec() settings.Spec {
 		OpenURL:         m.openExternalURL,
 		CopyText:        m.copyToClipboard,
 
-		StockAccounts:        m.stock.Accounts(),
-		ActiveStockAccount:   m.stock.ActiveAccount(),
-		OnCreateStockAccount: m.createStockAccount,
-		OnUpdateStockAccount: m.updateStockAccount,
-		OnDeleteStockAccount: m.deleteStockAccount,
-		ImportDiary:          m.importDiary,
-		ExportDiary:          m.exportDiary,
+		StockAccounts:             m.stock.Accounts(),
+		ActiveStockAccount:        m.stock.ActiveAccount(),
+		OnCreateStockAccount:      m.createStockAccount,
+		OnUpdateStockAccount:      m.updateStockAccount,
+		OnDeleteStockAccount:      m.deleteStockAccount,
+		Stock:                     stock,
+		StockError:                stockErr,
+		OnSetStockAccount:         m.setStockAccount,
+		OnSaveStockTags:           m.saveStockTags,
+		OnSaveStockReviewTemplate: m.saveStockReviewTemplate,
+		OnSaveStockFee:            m.saveStockFee,
+		OnRollbackStockOperation:  m.rollbackStockOperation,
+		OnArchiveStockAccount:     m.archiveStockAccount,
+		OnResetStockAccount:       m.resetStockAccount,
+		ImportDiary:               m.importDiary,
+		ExportDiary:               m.exportDiary,
 
 		DiaryBooks:        m.diary.Books(),
 		ActiveDiaryBook:   m.diary.ActiveBook(),
@@ -214,6 +224,81 @@ func (m *Model) updateStockAccount(id, name, description string) error {
 
 func (m *Model) deleteStockAccount(id string) error {
 	if err := m.stock.DeleteAccount(id); err != nil {
+		return err
+	}
+	m.invalidate()
+	return nil
+}
+
+func (m *Model) stockSettingsConfig() (*settings.StockConfig, string) {
+	id := m.stock.ActiveAccount()
+	if id == "" {
+		return nil, ""
+	}
+	var account domain.StockAccount
+	for _, one := range m.stock.Accounts() {
+		if one.ID == id {
+			account = one
+			break
+		}
+	}
+	tags, review, fee, operations, err := m.stock.StockSettings()
+	if err != nil {
+		return nil, err.Error()
+	}
+	return &settings.StockConfig{
+		Account: account, Tags: tags, Review: review, Fee: fee, Operations: operations,
+	}, ""
+}
+
+func (m *Model) setStockAccount(id string) error {
+	m.stock.SetAccount(id)
+	m.invalidate()
+	return nil
+}
+
+func (m *Model) saveStockTags(tags []string) ([]string, error) {
+	saved, err := m.stock.SaveStockTags(tags)
+	if err == nil {
+		m.invalidate()
+	}
+	return saved, err
+}
+
+func (m *Model) saveStockReviewTemplate(template string, daily *string) (domain.StockReviewSetting, error) {
+	saved, err := m.stock.SaveStockReviewTemplate(template, daily)
+	if err == nil {
+		m.invalidate()
+	}
+	return saved, err
+}
+
+func (m *Model) saveStockFee(fee domain.RoundFee) error {
+	if err := m.stock.SaveStockFee(fee); err != nil {
+		return err
+	}
+	m.invalidate()
+	return nil
+}
+
+func (m *Model) rollbackStockOperation() (domain.StockOperationRollback, error) {
+	outcome, err := m.stock.RollbackStockOperation()
+	if err == nil {
+		m.invalidate()
+	}
+	return outcome, err
+}
+
+func (m *Model) archiveStockAccount(name string) error {
+	if err := m.stock.ArchiveAccount(name); err != nil {
+		return err
+	}
+	m.invalidate()
+	return nil
+}
+
+func (m *Model) resetStockAccount() error {
+	if err := m.stock.ResetAccount(); err != nil {
 		return err
 	}
 	m.invalidate()

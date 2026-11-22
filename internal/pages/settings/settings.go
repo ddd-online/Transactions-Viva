@@ -30,6 +30,7 @@ const (
 	tabGeneral tab = iota
 	tabLedgers
 	tabStockAccounts
+	tabStockSettings
 	tabData
 	tabDiary
 	tabAbout
@@ -74,6 +75,10 @@ var sections = [...]section{
 	{
 		tab:   tabStockAccounts,
 		title: "股票账户",
+	},
+	{
+		tab:   tabStockSettings,
+		title: "股票设置",
 	},
 	{
 		tab:   tabData,
@@ -135,6 +140,18 @@ type Spec struct {
 	OnCreateStockAccount func(name, description string) error
 	OnUpdateStockAccount func(id, name, description string) error
 	OnDeleteStockAccount func(id string) error
+
+	// Stock is the active account's settings, read by the shell each paint; the
+	// callbacks write them and return what the section should show.
+	Stock                     *StockConfig
+	StockError                string
+	OnSetStockAccount         func(id string) error
+	OnSaveStockTags           func(tags []string) ([]string, error)
+	OnSaveStockReviewTemplate func(template string, daily *string) (domain.StockReviewSetting, error)
+	OnSaveStockFee            func(fee domain.RoundFee) error
+	OnRollbackStockOperation  func() (domain.StockOperationRollback, error)
+	OnArchiveStockAccount     func(name string) error
+	OnResetStockAccount       func() error
 
 	// OpenURL opens a place outside the window in the user's browser, and
 	// CopyText puts text on the clipboard; 关于软件 uses both.
@@ -231,6 +248,8 @@ type Model struct {
 	// stockForm / stockDelete are the same shapes for a stock account.
 	stockForm   ledgerForm
 	stockDelete ledgerDelete
+	// stock is 股票设置's drafts; its data is Spec.Stock.
+	stock stockState
 
 	// diary is 日记配置's own state: what an export covers, the period it
 	// picked, and the last command's status or failures.
@@ -305,6 +324,11 @@ func (m *Model) View(c ui.C, spec Spec) {
 	m.ledgerDeleteDialog(c, spec)
 	m.stockAccountDialog(c, spec)
 	m.stockAccountDeleteDialog(c, spec)
+	m.stockTemplateDialog(c, spec)
+	m.stockFeeDialog(c, spec)
+	m.stockOperationsDialog(c, spec)
+	m.stockArchiveDialog(c, spec)
+	m.stockResetDialog(c, spec)
 	m.bookDialog(c, spec)
 	m.bookDeleteDialog(c, spec)
 	ui.Toasts(c, &m.toaster)
@@ -365,6 +389,8 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 					m.ledgers(c, spec)
 				case tabStockAccounts:
 					m.stockAccounts(c, spec)
+				case tabStockSettings:
+					m.stockSettingsSection(c, spec)
 				case tabDiary:
 					m.diaryConfig(c, spec)
 				case tabAbout:
