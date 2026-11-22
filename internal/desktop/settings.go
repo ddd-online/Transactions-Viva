@@ -7,6 +7,7 @@ import (
 
 	"github.com/vivaui/viva/app"
 
+	"transactions/internal/buildinfo"
 	"transactions/internal/config"
 	diarysrv "transactions/internal/diary"
 	"transactions/internal/domain"
@@ -78,6 +79,12 @@ func (m *Model) settingsSpec() settings.Spec {
 		ProxyResolved: m.proxyResolved(),
 		OnSaveProxy:   m.saveProxy,
 		OnTestProxy:   m.testProxy,
+
+		UpdateVersion:    buildinfo.Version,
+		UpdateCheck:      m.checkUpdate,
+		UpdateDownload:   m.downloadUpdate,
+		UpdateInstall:    m.installUpdate,
+		UpdateInvalidate: m.invalidate,
 
 		DiaryBooks:        m.diary.Books(),
 		ActiveDiaryBook:   m.diary.ActiveBook(),

@@ -37,14 +37,11 @@ func (m *Model) about(c ui.C, spec Spec) {
 	controls.Page(c, "关于软件",
 		controls.GroupSpec{Raw: true, Body: func() { m.aboutHeader(c, spec, facts) }},
 		controls.GroupSpec{Title: "版本信息", Body: func() { m.aboutFacts(c, facts) }},
-		controls.GroupSpec{Title: "更新", Body: func() {
-			controls.Row(c, "检查更新", "新版本检查尚未接入。", func() {
-				typography.Caption(c, "暂未支持")
-			})
-		}},
+		controls.GroupSpec{Title: "更新", Body: func() { m.update(c, spec) }},
 		controls.GroupSpec{Title: "项目", Body: func() { m.aboutLinks(c, spec) }},
 		controls.GroupSpec{Raw: true, Body: func() { m.aboutColophon(c, spec) }},
 	)
+	m.updateNotesModal(c)
 }
 
 // aboutHeader is the application's identity: the mark, the name, one line about

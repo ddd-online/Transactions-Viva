@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
@@ -189,6 +190,14 @@ type Spec struct {
 	ProxyResolved string
 	OnSaveProxy   func(config.ProxySetting) (config.ProxySetting, error)
 	OnTestProxy   func(config.ProxySetting) (ProxyTestResult, error)
+
+	// 更新: the shell fetches, downloads and starts the installer; the page owns
+	// the visible state and the release-notes modal.
+	UpdateVersion    string
+	UpdateCheck      func(context.Context) (UpdateRelease, error)
+	UpdateDownload   func(context.Context, string, string, func(UpdateProgress)) (string, error)
+	UpdateInstall    func(string) error
+	UpdateInvalidate func()
 }
 
 // DiaryImport is what one batch import did, as the section's status line reads
@@ -289,6 +298,27 @@ type Model struct {
 	proxyTestKey  string
 	proxyTestDone string
 
+	// 更新: one lookup and one download at a time, with the release notes in a
+	// modal. Progress arrives from the download goroutine through updateMu and
+	// wakes the window through Spec.UpdateInvalidate.
+	updateStatus        string
+	updateRelease       UpdateRelease
+	updateError         string
+	updatePath          string
+	updateNotesOpen     bool
+	updateCheckToken    int
+	updateDownloadID    int
+	updateMu            sync.Mutex
+	updateFnMu          sync.Mutex
+	updatePercent       int
+	updateSpeed         string
+	updateCheckFn       func(context.Context) (UpdateRelease, error)
+	updateDownloadFn    func(context.Context, string, string, func(UpdateProgress)) (string, error)
+	updateInstallFn     func(string) error
+	updateInvalidate    func()
+	updateCheckState    *ui.EffectState[UpdateRelease, int]
+	updateDownloadState *ui.EffectState[string, updateDownloadRequest]
+
 	// diary is 日记配置's own state: what an export covers, the period it
 	// picked, and the last command's status or failures.
 	diary diaryState
@@ -355,6 +385,24 @@ func New() *Model {
 			return ProxyTestResult{}, nil
 		}
 		return m.proxyTestFn(setting)
+	})
+	m.updateCheckState = ui.NewEffectKeyed(func(ctx context.Context, _ int) (UpdateRelease, error) {
+		m.updateFnMu.Lock()
+		check := m.updateCheckFn
+		m.updateFnMu.Unlock()
+		if check == nil {
+			return UpdateRelease{}, nil
+		}
+		return check(ctx)
+	})
+	m.updateDownloadState = ui.NewEffectKeyed(func(ctx context.Context, request updateDownloadRequest) (string, error) {
+		m.updateFnMu.Lock()
+		download := m.updateDownloadFn
+		m.updateFnMu.Unlock()
+		if download == nil {
+			return "", nil
+		}
+		return download(ctx, request.URL, request.Digest, m.reportUpdateProgress)
 	})
 	return m
 }

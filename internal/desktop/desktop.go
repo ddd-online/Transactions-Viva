@@ -42,6 +42,10 @@ type Model struct {
 	// invalidator asks the window for a frame when something outside a click
 	// changes what is painted (a system appearance change, a close prompt).
 	invalidator *app.Invalidator
+	// quit ends the application after an update's installer has started.
+	quit func()
+	// launchUpdate starts the downloaded installer; tests replace it.
+	launchUpdate func(string) error
 
 	// window and tray are the native handles Run opens; close.go and tray.go
 	// use them. trayOK says the status area accepted the icon.
@@ -211,6 +215,7 @@ func Run() error {
 			return err
 		}
 		model.window = window
+		model.quit = application.Quit
 		model.trayOK = model.addTray(application)
 		app.WatchSystemAppearance(func() {
 			model.refreshTheme()

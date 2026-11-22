@@ -246,6 +246,25 @@ var ChevronsRight = gfx.Icon{
 	},
 }
 
+// circle-check is a compiled vector icon.
+var CircleCheck = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(22.0, 12.0),
+		gfx.CubicTo(22.0, 17.5228, 17.5228, 22.0, 12.0, 22.0),
+		gfx.CubicTo(6.47715, 22.0, 2.0, 17.5228, 2.0, 12.0),
+		gfx.CubicTo(2.0, 6.47715, 6.47715, 2.0, 12.0, 2.0),
+		gfx.CubicTo(17.5228, 2.0, 22.0, 6.47715, 22.0, 12.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(9.0, 12.0),
+		gfx.LineTo(11.0, 14.0),
+		gfx.LineTo(15.0, 10.0),
+	},
+}
+
 // clock is a compiled vector icon.
 var Clock = gfx.Icon{
 	ViewBox: 24.0,
@@ -289,6 +308,27 @@ var Diary = gfx.Icon{
 		gfx.CubicTo(13.3431, 18.0, 12.0, 19.3431, 12.0, 21.0),
 		gfx.CubicTo(12.0, 19.3431, 10.6569, 18.0, 9.0, 18.0),
 		gfx.ClosePath(),
+	},
+}
+
+// download is a compiled vector icon.
+var Download = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(21.0, 15.0),
+		gfx.LineTo(21.0, 19.0),
+		gfx.CubicTo(21.0, 20.1046, 20.1046, 21.0, 19.0, 21.0),
+		gfx.LineTo(5.0, 21.0),
+		gfx.CubicTo(3.89543, 21.0, 3.0, 20.1046, 3.0, 19.0),
+		gfx.LineTo(3.0, 15.0),
+		gfx.MoveTo(7.0, 10.0),
+		gfx.LineTo(12.0, 15.0),
+		gfx.LineTo(17.0, 10.0),
+		gfx.MoveTo(12.0, 15.0),
+		gfx.LineTo(12.0, 3.0),
 	},
 }
 
@@ -434,6 +474,30 @@ var Plus = gfx.Icon{
 		gfx.LineTo(19.0, 12.0),
 		gfx.MoveTo(12.0, 5.0),
 		gfx.LineTo(12.0, 19.0),
+	},
+}
+
+// refresh-cw is a compiled vector icon.
+var RefreshCw = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(3.0, 12.0),
+		gfx.CubicTo(3.0, 7.02944, 7.02944, 3.0, 12.0, 3.0),
+		gfx.CubicTo(14.516, 3.00947, 16.931, 3.99122, 18.74, 5.74),
+		gfx.LineTo(21.0, 8.0),
+		gfx.MoveTo(21.0, 3.0),
+		gfx.LineTo(21.0, 8.0),
+		gfx.LineTo(16.0, 8.0),
+		gfx.MoveTo(21.0, 12.0),
+		gfx.CubicTo(21.0, 16.9706, 16.9706, 21.0, 12.0, 21.0),
+		gfx.CubicTo(9.48395, 20.9905, 7.06897, 20.0088, 5.26, 18.26),
+		gfx.LineTo(3.0, 16.0),
+		gfx.MoveTo(8.0, 16.0),
+		gfx.LineTo(3.0, 16.0),
+		gfx.LineTo(3.0, 21.0),
 	},
 }
 
