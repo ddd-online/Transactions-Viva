@@ -55,9 +55,12 @@ const (
 	statisticsGroupSize = 5
 	// statisticsDetailSize is the detail table's page size.
 	statisticsDetailSize = 15
-	// statisticsChartHeight is the curve card's height; the page scrolls, so the
-	// curve never gets squeezed below the old page's 360 px floor.
-	statisticsChartHeight = 380
+	// statisticsChartMinHeight keeps the curve readable when the window is
+	// short; otherwise the card takes all the height the summary leaves.
+	statisticsChartMinHeight = 220
+	// statisticsChartShortHeight is the card's height on a window too short to
+	// give the summary its remaining height; the page scrolls then.
+	statisticsChartShortHeight = 300
 	// statisticsRecentWidth is the 最近 N 笔 field's width.
 	statisticsRecentWidth = 90
 	// statisticsTagWidth is the tag Select's width.
@@ -368,14 +371,23 @@ func (p *statisticsPanel) empty(c ui.C) {
 // summary is the cards and the curve, in a page that scrolls when the window
 // is shorter than the content.
 func (p *statisticsPanel) summary(c ui.C) {
-	ui.Scroll(c).Grow(1).Children(func() {
-		ui.Column(c).FillWidth().PadX(layout.Inset).PadY(layout.BlockGap).
-			Gap(layout.GroupGap).Children(func() {
-			typography.Section(c, "结算统计")
-			p.cards(c)
-			p.chartSection(c)
+	fill := c.Bounds().Height >= 800
+	content := func() {
+		typography.Section(c, "结算统计")
+		p.cards(c)
+		p.chartSection(c, fill)
+	}
+	if !fill {
+		ui.Scroll(c).Grow(1).Children(func() {
+			ui.Column(c).FillWidth().PadX(layout.Inset).PadY(layout.BlockGap).
+				Gap(layout.GroupGap).Children(content)
 		})
-	})
+		return
+	}
+	// The chart fills what the cards leave, so a tall window has no blank
+	// strip under the curve.
+	ui.Column(c).Grow(1).FillWidth().PadX(layout.Inset).PadY(layout.BlockGap).
+		Gap(layout.GroupGap).Children(content)
 }
 
 // chartPoints are the points the curve reads: the grouped points in 分组统计,
@@ -472,13 +484,17 @@ func (p *statisticsPanel) card(c ui.C, label, hint, value, caption string, size 
 }
 
 // chartSection is the 统计曲线 block: the metric switch above Viva's area chart.
-func (p *statisticsPanel) chartSection(c ui.C) {
+func (p *statisticsPanel) chartSection(c ui.C, fill bool) {
 	points := p.chartPoints()
 	if len(points) == 0 {
 		return
 	}
 	theme := c.Theme()
-	ui.Column(c).Gap(layout.BlockGap).Children(func() {
+	section := ui.Column(c).Gap(layout.BlockGap)
+	if fill {
+		section = section.Grow(1)
+	}
+	section.Children(func() {
 		ui.Row(c).FillWidth().Gap(layout.Gap).Items(ui.Center).Children(func() {
 			typography.Section(c, "统计曲线")
 			ui.Spacer(c)
@@ -491,8 +507,17 @@ func (p *statisticsPanel) chartSection(c ui.C) {
 			}
 		})
 		p.chartHit = ui.ID(c)
-		ui.Row(c).FillWidth().Height(statisticsChartHeight).
-			Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).
+		card := ui.Row(c).FillWidth()
+		if fill {
+			// The card takes the height the summary leaves and the whole width;
+			// the plot stretches inside it with its own 12 px inset. A time
+			// series reads better wide than locked to 16:9, so only a minimum
+			// height is fixed, not an aspect ratio.
+			card = card.Grow(1).MinHeight(statisticsChartMinHeight)
+		} else {
+			card = card.Height(statisticsChartShortHeight)
+		}
+		card.Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).
 			Background(theme.Card).Children(func() {
 			ui.Slot(c).Fill().Draw(p.drawChart)
 		})
