@@ -142,7 +142,12 @@ func (m *Model) stage(c ui.C) {
 // thumbs is the 160 px column of 160×90 pictures, each a button with its delete
 // command and, for a live photo, a 实况 badge.
 func (m *Model) thumbs(c ui.C) {
-	ui.Scroll(c).Width(thumbWidth).FillHeight().Gap(layout.Gap).Children(func() {
+	// The scroll area takes the gallery's height from the row it sits in and
+	// scrolls its column. Do not give it FillHeight: a scroll area with a fill
+	// height reports its content as its preferred height, which makes a long
+	// thumbnail column stretch the whole gallery (and with it the stage) past
+	// the window instead of scrolling.
+	ui.Scroll(c).Width(thumbWidth).Gap(layout.Gap).Children(func() {
 		for index := range m.images {
 			m.thumb(c, index)
 		}

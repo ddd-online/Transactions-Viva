@@ -16,6 +16,7 @@ import (
 	"github.com/gen2brain/h265/heic"
 	"github.com/vivaui/viva/gfx"
 
+	"transactions/internal/assets"
 	"transactions/internal/config"
 	"transactions/internal/domain"
 	"transactions/internal/store/storetest"
@@ -349,5 +350,73 @@ func TestEventImageImportsHEIC(t *testing.T) {
 		if _, err := os.Stat(full); err != nil {
 			t.Fatalf("stored file %q: %v", relative, err)
 		}
+	}
+}
+
+// TestEventGalleryWithManyImagesStaysInsideTheWindow guards the layout bug a
+// long thumbnail column caused: the scroll area reported its content as its
+// preferred height, stretched the gallery, and pushed the stage, the body and
+// the footer past the bottom of the window.
+func TestEventGalleryWithManyImagesStaysInsideTheWindow(t *testing.T) {
+	driver, model := open(t)
+	today := time.Now().Format("2006-01-02")
+	ctx := context.Background()
+	if _, err := model.workspace.SaveKeyEvent(ctx, today, "多图", "", ""); err != nil {
+		t.Fatalf("SaveKeyEvent: %v", err)
+	}
+	directory := model.workspace.Directory()
+	for index := range 12 {
+		picture := image.NewRGBA(image.Rect(0, 0, 40, 30))
+		for y := range 30 {
+			for x := range 40 {
+				picture.SetRGBA(x, y, color.RGBA{R: uint8(40 + index*12), G: 120, B: 160, A: 255})
+			}
+		}
+		var buffer bytes.Buffer
+		if err := png.Encode(&buffer, picture); err != nil {
+			t.Fatal(err)
+		}
+		display := buffer.Bytes()
+		decoded, err := assets.Decode(display)
+		if err != nil {
+			t.Fatal(err)
+		}
+		thumb, err := assets.Thumbnail(decoded, assets.ThumbnailWidth)
+		if err != nil {
+			t.Fatal(err)
+		}
+		name := assets.NewName()
+		stored, err := assets.Save(directory, today, name, assets.Files{
+			Display: display, DisplayFormat: assets.FormatPNG, Thumb: thumb,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := model.workspace.CreateKeyEventImage(ctx, domain.KeyEventImage{
+			ID: name, EventDate: today, FilePath: stored.FilePath, ThumbPath: stored.ThumbPath,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := driver.Resize(1100, 800); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "事件")
+	click(t, driver, "多图")
+
+	frame := driver.Frame()
+	found := 0
+	for _, hit := range driver.Snapshot().Hits {
+		switch hit.Label {
+		case "保存图片", "添加图片", "编辑描述":
+			found++
+			if bottom := hit.Bounds.Y + hit.Bounds.Height; bottom > frame.Height+0.5 {
+				t.Fatalf("%q is at y=%v, below the %v-high window", hit.Label, bottom, frame.Height)
+			}
+		}
+	}
+	if found < 3 {
+		t.Fatalf("found only %d of the gallery/footer controls", found)
 	}
 }

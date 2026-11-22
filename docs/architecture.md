@@ -359,6 +359,11 @@ main → desktop → pages → components
   （回归测试：`internal/desktop` 的 `TestRecordMarkSelectKeepsTheDialogStill`）。
 - 同类问题：`ui` 里凡是「用 `BeginPresence` 开、由调用方 `End`」的组件，放进弹窗都要
   检查是否漏了收尾；漏了就会由弹窗的 `EndPresence` 误收，位移落到弹窗内容上。
+- **`ui.Scroll` 不要设 `FillHeight`。** 纵向的滚动区本来就会被所在的行 / 列分到剩余高度；
+  一旦加 `FillHeight`，`measureContainer` 只对 `dimAuto` 的滚动区把首选高度归零，于是它把**内容高度**
+  报成自己的首选高度，长列表会把所在 Row 连同整页撑高。事件页的缩略图列就曾因此把主图和底栏顶出
+  窗口（回归测试：`internal/desktop` 的 `TestEventGalleryWithManyImagesStaysInsideTheWindow`）。
+  滚动区只给宽度或 `Grow(1)`，高度交给容器。
 - **表单字段的标签字号与颜色改不了。** `ui.FormField` 画的是 `components.BeginField` 的
   recipe：标题固定 `Metrics.FontSizeM`（14）+ `WeightMedium` + `Foreground`，错误行同号
   危险色，`field.Spec` 只收文本、不收样式。所以记录弹窗里的八个字段标题和正文同号，
