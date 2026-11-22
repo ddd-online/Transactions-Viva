@@ -595,20 +595,24 @@ func (p *recordsPanel) detailHead(c ui.C, detail *domain.StockHistoryDetail) {
 	if name == "" || name == detail.History.StockCode {
 		name = detail.History.StockCode
 	}
-	ui.Row(c).FillWidth().Height(layout.SectionHeaderHeight).
+	ui.Row(c).FillWidth().Height(layout.SectionHeaderHeight).Clip().
 		PadX(layout.Inset).Gap(8).Items(ui.Center).Children(func() {
 		typography.Section(c, name).Ellipsis()
 		typography.Caption(c, detail.History.StockCode).Mono()
 		ui.Spacer(c)
-		ui.Row(c).Shrink(0).Gap(10).Items(ui.Center).Children(func() {
+		ui.Row(c).Shrink(0).Gap(8).Items(ui.Center).Children(func() {
 			typography.Caption(c, "累计盈亏")
 			ui.Text(c, money(detail.TotalPnl)).FontSize(typography.SizeBody).
 				Mono().Color(pnlColor(*theme, detail.TotalPnl))
 			ui.Text(c, historyPercent(detail.TotalPnlRate)).
 				FontSize(typography.SizeCaption).Mono().
 				Color(historyRateColor(*theme, detail.TotalPnlRate))
-			typography.Caption(c, fmt.Sprintf("%d 胜 %d 负 · %d 轮",
-				detail.WinCount, detail.LossCount, len(detail.Rounds)))
+			// The win/loss count is the first thing to go when the header is
+			// tight; the compact form leaves room for the money above.
+			if c.Bounds().Width >= 1100 {
+				typography.Caption(c, fmt.Sprintf("%d胜%d负·%d轮",
+					detail.WinCount, detail.LossCount, len(detail.Rounds)))
+			}
 		})
 	})
 }
