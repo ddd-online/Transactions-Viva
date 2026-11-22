@@ -38,9 +38,12 @@ func (format Format) Extension() string {
 }
 
 // Displayable reports whether this application has a decoder for the format.
+// HEIC is decoded in-process by github.com/gen2brain/h265/heic, so it is
+// displayable too; Save still refuses it as the stored display copy because
+// every paint should read a cheap JPEG, not run the HEVC decoder again.
 func (format Format) Displayable() bool {
 	switch format {
-	case FormatJPEG, FormatPNG, FormatGIF, FormatWebP:
+	case FormatJPEG, FormatPNG, FormatGIF, FormatWebP, FormatHEIC:
 		return true
 	}
 	return false

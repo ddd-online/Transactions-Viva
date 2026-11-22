@@ -13,6 +13,7 @@ import (
 	"math"
 	"os"
 
+	"github.com/gen2brain/h265/heic"
 	"github.com/vivaui/viva/gfx"
 	xdraw "golang.org/x/image/draw"
 	"golang.org/x/image/webp"
@@ -20,8 +21,9 @@ import (
 
 // Decode turns image bytes into a picture this application can draw. JPEG's
 // EXIF orientation is applied: a phone photo is stored the way its camera saw
-// it, not sideways. HEIC is refused with a sentence, because the platform's
-// decoders are not available to this Go process.
+// it, not sideways. HEIC/HEIF is decoded by github.com/gen2brain/h265/heic, a
+// pure Go HEVC decoder with no platform codec and no CGo; its container
+// transforms (irot/imir/clap) are already applied by that decoder.
 func Decode(data []byte) (image.Image, error) {
 	if len(data) == 0 {
 		return nil, fmt.Errorf("图片内容为空")
@@ -30,11 +32,8 @@ func Decode(data []byte) (image.Image, error) {
 		return nil, fmt.Errorf("图片过大（超过 %d MB）", MaxImageBytes>>20)
 	}
 	format := Sniff(data)
-	switch format {
-	case FormatHEIC:
-		return nil, fmt.Errorf("HEIC 图片暂不支持，请先转换为 JPEG 后添加")
-	case "":
-		return nil, fmt.Errorf("图片不是可解码的图片（支持 JPEG / PNG / GIF / WebP）")
+	if format == "" {
+		return nil, fmt.Errorf("图片不是可解码的图片（支持 JPEG / PNG / GIF / WebP / HEIC）")
 	}
 	config, err := ImageConfig(data)
 	if err != nil {
@@ -59,6 +58,8 @@ func Decode(data []byte) (image.Image, error) {
 		picture, err = gif.Decode(bytes.NewReader(data))
 	case FormatWebP:
 		picture, err = webp.Decode(bytes.NewReader(data))
+	case FormatHEIC:
+		picture, err = heic.Decode(bytes.NewReader(data))
 	}
 	if err != nil {
 		return nil, fmt.Errorf("图片无法解码：%w", err)
@@ -82,8 +83,28 @@ func ImageConfig(data []byte) (image.Config, error) {
 		return gif.DecodeConfig(bytes.NewReader(data))
 	case FormatWebP:
 		return webp.DecodeConfig(bytes.NewReader(data))
+	case FormatHEIC:
+		return heic.DecodeConfig(bytes.NewReader(data))
 	}
 	return image.Config{}, fmt.Errorf("不支持的图片格式")
+}
+
+// EncodeJPEG writes a picture as an opaque JPEG, for the display copy of a HEIC
+// still. The alpha channel, when there is one, is composited over white, the way
+// the old renderer's canvas did before its JPEG encode.
+func EncodeJPEG(picture image.Image, quality int) ([]byte, error) {
+	rgba := toRGBA(picture)
+	if rgba.Rect.Dx() <= 0 || rgba.Rect.Dy() <= 0 {
+		return nil, fmt.Errorf("图片尺寸无效")
+	}
+	canvas := image.NewRGBA(rgba.Rect)
+	stddraw.Draw(canvas, canvas.Bounds(), &image.Uniform{C: color.White}, image.Point{}, stddraw.Src)
+	stddraw.Draw(canvas, canvas.Bounds(), rgba, image.Point{}, stddraw.Over)
+	var buffer bytes.Buffer
+	if err := jpeg.Encode(&buffer, canvas, &jpeg.Options{Quality: quality}); err != nil {
+		return nil, fmt.Errorf("转码图片失败：%w", err)
+	}
+	return buffer.Bytes(), nil
 }
 
 // Thumbnail makes the list thumbnail: JPEG, at most maxWidth wide, never

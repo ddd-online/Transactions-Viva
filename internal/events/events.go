@@ -57,13 +57,9 @@ func AddImages(ctx context.Context, repo repository.Repository, workspaceDir, da
 		return result, err
 	}
 
-	groups, heic, unsupported, orphanMotions, err := groupFiles(paths)
+	groups, unsupported, orphanMotions, err := groupFiles(paths)
 	if err != nil {
 		return result, err
-	}
-	if len(heic) > 0 {
-		result.Problems = append(result.Problems,
-			"HEIC 图片暂不支持，请先转换为 JPEG 后添加："+strings.Join(heic, "、"))
 	}
 	if len(unsupported) > 0 {
 		result.Problems = append(result.Problems, "不支持的格式："+strings.Join(unsupported, "、"))
@@ -110,26 +106,42 @@ func addOne(ctx context.Context, repo repository.Repository, workspaceDir, date 
 		motionExt = strings.TrimPrefix(strings.ToLower(filepath.Ext(item.motion)), ".")
 	}
 
-	id := assets.NewName()
-	stored, err := assets.Save(workspaceDir, date, id, assets.Files{
+	files := assets.Files{
 		Display:       item.display,
 		DisplayFormat: assets.Sniff(item.display),
 		Thumb:         thumb,
 		Motion:        motion,
 		MotionExt:     motionExt,
-	})
+	}
+	if files.DisplayFormat == assets.FormatHEIC {
+		// HEIC is decoded once, here: the display copy becomes JPEG (92, as the
+		// old application transcoded) and the original bytes are kept beside
+		// it, so a paint never runs the HEVC decoder again and the best copy
+		// is never lost.
+		display, err := assets.EncodeJPEG(picture, assets.DisplayJPEGQuality)
+		if err != nil {
+			return name + "：" + err.Error(), nil
+		}
+		files.Display = display
+		files.DisplayFormat = assets.FormatJPEG
+		files.Original = item.display
+		files.OriginalFormat = assets.FormatHEIC
+	}
+	id := assets.NewName()
+	stored, err := assets.Save(workspaceDir, date, id, files)
 	if err != nil {
 		return name + "：" + err.Error(), nil
 	}
 	remove := func() {
-		assets.Remove(workspaceDir, stored.FilePath, stored.ThumbPath, stored.MotionPath)
+		assets.Remove(workspaceDir, stored.FilePath, stored.ThumbPath, stored.OriginalPath, stored.MotionPath)
 	}
 	if _, err := repo.CreateKeyEventImage(ctx, domain.KeyEventImage{
-		ID:         id,
-		EventDate:  date,
-		FilePath:   stored.FilePath,
-		ThumbPath:  stored.ThumbPath,
-		MotionPath: stored.MotionPath,
+		ID:           id,
+		EventDate:    date,
+		FilePath:     stored.FilePath,
+		ThumbPath:    stored.ThumbPath,
+		OriginalPath: stored.OriginalPath,
+		MotionPath:   stored.MotionPath,
 	}); err != nil {
 		remove()
 		return name + "：" + err.Error(), nil
@@ -141,7 +153,7 @@ func addOne(ctx context.Context, repo repository.Repository, workspaceDir, date 
 // its bytes, so a renamed photo still imports; a motion part is recognized by
 // its extension, as the old application did. Files are paired by the lowercased
 // file stem, and the first of each kind wins.
-func groupFiles(paths []string) (groups []picked, heic, unsupported, orphanMotions []string, err error) {
+func groupFiles(paths []string) (groups []picked, unsupported, orphanMotions []string, err error) {
 	type pair struct {
 		still   string
 		display []byte
@@ -178,17 +190,14 @@ func groupFiles(paths []string) (groups []picked, heic, unsupported, orphanMotio
 			unsupported = append(unsupported, filepath.Base(path)+"（"+readErr.Error()+"）")
 			continue
 		}
-		switch assets.Sniff(data) {
-		case assets.FormatHEIC:
-			heic = append(heic, filepath.Base(path))
-		case "":
+		if assets.Sniff(data) == "" {
 			unsupported = append(unsupported, filepath.Base(path))
-		default:
-			item := at(stemOf(path))
-			if item.still == "" {
-				item.still = path
-				item.display = data
-			}
+			continue
+		}
+		item := at(stemOf(path))
+		if item.still == "" {
+			item.still = path
+			item.display = data
 		}
 	}
 
@@ -204,7 +213,7 @@ func groupFiles(paths []string) (groups []picked, heic, unsupported, orphanMotio
 			stem: stem, still: item.still, motion: item.motion, display: item.display,
 		})
 	}
-	return groups, heic, unsupported, orphanMotions, nil
+	return groups, unsupported, orphanMotions, nil
 }
 
 // stemOf is the lowercased name without its extension, the key a live photo's

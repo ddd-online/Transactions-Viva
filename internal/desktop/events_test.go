@@ -9,9 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/gen2brain/h265/heic"
 	"github.com/vivaui/viva/gfx"
 
 	"transactions/internal/config"
@@ -233,19 +235,12 @@ func TestEventImageProblemsAreReported(t *testing.T) {
 	if err := os.WriteFile(movie, []byte("video"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	heic := filepath.Join(picked, "IMG_0002.HEIC")
-	if err := os.WriteFile(heic, []byte("\x00\x00\x00\x14ftypheic\x00\x00\x00\x00mif1heic"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := driver.QueueOpenFiles([]string{movie, heic}, nil); err != nil {
+	if err := driver.QueueOpenFiles([]string{movie}, nil); err != nil {
 		t.Fatal(err)
 	}
 	click(t, driver, "添加图片")
 	if !shows(driver, "实况视频要和同名的照片一起选") {
 		t.Fatal("an orphan live video was not reported")
-	}
-	if !shows(driver, "HEIC 图片暂不支持") {
-		t.Fatal("a HEIC pick was not reported")
 	}
 }
 
@@ -310,5 +305,49 @@ func TestEventLinksToggleFailureKeepsTheRail(t *testing.T) {
 	}
 	if !shows(driver, "选择事件查看关联交易") {
 		t.Fatal("the rail closed even though its state was not saved")
+	}
+}
+
+func TestEventImageImportsHEIC(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "事件")
+	click(t, driver, "新增事件")
+	clickLast(t, driver, "新增")
+	today := time.Now().Format("2006-01-02")
+
+	picture := image.NewRGBA(image.Rect(0, 0, 32, 20))
+	for y := range 20 {
+		for x := range 32 {
+			picture.SetRGBA(x, y, color.RGBA{R: 120, G: 160, B: 90, A: 255})
+		}
+	}
+	var buffer bytes.Buffer
+	if err := heic.Encode(&buffer, picture); err != nil {
+		t.Fatalf("heic.Encode: %v", err)
+	}
+	path := filepath.Join(t.TempDir(), "IMG_0200.HEIC")
+	if err := os.WriteFile(path, buffer.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.QueueOpenFiles([]string{path}, nil); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "添加图片")
+	if !hasControl(driver, "查看第 1 张图片，共 1 张") {
+		t.Fatal("the HEIC picture is not in the gallery")
+	}
+
+	images, err := model.workspace.KeyEventImages(context.Background(), today)
+	if err != nil || len(images) != 1 {
+		t.Fatalf("stored images = %+v, err=%v", images, err)
+	}
+	if !strings.HasSuffix(images[0].FilePath, ".jpg") || !strings.HasSuffix(images[0].OriginalPath, ".heic") {
+		t.Fatalf("HEIC row paths = %+v", images[0])
+	}
+	for _, relative := range []string{images[0].FilePath, images[0].ThumbPath, images[0].OriginalPath} {
+		full := filepath.Join(model.workspace.Directory(), "data", "assets", filepath.FromSlash(relative))
+		if _, err := os.Stat(full); err != nil {
+			t.Fatalf("stored file %q: %v", relative, err)
+		}
 	}
 }

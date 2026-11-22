@@ -4,3 +4,6 @@
 
 # Binary assets: PNG screenshots are stored untouched.
 *.png binary
+
+# Binary assets: HEIC fixtures are stored untouched.
+*.heic binary

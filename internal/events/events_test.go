@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gen2brain/h265/heic"
+
 	"transactions/internal/assets"
 	"transactions/internal/domain"
 	"transactions/internal/repository"
@@ -109,18 +111,17 @@ func TestAddImagesReportsPickedProblems(t *testing.T) {
 	}
 	picked := t.TempDir()
 	orphan := writeFile(t, picked, "IMG_0009.MOV", []byte("video"))
-	heic := writeFile(t, picked, "IMG_0010.HEIC", []byte("\x00\x00\x00\x14ftypheic\x00\x00\x00\x00mif1heic"))
 	unknown := writeFile(t, picked, "notes.txt", []byte("not an image"))
 
-	result, err := AddImages(ctx, space, directory, "2026-01-15", []string{orphan, heic, unknown})
+	result, err := AddImages(ctx, space, directory, "2026-01-15", []string{orphan, unknown})
 	if err != nil {
 		t.Fatalf("AddImages: %v", err)
 	}
-	if result.Added != 0 || len(result.Problems) != 3 {
+	if result.Added != 0 || len(result.Problems) != 2 {
 		t.Fatalf("result = %+v", result)
 	}
 	joined := strings.Join(result.Problems, "；")
-	for _, want := range []string{"实况视频要和同名的照片一起选：IMG_0009.MOV", "HEIC 图片暂不支持", "不支持的格式：notes.txt"} {
+	for _, want := range []string{"实况视频要和同名的照片一起选：IMG_0009.MOV", "不支持的格式：notes.txt"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("problems %q do not contain %q", joined, want)
 		}
@@ -237,5 +238,65 @@ func TestSaveImageCopiesTheStoredBytes(t *testing.T) {
 	got, err := os.ReadFile(destination)
 	if err != nil || !bytes.Equal(got, want) {
 		t.Fatalf("saved copy differs, err=%v", err)
+	}
+}
+
+// heicFile writes a real HEIC picture and returns its path and bytes.
+func heicFile(t *testing.T, directory, name string, width, height int) (string, []byte) {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := range height {
+		for x := range width {
+			img.SetRGBA(x, y, color.RGBA{R: 120, G: 160, B: 90, A: 255})
+		}
+	}
+	var buffer bytes.Buffer
+	if err := heic.Encode(&buffer, img); err != nil {
+		t.Fatalf("heic.Encode: %v", err)
+	}
+	data := buffer.Bytes()
+	return writeFile(t, directory, name, data), data
+}
+
+func TestAddImagesTranscodesHEICAndKeepsTheOriginal(t *testing.T) {
+	space, directory := workspace(t)
+	ctx := context.Background()
+	if _, err := space.SaveKeyEvent(ctx, "2026-01-15", "苹果照片", "", ""); err != nil {
+		t.Fatalf("SaveKeyEvent: %v", err)
+	}
+	path, original := heicFile(t, t.TempDir(), "IMG_0100.HEIC", 32, 20)
+	result, err := AddImages(ctx, space, directory, "2026-01-15", []string{path})
+	if err != nil {
+		t.Fatalf("AddImages: %v", err)
+	}
+	if result.Added != 1 || len(result.Problems) != 0 {
+		t.Fatalf("result = %+v", result)
+	}
+	images, err := space.KeyEventImages(ctx, "2026-01-15")
+	if err != nil || len(images) != 1 {
+		t.Fatalf("images = %+v, err=%v", images, err)
+	}
+	image := images[0]
+	if !strings.HasSuffix(image.FilePath, ".jpg") || !strings.HasSuffix(image.ThumbPath, ".jpg") ||
+		!strings.HasSuffix(image.OriginalPath, ".heic") {
+		t.Fatalf("image paths = %+v", image)
+	}
+	display, err := assets.Resolve(directory, image.FilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if data, err := os.ReadFile(display); err != nil || assets.Sniff(data) != assets.FormatJPEG {
+		t.Fatalf("display file = %d bytes, err=%v", len(data), err)
+	}
+	originalPath, err := assets.Resolve(directory, image.OriginalPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if data, err := os.ReadFile(originalPath); err != nil || !bytes.Equal(data, original) {
+		t.Fatalf("original file differs, err=%v", err)
+	}
+	bitmap, err := assets.Load(directory, image.FilePath, 512)
+	if err != nil || bitmap.Width != 32 || bitmap.Height != 20 {
+		t.Fatalf("loaded display = %dx%d, err=%v", bitmap.Width, bitmap.Height, err)
 	}
 }

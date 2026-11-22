@@ -4,7 +4,15 @@
 //
 //	<id>.<ext>          the display file, in the format it was imported in
 //	thumb_<id>.jpg      the list thumbnail, 300 px wide at most, JPEG q75
+//	<id>.heic           the HEIC/HEIF original, when the display file is a JPEG
+//	                    made from it at import time
 //	<id>.<ext>          the live photo's motion part, when the photo is one
+//
+// Decoding is the application's job, not the framework's: JPEG, PNG, GIF and
+// WebP come from the standard library and golang.org/x/image, HEIC from the
+// pure Go HEVC decoder github.com/gen2brain/h265/heic. HEIC is expensive to
+// decode, so the importer runs it once and stores a JPEG display copy beside the
+// original; a paint only ever reads the cheap copy.
 //
 // The package is deliberately outside the pages: a page may paint a gfx.Bitmap
 // but never opens a file. The shell and the import tool call these functions.
@@ -38,6 +46,10 @@ const (
 	ThumbnailWidth = 300
 	// ThumbnailQuality is the JPEG quality of a thumbnail.
 	ThumbnailQuality = 75
+	// DisplayJPEGQuality is the JPEG quality of a HEIC still's display copy.
+	// The old application transcoded at 92: close to the original's look while
+	// still a format every platform draws without a codec.
+	DisplayJPEGQuality = 92
 )
 
 // Root is the assets directory of a workspace.
@@ -87,13 +99,19 @@ type Files struct {
 	// Motion is the live photo's video; MotionExt says what it is.
 	Motion    []byte
 	MotionExt string
+	// Original is the HEIC/HEIF source when Display is a JPEG made from it.
+	// The old application kept the original beside its display copy so the
+	// best-quality bytes are never lost.
+	Original       []byte
+	OriginalFormat Format
 }
 
 // Paths are the stored paths, relative to the assets root.
 type Paths struct {
-	FilePath   string
-	ThumbPath  string
-	MotionPath string
+	FilePath     string
+	ThumbPath    string
+	OriginalPath string
+	MotionPath   string
 }
 
 // NewName is the image's id and the stem its files are named after.
@@ -112,6 +130,11 @@ func Save(workspaceDir, date, name string, files Files) (Paths, error) {
 	if !files.DisplayFormat.Displayable() {
 		return Paths{}, fmt.Errorf("不支持的图片格式：%s", files.DisplayFormat)
 	}
+	// The display copy is what every paint decodes, so it is never HEIC: the
+	// importer transcodes HEIC to JPEG and keeps the original separately.
+	if files.DisplayFormat == FormatHEIC {
+		return Paths{}, errors.New("HEIC 展示图需要先转码成 JPEG")
+	}
 	if len(files.Display) == 0 {
 		return Paths{}, errors.New("图片内容为空")
 	}
@@ -122,6 +145,11 @@ func Save(workspaceDir, date, name string, files Files) (Paths, error) {
 	if len(files.Motion) > 0 && !motionExtension(motionExt) {
 		return Paths{}, fmt.Errorf("实况视频格式不支持：%s", files.MotionExt)
 	}
+	if len(files.Original) > 0 {
+		if files.OriginalFormat != FormatHEIC || Sniff(files.Original) != FormatHEIC {
+			return Paths{}, errors.New("只能保留 HEIC / HEIF 原图")
+		}
+	}
 
 	directory := filepath.Join(Root(workspaceDir), filepath.FromSlash(keyEventDir(date)))
 	if err := os.MkdirAll(directory, 0o755); err != nil {
@@ -129,6 +157,10 @@ func Save(workspaceDir, date, name string, files Files) (Paths, error) {
 	}
 	displayName := name + "." + files.DisplayFormat.Extension()
 	thumbName := "thumb_" + name + ".jpg"
+	originalName := ""
+	if len(files.Original) > 0 {
+		originalName = name + "." + files.OriginalFormat.Extension()
+	}
 	motionName := ""
 	if len(files.Motion) > 0 {
 		motionName = name + "." + motionExt
@@ -138,7 +170,7 @@ func Save(workspaceDir, date, name string, files Files) (Paths, error) {
 		FilePath:  path.Join(keyEventDir(date), displayName),
 		ThumbPath: path.Join(keyEventDir(date), thumbName),
 	}
-	written := make([]string, 0, 3)
+	written := make([]string, 0, 4)
 	write := func(fileName string, data []byte) error {
 		full := filepath.Join(directory, fileName)
 		if err := os.WriteFile(full, data, 0o644); err != nil {
@@ -153,6 +185,13 @@ func Save(workspaceDir, date, name string, files Files) (Paths, error) {
 	if err := write(thumbName, files.Thumb); err != nil {
 		removeAll(written)
 		return Paths{}, fmt.Errorf("保存缩略图失败：%w", err)
+	}
+	if originalName != "" {
+		if err := write(originalName, files.Original); err != nil {
+			removeAll(written)
+			return Paths{}, fmt.Errorf("保存原图失败：%w", err)
+		}
+		paths.OriginalPath = path.Join(keyEventDir(date), originalName)
 	}
 	if motionName != "" {
 		if err := write(motionName, files.Motion); err != nil {

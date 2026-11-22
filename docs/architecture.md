@@ -373,12 +373,12 @@ main → desktop → pages → components
   最后一位数字贴着边框（数值本身不裁切）。框架已经提供 `TextWidthWeight`，等它用上就
   自动消失；应用里不要给数值补空格之类的补偿。
 - **没有内建的图片解码与缩放 API。** `ui.Slot` / `gfx.Bitmap` 只负责画，解码、EXIF 方向、缩放都归应用。
-  `internal/assets` 用标准库 `image/jpeg|png|gif` 与 `golang.org/x/image/webp`、`x/image/draw` 解码成
+  `internal/assets` 用标准库 `image/jpeg|png|gif`、`golang.org/x/image/webp`、`x/image/draw` 与
+  `github.com/gen2brain/h265/heic`（纯 Go HEVC/HEIC 解码器，MIT，无 CGo、无系统编解码器依赖；其 README
+  提醒 HEVC 专利授权由使用方自行考虑）解码成
   `gfx.Bitmap`（预乘 BGRA）；缩略图 300px 宽 JPEG q75；主图解码后最长边缩到 2048 再画，且只在选中变化时
-  解码，`Draw` 里不读文件。GIF 只画第一帧（灯箱与画廊都不播动画）。
-- **没有 HEIC / HEIF 解码。** 平台没有可用的 HEVC 解码器，`internal/assets` 按 ftyp 品牌识别后明确拒绝
-  （「HEIC 图片暂不支持，请先转换为 JPEG 后添加」）；旧工作空间里的展示图本来就是导入时转码的 JPEG，
-  因此旧数据照常显示，`original_path` 指向的 HEIC 原图照常复制、只是不画。
+  解码，`Draw` 里不读文件。GIF 只画第一帧（灯箱与画廊都不播动画）。HEIC 解码较贵，所以只在导入时跑一次：
+  展示图转成 JPEG q92，`<id>.heic` 原图保留在 `original_path`，之后每次 paint 读的都是 JPEG。
 - **没有视频控件，实况照片只存不播。** 照片与同名视频一起导入、`motion_path` 落库，界面只显示「实况」
   角标与说明。Viva 有内嵌浏览器（`app.WebHost`），但本项目明确不要内嵌浏览器，所以不用它绕。
 - **`components.Sidebar` 的子菜单两侧都缩进。** `AddSubMenu` 照搬 shadcn 的 `mx-3.5` +

@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/gen2brain/h265/heic"
 )
 
 // picture returns a small RGBA picture with one pixel per colour, top row
@@ -86,11 +88,11 @@ func TestFormatExtensionsAndDisplayability(t *testing.T) {
 		FormatGIF.Extension() != "gif" || FormatWebP.Extension() != "webp" {
 		t.Fatal("extensions drifted")
 	}
-	if !FormatJPEG.Displayable() || !FormatWebP.Displayable() {
+	if !FormatJPEG.Displayable() || !FormatWebP.Displayable() || !FormatHEIC.Displayable() {
 		t.Fatal("a drawable format is not displayable")
 	}
-	if FormatHEIC.Displayable() || Format("").Displayable() {
-		t.Fatal("HEIC or an unknown format claims to be displayable")
+	if Format("").Displayable() {
+		t.Fatal("an unknown format claims to be displayable")
 	}
 }
 
@@ -106,13 +108,91 @@ func TestDecodeGIFDrawsItsFirstFrame(t *testing.T) {
 	}
 }
 
-func TestDecodeRefusesHEICAndUnknown(t *testing.T) {
-	heic := []byte("\x00\x00\x00\x14ftypheic\x00\x00\x00\x00mif1heic")
-	if _, err := Decode(heic); err == nil || !strings.Contains(err.Error(), "HEIC") {
-		t.Fatalf("HEIC error = %v", err)
+// heicBytes encodes a small picture as a real HEIC file, through the same pure
+// Go codec the application decodes with.
+func heicBytes(t *testing.T, picture image.Image) []byte {
+	t.Helper()
+	var buffer bytes.Buffer
+	if err := heic.Encode(&buffer, picture); err != nil {
+		t.Fatalf("heic.Encode: %v", err)
 	}
+	return buffer.Bytes()
+}
+
+func TestDecodeReadsHEIC(t *testing.T) {
+	data := heicBytes(t, picture(24, 16, color.RGBA{R: 255, A: 255}))
+	if Sniff(data) != FormatHEIC {
+		t.Fatalf("HEIC sniff = %q", Sniff(data))
+	}
+	config, err := ImageConfig(data)
+	if err != nil || config.Width != 24 || config.Height != 16 {
+		t.Fatalf("config = %dx%d, err=%v", config.Width, config.Height, err)
+	}
+	decoded, err := Decode(data)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if decoded.Bounds().Dx() != 24 || decoded.Bounds().Dy() != 16 {
+		t.Fatalf("decoded size = %v", decoded.Bounds())
+	}
+	thumb, err := Thumbnail(decoded, ThumbnailWidth)
+	if err != nil || Sniff(thumb) != FormatJPEG {
+		t.Fatalf("thumbnail = %d bytes, err=%v", len(thumb), err)
+	}
+}
+
+func TestDecodeRefusesUnknown(t *testing.T) {
 	if _, err := Decode([]byte("nope")); err == nil || !strings.Contains(err.Error(), "不是可解码") {
 		t.Fatalf("unknown error = %v", err)
+	}
+}
+
+func TestSaveKeepsTheHEICOriginal(t *testing.T) {
+	workspace := t.TempDir()
+	original := heicBytes(t, picture(24, 16, color.RGBA{B: 255, A: 255}))
+	decoded, err := Decode(original)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	display, err := EncodeJPEG(decoded, DisplayJPEGQuality)
+	if err != nil {
+		t.Fatalf("EncodeJPEG: %v", err)
+	}
+	thumb, err := Thumbnail(decoded, ThumbnailWidth)
+	if err != nil {
+		t.Fatalf("Thumbnail: %v", err)
+	}
+	paths, err := Save(workspace, "2026-01-15", "iphone", Files{
+		Display: display, DisplayFormat: FormatJPEG, Thumb: thumb,
+		Original: original, OriginalFormat: FormatHEIC,
+	})
+	if err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if Sniff(display) != FormatJPEG || paths.FilePath != "key_events/2026-01-15/iphone.jpg" ||
+		paths.OriginalPath != "key_events/2026-01-15/iphone.heic" {
+		t.Fatalf("paths = %+v", paths)
+	}
+	full, err := Resolve(workspace, paths.OriginalPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if data, err := os.ReadFile(full); err != nil || !bytes.Equal(data, original) {
+		t.Fatalf("original copy differs, err=%v", err)
+	}
+}
+
+func TestSaveRefusesHEICAsTheDisplayCopy(t *testing.T) {
+	workspace := t.TempDir()
+	original := heicBytes(t, picture(8, 8, color.RGBA{A: 255}))
+	thumb, err := Thumbnail(picture(8, 8, color.RGBA{A: 255}), ThumbnailWidth)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Save(workspace, "2026-01-15", "raw", Files{
+		Display: original, DisplayFormat: FormatHEIC, Thumb: thumb,
+	}); err == nil {
+		t.Fatal("Save accepted HEIC as the display copy")
 	}
 }
 
@@ -372,5 +452,45 @@ func TestLoadReportsAMissingFile(t *testing.T) {
 	workspace := t.TempDir()
 	if _, err := Load(workspace, "key_events/2026-01-15/missing.png", 1024); err == nil {
 		t.Fatal("Load accepted a missing file")
+	}
+}
+
+// TestDecodeRealHEICFixtures decodes the two HEIC files the old application
+// shipped as its own test fixtures: a flat 64 px tile and a 512 px gradient.
+// They were produced by libheif, so they prove the decoder against another
+// encoder's output, not only against the one this module also ships.
+func TestDecodeRealHEICFixtures(t *testing.T) {
+	cases := []struct {
+		name          string
+		width, height int
+	}{
+		{"flat-64.heic", 64, 64},
+		{"gradient-512.heic", 512, 512},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			data, err := os.ReadFile(filepath.Join("testdata", test.name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if Sniff(data) != FormatHEIC {
+				t.Fatalf("sniff = %q", Sniff(data))
+			}
+			config, err := ImageConfig(data)
+			if err != nil || config.Width != test.width || config.Height != test.height {
+				t.Fatalf("config = %dx%d, err=%v", config.Width, config.Height, err)
+			}
+			decoded, err := Decode(data)
+			if err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+			if decoded.Bounds().Dx() != test.width || decoded.Bounds().Dy() != test.height {
+				t.Fatalf("decoded size = %v", decoded.Bounds())
+			}
+			thumb, err := Thumbnail(decoded, ThumbnailWidth)
+			if err != nil || len(thumb) == 0 || Sniff(thumb) != FormatJPEG {
+				t.Fatalf("thumbnail = %d bytes, err=%v", len(thumb), err)
+			}
+		})
 	}
 }

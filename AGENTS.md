@@ -81,7 +81,8 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   列表卡是 3px 身份色条 + 标题（无标题显示日期）+ 日期圆点 + 30 字摘要，右上删除；详情是 20 档身份色 +
   「使用默认颜色」、主图 / 160×90 缩略图、「保存图片」、纯文本正文，以及 添加图片 / 编辑描述 / 取消 / 保存。
   图片落在 `data/assets/key_events/<日期>/`：展示图原字节 + 300px 宽 JPEG 缩略图；支持 JPEG / PNG / GIF /
-  WebP，HEIC 明确拒绝；实况照片的照片与同名视频一起存（`motion_path`），只显示「实况」角标、不播放。
+  WebP / HEIC；HEIC 用纯 Go 解码器（`github.com/gen2brain/h265/heic`）在导入时转成 JPEG 展示图（q92）并保留
+  `.heic` 原图（`original_path`）；实况照片的照片与同名视频一起存（`motion_path`），只显示「实况」角标、不播放。
   大图预览支持滚轮缩放、拖动、左右切图与 Esc。右侧关联交易是工作空间里 `key_event_date` 等于该日期的
   记录（跨账本，行里标账本名）；收起的开关写配置 `keyEventLinkedOpen`。图片的选取 / 落盘 / 删除走
   `internal/events` 与 `internal/assets`，由 `internal/desktop` 接平台对话框；页面只拿
