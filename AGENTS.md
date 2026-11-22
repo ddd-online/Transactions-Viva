@@ -47,7 +47,7 @@ internal/domain/         纯领域规则与数据形状
 internal/repository/     页面使用的数据契约
 internal/config/         配置形状、默认值、读写与归一化
 internal/store/          SQLite 工作空间、schema、仓储
-docs/                    架构、发布说明与截图
+docs/                    架构与发布说明
 ```
 
 依赖方向：
@@ -108,7 +108,7 @@ git add -A && git commit -m "feat(scope): 中文摘要"
 ```
 
 提交信息用 `type(scope): 中文摘要`：`feat`、`fix`、`style`、`docs`、`refactor`、`test`、`chore`。
-一个提交只做一件事；截图、文档等产物与对应改动一起提交。
+一个提交只做一件事；文档等产物与对应改动一起提交。
 
 ### 推送与发布
 

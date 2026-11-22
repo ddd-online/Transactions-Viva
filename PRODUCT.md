@@ -64,7 +64,7 @@
 
 ## Evidence on Hand
 
-- 可运行的本仓代码，以及 `docs/` 下的真实窗口截图。
+- 可运行的本仓代码，以及 `docs/architecture.md` 与 `docs/release.md`。
 - 框架参考 `D:\github\viva`（版本以 `go.mod` 为准）与参考应用 `D:\github\motty`，两者只读。
 - 没有用户证言、案例、演示数据或市场数据；后续工作不得编造用户、客户、评价、基准或市场份额。
 
