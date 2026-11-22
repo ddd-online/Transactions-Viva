@@ -3,7 +3,6 @@ package events
 import (
 	"fmt"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
@@ -29,11 +28,16 @@ func (m *Model) detail(c ui.C) {
 		ui.Divider(c)
 		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).FillHeight().Pad(layout.Inset).
 			Gap(layout.BlockGap).Children(func() {
-			m.gallery(c)
-			m.description(c)
-			if len(m.images) == 0 {
-				// A text-led day ends after its body; the tone and actions keep
-				// to the foot of the pane instead of floating under the text.
+			// The pictures and the body share the height two to one when both
+			// have something to show. A side with nothing to show keeps its
+			// compact empty state instead of claiming a share; the other side
+			// then takes the rest.
+			hasPictures := len(m.images) > 0
+			hasBody := m.editing || strings.TrimSpace(m.event.Content) != ""
+			pictures, body := detailSplit(hasPictures, hasBody)
+			m.gallery(c, pictures)
+			m.description(c, body)
+			if pictures == 0 && body == 0 {
 				ui.Spacer(c)
 			}
 			m.swatches(c)
@@ -41,6 +45,21 @@ func (m *Model) detail(c ui.C) {
 			m.actions(c)
 		})
 	})
+}
+
+// detailSplit is how the detail pane divides the height between the pictures
+// and the body: two to one when both have something to show; when one side is
+// empty the other takes the rest, and the empty side keeps its compact state.
+func detailSplit(hasPictures, hasBody bool) (pictures, body float32) {
+	switch {
+	case hasPictures && hasBody:
+		return 2, 1
+	case hasPictures:
+		return 1, 0
+	case hasBody:
+		return 0, 1
+	}
+	return 0, 0
 }
 
 // detailHeader names the selected day the way a rail header names its pane:
@@ -122,7 +141,7 @@ func (m *Model) swatches(c ui.C) {
 
 // gallery is the stage and the thumbnail column, or the compact empty state that
 // is also the place the user adds the first picture.
-func (m *Model) gallery(c ui.C) {
+func (m *Model) gallery(c ui.C, grow float32) {
 	theme := c.Theme()
 	if len(m.images) == 0 {
 		ui.Row(c).Height(emptyGalleryHeight).FillWidth().
@@ -137,7 +156,7 @@ func (m *Model) gallery(c ui.C) {
 		})
 		return
 	}
-	ui.Row(c).Grow(1).Shrink(1).MinWidth(0).FillWidth().MinHeight(stageMinHeight).
+	ui.Row(c).Grow(grow).Basis(0).Shrink(1).MinWidth(0).FillWidth().MinHeight(stageMinHeight).
 		Gap(layout.BlockGap).Children(func() {
 		m.stage(c)
 		m.thumbs(c)
@@ -250,27 +269,22 @@ func liveSuffix(image domain.KeyEventImage) string {
 }
 
 // description is the body: a muted well that scrolls, or the editor while the
-// user writes. It is plain text; newlines are kept and Markdown is literal. The
-// well stops growing at a reading height instead of taking half the pane: a
-// short note should not leave a tall empty slab under the pictures.
-func (m *Model) description(c ui.C) {
+// user writes. It is plain text; newlines are kept and Markdown is literal. When
+// it has a share of the pane it takes that share (one third beside pictures) and
+// scrolls inside it; with no text it keeps the compact empty height.
+func (m *Model) description(c ui.C, grow float32) {
 	theme := c.Theme()
-	limit := bodyMaxHeight
-	if len(m.images) == 0 {
-		limit = bodyMaxTextHeight
+	column := ui.Column(c).Shrink(1).MinWidth(0).FillWidth()
+	if grow > 0 {
+		minimum := bodyEmptyHeight
+		if m.editing {
+			minimum = bodyEditHeight
+		}
+		column = column.Grow(grow).Basis(0).MinHeight(minimum)
+	} else {
+		column = column.Height(bodyEmptyHeight)
 	}
-	if c.Bounds().Height < 760 {
-		// At the smallest window the header, the palette and the footer are
-		// fixed costs; the body gives up its reading height rather than push
-		// the actions below the frame.
-		limit = bodyShortLimit
-	}
-	height := bodyHeight(m.event.Content, limit)
-	if m.editing {
-		height = min(max(height, bodyEditHeight), limit)
-	}
-	ui.Column(c).Height(height).Shrink(1).MinWidth(0).FillWidth().
-		Radius(theme.Metrics.RadiusSurface).Background(theme.Muted).Children(func() {
+	column.Radius(theme.Metrics.RadiusSurface).Background(theme.Muted).Children(func() {
 		if m.editing {
 			ui.TextArea(c, &m.draft, "事件描述", "写下这件事……").Fill().
 				Radius(theme.Metrics.RadiusSurface)
@@ -285,26 +299,6 @@ func (m *Model) description(c ui.C) {
 				Color(theme.Foreground).MaxWidth(75 * 8)
 		})
 	})
-}
-
-// bodyHeight is how tall the body well stands: it follows the text up to the
-// pane's limit instead of always taking a fixed share of the window. The measure
-// is deliberately conservative (28 code points a line) so a narrow window errs
-// toward a scroll rather than hiding a line; editing keeps a usable field.
-func bodyHeight(content string, limit float32) float32 {
-	lines := 0
-	for _, paragraph := range strings.Split(content, "\n") {
-		count := utf8.RuneCountInString(paragraph)
-		if count == 0 {
-			lines++
-			continue
-		}
-		lines += (count + 27) / 28
-	}
-	if lines == 0 {
-		lines = 1
-	}
-	return min(max(float32(24+lines*22), bodyMinHeight), limit)
 }
 
 // actions is the footer: 添加图片 and 编辑描述 at rest, 取消 and 保存 while

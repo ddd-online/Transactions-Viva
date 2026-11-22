@@ -48,12 +48,10 @@ const (
 	thumbHeight    float32 = 90
 	swatchSize     float32 = 22
 	// emptyGalleryHeight keeps the no-photo state a line of information, not a
-	// pane: the body is the content of a day without pictures.
+	// pane: the body is the content of a day without pictures. bodyEmptyHeight
+	// is the same for a day with pictures and no text.
 	emptyGalleryHeight float32 = 120
-	bodyMinHeight      float32 = 96
-	bodyMaxHeight      float32 = 200
-	bodyMaxTextHeight  float32 = 280
-	bodyShortLimit     float32 = 140
+	bodyEmptyHeight    float32 = 96
 	bodyEditHeight     float32 = 160
 	linkedAmountWidth  float32 = 80
 )
