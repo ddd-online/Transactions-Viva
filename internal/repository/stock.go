@@ -24,4 +24,19 @@ type StockRepository interface {
 	// DeleteStockAccount removes the account and every stock row it owns in one
 	// transaction. The last account stays: ErrInvalid.
 	DeleteStockAccount(ctx context.Context, id string) error
+
+	// StockAccountSummary is the cash summary (no quotes): principal, available
+	// cash, withdrawals, interest and position cost.
+	StockAccountSummary(ctx context.Context, accountID string) (domain.StockAccountSummary, error)
+	// StockFundRecords reads one page, newest record first; page size is clamped
+	// to 10..100.
+	StockFundRecords(ctx context.Context, accountID string, page, pageSize int) (domain.StockFundPage, error)
+	// The three principal-class commands each write one fund record, recompute
+	// the cash chain and log one rollbackable operation in the same transaction.
+	AddStockPrincipal(ctx context.Context, accountID string, amountCents int64, date string) error
+	WithdrawStock(ctx context.Context, accountID string, amountCents int64, date string) error
+	AddStockInterest(ctx context.Context, accountID string, amountCents int64, date string) error
+
+	// StockOperations lists the rollbackable operations, newest first.
+	StockOperations(ctx context.Context, accountID string) ([]domain.StockOperation, error)
 }
