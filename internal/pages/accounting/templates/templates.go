@@ -269,7 +269,6 @@ func (m *Model) reorder(from, to int) {
 func (m *Model) table(c ui.C) {
 	ui.Column(c).Grow(1).FillWidth().Children(func() {
 		m.header(c)
-		ui.Divider(c)
 		items := m.items()
 		if len(items) == 0 {
 			m.empty(c)

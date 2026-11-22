@@ -41,7 +41,9 @@ func (m *Model) board(c ui.C) {
 		ui.Column(c).FillWidth().PadSides(layout.Inset, layout.Inset, 20, layout.Inset).Children(func() {
 			m.boardHeader(c)
 			for index := range m.cards {
-				ui.Divider(c)
+				if index > 0 {
+					ui.Divider(c)
+				}
 				m.group(c, index, &m.cards[index])
 			}
 		})

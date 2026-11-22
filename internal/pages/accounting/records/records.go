@@ -422,7 +422,6 @@ func (m *Model) table(c ui.C) {
 			typography.Caption(c, "标记").Width(recordMarksWidth).TextCenter()
 			m.sortHeader(c, "金额", sortAmount, recordAmountWidth, true)
 		})
-		ui.Divider(c)
 		if len(m.shown) == 0 {
 			m.empty(c)
 			return

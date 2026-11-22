@@ -104,7 +104,9 @@ func (m *Model) historyView(c ui.C) {
 		ui.Column(c).FillWidth().PadSides(layout.Inset, layout.Inset, 20, layout.Inset).Children(func() {
 			m.historyHeader(c)
 			for index := range m.history {
-				ui.Divider(c)
+				if index > 0 {
+					ui.Divider(c)
+				}
 				m.historyRow(c, &m.history[index])
 			}
 		})
