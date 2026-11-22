@@ -139,7 +139,7 @@ func (m *Model) itemRow(c ui.C, item *domain.TodoItem) {
 	expanded := m.expanded[item.ID]
 	c.Key("todo-item-" + item.ID)
 	ui.Column(c).FillWidth().Children(func() {
-		ui.Row(c).MinHeight(48).FillWidth().PadSides(10, 10, 10, 14).Gap(10).
+		ui.Row(c).MinHeight(48).FillWidth().PadSides(5, 10, 5, 14).Gap(10).
 			Items(ui.Center).Children(func() {
 			ui.Row(c).Grow(1).Gap(8).Items(ui.Center).Children(func() {
 				check := ui.Row(c).Size(16, 16).Shrink(0).Radius(8).
