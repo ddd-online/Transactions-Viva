@@ -67,22 +67,31 @@ func TestPositionsPanelRendersAndSaves(t *testing.T) {
 
 	// 填写台账 writes the five text fields and rereads the page.
 	positionsTestClick(t, driver, "填写台账")
-	if !panel.ledgerOpen {
+	if !panel.ledgerEdit.open {
 		t.Fatalf("the ledger dialog state did not open; hits=%v", positionsTestHitNames(driver))
 	}
 	if !positionsTestShows(driver, "当时为什么决定买这一轮") {
 		t.Fatal("the ledger dialog did not open")
 	}
 	positionsTestType(t, driver, "为什么买", "首板放量")
+	positionsTestType(t, driver, "止损", "9.00")
+	positionsTestType(t, driver, "止盈", "12.00")
+	if panel.ledgerEdit.draft.stopLoss != "9.00" || panel.ledgerEdit.draft.takeProfit != "12.00" {
+		t.Fatalf("ledger draft levels = %+v", panel.ledgerEdit.draft)
+	}
 	positionsTestClick(t, driver, "保存")
 	if !positionsTestShows(driver, "台账已保存") {
 		t.Fatal("the ledger save toast is missing")
 	}
-	if !positionsTestShows(driver, "首板放量") {
-		t.Fatal("the saved ledger text did not paint")
+	if !positionsTestShows(driver, "首板放量") || !positionsTestShows(driver, "盈亏比") {
+		t.Fatal("the saved ledger did not paint as a sheet")
 	}
 
-	// 写今日 creates the current round's day review.
+	// 写今日 creates the current round's day review. The ledger sheet is
+	// taller than the 620 px viewport, so bring 每日复盘 into view first.
+	if err := driver.Scroll(gfx.ScrollEvent{X: 700, Y: 400, DeltaY: 600}); err != nil {
+		t.Fatal(err)
+	}
 	positionsTestClick(t, driver, "写今日")
 	positionsTestType(t, driver, "复盘", "今天放量")
 	positionsTestClick(t, driver, "保存")
@@ -97,6 +106,10 @@ func TestPositionsPanelRendersAndSaves(t *testing.T) {
 		t.Fatalf("day reviews = %+v", reviews)
 	}
 
+	// Back to the top for the header's 加仓 action.
+	if err := driver.Scroll(gfx.ScrollEvent{X: 700, Y: 400, DeltaY: -600}); err != nil {
+		t.Fatal(err)
+	}
 	// 加仓 records a second order through the dialog; its submit button is the
 	// last control named 加仓 (the header has one too).
 	positionsTestClick(t, driver, "加仓")

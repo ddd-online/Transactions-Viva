@@ -65,8 +65,7 @@ type positionsPanel struct {
 
 	ledger      *domain.StockLedgerEntry
 	ledgerError string
-	ledgerOpen  bool
-	ledgerDraft positionsLedgerDraft
+	ledgerEdit  ledgerEditor
 
 	dailyOpen     bool
 	dailyEditDate string
@@ -136,25 +135,17 @@ type positionsFeeForm struct {
 	transfer   string
 }
 
-// positionsLedgerDraft is the ledger editor's five free-text fields.
-type positionsLedgerDraft struct {
-	whyBuy         string
-	stopLoss       string
-	takeProfit     string
-	followedSystem string
-	summary        string
-}
-
 // positionsLedgerNumbers are the read-only numbers derived from a round's
 // trades: average buy / sell price, buy cost, sell net and net profit.
 type positionsLedgerNumbers struct {
-	buyPrice  string
-	buyCost   string
-	sellPrice string
-	sellNet   string
-	netPnl    string
-	hasBuy    bool
-	hasSell   bool
+	buyPrice    string
+	buyCost     string
+	sellPrice   string
+	sellNet     string
+	netPnl      string
+	netPnlCents int64
+	hasBuy      bool
+	hasSell     bool
 }
 
 const (
@@ -325,7 +316,7 @@ func (p *positionsPanel) Reload() {
 
 // CloseOverlays closes every dialog and picker the screen can open.
 func (p *positionsPanel) CloseOverlays() {
-	p.ledgerOpen = false
+	p.ledgerEdit.close()
 	p.dailyOpen = false
 	p.dailyReadOpen = false
 	p.roundEditOpen = false
@@ -501,7 +492,7 @@ func (p *positionsPanel) selectPosition(code string) {
 		return
 	}
 	p.selectedCode = code
-	p.ledgerOpen = false
+	p.ledgerEdit.close()
 	p.roundEditOpen = false
 	p.roundReadOpen = false
 	p.dailyOpen = false
@@ -629,65 +620,27 @@ func (p *positionsPanel) feeLine(c ui.C, position *domain.StockPosition) {
 // ------------------------------------------------------------------ 交易台账
 
 func (p *positionsPanel) ledgerSection(c ui.C, position *domain.StockPosition) {
-	theme := c.Theme()
-	ui.Column(c).Gap(layout.Gap).Children(func() {
-		ui.Row(c).FillWidth().Height(layout.SectionHeaderHeight).Items(ui.Center).Children(func() {
-			typography.Section(c, "交易台账")
-			ui.Spacer(c)
-			label := "填写台账"
-			if p.ledger != nil {
-				label = "编辑"
-			}
-			if ui.Button(c, label).Outline().Small().Clicked() {
-				p.openLedger()
-			}
-		})
-		if p.ledgerError != "" {
-			typography.Caption(c, p.ledgerError).Color(theme.Danger)
-		}
+	ledgerSection(c, p.ledgerSheet(position), p.ledgerError, p.openLedger)
+}
 
-		numbers := positionsLedgerNumbersOf(p.currentTrades(position.StockCode))
-		if line := positionsLedgerNumbersLine(numbers); line != "" {
-			ui.Text(c, line).FontSize(typography.SizeCaption).Mono().
-				Color(theme.MutedForeground).Ellipsis()
-		}
-		if p.ledger == nil {
-			row := ui.Row(c.Key("ledger-empty")).FillWidth().Height(layout.RowHeight).
-				PadX(4).Gap(layout.Gap).Items(ui.Center).
-				HitWith(ui.ID(c), "填写交易台账", gfx.HitOptions{Cursor: gfx.PointerCursorHand}).
-				Hover(ui.Look{}.Background(theme.Hover)).
-				Radius(theme.Metrics.RadiusControl)
-			row.Children(func() {
-				typography.Caption(c, "还没有填写台账，记下买入理由、止损与止盈。").
-					Color(theme.MutedForeground)
-			})
-			if row.Clicked() {
-				p.openLedger()
-			}
-			return
-		}
-
-		fields := []struct {
-			label string
-			value string
-		}{
-			{"为什么买", p.ledger.WhyBuy},
-			{"止损", p.ledger.StopLoss},
-			{"止盈", p.ledger.TakeProfit},
-			{"是否按系统执行", p.ledger.FollowedSystem},
-			{"一句话", p.ledger.Summary},
-		}
-		for _, field := range fields {
-			if strings.TrimSpace(field.value) == "" {
-				continue
-			}
-			ui.Row(c).FillWidth().Gap(layout.Gap).Items(ui.Start).Children(func() {
-				ui.Text(c, field.label).FontSize(typography.SizeCaption).
-					Color(theme.MutedForeground).Width(88)
-				ui.Wrap(c, field.value).FontSize(typography.SizeBody).Grow(1)
-			})
-		}
-	})
+// ledgerSheet maps the selected position's ledger and current-round numbers to
+// the shared sheet the records page paints too.
+func (p *positionsPanel) ledgerSheet(position *domain.StockPosition) ledgerSheet {
+	numbers := positionsLedgerNumbersOf(p.currentTrades(position.StockCode))
+	sheet := ledgerSheet{
+		Entry:    p.ledger,
+		BuyPrice: numbers.buyPrice,
+		BuyCost:  numbers.buyCost,
+		Closed:   position.Quantity == 0 && numbers.hasSell,
+	}
+	if sheet.Closed {
+		sheet.SellPrice = numbers.sellPrice
+		sheet.SellNet = numbers.sellNet
+		sheet.NetPnl = numbers.netPnl
+		sheet.NetCents = numbers.netPnlCents
+		sheet.HasNet = true
+	}
+	return sheet
 }
 
 // ------------------------------------------------------------------ 每日复盘
@@ -892,7 +845,7 @@ func positionsTradeTypeColor(theme gfx.Theme, tradeType string) gfx.Color {
 // ------------------------------------------------------------------ 弹窗
 
 func (p *positionsPanel) dialogs(c ui.C) {
-	p.ledgerDialog(c)
+	p.ledgerEdit.dialog(c, p.repo, p.active())
 	p.dailyDialog(c)
 	p.dailyReadDialog(c)
 	p.roundEditDialog(c)
@@ -900,64 +853,6 @@ func (p *positionsPanel) dialogs(c ui.C) {
 	p.tradeDialog(c)
 	p.tradeEditDialog(c)
 	p.deleteDialog(c)
-}
-
-func (p *positionsPanel) ledgerDialog(c ui.C) {
-	if !p.ledgerOpen {
-		return
-	}
-	title := "填写台账"
-	if p.ledger != nil {
-		title = "编辑台账"
-	}
-	ui.ModalWith(c, &p.ledgerOpen, title, ui.ModalSpec{Width: 680}, func() {
-		ui.Scroll(c).MaxHeight(430).Children(func() {
-			ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
-				ui.TextArea(c, &p.ledgerDraft.whyBuy, "为什么买", "当时为什么决定买这一轮").
-					Height(96)
-				numbers := positionsLedgerNumbersOf(p.currentTrades(p.selectedCode))
-				ui.Flow(c).Gap(layout.GroupGap).LineGap(layout.Gap).Children(func() {
-					positionsNumberCell(c, "买入价", positionsDash(numbers.buyPrice))
-					positionsNumberCell(c, "买入成本", positionsDash(numbers.buyCost))
-					positionsNumberCell(c, "卖出价", positionsDash(numbers.sellPrice))
-					positionsNumberCell(c, "卖出净额", positionsDash(numbers.sellNet))
-					positionsNumberCell(c, "净盈亏", positionsDash(numbers.netPnl))
-				})
-				ui.Row(c).Gap(layout.BlockGap).Children(func() {
-					positionsFormColumn(c, "止损", func() {
-						ui.TextField(c, &p.ledgerDraft.stopLoss, "止损", "例如：9.00").Grow(1)
-					})
-					positionsFormColumn(c, "止盈", func() {
-						ui.TextField(c, &p.ledgerDraft.takeProfit, "止盈", "例如：12.00").Grow(1)
-					})
-				})
-				positionsFormField(c, "是否按系统执行", func() {
-					ui.TextField(c, &p.ledgerDraft.followedSystem, "是否按系统执行",
-						"例如：是 / 否 / 部分")
-				})
-				positionsFormField(c, "一句话", func() {
-					ui.TextField(c, &p.ledgerDraft.summary, "一句话", "一句话总结这一轮")
-				})
-				if p.ledgerError != "" {
-					typography.Caption(c, p.ledgerError).Color(c.Theme().Danger)
-				}
-			})
-		})
-	}, func() {
-		if ui.Button(c, "取消").Outline().Clicked() {
-			p.ledgerOpen = false
-		}
-		if ui.Button(c, "保存").Clicked() {
-			p.saveLedger()
-		}
-	})
-}
-
-func positionsNumberCell(c ui.C, label, value string) {
-	ui.Column(c).Width(96).Gap(2).Children(func() {
-		typography.Caption(c, label)
-		ui.Text(c, value).FontSize(typography.SizeBody).Mono()
-	})
 }
 
 // positionsFormColumn is a labelled control that shares a Row's width.
@@ -1457,47 +1352,13 @@ func (p *positionsPanel) openLedger() {
 	if position == nil {
 		return
 	}
-	p.ledgerDraft = positionsLedgerDraft{}
-	if p.ledger != nil {
-		p.ledgerDraft = positionsLedgerDraft{
-			whyBuy:         p.ledger.WhyBuy,
-			stopLoss:       p.ledger.StopLoss,
-			takeProfit:     p.ledger.TakeProfit,
-			followedSystem: p.ledger.FollowedSystem,
-			summary:        p.ledger.Summary,
-		}
-	}
-	p.ledgerError = ""
-	p.ledgerOpen = true
-}
-
-func (p *positionsPanel) saveLedger() {
-	position := p.selectedPosition()
-	if position == nil || p.repo == nil {
-		return
-	}
-	draft := p.ledgerDraft.trimmed()
-	if draft.empty() {
-		p.ledgerError = "台账至少填写一项"
-		return
-	}
-	saved, err := p.repo.SaveStockLedger(context.Background(), domain.StockLedgerEntry{
-		AccountID:      p.active(),
-		StockCode:      position.StockCode,
-		WhyBuy:         draft.whyBuy,
-		StopLoss:       draft.stopLoss,
-		TakeProfit:     draft.takeProfit,
-		FollowedSystem: draft.followedSystem,
-		Summary:        draft.summary,
-	})
-	if err != nil {
-		p.ledgerError = positionsErrorText(err)
-		return
-	}
-	p.ledger = &saved
-	p.ledgerOpen = false
-	p.notify("台账已保存", ui.ToastSuccess)
-	p.afterWrite()
+	sheet := p.ledgerSheet(position)
+	p.ledgerEdit.begin(sheet, position.StockCode, "",
+		func(saved domain.StockLedgerEntry) {
+			p.ledger = &saved
+			p.notify("台账已保存", ui.ToastSuccess)
+			p.afterWrite()
+		})
 }
 
 func (p *positionsPanel) openDailyToday(position *domain.StockPosition) {
@@ -1970,7 +1831,8 @@ func positionsLedgerNumbersOf(trades []domain.StockTrade) positionsLedgerNumbers
 	if numbers.hasSell {
 		numbers.sellPrice = domain.MilliToYuan(positionsAverageMilli(sellAmount, sellShares))
 		numbers.sellNet = money(sellNet)
-		numbers.netPnl = money(sellNet - buyCost)
+		numbers.netPnlCents = sellNet - buyCost
+		numbers.netPnl = money(numbers.netPnlCents)
 	}
 	return numbers
 }
@@ -1981,25 +1843,6 @@ func positionsAverageMilli(amountCents int64, shares int) int64 {
 	}
 	return int64(domain.RoundHalfAwayFromZero(
 		float64(amountCents) * 10 / float64(shares)))
-}
-
-func positionsLedgerNumbersLine(numbers positionsLedgerNumbers) string {
-	parts := make([]string, 0, 5)
-	if numbers.hasBuy {
-		parts = append(parts, "买入价 "+numbers.buyPrice, "买入成本 "+numbers.buyCost)
-	}
-	if numbers.hasSell {
-		parts = append(parts, "卖出价 "+numbers.sellPrice, "卖出净额 "+numbers.sellNet,
-			"净盈亏 "+numbers.netPnl)
-	}
-	return strings.Join(parts, " · ")
-}
-
-func positionsDash(value string) string {
-	if strings.TrimSpace(value) == "" {
-		return "—"
-	}
-	return value
 }
 
 func positionsTextBlock(c ui.C, text string) {
@@ -2046,19 +1889,4 @@ func positionsErrorText(err error) string {
 		}
 	}
 	return text
-}
-
-func (d positionsLedgerDraft) trimmed() positionsLedgerDraft {
-	return positionsLedgerDraft{
-		whyBuy:         strings.TrimSpace(d.whyBuy),
-		stopLoss:       strings.TrimSpace(d.stopLoss),
-		takeProfit:     strings.TrimSpace(d.takeProfit),
-		followedSystem: strings.TrimSpace(d.followedSystem),
-		summary:        strings.TrimSpace(d.summary),
-	}
-}
-
-func (d positionsLedgerDraft) empty() bool {
-	return d.whyBuy == "" && d.stopLoss == "" && d.takeProfit == "" &&
-		d.followedSystem == "" && d.summary == ""
 }

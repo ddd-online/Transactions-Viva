@@ -84,6 +84,8 @@ type recordsPanel struct {
 	quoteSerial int
 	quoteMap    map[string]domain.StockQuote
 
+	ledgerEdit ledgerEditor
+
 	reviewOpen    bool
 	reviewRoundID string
 	reviewDraft   string
@@ -356,6 +358,7 @@ func (p *recordsPanel) chooseHistory(index int) {
 
 // CloseOverlays dismisses the panel's dialogs when the shell leaves the screen.
 func (p *recordsPanel) CloseOverlays() {
+	p.ledgerEdit.close()
 	p.reviewOpen = false
 	p.reviewError = ""
 	p.readOpen = false
@@ -387,6 +390,7 @@ func (p *recordsPanel) View(c ui.C) {
 		ui.Divider(c)
 		p.footer(c)
 	})
+	p.ledgerEdit.dialog(c, p.repo, p.active())
 	p.reviewModal(c)
 	p.readModal(c)
 	p.editModal(c)
@@ -804,66 +808,19 @@ func (p *recordsPanel) tradeRow(c ui.C, trade domain.StockTrade) {
 
 // ledgerSection is the round's trade ledger, read-only here.
 func (p *recordsPanel) ledgerSection(c ui.C, round domain.StockRoundDetail) {
-	theme := c.Theme()
-	ui.Column(c).FillWidth().PadX(12).Gap(6).Children(func() {
-		ui.Text(c, "交易台账").FontSize(typography.SizeBody).Bold()
-		if round.Ledger == nil {
-			typography.Caption(c, "还没有台账。把买入理由、止损止盈和一句总结记在这里。")
-			return
-		}
-		view := *round.Ledger
-		entry := view.Entry
-		if strings.TrimSpace(entry.WhyBuy) != "" {
-			p.ledgerText(c, "为什么买", entry.WhyBuy)
-		}
-		ui.Flow(c).Gap(12).LineGap(8).Children(func() {
-			p.ledgerField(c, "买入价", historyMilli(view.BuyPriceMilli), true, theme.Foreground)
-			p.ledgerField(c, "买入成本", money(view.BuyCostCents), true, theme.Foreground)
-			p.ledgerField(c, "止损", historyTextOrDash(entry.StopLoss), false, theme.Foreground)
-			p.ledgerField(c, "止盈", historyTextOrDash(entry.TakeProfit), false, theme.Foreground)
+	ui.Column(c).FillWidth().PadX(12).Children(func() {
+		ledgerSection(c, ledgerSheetOfView(round.Ledger), "", func() {
+			p.openLedger(round)
 		})
-		ui.Flow(c).Gap(12).LineGap(8).Children(func() {
-			sellPrice := "—"
-			if view.SellPriceMilli != nil {
-				sellPrice = historyMilli(*view.SellPriceMilli)
-			}
-			sellNet := "—"
-			if view.SellNetCents != nil {
-				sellNet = money(*view.SellNetCents)
-			}
-			p.ledgerField(c, "卖出价", sellPrice, true, theme.Foreground)
-			p.ledgerField(c, "卖出净额", sellNet, true, theme.Foreground)
-			pnlText, pnlTone := "—", theme.Foreground
-			if view.NetPnlCents != nil {
-				pnlText = money(*view.NetPnlCents)
-				pnlTone = pnlColor(*theme, *view.NetPnlCents)
-			}
-			p.ledgerField(c, "净盈亏", pnlText, true, pnlTone)
-		})
-		if strings.TrimSpace(entry.FollowedSystem) != "" {
-			p.ledgerText(c, "是否按系统执行", entry.FollowedSystem)
-		}
-		if strings.TrimSpace(entry.Summary) != "" {
-			p.ledgerText(c, "一句话", entry.Summary)
-		}
 	})
 }
 
-func (p *recordsPanel) ledgerField(c ui.C, label, value string, mono bool, color gfx.Color) {
-	ui.Column(c).Width(96).Gap(2).Children(func() {
-		typography.Caption(c, label)
-		text := ui.Text(c, value).FontSize(typography.SizeBody).Color(color).Ellipsis()
-		if mono {
-			text.Mono()
-		}
-	})
-}
-
-func (p *recordsPanel) ledgerText(c ui.C, label, value string) {
-	ui.Row(c).FillWidth().Gap(8).Children(func() {
-		typography.Caption(c, label).Width(72)
-		typography.Body(c, value).Grow(1).MaxLines(2)
-	})
+func (p *recordsPanel) openLedger(round domain.StockRoundDetail) {
+	p.ledgerEdit.begin(ledgerSheetOfView(round.Ledger), round.Round.StockCode, round.Round.ID,
+		func(domain.StockLedgerEntry) {
+			p.notify("台账已保存", ui.ToastSuccess)
+			p.Reload()
+		})
 }
 
 func (p *recordsPanel) dailyReviews(c ui.C, round domain.StockRoundDetail) {
