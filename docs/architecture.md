@@ -61,7 +61,9 @@ main → desktop → pages → components
 | `internal/pages/accounting/template` | 模板缓存与 domain 互转：按账本存放，记录弹窗与模板页共用 | `electron/services/transaction-template.ts` |
 | `internal/pages/accounting/templates` | 模板页：表格、新建 / 删除 / 拖拽排序 | `src/pages/templates.tsx`、`template-list.tsx`、`template-form.tsx` |
 | `internal/pages/accounting/analysis` | 分析页：图表列表、折线 / 饼图、曲线条件、明细表与合计带 | `src/pages/charts.tsx`、`chart-*`、`antv-*-chart.tsx` |
-| `internal/pages/stock` | 账户 / 持仓 / 记录 / 心得 / 统计 / 天梯 / 设置 | `src/pages/stock*` |
+| `internal/pages/stock` | 账户 / 持仓 / 记录 / 心得 / 统计 / 天梯 / 设置；账户是工作空间级、多账户，工具栏共享「账户」选择器 | `src/pages/stock*` |
+| `internal/stockquote` | 腾讯行情（GBK、3 秒），`Fetcher` 接口，失败返回空 | `electron/services/stock-quote.ts` |
+| `internal/stocklimit` | 东财涨停池（8 秒）与天梯缓存策略，`Service.Ladder` | `electron/services/stock-limit*.ts`、`shared/domain/limit-ladder.ts` |
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
 | `internal/pages/events` | 事件页：年份列表、身份色、图片画廊与灯箱、跨账本关联交易（事件是工作空间级数据） | `src/pages/events*`、`event-*`、`electron/services/key-event.ts` |
 | `internal/assets` | 工作空间图片资产：路径校验、落盘 / 删除 / 另存、解码、EXIF 方向与缩略图 | `electron/services/assets.ts`、`image-import.ts`、`image-resize.ts`、`heic-decode.ts` |
@@ -99,12 +101,16 @@ main → desktop → pages → components
   换成 `book_id`、`(book_id, date)` 唯一，`content` 为纯文本、`mood` 存 emoji。v5 增加 `key_event`
   与 `key_event_image`：**事件属于工作空间，不按账本隔离**，`key_event.date` 唯一，两张表都没有
   `ledger_id`，图片路径仍是相对 `data/assets`。列名 / 类型与旧库逐列一致（金额 `_cents`、时间
-  `_at`、日期文本、无外键），便于导入工具直接复制；不建股票 / 待办表，也不建立股票与账本的关联。
+  `_at`、日期文本、无外键），便于导入工具直接复制；不建待办表。
   v4 的迁移把 v3 里每个「有日记的账本」变成一本同名日记本（`book_id = 'book-' || ledger_id`，
   纯 SQL 就能跑），没有日记的工作空间得到一本「默认日记本」；写库时 `SaveDiary` 自己检查日记本
-  是否存在——schema 没有外键，这条规则写在仓储里。旧库识别只看本工程永不会建的 `stock_account` /
-  `todo_item`：`diary_entry`（v3）与 `key_event`（v5）都已经是本工程自己的表，不能再用它们判断
-  「这是旧库」。
+  是否存在——schema 没有外键，这条规则写在仓储里。v6 增加股票账户与股票数据：
+  `stock_account`（名称唯一、描述、本金、排序）与 12 张 `account_id` 子表（费用 / 资金 / 持仓 /
+  成交 / 历史 / 轮次 / 标签 / 复盘 / 操作 / 每日复盘 / 心得 / 台账），市场数据
+  `stock_limit_day / pool / quote` 不带账户；同时写 `app_meta('app_id','transactions-viva')`。
+  旧库识别改用身份键与旧形状：有 `app_id` 或新 `stock_account`（无 `ledger_id`）不算旧库；
+  只有旧形状的 `stock_account`（带 `ledger_id`）或 `todo_item` 才算。`diary_entry` / `key_event`
+  从 v3 / v5 起已经是本工程自己的表，不能再用它们判断「这是旧库」。
 - 版本：`app_meta.schema_version` 从 1 连续递增，迁移清单在 `internal/store/migrate.go`，
   SQL 内嵌在 `internal/store/schema/`。升级已有库前 `VACUUM INTO <db>.bak`，失败不升级；
   每条迁移与版本更新同事务。新增结构时只追加迁移，不改已发布的 SQL。
@@ -274,6 +280,30 @@ main → desktop → pages → components
   的缩略图、当前选中图的展示副本与一张模糊底：切日 / 切图时释放上一张（`CachedImageBytes` 是回归预算），
   `Draw` 只读缓存、不再解码，避免旧帧把刚切走的整图又加回缓存。删事件 / 删图先删行
   再删文件（`internal/events`），删账本不会碰事件——事件不属于账本。
+- 股票页（`internal/pages/stock`，旧工程 `src/pages/stock*` / `electron/services/stock-*`）：
+  **股票账户属于工作空间，不属于账本**——这是本工程对旧工程的第三处有意改动（旧工程每账本一个
+  股票账户）。一个工作空间有多个账户；`internal/pages/stock/account_store.go` 保存列表与当前
+  账户，账户 / 持仓 / 记录 / 心得 / 统计 / 设置六页工具栏最左共享同一个「账户」`selectbox.Select`，
+  切换后 `stock.Model.dataChanged` 重载六页；天梯是市场数据，没有账户选择器。设置 ·
+  「股票账户」用与账本相同的行式管理 CRUD（最后一户不可删，删除单事务级联 12 张子表），
+  `desktop.settingsSpec` 把命令转给 `stock.Model`。工作空间打开且没有账户时股票页建
+  「默认股票账户」。
+  数据层：`internal/domain/stock_*.go` 负责费用 / 成本结转 / 当前轮 / 现金链 / 统计 / 天梯纯规则；
+  `internal/store/stock_trade.go` 与 `stock_replay.go` 负责下单、编辑、删除委托、整体重放与回滚
+  （一次委托一个事务；同秒买单排在卖单前；轮次按「股票 + 轮次号」复用 ID）；`stock_read.go` /
+  `stock_lessons.go` / `stock_settings.go` / `stock_stats.go` / `stock_limit.go` 提供页面读模型；
+  `repository.StockRepository` 是页面唯一依赖。费用口径：佣金按整笔委托收一次并套最低佣金，
+  印花税 / 过户费逐笔取整再相加；0 手清仓标记保留，减仓到 0 不归档。
+  页面：账户页（总资产、8 指标、资金记录 10/20/50 分页、追加 / 支取 / 利息归本）；持仓页
+  （240px 持仓栏、详情、行情 `ui.Effect`、本轮费率、台账、每日复盘、本轮复盘、当前轮成交、
+  建仓 / 加减仓 / 清仓）；记录页（按轮次折叠、底部汇总、编辑 / 删除成交、标签与复盘）；
+  心得页（≤80 字、关联轮次、跳转）；统计页（8 卡、`PaintAreaChart`、13 列明细分页、指针经
+  `stock.Pointer`）；天梯页（日期 / 状态 / 刷新 / 自包含 HTML 导出、分层与窄窗 Flow）；
+  设置页（标签、两份复盘模板、费用、操作记录 / 回滚、归档到新账户、重置）。
+  行情 `internal/stockquote`（腾讯，GBK 3 秒）失败返回空，市值按成本、字段显示 `—`；
+  涨停池 `internal/stocklimit`（东财，8 秒）按旧策略缓存：09:30 前 `preopen`、周末 `offday`、
+  盘中只渲染不落库、45 天外 `unavailable` 不写空标记、`qdate` 不符返回空。两者都在
+  `ui.Effect` 里执行，不阻塞绘制；代理仍按配置文件的 `proxy` 构造 HTTP client。
 - 设置 ·「日记配置」（`internal/pages/settings` 的 `diaryConfig`）分两张卡：**日记本**（照账本管理
   的行：名称 + 描述、当前那本的「当前」、行尾编辑 / 删除图标、底部「新建日记本」；最后一本不可删，
   增删改都走 `diary.Model`，与账本走 `accounting.Model` 对称）与 **导入导出**。导入按目录递归扫
