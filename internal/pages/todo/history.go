@@ -132,7 +132,7 @@ func (m *Model) historyHeader(c ui.C) {
 		ui.Row(c).Width(historyProgressWidth).Justify(ui.Center).Children(func() {
 			typography.Caption(c, "进度")
 		})
-		ui.Row(c).Width(historyActionWidth).Justify(ui.End).Children(func() {
+		ui.Row(c).Width(historyActionWidth).Justify(ui.Center).Children(func() {
 			typography.Caption(c, "操作")
 		})
 	})
@@ -164,7 +164,7 @@ func (m *Model) historyRow(c ui.C, entry *domain.TodoHistory) {
 				typography.Caption(c, "—").Muted()
 			}
 		})
-		ui.Row(c).Width(historyActionWidth).Justify(ui.End).Gap(4).Items(ui.Center).Children(func() {
+		ui.Row(c).Width(historyActionWidth).Justify(ui.Center).Gap(4).Items(ui.Center).Children(func() {
 			if ui.Button(c, "恢复").Outline().Small().Clicked() {
 				m.setStatus(item.ID, domain.TodoStatusDoing)
 			}
