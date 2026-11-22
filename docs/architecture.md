@@ -267,7 +267,7 @@ main → desktop → pages → components
   960px 窗口把右栏推出窗口。右侧关联交易是 `KeyEventRecords(date)`——工作空间里
   `key_event_date` 等于该日期的记录，跨账本，行里标账本名。图片解码与缩略图在 `internal/assets`：页面
   只通过 `LoadImage` 拿到 `gfx.Bitmap`，在选中变化时解码并缓存，`Draw` 里只画；主图 contain、同图模糊
-  24px 垫底，缩略图 160×90 cover；灯箱是 `ui.Control`，滚轮缩放、拖动、左右键切图。图片缓存只保留当前日
+  24px 垫底，缩略图 160×90 cover；删除在选中主图的「删除图片」，成功后自动选中下一张（最后一张退到上一张）；灯箱是 `ui.Control`，滚轮缩放、拖动、左右键切图。图片缓存只保留当前日
   的缩略图、当前选中图的显示位图与一张模糊底：切日 / 切图时释放上一张（`CachedImageBytes` 是回归预算），
   `Draw` 只读缓存、不再解码，避免旧帧把刚切走的整图又加回缓存。删事件 / 删图先删行
   再删文件（`internal/events`），删账本不会碰事件——事件不属于账本。

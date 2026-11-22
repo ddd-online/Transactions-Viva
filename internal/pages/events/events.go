@@ -90,14 +90,12 @@ type addForm struct {
 	pick  datepicker.State
 }
 
-// confirmation is one delete dialog: the event's day and name, or the image and
-// its position in the list.
+// confirmation is one delete dialog: the event's day and name, or the image.
 type confirmation struct {
 	open    bool
 	date    string
 	title   string
 	imageID string
-	index   int
 }
 
 // preview is the lightbox: which image, its zoom and pan, and the drag that is
@@ -687,8 +685,27 @@ func (m *Model) confirmDeleteEvent() {
 }
 
 // askDeleteImage opens the confirmation for one picture.
-func (m *Model) askDeleteImage(imageID string, index int) {
-	m.deleteImage = confirmation{open: true, imageID: imageID, index: index}
+func (m *Model) askDeleteImage(imageID string) {
+	m.deleteImage = confirmation{open: true, imageID: imageID}
+}
+
+// imageAfterDelete is the picture to show once imageID is gone: the next one,
+// or the previous one when the last picture was deleted. An empty result means
+// the day has no pictures left.
+func (m *Model) imageAfterDelete(imageID string) string {
+	for index := range m.images {
+		if m.images[index].ID != imageID {
+			continue
+		}
+		if index+1 < len(m.images) {
+			return m.images[index+1].ID
+		}
+		if index > 0 {
+			return m.images[index-1].ID
+		}
+		return ""
+	}
+	return ""
 }
 
 func (m *Model) confirmDeleteImage() {
@@ -696,6 +713,7 @@ func (m *Model) confirmDeleteImage() {
 		m.errorMessage = "还不能删除图片"
 		return
 	}
+	next := m.imageAfterDelete(m.deleteImage.imageID)
 	m.errorMessage = ""
 	if err := m.cmds.DeleteImage(m.deleteImage.imageID); err != nil {
 		m.errorMessage = "删除图片失败：" + err.Error()
@@ -703,6 +721,10 @@ func (m *Model) confirmDeleteImage() {
 	}
 	m.deleteImage.open = false
 	m.reloadImages()
+	if next != "" {
+		m.selectedImageID = next
+	}
+	m.keepImageSelection()
 	m.ensureBitmaps()
 }
 

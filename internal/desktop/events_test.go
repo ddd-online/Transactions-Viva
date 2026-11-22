@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gen2brain/h265/heic"
+	"github.com/vivaui/viva/app"
 	"github.com/vivaui/viva/gfx"
 
 	"transactions/internal/assets"
@@ -209,7 +210,13 @@ func TestEventImagesAddOpenSaveAndDelete(t *testing.T) {
 		t.Fatalf("saved copy differs, err=%v", err)
 	}
 
-	click(t, driver, "删除第 1 张图片")
+	if hasControl(driver, "删除第 1 张图片") {
+		t.Fatal("the thumbnail still carries its own delete button")
+	}
+	if !hasControl(driver, "删除图片") {
+		t.Fatal("the stage has no delete button")
+	}
+	click(t, driver, "删除图片")
 	if !shows(driver, "删除这张图片？") {
 		t.Fatal("deleting a picture did not ask for confirmation")
 	}
@@ -223,6 +230,65 @@ func TestEventImagesAddOpenSaveAndDelete(t *testing.T) {
 	if _, err := os.Stat(display); !os.IsNotExist(err) {
 		t.Fatalf("the display file outlived its row: %v", err)
 	}
+}
+
+// TestEventDeleteImageSelectsTheNextPicture covers the stage's delete action:
+// the picture after the deleted one becomes the stage, and deleting the last
+// picture falls back to the one before it.
+func TestEventDeleteImageSelectsTheNextPicture(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "事件")
+	click(t, driver, "新增事件")
+	clickLast(t, driver, "新增")
+
+	directory := t.TempDir()
+	var sources []string
+	for index := range 3 {
+		data, err := os.ReadFile(testImage(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(directory, "photo-"+strconv.Itoa(index+1)+".png")
+		if err := os.WriteFile(path, data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		sources = append(sources, path)
+	}
+	if err := driver.QueueOpenFiles(sources, nil); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "添加图片")
+	if !hasControl(driver, "查看第 1 张图片，共 3 张") {
+		t.Fatal("the three pictures did not arrive in the gallery")
+	}
+	click(t, driver, "查看第 1 张图片，共 3 张")
+	click(t, driver, "删除图片")
+	clickLast(t, driver, "删除")
+	if !hasControl(driver, "查看第 1 张图片，共 2 张") {
+		t.Fatal("deleting the first picture did not leave the other two")
+	}
+	if !selectedControl(driver, "查看第 1 张图片，共 2 张") {
+		t.Fatal("after deleting the first picture the next one is not selected")
+	}
+
+	click(t, driver, "查看第 2 张图片，共 2 张")
+	click(t, driver, "删除图片")
+	clickLast(t, driver, "删除")
+	if !hasControl(driver, "查看第 1 张图片，共 1 张") {
+		t.Fatal("deleting the last picture did not leave the earlier one")
+	}
+	if !selectedControl(driver, "查看第 1 张图片，共 1 张") {
+		t.Fatal("deleting the last picture did not fall back to the previous one")
+	}
+}
+
+func selectedControl(driver *app.Driver, name string) bool {
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == name && hit.Selected {
+			return true
+		}
+	}
+	return false
 }
 
 func TestEventImageProblemsAreReported(t *testing.T) {

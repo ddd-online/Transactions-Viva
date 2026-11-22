@@ -181,7 +181,10 @@ func (m *Model) stage(c ui.C) {
 		if slot.Clicked() {
 			m.openPreview()
 		}
-		ui.Column(c).Absolute().Right(layout.Gap).Bottom(layout.Gap).Children(func() {
+		ui.Row(c).Absolute().Right(layout.Gap).Bottom(layout.Gap).Gap(layout.Gap).Children(func() {
+			if ui.Button(c, "删除图片").Secondary().Small().Clicked() {
+				m.askDeleteImage(image.ID)
+			}
 			if ui.Button(c, "保存图片").Secondary().Small().Clicked() {
 				m.saveImage()
 			}
@@ -235,19 +238,6 @@ func (m *Model) thumb(c ui.C, index int) {
 			})
 			if slot.Clicked() {
 				m.selectImage(image.ID)
-			}
-			remove := ui.ButtonBase(c, fmt.Sprintf("删除第 %d 张图片", index+1)).
-				Size(20, 20).Radius(10).
-				Background(theme.Card).Border(1, theme.Border).
-				Hover(ui.Look{}.Background(theme.Hover)).
-				Focus(ui.Look{}.Ring(2, theme.Ring)).
-				Tooltip("删除图片").
-				Absolute().Top(4).Right(4)
-			remove.Children(func() {
-				ui.Icon(c, icons.Trash2).Size(11, 11)
-			})
-			if remove.Clicked() {
-				m.askDeleteImage(image.ID, index+1)
 			}
 			if image.MotionPath != "" {
 				ui.Row(c).Absolute().Left(4).Bottom(4).
