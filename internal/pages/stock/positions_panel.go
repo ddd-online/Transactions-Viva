@@ -604,10 +604,11 @@ func (p *positionsPanel) detailMetrics(c ui.C, position *domain.StockPosition) {
 		positionsMetric(c, "持仓市值", money(marketValue), theme.Foreground)
 		ui.Column(c).Grow(1).Basis(0).Gap(2).Children(func() {
 			typography.Caption(c, "浮动盈亏")
-			ui.Text(c, money(pnl)).FontSize(typography.SizeBody).Mono().
-				Color(pnlColor(*theme, pnl))
-			ui.Text(c, percentOrDash(rate)).FontSize(typography.SizeCaption).Mono().
-				Color(pnlColor(*theme, pnl))
+			tone := pnlColor(*theme, pnl)
+			ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
+				ui.Text(c, money(pnl)).FontSize(typography.SizeBody).Mono().Color(tone)
+				ui.Text(c, percentOrDash(rate)).FontSize(typography.SizeCaption).Mono().Color(tone)
+			})
 		})
 	})
 }
