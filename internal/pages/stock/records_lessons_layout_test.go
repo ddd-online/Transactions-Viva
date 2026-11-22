@@ -147,6 +147,35 @@ func TestRecordsPanelFitsMinimumWindow(t *testing.T) {
 	}
 }
 
+// TestRecordsRoundSections checks that an expanded round is four named
+// sections, each under the same section head, and that 每日复盘 no longer
+// carries a count on its right.
+func TestRecordsRoundSections(t *testing.T) {
+	repo, accounts := recordLayoutFixture()
+	store := newAccountStore()
+	store.reset(accounts)
+	panel := newRecordsPanel(store)
+	panel.setRepository(repo)
+	panel.openRound = func(string, string) {}
+
+	theme := ui.LightTheme()
+	page := ui.NewPage(ui.PageConfig{View: panel.View, Theme: &theme})
+	driver, err := app.NewDriver(ui.Configure(page, app.Config{Width: 960, Height: 1100}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(driver.Close)
+
+	for _, name := range []string{"交易记录", "交易台账", "每日复盘", "本轮复盘"} {
+		if !hasSnapshotText(driver, name) {
+			t.Fatalf("the expanded round has no %q section", name)
+		}
+	}
+	if hasSnapshotText(driver, "1 条") {
+		t.Fatal("每日复盘 still paints its count on the right")
+	}
+}
+
 // clickLabel presses the middle of the first control with the given name.
 func clickLabel(driver *app.Driver, label string) bool {
 	for _, hit := range driver.Snapshot().Hits {

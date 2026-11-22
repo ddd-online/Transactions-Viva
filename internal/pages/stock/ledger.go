@@ -100,30 +100,42 @@ func ledgerSheetOfView(view *domain.StockLedgerView) ledgerSheet {
 }
 
 // ledgerSection is the 交易台账 block both pages paint: its head, the empty
-// state, and the grouped sheet.
+// state, and the grouped sheet. The records page paints the same body under
+// its own section head, so the head and the body are separate.
 func ledgerSection(c ui.C, sheet ledgerSheet, errorText string, onEdit func()) {
-	theme := c.Theme()
 	ui.Column(c).FillWidth().Gap(layout.Gap).Children(func() {
-		ui.Row(c).FillWidth().Height(layout.SectionHeaderHeight).Items(ui.Center).Children(func() {
-			typography.Section(c, "交易台账")
-			ui.Spacer(c)
-			label := "填写台账"
-			if sheet.Entry != nil {
-				label = "编辑"
-			}
-			if ui.Button(c, label).Outline().Small().Clicked() && onEdit != nil {
-				onEdit()
-			}
-		})
-		if errorText != "" {
-			typography.Caption(c, errorText).Color(theme.Danger)
-		}
-		if sheet.Entry == nil {
-			ledgerEmpty(c, theme, onEdit)
-			return
-		}
-		ledgerSheetView(c, sheet)
+		ledgerSectionHead(c, sheet, onEdit)
+		ledgerSectionBody(c, sheet, errorText, onEdit)
 	})
+}
+
+func ledgerSectionHead(c ui.C, sheet ledgerSheet, onEdit func()) {
+	ui.Row(c).FillWidth().Height(layout.SectionHeaderHeight).Items(ui.Center).Children(func() {
+		typography.Section(c, "交易台账")
+		ui.Spacer(c)
+		if ui.Button(c, ledgerActionLabel(sheet)).Outline().Small().Clicked() && onEdit != nil {
+			onEdit()
+		}
+	})
+}
+
+func ledgerActionLabel(sheet ledgerSheet) string {
+	if sheet.Entry != nil {
+		return "编辑"
+	}
+	return "填写台账"
+}
+
+func ledgerSectionBody(c ui.C, sheet ledgerSheet, errorText string, onEdit func()) {
+	theme := c.Theme()
+	if errorText != "" {
+		typography.Caption(c, errorText).Color(theme.Danger)
+	}
+	if sheet.Entry == nil {
+		ledgerEmpty(c, theme, onEdit)
+		return
+	}
+	ledgerSheetView(c, sheet)
 }
 
 func ledgerEmpty(c ui.C, theme *ui.Theme, onEdit func()) {

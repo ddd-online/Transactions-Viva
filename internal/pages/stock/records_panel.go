@@ -724,13 +724,32 @@ func (p *recordsPanel) toggleRound(roundID string) {
 
 func (p *recordsPanel) roundBody(c ui.C, round domain.StockRoundDetail) {
 	ui.Column(c).FillWidth().Gap(10).PadBottom(10).Children(func() {
-		p.tradeTable(c, round)
+		p.recordSection(c, "交易记录", nil, func() {
+			p.tradeTable(c, round)
+		})
 		ui.Divider(c)
 		p.ledgerSection(c, round)
 		ui.Divider(c)
 		p.dailyReviews(c, round)
 		ui.Divider(c)
 		p.roundReview(c, round)
+	})
+}
+
+// recordSection is one item of an expanded round: its name in the section
+// header, an optional action, and the content under it. The four sections of a
+// round share this head so their name size, header height and gap match.
+func (p *recordsPanel) recordSection(c ui.C, name string, action func(), body func()) {
+	ui.Column(c).FillWidth().Gap(layout.Gap).Children(func() {
+		ui.Row(c).FillWidth().Height(layout.SectionHeaderHeight).PadX(12).
+			Items(ui.Center).Children(func() {
+			typography.Section(c, name)
+			ui.Spacer(c)
+			if action != nil {
+				action()
+			}
+		})
+		body()
 	})
 }
 
@@ -808,9 +827,15 @@ func (p *recordsPanel) tradeRow(c ui.C, trade domain.StockTrade) {
 
 // ledgerSection is the round's trade ledger, read-only here.
 func (p *recordsPanel) ledgerSection(c ui.C, round domain.StockRoundDetail) {
-	ui.Column(c).FillWidth().PadX(12).Children(func() {
-		ledgerSection(c, ledgerSheetOfView(round.Ledger), "", func() {
-			p.openLedger(round)
+	sheet := ledgerSheetOfView(round.Ledger)
+	open := func() { p.openLedger(round) }
+	p.recordSection(c, "交易台账", func() {
+		if ui.Button(c, ledgerActionLabel(sheet)).Outline().Small().Clicked() {
+			open()
+		}
+	}, func() {
+		ui.Column(c).FillWidth().PadX(12).Children(func() {
+			ledgerSectionBody(c, sheet, "", open)
 		})
 	})
 }
@@ -825,32 +850,29 @@ func (p *recordsPanel) openLedger(round domain.StockRoundDetail) {
 
 func (p *recordsPanel) dailyReviews(c ui.C, round domain.StockRoundDetail) {
 	theme := c.Theme()
-	ui.Column(c).FillWidth().PadX(12).Gap(4).Children(func() {
-		ui.Row(c).FillWidth().Gap(8).Items(ui.Center).Children(func() {
-			ui.Text(c, "每日复盘").FontSize(typography.SizeBody).Bold()
-			typography.Caption(c, strconv.Itoa(len(round.DayReviews))+" 条")
-			ui.Spacer(c)
-		})
-		if len(round.DayReviews) == 0 {
-			typography.Caption(c, "本轮没有每日复盘")
-			return
-		}
-		for _, day := range round.DayReviews {
-			c.Key(day.ID)
-			row := ui.Row(c).FillWidth().MinHeight(30).Gap(8).Items(ui.Center).
-				Radius(theme.Metrics.RadiusControl).
-				HitWith(ui.ID(c), "查看 "+day.ReviewDate+" 的每日复盘",
-					gfx.HitOptions{Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand}).
-				Hover(ui.Look{}.Background(theme.Hover)).
-				Focus(ui.Look{}.Ring(2, theme.Ring))
-			row.Children(func() {
-				typography.Caption(c, day.ReviewDate).Mono().Width(84)
-				typography.Body(c, day.Review).Grow(1).Ellipsis()
-			})
-			if row.Clicked() {
-				p.openRead("每日复盘 · "+day.ReviewDate, day.Review)
+	p.recordSection(c, "每日复盘", nil, func() {
+		ui.Column(c).FillWidth().PadX(12).Gap(4).Children(func() {
+			if len(round.DayReviews) == 0 {
+				typography.Caption(c, "本轮没有每日复盘")
+				return
 			}
-		}
+			for _, day := range round.DayReviews {
+				c.Key(day.ID)
+				row := ui.Row(c).FillWidth().MinHeight(30).Gap(8).Items(ui.Center).
+					Radius(theme.Metrics.RadiusControl).
+					HitWith(ui.ID(c), "查看 "+day.ReviewDate+" 的每日复盘",
+						gfx.HitOptions{Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand}).
+					Hover(ui.Look{}.Background(theme.Hover)).
+					Focus(ui.Look{}.Ring(2, theme.Ring))
+				row.Children(func() {
+					typography.Caption(c, day.ReviewDate).Mono().Width(84)
+					typography.Body(c, day.Review).Grow(1).Ellipsis()
+				})
+				if row.Clicked() {
+					p.openRead("每日复盘 · "+day.ReviewDate, day.Review)
+				}
+			}
+		})
 	})
 }
 
@@ -858,25 +880,24 @@ func (p *recordsPanel) roundReview(c ui.C, round domain.StockRoundDetail) {
 	theme := c.Theme()
 	review := round.Round.Review
 	filled := strings.TrimSpace(review) != ""
-	ui.Column(c).FillWidth().PadX(12).Gap(4).Children(func() {
-		ui.Row(c).FillWidth().Gap(8).Items(ui.Center).Children(func() {
-			ui.Text(c, "本轮复盘").FontSize(typography.SizeBody).Bold()
-			ui.Spacer(c)
-			if filled {
-				if ui.Button(c, "查看全文").Ghost().Small().Clicked() {
-					p.openRead("本轮复盘", review)
-				}
+	p.recordSection(c, "本轮复盘", func() {
+		if filled {
+			if ui.Button(c, "查看全文").Ghost().Small().Clicked() {
+				p.openRead("本轮复盘", review)
 			}
-			if ui.Button(c, "编辑").Secondary().Small().Clicked() {
-				p.openReviewEditor(round.Round)
+		}
+		if ui.Button(c, "编辑").Secondary().Small().Clicked() {
+			p.openReviewEditor(round.Round)
+		}
+	}, func() {
+		ui.Column(c).FillWidth().PadX(12).Children(func() {
+			if filled {
+				ui.Paragraph(c, review, 3).FontSize(typography.SizeBody).
+					Color(theme.Foreground)
+			} else {
+				typography.Caption(c, "还没有写本轮复盘，点「编辑」记录买入与卖出的理由。")
 			}
 		})
-		if filled {
-			ui.Paragraph(c, review, 3).FontSize(typography.SizeBody).
-				Color(theme.Foreground)
-		} else {
-			typography.Caption(c, "还没有写本轮复盘，点「编辑」记录买入与卖出的理由。")
-		}
 	})
 }
 
