@@ -167,8 +167,7 @@ func (m *Model) historyRow(c ui.C, entry *domain.TodoHistory) {
 			if ui.Button(c, "恢复").Outline().Small().Clicked() {
 				m.setStatus(item.ID, domain.TodoStatusDoing)
 			}
-			if ui.Button(c, "删除已完成事项").Ghost().Icon(icons.Trash2).IconOnly().
-				Tooltip("删除").Clicked() {
+			if ui.Button(c, "删除").Outline().Small().Clicked() {
 				m.deleteItem = deleteItem{open: true, id: item.ID, title: item.Title}
 			}
 		})
