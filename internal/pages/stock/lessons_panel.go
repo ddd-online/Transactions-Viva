@@ -170,7 +170,6 @@ func (p *lessonsPanel) View(c ui.C) {
 		}
 		ui.Column(c).Grow(1).Children(func() {
 			p.tableHeader(c)
-			ui.Divider(c)
 			ui.Scroll(c).Grow(1).Children(func() {
 				for index := range p.lessons {
 					p.lessonRow(c, &p.lessons[index])
