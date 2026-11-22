@@ -32,7 +32,7 @@ func openModel(t *testing.T, model *Model) (*app.Driver, *Model) {
 	t.Helper()
 	t.Cleanup(model.closeWorkspace)
 	page := ui.NewPage(ui.PageConfig{Tree: &model.tree, View: model.page, Theme: &model.theme})
-	driver, err := app.NewDriver(page.Config(newConfig(model)), nil)
+	driver, err := app.NewDriver(ui.Configure(page, newConfig(model)), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

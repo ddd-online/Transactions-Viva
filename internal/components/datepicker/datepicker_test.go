@@ -25,7 +25,7 @@ func TestDayGrainYearArrowsSwitchAYear(t *testing.T) {
 		})
 	}
 	page := ui.NewPage(ui.PageConfig{View: view})
-	driver, err := app.NewDriver(page.Config(app.Config{Width: 1200, Height: 800}), nil)
+	driver, err := app.NewDriver(ui.Configure(page, app.Config{Width: 1200, Height: 800}), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -276,6 +276,8 @@ main → desktop → pages → components
   解码器不会像旧工程的 `fatal:true` 那样报错）。目录选择器与文件读写由 `internal/desktop`
   的 `importDiary` / `exportDiary` 调 `internal/diary`，读写的是日记页当前那本（说明里写着本名），
   页面只拿结果（"导入 1/1 篇" 与失败清单），导入后调 `diary.Reload()`，切回日记页就能看到。
+- v0.6.7 起窗口配置由 `ui.Configure(page, app.Config)` 生成（`page.Config` 已移除）；`go.mod`
+  的 `tool` 行钉住同版本 CLI，验证用 `go tool viva vet`，PATH 上的独立 `viva` 不随模块升级。
 - 页面自己浮起来的层（选择器面板、标签弹层）在切走分区 / 子功能时由外壳收起：页面实现
   `CloseOverlays()`，`internal/desktop` 的 `selectNav` 在离开前调用它，浮层不会跟着用户
   跑到另一个页面上。
@@ -320,14 +322,14 @@ main → desktop → pages → components
   尺寸从 `c.Theme().Metrics` 与 `components.BeginButton` 的度量推出来。
   日粒度的标题两侧在最外侧多一对 `chevrons-left` / `chevrons-right` 的整年箭头，单箭头
   仍是翻月；月 / 年粒度只有单箭头（翻年 / 翻十年）。
-- 面板仍画在画布上（`gfx.Canvas` + `HitWithOptions`）而不是 `ui.Popover`：Viva v0.6.5 里
+- 面板仍画在画布上（`gfx.Canvas` + `HitWithOptions`）而不是 `ui.Popover`：Viva v0.6.7 里
   Popover 在 `ui.Modal` 内能画出来却收不到点击（hit 层被判给弹窗），见下面的「框架缺口」。
   `PushLayer(20)`，与标签多选同一层：弹窗有自己的合成层，面板必须在其上才看得见、点得着。
   外部点击由一个覆盖页面的背景 hit 关闭（`PassPrimary/PassSecondary`，与旧工程的文档级
   pointerdown 一致：关闭的同时那次点击照常落到下面的控件上）。
 - 面板不占布局：它画在触发控件的 `DrawOver` 里，打开、翻页、选日期都不会让页面或弹窗重新排版。
 
-## 框架缺口（Viva v0.6.5）
+## 框架缺口（Viva v0.6.7）
 
 - **`viva dev` 的 reload host 不转发原生文本事件。** worker 协议只带画面、指针、按键和
   滚轮；`Config.TextInput` 和页面的 TextField 提供者不会到达宿主，所以 `viva dev` 下的

@@ -76,7 +76,7 @@
 go run .                    # 打开原生窗口（文本输入可用）
 viva dev .                  # 热重载开发；reload host 不转发原生文本事件
 go test ./... -count=1      # 无窗口驱动测试 + 领域单测
-go vet ./... && viva vet    # 静态检查
+go vet ./... && go tool viva vet  # 静态检查（CLI 版本由 go.mod 钉住）
 viva build                  # 发布构建
 ```
 

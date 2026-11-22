@@ -26,8 +26,8 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   `internal/components/datepicker`），
   分类是单选下拉（候选取当前类型下的分类），
   标签用 Viva 的 `components.PaintMultiSelect`（`MultiSelectState`），
-  下拉一律用本工程的 `selectbox.Select`（`internal/components/selectbox`：Viva v0.6.5
-  的 Select 不收下拉动画的组，弹窗里会把下面的字段带得抖一下，见 `docs/architecture.md`
+  下拉一律用本工程的 `selectbox.Select`（`internal/components/selectbox`：Viva v0.6.7
+  的 Select 仍不收下拉动画的组，弹窗里会把下面的字段带得抖一下，见 `docs/architecture.md`
   的「框架缺口」）。
   记录行右键打开 ContextMenu（编辑 / 同步到其他账本 / 删除）。行数据来自工作空间
   `transactions.db`：账本 + 日期范围 + 多列排序都在 SQL 里；统计与分页在页面内存里；
@@ -132,7 +132,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 
 | 路径 | 角色 | 纪律 |
 |---|---|---|
-| `D:\github\viva` | Viva 框架源码 | 只读。通用桌面能力先查这里；本工程依赖的是 `go.mod` 里的版本（当前 v0.6.5），本地源码可能更新，**以 `go doc` 为准，不要拿源码里的新 API 写进本工程**。 |
+| `D:\github\viva` | Viva 框架源码 | 只读。通用桌面能力先查这里；本工程依赖的是 `go.mod` 里的版本（当前 v0.6.7），本地源码可能更新，**以 `go doc` 为准，不要拿源码里的新 API 写进本工程**。 |
 | `D:\github\motty` | 参考应用（大型、可运行的 Viva 应用） | 只读。目录划分、入口、构建、窗口组织、测试与 headless 驱动的样板；不要整段复制它的业务代码。 |
 | `D:\github\Transactions` | 旧工程（Electron / React） | 只读，行为权威。页面在 `src/pages`，服务在 `electron/services`，领域规则在 `shared/domain`，SQLite schema 与迁移在 `electron/db`，视觉规范在 `DESIGN.md`，产品定位在 `PRODUCT.md`，E2E 在 `tests/e2e`。 |
 | `D:\github\viva\examples` | 框架示例 | 写页面前先找最接近的例子（`guides/`、`recipes/`）；`go doc github.com/vivaui/viva/ui` 列全部元素。 |
@@ -238,7 +238,7 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
 ```sh
 gofmt -l .                          # 必须没有输出
 go vet ./...                        # 必须通过
-viva vet                            # 页面级错误（未加 Key 的循环按钮等）
+go tool viva vet                    # 页面级错误（未加 Key 的循环按钮等；go.mod 钉住 v0.6.7）
 go test ./... -count=1              # 无窗口驱动测试 + 领域单测
 ```
 
@@ -252,7 +252,7 @@ go test ./... -count=1              # 无窗口驱动测试 + 领域单测
 改动塞进同一个提交。
 
 ```sh
-gofmt -l . && go vet ./... && viva vet && go test ./... -count=1
+gofmt -l . && go vet ./... && go tool viva vet && go test ./... -count=1
 git status --short                  # 只应有本次要提交的文件
 git add -A && git commit -m "feat(scope): 中文摘要"
 ```
@@ -267,7 +267,7 @@ git add -A && git commit -m "feat(scope): 中文摘要"
 
 ## Viva 速查
 
-下面是 Viva 的写作方式。框架版本以 `go.mod` 为准（v0.6.5）；页面代码如果不确定某个
+下面是 Viva 的写作方式。框架版本以 `go.mod` 为准（v0.6.7；CLI 用 `go tool viva`，PATH 上的独立 `viva` 可单独升级）；页面代码如果不确定某个
 API，先 `go doc github.com/vivaui/viva/ui`，不要凭名字猜。命令：
 
 ```sh
@@ -421,13 +421,13 @@ func (m *model) page(c ui.C) {
   Its own small state (whether it is open) is `ui.State[bool](c, "open")`; the application's state stays in the model.
 - A settings form: tag the struct's fields (`form:"Label"`, `choices:"options,nameFunc"`, `placeholder:"..."`)
   and run `go tool viva form` (or `//go:generate go tool viva form`); it writes `Form(c ui.C) ui.Box`.
-- An independent window is a page: `ui.Run` or `ui.NewPage(...).Config(base)` wires its input. A pane of a window is a keyed container in the same page, not a second `Page`; do not draw a page into a slot in application code.
+- An independent window is a page: `ui.Run` or `ui.Configure(ui.NewPage(...), base)` wires its input. A pane of a window is a keyed container in the same page, not a second `Page`; do not draw a page into a slot in application code.
 - `ui.ID(c)` names a custom control of your own (see Identities and clicks); `c.Theme()` is the theme; `c.Bounds()` and `c.Canvas()` are for measuring.
 - In a test, find controls by their name (`Hit.Label`), as `internal/desktop/desktop_test.go` does.
 
 ## Mistakes that compile (and how each is reported)
 
-Run `go vet ./... && viva vet && go test ./...` before you finish. `viva vet` finds these without
+Run `go vet ./... && go tool viva vet && go test ./...` before you finish. `viva vet` finds these without
 running anything; a test under `app.NewDriver` panics on them where they happen, with the fix.
 
 | You wrote | What goes wrong | Write instead |
@@ -604,7 +604,7 @@ func (m *model) page(c ui.C) {
   `ScrollbarGutter` keeps a strip beside the columns for it. An application painting its own vertical bar sets
   `HideHoverScrollbars: true` to omit the anonymous vertical hover thumb only; the horizontal overlay, gutter, wheel,
   and an explicitly identified draggable `Scrollbar` are unchanged. The page gives the wheel to a self-scrolling table under the pointer; give the `app.Config` passed to
-  `page.Config` `OnKey: m.table.Key` for Up/Down/Page/Home/End selection (a host that routes its own scroll gives
+  `ui.Configure(page, …)` `OnKey: m.table.Key` for Up/Down/Page/Home/End selection (a host that routes its own scroll gives
   `m.table.Wheel` the wheel).
 - Tabs: `if ui.Tabs(c, &m.tab, tabs, nil).Line().Changed() { ... }`, then declare the active tab's content under it with an
   ordinary `switch m.tab`. `Line()` is the underlined variant (it draws 5 px under the strip), `Vertical()` stacks the tabs,
@@ -764,11 +764,11 @@ ui.Column(c).Fill().Pad(24).Gap(12).Children(func() {
 
 `app.RunCanvas` runs one window. For more, `app.RunApplication(func(a *app.Application) error {...})` calls its
 function once on the event-loop thread; open windows there or from a click, each with its own page, config and canvas.
-Make every window a `ui.Page` and give the window the config `page.Config(...)` returns: `w, err :=
-a.OpenWindow(page.Config(config), new(gfx.Canvas))`. `w.Close()` closes one (and `w.Closed()` says whether it is gone;
+Make every window a `ui.Page` and give the window the config `ui.Configure(page, ...)` returns: `w, err :=
+a.OpenWindow(ui.Configure(page, config), new(gfx.Canvas))`. `w.Close()` closes one (and `w.Closed()` says whether it is gone;
 it is true for a nil window); `a.Quit()` ends everything. Keep `newConfig(m)` for the main window so tests still drive
 it. To repaint another window after the shared model changed, give it an `app.Invalidator` (`config.Invalidator =
-inv`, declared as `&app.Invalidator{}`, the zero value works) and call `inv.Invalidate()`; `Page.Config` makes one when
+inv`, declared as `&app.Invalidator{}`, the zero value works) and call `inv.Invalidate()`; `ui.Configure` makes one when
 neither the page nor the base config has it.
 
 ```go
@@ -778,11 +778,11 @@ err := app.RunApplication(func(a *app.Application) error {
 	m.openInspector = func() { // set before the window opens; called from a click on the event-loop thread
 		if inspector.Closed() {
 			page := ui.NewPage(ui.PageConfig{View: m.inspector}) // func (m *model) inspector(c ui.C)
-			inspector, _ = a.OpenWindow(page.Config(app.Config{Title: "Inspector", Width: 420, Height: 320}), new(gfx.Canvas))
+			inspector, _ = a.OpenWindow(ui.Configure(page, app.Config{Title: "Inspector", Width: 420, Height: 320}), new(gfx.Canvas))
 		}
 	}
 	m.closeInspector = func() { inspector.Close() }
-	config := newConfig(m) // ui.NewPage(ui.PageConfig{View: m.page}).Config(...)
+	config := newConfig(m) // ui.Configure(ui.NewPage(ui.PageConfig{View: m.page}), ...)
 	config.OnClosed = a.Quit // closing the main window ends the program
 	_, err := a.OpenWindow(config, new(gfx.Canvas))
 	return err
@@ -854,7 +854,7 @@ the result into the model on the window's thread before the repaint.
 
 ## Testing
 
-`app.NewDriver(page.Config(config()), nil)` runs the real application with no window
+`app.NewDriver(ui.Configure(page, config()), nil)` runs the real application with no window
 (`ui.NewPage(ui.PageConfig{View: m.page})` makes the page):
 `driver.Click(x, y)`, `Type`, `Key`, `Move`, `Scroll`, `Resize`, then `driver.Snapshot()` for the
 labels, hits and rectangles painted. `internal/desktop/desktop_test.go` clicks a control by its

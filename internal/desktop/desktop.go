@@ -179,7 +179,7 @@ func Run() error {
 		// The development host draws its own window, so the tray and the native
 		// close prompt stay a release-build feature; closing in dev uses the
 		// same configured behavior, with "tray" falling back to quit.
-		return app.RunCanvas(page.Config(newConfig(model)), new(gfx.Canvas))
+		return app.RunCanvas(ui.Configure(page, newConfig(model)), new(gfx.Canvas))
 	}
 	invalidator := &app.Invalidator{}
 	model.invalidator = invalidator
@@ -187,7 +187,7 @@ func Run() error {
 		windowConfig := newConfig(model)
 		windowConfig.Invalidator = invalidator
 		windowConfig.OnClosed = application.Quit
-		window, err := application.OpenWindow(page.Config(windowConfig), new(gfx.Canvas))
+		window, err := application.OpenWindow(ui.Configure(page, windowConfig), new(gfx.Canvas))
 		if err != nil {
 			return err
 		}

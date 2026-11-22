@@ -221,7 +221,7 @@ func TestShortFrameKeepsTheTotalsBandInside(t *testing.T) {
 		t.Fatalf("pie slices = %d, want a table longer than the frame can hold", len(m.pieSlices))
 	}
 	page := ui.NewPage(ui.PageConfig{View: m.View})
-	driver, err := app.NewDriver(page.Config(app.Config{Width: 960, Height: 620}), nil)
+	driver, err := app.NewDriver(ui.Configure(page, app.Config{Width: 960, Height: 620}), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
