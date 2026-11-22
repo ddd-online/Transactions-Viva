@@ -272,7 +272,7 @@ func (m *Model) progressRow(c ui.C, progress *domain.TodoProgress) {
 			}
 		})
 		if check.Clicked() {
-			if err := m.todos.SetTodoProgressDone(m.context(), m.ledgers.Active(), progress.ID, !progress.Done); err != nil {
+			if err := m.todos.SetTodoProgressDone(m.context(), progress.ID, !progress.Done); err != nil {
 				m.fail(err)
 			} else {
 				m.reload()
@@ -285,7 +285,7 @@ func (m *Model) progressRow(c ui.C, progress *domain.TodoProgress) {
 		typography.Caption(c, time.Unix(progress.CreatedAt, 0).Format("01-02 15:04")).Mono()
 		if ui.Button(c, "删除进度").Ghost().Icon(icons.Trash2).IconOnly().
 			Tooltip("删除进度").Clicked() {
-			if err := m.todos.DeleteTodoProgress(m.context(), m.ledgers.Active(), progress.ID); err != nil {
+			if err := m.todos.DeleteTodoProgress(m.context(), progress.ID); err != nil {
 				m.fail(err)
 			} else {
 				m.reload()
@@ -305,7 +305,7 @@ func (m *Model) moveCard(index, delta int) {
 	for i := range cards {
 		ids[i] = cards[i].ID
 	}
-	if err := m.todos.ReorderTodoCards(m.context(), m.ledgers.Active(), ids); err != nil {
+	if err := m.todos.ReorderTodoCards(m.context(), ids); err != nil {
 		m.fail(err)
 		return
 	}
@@ -317,7 +317,7 @@ func (m *Model) addProgress(itemID string) {
 	if text == "" {
 		return
 	}
-	if _, err := m.todos.AddTodoProgress(m.context(), m.ledgers.Active(), itemID, text); err != nil {
+	if _, err := m.todos.AddTodoProgress(m.context(), itemID, text); err != nil {
 		m.fail(err)
 		return
 	}

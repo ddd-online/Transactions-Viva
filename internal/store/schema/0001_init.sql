@@ -468,6 +468,9 @@ CREATE TABLE stock_limit_quote (
   PRIMARY KEY (trade_date, stock_code)
 );
 
+-- todo_card / todo_item / todo_progress are workspace-wide. ledger_id stays
+-- in the v1 table shape for old workspaces; the application never filters by
+-- it and writes '' for new rows.
 -- table todo_card
 CREATE TABLE todo_card (
   id TEXT PRIMARY KEY,

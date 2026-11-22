@@ -67,7 +67,7 @@ main → desktop → pages → components
 | `internal/backup` | 备份命名 / 保留裁剪、VACUUM 快照、手动 / 自动备份、恢复前副本与备份列表 | `shared/domain/backup.ts`、`electron/services/backup.ts` |
 | `internal/proxy` | 代理三态、手动地址归一化、环境变量 / Windows 系统代理探测与共享 HTTP client | `shared/domain/proxy.ts`、`electron/ipc/handlers/settings.ts` 的代理部分 |
 | `internal/update` | GitHub release 检查、安装包下载 / SHA256 校验、进度回调与拉起安装程序 | `shared/domain/update.ts`、`electron/services/updater.ts` |
-| `internal/pages/todo` | 待办：共享账本选择、分组事项表 / 四象限、事项与进度、历史、旧库导入 | `src/pages/todo*`、`electron/services/todo.ts` |
+| `internal/pages/todo` | 待办：工作空间一份、分组事项表 / 四象限、事项与进度、历史、旧库导入 | `src/pages/todo*`、`electron/services/todo.ts` |
 | `internal/pages/events` | 事件页：年份列表、身份色、图片画廊与灯箱、跨账本关联交易（事件是工作空间级数据） | `src/pages/events*`、`event-*`、`electron/services/key-event.ts` |
 | `internal/assets` | 工作空间图片资产：路径校验、落盘 / 删除 / 另存、解码、EXIF 方向与缩略图 | `electron/services/assets.ts`、`image-import.ts`、`image-resize.ts`、`heic-decode.ts` |
 | `internal/events` | 事件图片的导入 / 删除编排：实况照片配对、逐张报告、清文件 | `electron/services/key-event.ts` 的 `addImage` / `deleteImage` |
@@ -114,7 +114,7 @@ main → desktop → pages → components
   不改已发布的 SQL。
 - `internal/repository` 是页面看到的数据契约：账本、`Labels` 快照（分类 + 标签 + 计数）、
   记录（按账本 + 本地日期范围）、模板、日记本与日记、事件与事件图片、待办，以及各自的写入 / 删除 /
-  排序。待办另有一条 `TodoRepository`：卡片 / 事项 / 进度都按账本隔离，删卡片或事项时同一事务清掉
+  排序。待办另有一条 `TodoRepository`：卡片 / 事项 / 进度属于工作空间、不按账本隔离，删卡片或事项时同一事务清掉
   子行。事件另有一条 `KeyEventRecords(date)`：工作空间里 `key_event_date` 等于该日期的记录，
   跨账本、带标签，事件页的右栏用它。页面只调用接口，不写 SQL；`internal/store` 用编译期断言
   实现该接口。记录写入与标签关联、删除与关联清理、分类删除与其标签、标签删除与记录关联、

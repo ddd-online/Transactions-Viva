@@ -1,6 +1,6 @@
 // Package todo is the 待办 section: 待办 and 历史. Cards are themes holding
-// today's items; history is completed items. Both belong to the active ledger,
-// like the old application's todo tables.
+// today's items; history is completed items. Both belong to the workspace:
+// one workspace has one todo board, independent of the ledger choice.
 package todo
 
 import (
@@ -14,7 +14,6 @@ import (
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
-	"transactions/internal/pages/accounting/ledger"
 	"transactions/internal/repository"
 )
 
@@ -40,15 +39,13 @@ const (
 type Model struct {
 	tab tab
 
-	repo    repository.Repository
-	todos   repository.TodoRepository
-	ledgers *ledger.Store
+	repo  repository.Repository
+	todos repository.TodoRepository
 
-	cards        []domain.TodoCard
-	history      []domain.TodoHistory
-	loaded       bool
-	loadedLedger string
-	err          string
+	cards   []domain.TodoCard
+	history []domain.TodoHistory
+	loaded  bool
+	err     string
 
 	view view
 
@@ -72,17 +69,9 @@ type Model struct {
 	toaster ui.Toaster
 }
 
-// New returns the empty section over a ledger list of its own.
-func New() *Model { return NewWithLedgers(ledger.NewStore()) }
-
-// NewWithLedgers returns the section over the shell's shared ledger list, so
-// the 待办 page follows the same 账本 choice as 记账 and 日记.
-func NewWithLedgers(ledgers *ledger.Store) *Model {
-	if ledgers == nil {
-		ledgers = ledger.NewStore()
-	}
+// New returns the empty section; the workspace is connected by SetRepository.
+func New() *Model {
 	return &Model{
-		ledgers:       ledgers,
 		collapsed:     map[string]bool{},
 		expanded:      map[string]bool{},
 		progressDraft: map[string]string{},
@@ -108,20 +97,10 @@ func (m *Model) SetRepository(repo repository.Repository, todos repository.TodoR
 	m.repo, m.todos = repo, todos
 	m.cards, m.history = nil, nil
 	m.loaded = false
-	m.loadedLedger = ""
 	m.err = ""
 	m.progressDraft = map[string]string{}
 	m.expanded = map[string]bool{}
 	m.collapsed = map[string]bool{}
-	if repo == nil || todos == nil {
-		m.ledgers.Reset(nil)
-		return nil
-	}
-	ledgers, err := repo.Ledgers(context.Background())
-	if err != nil {
-		return err
-	}
-	m.ledgers.Reset(ledgers)
 	return nil
 }
 
@@ -137,32 +116,28 @@ func (m *Model) CloseOverlays() {
 }
 
 func (m *Model) sync() {
-	if m.repo == nil || m.todos == nil {
+	if m.repo == nil || m.todos == nil || m.loaded {
 		return
 	}
-	active := m.ledgers.Active()
-	if active == m.loadedLedger && m.loaded {
-		return
-	}
-	m.loadedLedger = active
+	m.loaded = true
 	m.reload()
 }
 
 func (m *Model) reload() {
-	if m.todos == nil || m.ledgers.Active() == "" {
+	if m.todos == nil {
 		m.cards, m.history = nil, nil
 		m.loaded = true
 		return
 	}
 	ctx := context.Background()
-	cards, err := m.todos.TodoCards(ctx, m.ledgers.Active())
+	cards, err := m.todos.TodoCards(ctx)
 	if err != nil {
 		m.err = err.Error()
 		m.cards, m.history = nil, nil
 		m.loaded = true
 		return
 	}
-	history, err := m.todos.TodoHistory(ctx, m.ledgers.Active())
+	history, err := m.todos.TodoHistory(ctx)
 	if err != nil {
 		m.err = err.Error()
 		m.cards, m.history = nil, nil
@@ -216,11 +191,6 @@ func (m *Model) View(c ui.C) {
 func (m *Model) toolbar(c ui.C) {
 	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
 		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
-		if ledger.Picker(c, m.ledgers) {
-			m.loaded = false
-			m.sync()
-		}
-		ui.Divider(c).Height(24)
 		if m.tab == tabBoard {
 			current := "列表"
 			if m.view == viewQuadrant {
@@ -264,11 +234,7 @@ func (m *Model) toolbar(c ui.C) {
 
 func (m *Model) body(c ui.C) {
 	if m.repo == nil || m.todos == nil {
-		m.emptyPage(c, "还没有打开工作空间", "打开工作空间后，这里的待办会按账本显示。")
-		return
-	}
-	if len(m.ledgers.List()) == 0 {
-		m.emptyPage(c, "还没有账本", "先在记账页创建或选择一个账本，待办会跟着账本走。")
+		m.emptyPage(c, "还没有打开工作空间", "打开工作空间后，这里的待办会保存在工作空间里。")
 		return
 	}
 	if m.err != "" {

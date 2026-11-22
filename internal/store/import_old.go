@@ -458,7 +458,7 @@ func copyTodo(source *sql.DB, tx *sql.Tx) (todoImport, error) {
 			return report, err
 		}
 		if _, err := tx.Exec("INSERT INTO todo_card (id, ledger_id, title, created_at, updated_at, sort_order) VALUES (?, ?, ?, ?, ?, ?)",
-			id, ledgerID, title, createdAt, updatedAt, sortOrder); err != nil {
+			id, "", title, createdAt, updatedAt, sortOrder); err != nil {
 			rows.Close()
 			return report, err
 		}
@@ -494,7 +494,7 @@ func copyTodo(source *sql.DB, tx *sql.Tx) (todoImport, error) {
 		urgency = domain.SnapTodoLevel(urgency)
 		importance = domain.SnapTodoLevel(importance)
 		if _, err := tx.Exec("INSERT INTO todo_item ("+todoItemColumns+") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			id, ledgerID, cardID, title, startDate, dueDate, urgency, importance, status, completedAt, createdAt, updatedAt); err != nil {
+			id, "", cardID, title, startDate, dueDate, urgency, importance, status, completedAt, createdAt, updatedAt); err != nil {
 			items.Close()
 			return report, err
 		}
@@ -523,7 +523,7 @@ func copyTodo(source *sql.DB, tx *sql.Tx) (todoImport, error) {
 			return report, err
 		}
 		if _, err := tx.Exec("INSERT INTO todo_progress ("+todoProgressColumns+") VALUES (?, ?, ?, ?, ?, ?)",
-			id, ledgerID, itemID, content, createdAt, done != 0); err != nil {
+			id, "", itemID, content, createdAt, done != 0); err != nil {
 			progress.Close()
 			return report, err
 		}

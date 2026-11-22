@@ -99,10 +99,10 @@ func TestImportOldCopiesAccountingTables(t *testing.T) {
 	if err != nil || len(templates) != 1 || templates[0].Flags != "outlier" || templates[0].Description != "" {
 		t.Fatalf("templates = %+v, err=%v", templates, err)
 	}
-	if cards, err := workspace.TodoCards(t.Context(), "l1"); err != nil || len(cards) != 1 || cards[0].Title != "本周" {
+	if cards, err := workspace.TodoCards(t.Context()); err != nil || len(cards) != 1 || cards[0].Title != "本周" {
 		t.Fatalf("todo cards = %+v, err=%v", cards, err)
 	}
-	if history, err := workspace.TodoHistory(t.Context(), "l1"); err != nil || len(history) != 1 ||
+	if history, err := workspace.TodoHistory(t.Context()); err != nil || len(history) != 1 ||
 		history[0].Item.Importance != 5 || len(history[0].Item.Progress) != 1 || !history[0].Item.Progress[0].Done {
 		t.Fatalf("todo history = %+v, err=%v", history, err)
 	}

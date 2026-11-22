@@ -92,7 +92,7 @@ func (m *Model) saveCard() {
 	if m.todos == nil {
 		return
 	}
-	if _, err := m.todos.CreateTodoCard(m.context(), m.ledgers.Active(), m.cardForm.title); err != nil {
+	if _, err := m.todos.CreateTodoCard(m.context(), m.cardForm.title); err != nil {
 		m.cardForm.err = err.Error()
 		return
 	}
@@ -171,7 +171,7 @@ func (m *Model) saveItem() {
 		return
 	}
 	item := domain.TodoItem{
-		ID: form.id, LedgerID: m.ledgers.Active(), CardID: form.cardID, Title: title,
+		ID: form.id, CardID: form.cardID, Title: title,
 		StartDate: form.start, DueDate: form.due,
 		Urgency: form.urgency, Importance: form.importance,
 	}
@@ -200,7 +200,7 @@ func (m *Model) deleteCardView(c ui.C) {
 			m.deleteCard.open = false
 		}
 		if ui.Button(c, "删除主题").Destructive().Clicked() {
-			if err := m.todos.DeleteTodoCard(m.context(), m.ledgers.Active(), m.deleteCard.id); err != nil {
+			if err := m.todos.DeleteTodoCard(m.context(), m.deleteCard.id); err != nil {
 				m.fail(err)
 				return
 			}
@@ -221,7 +221,7 @@ func (m *Model) deleteItemView(c ui.C) {
 			m.deleteItem.open = false
 		}
 		if ui.Button(c, "删除事项").Destructive().Clicked() {
-			if err := m.todos.DeleteTodoItem(m.context(), m.ledgers.Active(), m.deleteItem.id); err != nil {
+			if err := m.todos.DeleteTodoItem(m.context(), m.deleteItem.id); err != nil {
 				m.fail(err)
 				return
 			}
@@ -235,7 +235,7 @@ func (m *Model) setStatus(itemID, status string) {
 	if m.todos == nil {
 		return
 	}
-	if err := m.todos.SetTodoItemStatus(m.context(), m.ledgers.Active(), itemID, status); err != nil {
+	if err := m.todos.SetTodoItemStatus(m.context(), itemID, status); err != nil {
 		m.fail(err)
 		return
 	}

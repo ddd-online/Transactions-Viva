@@ -5,8 +5,9 @@ import "time"
 // TodoDateLayout is the only accepted date shape for todo start / due dates.
 const TodoDateLayout = "2006-01-02"
 
-// TodoCard is one theme column. Cards belong to a ledger and are ordered by
-// sort_order; a card with no items still exists.
+// TodoCard is one theme column. Cards belong to the workspace and are ordered
+// by sort_order; a card with no items still exists. LedgerID is kept only for
+// the v1 table shape and is empty in data written by this build.
 type TodoCard struct {
 	ID        string
 	LedgerID  string
@@ -21,7 +22,7 @@ type TodoCard struct {
 // Status is TodoStatusDoing or TodoStatusDone; completed_at is 0 while doing.
 type TodoItem struct {
 	ID          string
-	LedgerID    string
+	LedgerID    string // v1 compatibility; always empty
 	CardID      string
 	Title       string
 	StartDate   string
@@ -38,7 +39,7 @@ type TodoItem struct {
 // TodoProgress is one log line under an item.
 type TodoProgress struct {
 	ID        string
-	LedgerID  string
+	LedgerID  string // v1 compatibility; always empty
 	ItemID    string
 	Content   string
 	Done      bool

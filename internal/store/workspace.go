@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -110,6 +111,9 @@ func Open(directory string) (*Workspace, error) {
 		return closeOnError(err)
 	}
 	if err := validateSchemaTables(db); err != nil {
+		return closeOnError(err)
+	}
+	if err := normalizeTodoScope(context.Background(), db); err != nil {
 		return closeOnError(err)
 	}
 	return &Workspace{directory: directory, database: databasePath, db: db}, nil

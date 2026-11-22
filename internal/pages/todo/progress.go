@@ -77,7 +77,7 @@ func (m *Model) progressView(c ui.C) {
 								}
 							})
 							if check.Clicked() {
-								if err := m.todos.SetTodoProgressDone(m.context(), m.ledgers.Active(), line.ID, !line.Done); err != nil {
+								if err := m.todos.SetTodoProgressDone(m.context(), line.ID, !line.Done); err != nil {
 									panel.err = err.Error()
 								} else {
 									line.Done = !line.Done
@@ -105,7 +105,7 @@ func (m *Model) progressView(c ui.C) {
 							}
 							if ui.Button(c, "删除进度").Ghost().Icon(icons.Trash2).IconOnly().
 								Tooltip("删除").Clicked() {
-								if err := m.todos.DeleteTodoProgress(m.context(), m.ledgers.Active(), line.ID); err != nil {
+								if err := m.todos.DeleteTodoProgress(m.context(), line.ID); err != nil {
 									panel.err = err.Error()
 								} else {
 									panel.item.Progress = append(panel.item.Progress[:index], panel.item.Progress[index+1:]...)
@@ -134,7 +134,7 @@ func (m *Model) saveProgressEdit(panel *progressPanel, line *domain.TodoProgress
 		panel.err = "请输入进度"
 		return
 	}
-	saved, err := m.todos.UpdateTodoProgress(m.context(), m.ledgers.Active(), line.ID, panel.editText)
+	saved, err := m.todos.UpdateTodoProgress(m.context(), line.ID, panel.editText)
 	if err != nil {
 		panel.err = err.Error()
 		return
