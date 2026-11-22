@@ -39,8 +39,14 @@ func (m *Model) settingsSpec() settings.Spec {
 		OnDeleteLedger:  m.deleteLedger,
 		OpenURL:         m.openExternalURL,
 		CopyText:        m.copyToClipboard,
-		ImportDiary:     m.importDiary,
-		ExportDiary:     m.exportDiary,
+
+		StockAccounts:        m.stock.Accounts(),
+		ActiveStockAccount:   m.stock.ActiveAccount(),
+		OnCreateStockAccount: m.createStockAccount,
+		OnUpdateStockAccount: m.updateStockAccount,
+		OnDeleteStockAccount: m.deleteStockAccount,
+		ImportDiary:          m.importDiary,
+		ExportDiary:          m.exportDiary,
 
 		DiaryBooks:        m.diary.Books(),
 		ActiveDiaryBook:   m.diary.ActiveBook(),
@@ -184,6 +190,30 @@ func (m *Model) updateLedger(id, name, description string) error {
 
 func (m *Model) deleteLedger(id string) error {
 	if err := m.accounting.DeleteLedger(id); err != nil {
+		return err
+	}
+	m.invalidate()
+	return nil
+}
+
+func (m *Model) createStockAccount(name, description string) error {
+	if err := m.stock.CreateAccount(name, description); err != nil {
+		return err
+	}
+	m.invalidate()
+	return nil
+}
+
+func (m *Model) updateStockAccount(id, name, description string) error {
+	if err := m.stock.UpdateAccount(id, name, description); err != nil {
+		return err
+	}
+	m.invalidate()
+	return nil
+}
+
+func (m *Model) deleteStockAccount(id string) error {
+	if err := m.stock.DeleteAccount(id); err != nil {
 		return err
 	}
 	m.invalidate()

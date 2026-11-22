@@ -100,6 +100,9 @@ func (m *Model) openSection(section Section) {
 		// click on the section already open keeps the draft being edited.
 		m.events.Reload()
 	}
+	if section == SectionStock && previous != section {
+		m.stock.Reload()
+	}
 	m.closeLeft(previous, tab)
 }
 

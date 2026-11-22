@@ -116,7 +116,7 @@ func NewWithConfig(cfg config.AppConfig, store *config.Store) *Model {
 		configStore: store,
 		accounting:  accounting.NewWithLedgers(ledgers),
 		ledgers:     ledgers,
-		stock:       stock.New(),
+		stock:       stock.New(nil),
 		todo:        todo.New(),
 		events:      events.New(),
 		diary:       diary.New(),

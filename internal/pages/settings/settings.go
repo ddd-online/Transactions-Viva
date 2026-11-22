@@ -29,6 +29,7 @@ type tab uint8
 const (
 	tabGeneral tab = iota
 	tabLedgers
+	tabStockAccounts
 	tabData
 	tabDiary
 	tabAbout
@@ -69,6 +70,10 @@ var sections = [...]section{
 	{
 		tab:   tabLedgers,
 		title: "账本管理",
+	},
+	{
+		tab:   tabStockAccounts,
+		title: "股票账户",
 	},
 	{
 		tab:   tabData,
@@ -122,6 +127,14 @@ type Spec struct {
 	OnCreateLedger func(name, description string) error
 	OnUpdateLedger func(id, name, description string) error
 	OnDeleteLedger func(id string) error
+
+	// StockAccounts are the workspace's stock accounts; the 股票 tabs read the
+	// same list through their shared store. ActiveStockAccount is marked 当前.
+	StockAccounts        []domain.StockAccount
+	ActiveStockAccount   string
+	OnCreateStockAccount func(name, description string) error
+	OnUpdateStockAccount func(id, name, description string) error
+	OnDeleteStockAccount func(id string) error
 
 	// OpenURL opens a place outside the window in the user's browser, and
 	// CopyText puts text on the clipboard; 关于软件 uses both.
@@ -215,6 +228,10 @@ type Model struct {
 	// ledgerDelete is the confirmation for removing one ledger.
 	ledgerDelete ledgerDelete
 
+	// stockForm / stockDelete are the same shapes for a stock account.
+	stockForm   ledgerForm
+	stockDelete ledgerDelete
+
 	// diary is 日记配置's own state: what an export covers, the period it
 	// picked, and the last command's status or failures.
 	diary diaryState
@@ -286,6 +303,8 @@ func (m *Model) View(c ui.C, spec Spec) {
 	})
 	m.ledgerDialog(c, spec)
 	m.ledgerDeleteDialog(c, spec)
+	m.stockAccountDialog(c, spec)
+	m.stockAccountDeleteDialog(c, spec)
 	m.bookDialog(c, spec)
 	m.bookDeleteDialog(c, spec)
 	ui.Toasts(c, &m.toaster)
@@ -344,6 +363,8 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 					m.general(c, spec)
 				case tabLedgers:
 					m.ledgers(c, spec)
+				case tabStockAccounts:
+					m.stockAccounts(c, spec)
 				case tabDiary:
 					m.diaryConfig(c, spec)
 				case tabAbout:
@@ -590,6 +611,150 @@ func (m *Model) ledgerDeleteDialog(c ui.C, spec Spec) {
 			}
 			m.ledgerDelete.open = false
 			m.toaster.Show("账本已删除", "", ui.ToastSuccess)
+		}
+	})
+}
+
+// stockAccounts is 设置 · 股票账户: a workspace-level list, managed exactly like
+// the ledger list. The stock toolbar's 账户 selector reads the same list.
+func (m *Model) stockAccounts(c ui.C, spec Spec) {
+	theme := c.Theme()
+	metrics := theme.Metrics
+	controls.Card(c, func() {
+		if len(spec.StockAccounts) == 0 {
+			controls.Row(c, "还没有股票账户", "打开股票页时会自动创建一个默认股票账户。", nil)
+			return
+		}
+		for index := range spec.StockAccounts {
+			if index > 0 {
+				ui.Divider(c)
+			}
+			one := spec.StockAccounts[index]
+			controls.Row(c, one.Name, describe(one.Description), func() {
+				if spec.ActiveStockAccount == one.ID {
+					typography.Caption(c, "当前")
+				}
+				if ui.Button(c, "编辑股票账户 "+one.Name).Ghost().Icon(icons.Pencil).
+					IconOnly().Tooltip("编辑名称与描述").Clicked() {
+					m.openStockAccountForm(spec, one.ID)
+				}
+				last := len(spec.StockAccounts) <= 1
+				remove := ui.Button(c, "删除股票账户 "+one.Name).Ghost().Icon(icons.Trash2).
+					IconOnly().Disabled(last)
+				if last {
+					remove = remove.Tooltip("至少保留一个股票账户")
+				} else {
+					remove = remove.Tooltip("删除股票账户")
+				}
+				if remove.Clicked() {
+					m.stockDelete = ledgerDelete{open: true, id: one.ID, name: one.Name}
+				}
+			})
+		}
+		ui.Divider(c)
+		ui.Row(c).Height(metrics.ControlHeight + 2*metrics.GapItem).FillWidth().
+			PadX(metrics.PadSurface).Items(ui.Center).Children(func() {
+			if ui.Button(c, "新增股票账户").Ghost().Icon(icons.Plus).Clicked() {
+				m.openStockAccountForm(spec, "")
+			}
+		})
+	})
+}
+
+func (m *Model) openStockAccountForm(spec Spec, id string) {
+	form := ledgerForm{open: true, id: id}
+	for _, one := range spec.StockAccounts {
+		if one.ID == id {
+			form.name, form.description = one.Name, one.Description
+		}
+	}
+	m.stockForm = form
+}
+
+func (m *Model) stockAccountDialog(c ui.C, spec Spec) {
+	if !m.stockForm.open {
+		return
+	}
+	title, submit := "新增股票账户", "创建"
+	if m.stockForm.id != "" {
+		title, submit = "编辑股票账户", "保存"
+	}
+	fieldHeight := c.Theme().Metrics.ControlHeight * 2
+	ui.ModalWith(c, &m.stockForm.open, title, ui.ModalSpec{Width: 420}, func() {
+		ui.Column(c).Children(func() {
+			ui.FormField(c, &m.stockForm.nameField, "名称").Height(fieldHeight).Children(func() {
+				ui.TextField(c, &m.stockForm.name, "名称", "例如：主账户").AutoFocus()
+			})
+			ui.FormField(c, &m.stockForm.descField, "描述").Height(fieldHeight).Children(func() {
+				ui.TextField(c, &m.stockForm.description, "描述", "例如：长期持有")
+			})
+			if m.stockForm.err != "" {
+				typography.Caption(c, m.stockForm.err).Color(c.Theme().Danger)
+			}
+		})
+	}, func() {
+		if ui.Button(c, "取消").Outline().Clicked() {
+			m.stockForm.open = false
+		}
+		if ui.Button(c, submit).Clicked() {
+			m.submitStockAccount(spec)
+		}
+	})
+}
+
+func (m *Model) submitStockAccount(spec Spec) {
+	name := strings.TrimSpace(m.stockForm.name)
+	if name == "" {
+		m.stockForm.err = "股票账户名称不能为空"
+		return
+	}
+	description := strings.TrimSpace(m.stockForm.description)
+	var err error
+	if m.stockForm.id == "" {
+		if spec.OnCreateStockAccount == nil {
+			return
+		}
+		err = spec.OnCreateStockAccount(name, description)
+	} else {
+		if spec.OnUpdateStockAccount == nil {
+			return
+		}
+		err = spec.OnUpdateStockAccount(m.stockForm.id, name, description)
+	}
+	if err != nil {
+		m.stockForm.err = err.Error()
+		return
+	}
+	m.stockForm.open = false
+	if m.stockForm.id == "" {
+		m.toaster.Show("股票账户已创建", "", ui.ToastSuccess)
+	} else {
+		m.toaster.Show("股票账户已保存", "", ui.ToastSuccess)
+	}
+}
+
+func (m *Model) stockAccountDeleteDialog(c ui.C, spec Spec) {
+	if !m.stockDelete.open {
+		return
+	}
+	ui.ModalWith(c, &m.stockDelete.open, "删除股票账户「"+m.stockDelete.name+"」？", ui.ModalSpec{
+		Width:       420,
+		Description: "账户里的本金、资金记录、持仓、成交、轮次、心得与设置会一起删除，无法恢复。",
+	}, nil, func() {
+		if ui.Button(c, "取消").Outline().Clicked() {
+			m.stockDelete.open = false
+		}
+		if ui.Button(c, "删除").Destructive().Clicked() {
+			id := m.stockDelete.id
+			if spec.OnDeleteStockAccount == nil {
+				return
+			}
+			if err := spec.OnDeleteStockAccount(id); err != nil {
+				m.toaster.Show("删除股票账户失败："+err.Error(), "", ui.ToastError)
+				return
+			}
+			m.stockDelete.open = false
+			m.toaster.Show("股票账户已删除", "", ui.ToastSuccess)
 		}
 	})
 }

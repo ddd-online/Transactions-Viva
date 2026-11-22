@@ -37,6 +37,7 @@ func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 		m.accounting.SetRepository(nil)
 		m.diary.SetDataSource(nil)
 		m.events.SetDataSource(nil)
+		_ = m.stock.SetRepository(nil)
 		if m.workspace != nil {
 			_ = m.workspace.Close()
 			m.workspace = nil
@@ -51,6 +52,7 @@ func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 			_ = m.accounting.SetRepository(m.workspace)
 			m.diary.SetDataSource(m.workspace)
 			m.events.SetDataSource(m.workspace)
+			_ = m.stock.SetRepository(m.workspace)
 		}
 		return err
 	}
@@ -59,6 +61,20 @@ func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 	// Events belong to the workspace itself, so the page reads it and nothing
 	// about a ledger.
 	m.events.SetDataSource(workspace)
+	// Stock accounts belong to the workspace too; the section keeps its own
+	// account list and reads no ledger.
+	if err := m.stock.SetRepository(workspace); err != nil {
+		if m.workspace != nil {
+			_ = m.accounting.SetRepository(m.workspace)
+			m.diary.SetDataSource(m.workspace)
+			m.events.SetDataSource(m.workspace)
+			_ = m.stock.SetRepository(m.workspace)
+		}
+		if workspace != m.workspace {
+			_ = workspace.Close()
+		}
+		return err
+	}
 	previous := m.workspace
 	m.workspace = workspace
 	m.workspaceErr = ""

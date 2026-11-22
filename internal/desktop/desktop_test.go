@@ -212,7 +212,7 @@ func TestNavigationSwitchesSections(t *testing.T) {
 	}
 
 	click(t, driver, "股票")
-	if !shows(driver, "资金账户") {
+	if !shows(driver, "总资产") {
 		t.Fatal("股票 did not show the stock account screen")
 	}
 	if shows(driver, "记一笔") {
@@ -839,7 +839,7 @@ func TestSidebarExpandsOneSectionAtATime(t *testing.T) {
 	if hasControl(driver, "分析") {
 		t.Fatal("股票 did not collapse 记账")
 	}
-	if !shows(driver, "资金账户") {
+	if !shows(driver, "总资产") {
 		t.Fatal("股票 did not show its account screen")
 	}
 
