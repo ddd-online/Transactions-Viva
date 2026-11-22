@@ -145,10 +145,17 @@ type Model struct {
 	draft   string
 	color   string
 
-	// bits caches decoded images for the current event; bitErrs remembers the
+	// bits caches the current day's decoded thumbnails; bitErrs remembers the
 	// paths that could not be decoded so a paint does not retry them.
-	bits    map[string]gfx.Bitmap
-	bitErrs map[string]string
+	// displayPath is the one full photo the stage and the lightbox paint, and
+	// blurID/blurBitmap the one backdrop behind it. A gallery can hold hundreds
+	// of pictures and a year can hold hundreds of days: keeping every viewed
+	// full photo and every backdrop is not a cache, it is a leak.
+	bits        map[string]gfx.Bitmap
+	bitErrs     map[string]string
+	displayPath string
+	blurID      string
+	blurBitmap  gfx.Bitmap
 
 	add         addForm
 	deleteEvent confirmation
@@ -200,8 +207,7 @@ func (m *Model) SetLinksOpen(open bool) { m.linksOpen = open }
 // writes.
 func (m *Model) Reload() {
 	m.errorMessage = ""
-	m.bits = map[string]gfx.Bitmap{}
-	m.bitErrs = map[string]string{}
+	m.dropBitmaps()
 	if m.repo == nil {
 		m.events = nil
 		m.clearDetail()
@@ -379,6 +385,7 @@ func (m *Model) chooseEvent(date string) {
 		m.clearDetail()
 		return
 	}
+	m.dropBitmaps()
 	m.loadDetail()
 	m.ensureBitmaps()
 }
@@ -400,6 +407,7 @@ func (m *Model) findEvent() bool {
 
 // clearDetail drops the selection and everything read for it.
 func (m *Model) clearDetail() {
+	m.dropBitmaps()
 	m.date = ""
 	m.event = domain.KeyEvent{}
 	m.hasEvent = false
@@ -601,8 +609,32 @@ func (m *Model) reloadImages() {
 	}
 	m.images = images
 	m.keepImageSelection()
+	m.dropBitmaps()
+}
+
+// dropBitmaps releases every decoded picture of the day that was showing. The
+// next selection decodes what it paints; keeping the previous day's thumbnails,
+// full photos and backdrops would grow with every event the user opens.
+func (m *Model) dropBitmaps() {
 	m.bits = map[string]gfx.Bitmap{}
 	m.bitErrs = map[string]string{}
+	m.displayPath = ""
+	m.blurID = ""
+	m.blurBitmap = gfx.Bitmap{}
+}
+
+// keepDisplay makes path the one full photo held decoded, releasing the one it
+// replaces. Thumbnails stay in bits; only the stage and the lightbox need a
+// display-size bitmap.
+func (m *Model) keepDisplay(path string) {
+	if path == "" {
+		return
+	}
+	if m.displayPath != "" && m.displayPath != path {
+		delete(m.bits, m.displayPath)
+	}
+	m.displayPath = path
+	m.bitmap(path)
 }
 
 // keepImageSelection makes sure the stage names an image in the list.

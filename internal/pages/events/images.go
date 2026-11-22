@@ -12,8 +12,10 @@ import (
 // command and keeps the bitmaps for the selected event. A canvas draw is pure,
 // so every decode happens where the selection changes — never in View.
 
-// bitmap returns a decoded image, loading it once. A path that failed is
-// remembered so a paint does not ask for it again.
+// bitmap returns a decoded image, loading it once. Decoding belongs to
+// ensureBitmaps and to the handlers that change the selection; a draw reads
+// cached instead, because a frame can still be painting the image it is leaving.
+// A path that failed is remembered so a paint does not ask for it again.
 func (m *Model) bitmap(relative string) (gfx.Bitmap, bool) {
 	if relative == "" {
 		return gfx.Bitmap{}, false
@@ -43,12 +45,30 @@ func (m *Model) bitmap(relative string) (gfx.Bitmap, bool) {
 	return bitmap, true
 }
 
-// blur returns a heavily blurred copy of an image's thumbnail, the backdrop the
-// stage puts behind a photo that does not fill the pane.
+// cached is bitmap without decoding: a draw only reads what ensureBitmaps put
+// here. The page may change selection while an old frame is still painting, and
+// a draw that decoded would put the photo it is leaving back into the cache.
+func (m *Model) cached(relative string) (gfx.Bitmap, bool) {
+	bitmap, ok := m.bits[relative]
+	return bitmap, ok
+}
+
+// cachedBlur is blur without computing: ensureBitmaps keeps the selected
+// image's backdrop ready, and a draw never adds another.
+func (m *Model) cachedBlur(image domain.KeyEventImage) (gfx.Bitmap, bool) {
+	if m.blurID != image.ID || len(m.blurBitmap.Pix) == 0 {
+		return gfx.Bitmap{}, false
+	}
+	return m.blurBitmap, true
+}
+
+// blur returns the backdrop the stage puts behind a photo that does not fill
+// the pane. Only the selected image's backdrop is kept: blurred copies are the
+// size of a thumbnail, and one per photo would double the gallery's memory for
+// pictures the user has already stepped past.
 func (m *Model) blur(image domain.KeyEventImage) (gfx.Bitmap, bool) {
-	key := "blur:" + image.ID
-	if bitmap, ok := m.bits[key]; ok {
-		return bitmap, true
+	if m.blurID == image.ID && len(m.blurBitmap.Pix) > 0 {
+		return m.blurBitmap, true
 	}
 	base, ok := m.bitmap(image.ThumbPath)
 	if !ok {
@@ -57,9 +77,8 @@ func (m *Model) blur(image domain.KeyEventImage) (gfx.Bitmap, bool) {
 	if !ok {
 		return gfx.Bitmap{}, false
 	}
-	blurred := gfx.GaussianBlurBitmap(base, 12)
-	m.bits[key] = blurred
-	return blurred, true
+	m.blurID, m.blurBitmap = image.ID, gfx.GaussianBlurBitmap(base, 12)
+	return m.blurBitmap, true
 }
 
 // ensureBitmaps decodes what the current selection paints: every thumbnail, the
@@ -78,7 +97,7 @@ func (m *Model) ensureBitmaps() {
 	if !ok {
 		return
 	}
-	m.bitmap(image.FilePath)
+	m.keepDisplay(image.FilePath)
 	m.blur(*image)
 }
 
@@ -87,11 +106,11 @@ func (m *Model) ensureBitmaps() {
 func (m *Model) drawStage(d *ui.DrawContext, image domain.KeyEventImage) {
 	theme := *d.Theme
 	d.Canvas.Fill(d.Rect, theme.Muted)
-	if backdrop, ok := m.blur(image); ok {
+	if backdrop, ok := m.cachedBlur(image); ok {
 		d.Canvas.DrawBitmapRegion(backdrop, coverSource(backdrop, d.Rect), d.Rect)
 		d.Canvas.Fill(d.Rect, theme.Foreground.WithAlpha(0.18))
 	}
-	display, ok := m.bitmap(image.FilePath)
+	display, ok := m.cached(image.FilePath)
 	if !ok {
 		m.paintMissing(d)
 		return
@@ -103,9 +122,9 @@ func (m *Model) drawStage(d *ui.DrawContext, image domain.KeyEventImage) {
 func (m *Model) drawThumb(d *ui.DrawContext, image domain.KeyEventImage) {
 	theme := *d.Theme
 	d.Canvas.Fill(d.Rect, theme.Muted)
-	bitmap, ok := m.bitmap(image.ThumbPath)
+	bitmap, ok := m.cached(image.ThumbPath)
 	if !ok {
-		bitmap, ok = m.bitmap(image.FilePath)
+		bitmap, ok = m.cached(image.FilePath)
 	}
 	if !ok {
 		return
@@ -141,7 +160,7 @@ func (m *Model) openPreview() {
 	m.preview.zoom = 1
 	m.preview.pan = gfx.Point{}
 	m.preview.dragging = false
-	m.bitmap(image.FilePath)
+	m.keepDisplay(image.FilePath)
 }
 
 // stepPreview moves the lightbox to the next or previous picture, wrapping.
@@ -230,11 +249,11 @@ func (m *Model) drawPreview(d *ui.DrawContext) {
 	if !ok {
 		return
 	}
-	if backdrop, ok := m.blur(*image); ok {
+	if backdrop, ok := m.cachedBlur(*image); ok {
 		d.Canvas.DrawBitmapRegion(backdrop, coverSource(backdrop, d.Rect), d.Rect)
 		d.Canvas.Fill(d.Rect, theme.Foreground.WithAlpha(0.45))
 	}
-	display, ok := m.bitmap(image.FilePath)
+	display, ok := m.cached(image.FilePath)
 	if !ok {
 		m.paintMissing(d)
 		return
@@ -295,4 +314,15 @@ func drawZoomed(canvas *gfx.Canvas, bitmap gfx.Bitmap, bounds gfx.Rect, zoom flo
 	canvas.Clip(bounds)
 	canvas.DrawBitmap(bitmap, gfx.Rect{X: x, Y: y, Width: targetWidth, Height: targetHeight})
 	canvas.Unclip()
+}
+
+// CachedImageBytes reports the decoded pixels the page keeps: the selected
+// day's thumbnails, one full photo and one backdrop. It is the budget the
+// performance test holds the page to.
+func (m *Model) CachedImageBytes() int {
+	total := len(m.blurBitmap.Pix)
+	for _, bitmap := range m.bits {
+		total += len(bitmap.Pix)
+	}
+	return total
 }
