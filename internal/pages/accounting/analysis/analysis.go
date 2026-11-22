@@ -329,7 +329,6 @@ func (m *Model) chartRail(c ui.C) {
 			typography.Section(c, "图表")
 			ui.Spacer(c)
 		})
-		ui.Divider(c)
 		if len(m.charts) == 0 {
 			emptystate.Notice(c, "暂无图表")
 			return
@@ -392,7 +391,6 @@ func (m *Model) detail(c ui.C) {
 			return
 		}
 		m.header(c, chart)
-		ui.Divider(c)
 		if m.loadErr != "" {
 			typography.Caption(c, m.loadErr).Color(theme.Danger).PadX(18).PadY(6)
 		}

@@ -337,7 +337,6 @@ func (m *Model) categoryColumn(c ui.C) {
 		if add.Clicked() {
 			m.openCategoryModal()
 		}
-		ui.Divider(c)
 		if len(categories) == 0 {
 			emptystate.Notice(c, "暂无分类")
 			return
@@ -362,7 +361,6 @@ func (m *Model) tagColumn(c ui.C) {
 		if add.Clicked() {
 			m.openTagModal()
 		}
-		ui.Divider(c)
 		switch {
 		case m.selected == "":
 			emptystate.Notice(c, "选择分类查看标签")

@@ -390,7 +390,6 @@ func (p *positionsPanel) rail(c ui.C) {
 			typography.Caption(c, strconv.Itoa(len(p.positions))+" 只")
 			ui.Spacer(c)
 		})
-		ui.Divider(c)
 		if len(p.positions) == 0 {
 			emptystate.Notice(c, "当前没有持仓")
 			return
@@ -520,7 +519,6 @@ func (p *positionsPanel) detailColumn(c ui.C) {
 			return
 		}
 		p.detailHeader(c, position)
-		ui.Divider(c)
 		ui.Scroll(c).Grow(1).Children(func() {
 			ui.Column(c).FillWidth().Children(func() {
 				ui.Column(c).Pad(layout.Inset).PadBottom(layout.BlockGap).

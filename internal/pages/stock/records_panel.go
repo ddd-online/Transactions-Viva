@@ -454,7 +454,6 @@ func (p *recordsPanel) historyRail(c ui.C) {
 			typography.Caption(c, strconv.Itoa(len(p.histories))+" 只")
 			ui.Spacer(c)
 		})
-		ui.Divider(c)
 		if len(p.histories) == 0 {
 			if p.errorMessage == "" {
 				emptystate.Notice(c, "还没有已清仓的交易历史")
@@ -570,7 +569,6 @@ func (p *recordsPanel) detailColumn(c ui.C) {
 			return
 		}
 		p.detailHead(c, detail)
-		ui.Divider(c)
 		ui.List(c, &p.roundList, len(detail.Rounds),
 			func(row ui.ListRow) { p.roundRow(row, detail) }).
 			Label("交易轮次").Grow(1)
