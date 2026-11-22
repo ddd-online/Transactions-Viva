@@ -31,13 +31,16 @@ func (m *Model) quadrant(c ui.C) {
 		}
 	}
 	titles := [4]string{"重要且紧急", "重要不紧急", "紧急不重要", "不紧急不重要"}
-	ui.Column(c).Fill().PadSides(layout.Inset, layout.Inset, 20, layout.Inset).
-		Gap(12).Children(func() {
+	ui.Column(c).Fill().PadSides(layout.Inset, layout.Inset, 20, layout.Inset).Children(func() {
 		for row := 0; row < 2; row++ {
-			ui.Row(c).FillWidth().Grow(1).Items(ui.Start).Gap(12).Children(func() {
-				m.quadrantBox(c, titles[row*2], groups[row*2])
-				m.quadrantBox(c, titles[row*2+1], groups[row*2+1])
+			ui.Row(c).Grow(1).Basis(0).FillWidth().Children(func() {
+				m.quadrantPane(c, titles[row*2], groups[row*2])
+				ui.Divider(c)
+				m.quadrantPane(c, titles[row*2+1], groups[row*2+1])
 			})
+			if row == 0 {
+				ui.Divider(c)
+			}
 		}
 	})
 }
@@ -47,11 +50,13 @@ type quadrantItem struct {
 	Item domain.TodoItem
 }
 
-func (m *Model) quadrantBox(c ui.C, title string, items []quadrantItem) {
+// quadrantPane is one quarter of the matrix: a heading, a hairline, then the
+// items. It has no card surface; the two crossing dividers are the only
+// structure, so the four quarters stay exactly equal.
+func (m *Model) quadrantPane(c ui.C, title string, items []quadrantItem) {
 	theme := c.Theme()
-	ui.Column(c).Grow(1).FillHeight().Background(theme.Card).
-		Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).Children(func() {
-		ui.Row(c).Height(42).FillWidth().PadX(14).Items(ui.Center).Gap(8).Children(func() {
+	ui.Column(c).Grow(1).Basis(0).FillHeight().Children(func() {
+		ui.Row(c).Height(44).FillWidth().PadSides(18, 8, 18, 8).Items(ui.Center).Gap(8).Children(func() {
 			typography.Body(c, title).Bold()
 			typography.Caption(c, fmt.Sprintf("%d", len(items))).Mono()
 			ui.Spacer(c)
@@ -64,10 +69,10 @@ func (m *Model) quadrantBox(c ui.C, title string, items []quadrantItem) {
 			return
 		}
 		ui.Scroll(c).Grow(1).Children(func() {
-			ui.Column(c).FillWidth().Pad(6).Gap(2).Children(func() {
+			ui.Column(c).FillWidth().PadSides(8, 8, 8, 8).Gap(2).Children(func() {
 				for index := range items {
 					row := items[index]
-					action := ui.Column(c).FillWidth().PadSides(8, 8, 6, 8).Gap(2).
+					action := ui.Column(c).FillWidth().PadSides(10, 10, 8, 10).Gap(2).
 						Radius(theme.Metrics.RadiusItem()).Hover(ui.Look{}.Background(theme.Accent)).
 						Hit(ui.ID(c), "编辑 "+row.Item.Title).Children(func() {
 						typography.Body(c, row.Item.Title).MaxLines(1).Ellipsis()
