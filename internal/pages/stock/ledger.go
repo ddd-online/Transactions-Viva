@@ -249,14 +249,24 @@ func ledgerProseText(c ui.C, text string, maxWidth float32) {
 func ledgerValue(c ui.C, label, value string, mono bool, tone gfx.Color, note string, noteTone gfx.Color) {
 	ui.Column(c).Width(160).Gap(4).Children(func() {
 		typography.Caption(c, label)
-		if mono {
-			ui.Text(c, value).FontSize(typography.SizeBody).Mono().Color(tone).Ellipsis()
-		} else {
-			ui.Paragraph(c, value, 2).FontSize(typography.SizeBody).Color(tone)
+		if note == "" {
+			if mono {
+				ui.Text(c, value).FontSize(typography.SizeBody).Mono().Color(tone).Ellipsis()
+			} else {
+				ui.Paragraph(c, value, 2).FontSize(typography.SizeBody).Color(tone)
+			}
+			return
 		}
-		if note != "" {
-			ui.Text(c, note).FontSize(typography.SizeCaption).Mono().Color(noteTone)
-		}
+		// A delta sits on the value's line: number on the left, percentage
+		// against the right edge, so the field keeps one line of height.
+		ui.Row(c).FillWidth().Gap(4).Items(ui.Center).Children(func() {
+			cell := ui.Text(c, value).FontSize(typography.SizeBody).
+				Grow(1).MinWidth(0).Ellipsis().Color(tone)
+			if mono {
+				cell.Mono()
+			}
+			typography.Caption(c, note).Mono().Color(noteTone).Shrink(0)
+		})
 	})
 }
 
@@ -282,10 +292,7 @@ func ledgerOrDash(value string) string {
 }
 
 func ledgerDeltaNote(delta string) string {
-	if delta == "" {
-		return ""
-	}
-	return "较买入价 " + delta
+	return delta
 }
 
 func ledgerDeltaTone(theme *ui.Theme, delta string) gfx.Color {
@@ -457,10 +464,12 @@ func ledgerTextArea(c ui.C, label string, value *string, placeholder string) {
 func ledgerInput(c ui.C, label string, control func(), note string, noteTone gfx.Color) {
 	ui.Column(c).Grow(1).Basis(0).Gap(4).Children(func() {
 		typography.Caption(c, label)
-		control()
-		if note != "" {
-			ui.Text(c, note).FontSize(typography.SizeCaption).Mono().Color(noteTone)
-		}
+		ui.Row(c).FillWidth().Gap(6).Items(ui.Center).Children(func() {
+			control()
+			if note != "" {
+				typography.Caption(c, note).Mono().Color(noteTone).Shrink(0)
+			}
+		})
 	})
 }
 
