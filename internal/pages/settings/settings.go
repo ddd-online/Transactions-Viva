@@ -521,7 +521,8 @@ func (m *Model) generalPreferences(c ui.C, spec Spec) {
 	}
 	controls.Row(c, "工作空间", workspaceNote(spec.Workspace), func() {
 		if ui.Button(c, "切换").Secondary().Clicked() {
-			m.report("打开工作空间失败", spec.OnPickWorkspace)
+			pick := spec.OnPickWorkspace
+			c.After(func() { m.report("打开工作空间失败", pick) })
 		}
 	})
 	ui.Divider(c)
@@ -1053,14 +1054,14 @@ func (m *Model) diaryTransfer(c ui.C, spec Spec) {
 	controls.Row(c, "导入日记", importNote(spec), func() {
 		button := ui.Button(c, "批量导入").Secondary().Disabled(!ready)
 		if button.Clicked() {
-			m.importDiary(spec)
+			c.After(func() { m.importDiary(spec) })
 		}
 	})
 	ui.Divider(c)
 	controls.Row(c, "导出日记", exportNote(spec), func() {
 		button := ui.Button(c, "批量导出").Secondary().Disabled(!ready)
 		if button.Clicked() {
-			m.exportDiary(spec)
+			c.After(func() { m.exportDiary(spec) })
 		}
 	})
 	ui.Divider(c)

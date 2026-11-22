@@ -151,7 +151,7 @@ func (m *Model) gallery(c ui.C, grow float32) {
 			ui.Row(c).Gap(layout.Gap).Items(ui.Center).Children(func() {
 				typography.Body(c, "暂无图片").Muted()
 				if ui.Button(c, "添加图片").Secondary().Small().Icon(icons.Plus).Clicked() {
-					m.addImages()
+					c.After(func() { m.addImages() })
 				}
 			})
 		})
@@ -187,7 +187,7 @@ func (m *Model) stage(c ui.C) {
 				m.askDeleteImage(image.ID)
 			}
 			if ui.Button(c, "保存图片").Secondary().Small().Clicked() {
-				m.saveImage()
+				c.After(func() { m.saveImage() })
 			}
 		})
 		if image.MotionPath != "" {
@@ -308,7 +308,7 @@ func (m *Model) actions(c ui.C) {
 		}
 		if len(m.images) > 0 {
 			if ui.Button(c, "添加图片").Secondary().Icon(icons.Plus).Clicked() {
-				m.addImages()
+				c.After(func() { m.addImages() })
 			}
 		}
 		ui.Spacer(c)

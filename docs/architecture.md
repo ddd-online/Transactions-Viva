@@ -358,6 +358,10 @@ main → desktop → pages → components
 - 子功能用 `ui.Tabs`，值存在页面模型里；页签内容按当前值声明，不预先创建全部页面。
 - 页面不持有 `ui.C`、`ui.Box`、`gfx.Canvas`；不手算坐标；不启动 goroutine。耗时的读取用
   `ui.Effect`，结果通过 `Take` 在窗口线程落到模型。
+- 打开系统文件 / 目录对话框的点击处理必须放进 `c.After`，不能直接在选择器绘制中调用。
+  原生对话框会在自身模态循环里给窗口派发消息；若调用时还在事件绘制中，嵌套重绘会把同一次点击
+  再投递一遍（用户看到第二个对话框），并可能让窗口结束。`internal/desktop` 的选择工作空间、
+  备份位置 / 恢复文件与 `internal/pages/events` 的添加 / 保存图片都这样延后。
 - 真实窗口只用于人工验收（IME、焦点丢失、窗口管理器关闭、高分屏）。日常验证用
   `app.NewDriver`，见 `internal/desktop/desktop_test.go`。
 

@@ -77,8 +77,11 @@ func (m *Model) backupSettingsGroup(c ui.C, spec Spec) {
 			change = change.Disabled(true)
 		}
 		if change.Clicked() {
-			m.report("更改备份位置失败", spec.OnChangeBackupDir)
-			m.backupLoaded = false
+			pick := spec.OnChangeBackupDir
+			c.After(func() {
+				m.report("更改备份位置失败", pick)
+				m.backupLoaded = false
+			})
 		}
 		open := ui.Button(c, "打开").Secondary()
 		if spec.BackupDir == "" || spec.OnOpenPath == nil {
@@ -118,14 +121,17 @@ func (m *Model) backupRestoreGroup(c ui.C, spec Spec) {
 			button = button.Disabled(true)
 		}
 		if button.Clicked() {
-			entry, ok, err := spec.OnPickRestoreFile()
-			if err != nil {
-				m.toaster.Show(err.Error(), "", ui.ToastError)
-				return
-			}
-			if ok {
-				m.backupRestore, m.backupRestoreOn = entry, true
-			}
+			pick := spec.OnPickRestoreFile
+			c.After(func() {
+				entry, ok, err := pick()
+				if err != nil {
+					m.toaster.Show(err.Error(), "", ui.ToastError)
+					return
+				}
+				if ok {
+					m.backupRestore, m.backupRestoreOn = entry, true
+				}
+			})
 		}
 	})
 	ui.Divider(c)

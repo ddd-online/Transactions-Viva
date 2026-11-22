@@ -122,9 +122,11 @@ func (m *Model) workspaceGate(c ui.C) {
 				typography.CaptionParagraph(c, "打开失败："+m.workspaceErr, 4).Color(theme.Danger)
 			}
 			if ui.Button(c, "选择工作空间").Clicked() {
-				if err := m.pickWorkspaceDir(); err != nil {
-					m.workspaceErr = err.Error()
-				}
+				c.After(func() {
+					if err := m.pickWorkspaceDir(); err != nil {
+						m.workspaceErr = err.Error()
+					}
+				})
 			}
 			typography.CaptionParagraph(c, "也可以从左侧进入「设置 → 通用设置 → 工作空间」选择目录。", 2)
 		})

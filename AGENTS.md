@@ -230,7 +230,9 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
 规则：页面只 import `ui`（以及本工程的 `components` / `domain` / `icons` / `repository`）；
 页面不直接 import `internal/store`，也不持有 `ui.C`、`ui.Box` 或 `gfx.Canvas`；后台工作走
 `ui.Effect` 或 `Invalidator`，不从页面函数里起 goroutine；坐标与像素只交给布局，不手算
-`gfx.Rect`。
+`gfx.Rect`。打开系统文件 / 目录对话框的点击处理一律放进 `c.After`：原生对话框的模态循环会给
+窗口派发消息，在绘制中调用会让同一次点击被嵌套重绘再投递一次（出现第二个对话框），甚至结束
+窗口；选择工作空间、备份位置 / 恢复文件、日记导入导出、事件的添加 / 保存图片都这样延后。
 
 导航是 Sidebar 的两级结构：一级功能项展开自己的子功能，同时收起其他一级项；没有子功能的
 功能（事件、日记）就是单独一项。页面用 `Tabs() []string` / `Tab() int` / `SelectTab(int)`

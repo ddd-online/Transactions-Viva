@@ -1,7 +1,10 @@
 package desktop
 
 import (
+	"sync/atomic"
 	"testing"
+
+	"github.com/vivaui/viva/app"
 
 	storepkg "transactions/internal/store"
 	"transactions/internal/store/storetest"
@@ -117,5 +120,28 @@ func TestWorkspaceSwitchLoadsTheOtherLedgers(t *testing.T) {
 	click(t, driver, "记账")
 	if !shows(driver, "早餐 · 豆浆油条") {
 		t.Fatal("switching back did not load the original workspace")
+	}
+}
+
+// TestWorkspacePickerRunsOutsideThePaint checks the directory dialog opens
+// after the click's event pass. A native dialog pumps the window's messages,
+// so a dialog opened inside the paint lets a nested repaint deliver the same
+// click again — the second dialog the user sees — and can end the window. Viva
+// defers such a handler with c.After for exactly this reason.
+func TestWorkspacePickerRunsOutsideThePaint(t *testing.T) {
+	model := New()
+	driver, _ := openModel(t, model)
+	var calls atomic.Int32
+	model.pickWorkspace = func() (string, error) {
+		calls.Add(1)
+		if err := driver.Paint(); err != nil {
+			return "", err
+		}
+		return "", app.ErrCanceled
+	}
+
+	click(t, driver, "选择工作空间")
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("the picker ran %d times, want one", got)
 	}
 }
