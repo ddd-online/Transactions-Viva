@@ -156,12 +156,15 @@ func (p *accountPanel) View(c ui.C) {
 		if p.errorMessage != "" {
 			typography.Caption(c, p.errorMessage).Color(c.Theme().Danger).PadX(layout.Inset).PadY(6)
 		}
-		ui.Scroll(c).Grow(1).Children(func() {
-			ui.Column(c).Pad(layout.Inset).Gap(layout.BlockGap).Children(func() {
-				p.hero(c, overview)
-				p.metrics(c, overview)
-				p.fundSection(c)
-			})
+		// The page fills its card: the summary keeps its height, the fund table
+		// takes the rest and its pager sits on the bottom edge, so a tall window
+		// grows the table instead of leaving a blank strip under the pager.
+		ui.Column(c).Grow(1).MinHeight(0).Children(func() {
+			p.hero(c, overview)
+			ui.Divider(c)
+			p.metrics(c, overview)
+			ui.Divider(c)
+			p.fundSection(c)
 		})
 	})
 	p.amountModal(c)
@@ -188,7 +191,8 @@ func (p *accountPanel) toolbar(c ui.C) {
 }
 
 func (p *accountPanel) hero(c ui.C, overview domain.StockOverview) {
-	ui.Column(c).Gap(4).Children(func() {
+	ui.Column(c).FillWidth().PadX(layout.Inset).PadY(layout.BlockGap).
+		Gap(4).Children(func() {
 		typography.Caption(c, "总资产")
 		typography.Metric(c, money(overview.TotalAssets))
 	})
@@ -209,30 +213,49 @@ func (p *accountPanel) metrics(c ui.C, overview domain.StockOverview) {
 		{"可用现金", money(overview.AvailableCash), nil},
 		{"仓位", percentOrDash(overview.PositionRatio), nil},
 	}
-	metricRows(c, len(metrics), func(c ui.C, index int) {
-		metric := metrics[index]
-		ui.Column(c).Grow(1).Basis(0).Gap(4).Children(func() {
-			typography.Caption(c, metric.label)
-			value := ui.Text(c, metric.value).FontSize(typography.SizeBody).Mono()
-			if metric.pnl != nil {
-				value.Color(pnlColor(*c.Theme(), *metric.pnl))
-			}
-		})
+	const perRow = 4
+	ui.Column(c).FillWidth().PadX(layout.Inset).
+		PadTop(layout.BlockGap).PadBottom(layout.Inset).
+		Gap(layout.BlockGap).Children(func() {
+		for start := 0; start < len(metrics); start += perRow {
+			ui.Row(c).FillWidth().Gap(layout.ColumnGap).Children(func() {
+				for index := start; index < start+perRow; index++ {
+					if index >= len(metrics) {
+						ui.Spacer(c).Grow(1).Basis(0)
+						continue
+					}
+					metric := metrics[index]
+					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4).Children(func() {
+						typography.Caption(c, metric.label)
+						value := ui.Text(c, metric.value).FontSize(typography.SizeSection).
+							Bold().Mono().Ellipsis()
+						if metric.pnl != nil {
+							value.Color(pnlColor(*c.Theme(), *metric.pnl))
+						}
+					})
+				}
+			})
+		}
 	})
 }
 
 func (p *accountPanel) fundSection(c ui.C) {
-	typography.Section(c, "资金变化记录")
-	if p.fund.Total == 0 {
-		typography.Caption(c, "还没有资金记录").
-			Color(c.Theme().MutedForeground).PadY(layout.RowHeight)
-		return
-	}
-	ui.Column(c).Children(func() {
-		fundHeader(c)
-		for _, record := range p.fund.Items {
-			fundRow(c, record)
+	ui.Column(c).Grow(1).MinHeight(0).Children(func() {
+		typography.Section(c, "资金变化记录").
+			PadSides(layout.BlockGap, layout.Inset, layout.Gap, layout.Inset)
+		if p.fund.Total == 0 {
+			ui.Column(c).Grow(1).MinHeight(0).Center().Children(func() {
+				typography.Caption(c, "还没有资金记录").
+					Color(c.Theme().MutedForeground)
+			})
+			return
 		}
+		fundHeader(c)
+		ui.Scroll(c).Grow(1).MinHeight(0).Children(func() {
+			for _, record := range p.fund.Items {
+				fundRow(c, record)
+			}
+		})
 		pagination.Bar(c, pagination.Spec{
 			Total: p.fund.Total, Page: p.page, PageSize: p.pageSize,
 			PageSizes: []int{10, 20, 50},
@@ -250,7 +273,7 @@ func (p *accountPanel) fundSection(c ui.C) {
 
 func fundHeader(c ui.C) {
 	theme := c.Theme()
-	ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().PadX(layout.BlockGap).
+	ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().PadX(layout.Inset).
 		Gap(layout.ColumnGap).Items(ui.Center).Background(theme.Muted).Children(func() {
 		ui.Text(c, "日期").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(92).TextCenter()
 		ui.Text(c, "事件").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(240)
@@ -262,7 +285,7 @@ func fundHeader(c ui.C) {
 
 func fundRow(c ui.C, record domain.StockFundRecord) {
 	theme := c.Theme()
-	ui.Row(c).MinHeight(layout.RowHeight).FillWidth().PadX(layout.BlockGap).
+	ui.Row(c).MinHeight(layout.RowHeight).FillWidth().PadX(layout.Inset).
 		Gap(layout.ColumnGap).Items(ui.Center).Children(func() {
 		ui.Text(c, record.RecordDate).FontSize(typography.SizeBody).Mono().Width(92).TextCenter()
 		ui.Text(c, record.EventText).FontSize(typography.SizeBody).Width(240).MaxLines(2)
