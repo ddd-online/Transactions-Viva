@@ -153,12 +153,17 @@ func (m *Model) itemRow(c ui.C, item *domain.TodoItem) {
 				if check.Clicked() {
 					m.setStatus(item.ID, domain.TodoStatusDone)
 				}
-				main := ui.Column(c).Grow(1).Gap(2).
-					Hit(ui.ID(c), "展开进度 "+item.Title).Children(func() {
-					typography.Body(c, item.Title).MaxLines(1).Ellipsis()
-					if expanded {
-						typography.Caption(c, "收起进度").Muted()
-					}
+				label := "展开进度 " + item.Title
+				if expanded {
+					label = "收起进度 " + item.Title
+				}
+				// The disclosure glyph sits on the title's line; the row keeps
+				// its 48 px rhythm with a single line whether open or closed.
+				main := ui.Row(c).Grow(1).Gap(6).Items(ui.Center).
+					Hit(ui.ID(c), label).Children(func() {
+					typography.Body(c, item.Title).MaxLines(1).Ellipsis().Shrink(1).MinWidth(0)
+					m.disclosure(c, expanded)
+					ui.Spacer(c)
 				})
 				if main.Clicked() {
 					m.expanded[item.ID] = !expanded
@@ -233,7 +238,7 @@ func (m *Model) disclosure(c ui.C, open bool) {
 }
 
 func (m *Model) progressSection(c ui.C, item *domain.TodoItem) {
-	ui.Column(c).FillWidth().PadSides(38, 14, 10, 14).Gap(6).Children(func() {
+	ui.Column(c).FillWidth().PadTop(2).PadRight(14).PadBottom(10).PadLeft(38).Gap(6).Children(func() {
 		ui.Divider(c)
 		for index := range item.Progress {
 			m.progressRow(c, &item.Progress[index])
