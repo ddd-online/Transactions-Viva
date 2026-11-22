@@ -426,13 +426,16 @@ func (p *statisticsPanel) cards(c ui.C) {
 	kelly := domain.KellyPercent(latest.Span, latest.WinCount, latest.PnlRatio)
 	avgWinColor := semantic.Expense(*theme)
 	avgLossColor := semantic.Income(*theme)
+	// These four have no red/green meaning: a loss-making cumulative PnL is
+	// still the primary reading, not an error-colored one.
+	primary := theme.Primary
 	cards := []struct {
 		label, hint, value, caption string
 		size                        float32
 		color                       *gfx.Color
 	}{
 		{pnlLabel, "", money(latest.TotalPnl), statScope(p.strategy, latest.Span),
-			typography.SizeTitle, statColor(*theme, latest.TotalPnl)},
+			typography.SizeTitle, &primary},
 		{"凯利值", "按胜率与盈亏比算出的下注比例", kellyText(kelly), kellyCaption(kelly),
 			typography.SizeSection, nil},
 		{"平均盈利", domain.MetricHint(domain.MetricAvgWin), money(latest.AvgWin),
@@ -440,11 +443,11 @@ func (p *statisticsPanel) cards(c ui.C) {
 		{"平均亏损", domain.MetricHint(domain.MetricAvgLoss), money(latest.AvgLoss),
 			strconv.Itoa(latest.LossCount) + " 笔亏损", typography.SizeSection, &avgLossColor},
 		{"胜率", domain.MetricHint(domain.MetricWinRate), statPercent(latest.WinRate),
-			winLossCaption(latest), typography.SizeSection, nil},
+			winLossCaption(latest), typography.SizeSection, &primary},
 		{"盈亏比", domain.MetricHint(domain.MetricPnlRatio), ratioText(latest.PnlRatio),
-			"", typography.SizeSection, nil},
+			"", typography.SizeSection, &primary},
 		{"期望值", domain.MetricHint(domain.MetricExpectancy), money(latest.Expectancy),
-			"", typography.SizeSection, statColor(*theme, latest.Expectancy)},
+			"", typography.SizeSection, &primary},
 		{"最大回撤", domain.MetricHint(domain.MetricMaxDrawdown),
 			statPercent(latest.MaxDrawdownPct), "从高点回落 " + money(latest.MaxDrawdown),
 			typography.SizeSection, nil},
