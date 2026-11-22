@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
   发布：校验版本 / 标签 / 工作树 / 产物 / 发布说明 → 创建 GitHub Release 并上传安装包。
 
