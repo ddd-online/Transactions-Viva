@@ -54,10 +54,12 @@ type recordsPanel struct {
 	// lessonsPanel.OpenForRound). A nil callback hides the button.
 	openRound func(code, roundID string)
 
-	histories []domain.StockHistoryItem
-	details   map[string]*domain.StockHistoryDetail
-	summary   domain.StockHistorySummary
-	selected  string
+	histories   []domain.StockHistoryItem
+	historyView []int
+	historyFind ui.Field
+	details     map[string]*domain.StockHistoryDetail
+	summary     domain.StockHistorySummary
+	selected    string
 	// accountID is the account the loaded data belongs to; a reload after a
 	// switch elsewhere in the section drops the old selection and overlays.
 	accountID string
@@ -179,6 +181,8 @@ func (p *recordsPanel) Reload() {
 		p.expanded = map[string]bool{}
 		p.roundTagValues = map[string]*string{}
 		p.quoteMap = map[string]domain.StockQuote{}
+		p.historyFind.SetText("")
+		p.historyView = nil
 		p.tags = nil
 		p.reviewTemplate = ""
 	}
@@ -213,6 +217,7 @@ func (p *recordsPanel) Reload() {
 		return
 	}
 	p.histories, p.details, p.summary = assembleRecordHistory(histories, trades, rounds, days, ledgers)
+	p.rebuildHistoryView(p.historyFind.Text())
 	if tags, err := p.repo.StockTradeTags(ctx, active); err == nil {
 		p.tags = tags
 	} else {
@@ -229,6 +234,7 @@ func (p *recordsPanel) Reload() {
 func (p *recordsPanel) fail(message string) {
 	p.errorMessage = message
 	p.histories, p.details = nil, nil
+	p.historyView = nil
 	p.summary = domain.StockHistorySummary{}
 	p.selected, p.defaultedFor, p.arrivedRound, p.scrollRound = "", "", "", ""
 	p.expanded = map[string]bool{}
@@ -236,6 +242,7 @@ func (p *recordsPanel) fail(message string) {
 
 func (p *recordsPanel) clear() {
 	p.histories, p.details = nil, nil
+	p.historyView = nil
 	p.summary = domain.StockHistorySummary{}
 	p.selected, p.defaultedFor, p.arrivedRound, p.scrollRound = "", "", "", ""
 	p.expanded = map[string]bool{}
@@ -301,12 +308,33 @@ func (p *recordsPanel) ensureSelection() {
 // syncHistorySelection mirrors the panel's choice into the rail list so its
 // keyboard path starts from the same row.
 func (p *recordsPanel) syncHistorySelection() {
-	for index := range p.histories {
-		if p.histories[index].History.StockCode == p.selected {
+	if p.selected == "" {
+		p.historyList.Select(-1)
+		return
+	}
+	for index, full := range p.historyView {
+		if p.histories[full].History.StockCode == p.selected {
 			if p.historyList.Selected() != index {
 				p.historyList.Select(index)
 			}
 			return
+		}
+	}
+	p.historyList.Select(-1)
+}
+
+// rebuildHistoryView applies the rail's search box to the full history. The
+// query is matched as a substring of the stock name or code, so typing 600 or
+// 浦发 narrows the rail on the next paint.
+func (p *recordsPanel) rebuildHistoryView(query string) {
+	query = strings.ToLower(strings.TrimSpace(query))
+	p.historyView = p.historyView[:0]
+	for index := range p.histories {
+		history := p.histories[index].History
+		if query == "" ||
+			strings.Contains(strings.ToLower(history.StockName), query) ||
+			strings.Contains(strings.ToLower(history.StockCode), query) {
+			p.historyView = append(p.historyView, index)
 		}
 	}
 }
@@ -343,10 +371,10 @@ func (p *recordsPanel) FocusRound(code, roundID string) {
 
 // chooseHistory switches the right column to one stock's card.
 func (p *recordsPanel) chooseHistory(index int) {
-	if index < 0 || index >= len(p.histories) {
+	if index < 0 || index >= len(p.historyView) {
 		return
 	}
-	code := p.histories[index].History.StockCode
+	code := p.histories[p.historyView[index]].History.StockCode
 	if code == p.selected {
 		return
 	}
@@ -419,6 +447,8 @@ func (p *recordsPanel) toolbar(c ui.C) {
 // historyRail is the 240 px list of closed stocks. Its cards carry the current
 // price and accumulated profit, then the round count, last close and rate.
 func (p *recordsPanel) historyRail(c ui.C) {
+	p.rebuildHistoryView(p.historyFind.Text())
+	p.syncHistorySelection()
 	ui.Column(c).Width(layout.RailWidth).MinWidth(layout.RailWidth).Shrink(0).
 		FillHeight().Children(func() {
 		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
@@ -436,19 +466,34 @@ func (p *recordsPanel) historyRail(c ui.C) {
 			}
 			return
 		}
-		ui.List(c, &p.historyList, len(p.histories), p.historyRow).
+		if len(p.historyView) == 0 {
+			typography.Caption(c, "没有匹配的股票").PadX(12).PadY(8).
+				Color(c.Theme().MutedForeground)
+		} else {
+			// Keep the same Text node in both states: removing it would shift
+			// the search field's identity and could drop its focus.
+			ui.Text(c, "").Height(0)
+		}
+		// Keep the list in the tree even when the filter matches nothing: its
+		// removal would shift the search field's identity and drop its focus.
+		ui.List(c, &p.historyList, len(p.historyView), p.historyRow).
 			Label("已清仓股票").Grow(1)
 		if p.historyList.Changed() {
 			p.chooseHistory(p.historyList.Selected())
 		}
+		ui.Divider(c)
+		ui.Column(c).FillWidth().PadX(layout.Inset).PadY(8).Children(func() {
+			ui.TextFieldID(c, ui.ID(c), &p.historyFind, "搜索股票", "股票名称或代码").
+				FillWidth()
+		})
 	})
 }
 
 func (p *recordsPanel) historyRow(row ui.ListRow) {
-	if row.Index < 0 || row.Index >= len(p.histories) {
+	if row.Index < 0 || row.Index >= len(p.historyView) {
 		return
 	}
-	item := p.histories[row.Index]
+	item := p.histories[p.historyView[row.Index]]
 	history := item.History
 	theme := row.C.Theme()
 	active := history.StockCode == p.selected
@@ -500,10 +545,10 @@ func (p *recordsPanel) historyRow(row ui.ListRow) {
 }
 
 func (p *recordsPanel) historyLabel(index int) string {
-	if index < 0 || index >= len(p.histories) {
+	if index < 0 || index >= len(p.historyView) {
 		return ""
 	}
-	history := p.histories[index].History
+	history := p.histories[p.historyView[index]].History
 	return historyStockTitle(history.StockName, history.StockCode)
 }
 

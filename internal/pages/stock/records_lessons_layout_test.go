@@ -125,6 +125,9 @@ func TestRecordsPanelFitsMinimumWindow(t *testing.T) {
 
 	snapshot := driver.Snapshot()
 	assertFitsWidth(t, snapshot)
+	if _, ok := snapshotHit(driver, "搜索股票"); !ok {
+		t.Fatal("the history rail has no search field")
+	}
 	round, ok := snapshotHit(driver, "收起第 6 轮")
 	if !ok {
 		t.Fatal("the largest round is not expanded by default")
@@ -147,6 +150,42 @@ func TestRecordsPanelFitsMinimumWindow(t *testing.T) {
 	}
 	if !opened {
 		t.Fatal("clicking a round header did not expand it")
+	}
+}
+
+// TestRecordsHistorySearchFilters checks the substring filter used by the
+// history rail: empty shows all, a name or a code fragment narrows it, and
+// surrounding spaces are ignored.
+func TestRecordsHistorySearchFilters(t *testing.T) {
+	panel := newRecordsPanel(newAccountStore())
+	panel.histories = []domain.StockHistoryItem{
+		{History: domain.StockTradeHistory{StockCode: "600000", StockName: "浦发银行"}},
+		{History: domain.StockTradeHistory{StockCode: "000158", StockName: "常山北明"}},
+		{History: domain.StockTradeHistory{StockCode: "600418", StockName: "江淮汽车"}},
+	}
+	cases := []struct {
+		query string
+		codes []string
+	}{
+		{"", []string{"600000", "000158", "600418"}},
+		{"600", []string{"600000", "600418"}},
+		{"浦发", []string{"600000"}},
+		{"0158", []string{"000158"}},
+		{" 600 ", []string{"600000", "600418"}},
+		{"不存在", nil},
+	}
+	for _, test := range cases {
+		panel.rebuildHistoryView(test.query)
+		if len(panel.historyView) != len(test.codes) {
+			t.Fatalf("query %q matched %d rows, want %d", test.query,
+				len(panel.historyView), len(test.codes))
+		}
+		for index, full := range panel.historyView {
+			if got := panel.histories[full].History.StockCode; got != test.codes[index] {
+				t.Fatalf("query %q index %d = %q, want %q", test.query,
+					index, got, test.codes[index])
+			}
+		}
 	}
 }
 
