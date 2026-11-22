@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -144,5 +145,155 @@ func TestImportOldRefusesExistingDatabase(t *testing.T) {
 	defer workspace.Close()
 	if _, err := ImportOld(destination, source, false); err == nil {
 		t.Fatal("import wrote over an existing workspace")
+	}
+}
+
+// addOldEvents gives an old fixture the event tables the old application had,
+// two ledgers' events on the same day and image rows with real files. The
+// second image's thumbnail is deliberately absent, to exercise the warning.
+func addOldEvents(t *testing.T, source string) {
+	t.Helper()
+	db, err := sql.Open("sqlite", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	statements := []string{
+		`CREATE TABLE key_event (
+			id TEXT PRIMARY KEY, date TEXT NOT NULL, title TEXT, content TEXT, color TEXT,
+			created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, ledger_id TEXT NOT NULL DEFAULT '')`,
+		`CREATE TABLE key_event_image (
+			id TEXT PRIMARY KEY, ledger_id TEXT NOT NULL DEFAULT '', event_date TEXT NOT NULL,
+			file_path TEXT NOT NULL DEFAULT '', thumb_path TEXT NOT NULL DEFAULT '',
+			original_path TEXT NOT NULL DEFAULT '', motion_path TEXT NOT NULL DEFAULT '',
+			sort_order INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL)`,
+		"INSERT INTO key_event (id, date, title, content, color, created_at, updated_at, ledger_id) VALUES " +
+			"('e1', '2026-01-15', '年会', '旧正文', '#C6963A', 100, 200, 'l1')",
+		"INSERT INTO key_event (id, date, title, content, color, created_at, updated_at, ledger_id) VALUES " +
+			"('e2', '2026-01-15', '聚餐', '另一份', '#D9705A', 150, 300, 'l2')",
+		"INSERT INTO key_event_image (id, ledger_id, event_date, file_path, thumb_path, original_path, motion_path, sort_order, created_at) VALUES " +
+			"('i1', 'l1', '2026-01-15', 'key_events/2026-01-15/i1.png', 'key_events/2026-01-15/thumb_i1.jpg', '', '', 1, 100)",
+		"INSERT INTO key_event_image (id, ledger_id, event_date, file_path, thumb_path, original_path, motion_path, sort_order, created_at) VALUES " +
+			"('i2', 'l2', '2026-01-15', 'key_events/2026-01-15/i2.jpg', 'key_events/2026-01-15/thumb_i2.jpg', '', '', 1, 150)",
+	}
+	for _, statement := range statements {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatalf("%s: %v", statement, err)
+		}
+	}
+	assets := filepath.Join(filepath.Dir(source), "data", "assets", "key_events", "2026-01-15")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, data := range map[string]string{
+		"i1.png": "display-one", "thumb_i1.jpg": "thumb-one", "i2.jpg": "display-two",
+	} {
+		if err := os.WriteFile(filepath.Join(assets, name), []byte(data), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestImportOldMergesEventsAndCopiesImages(t *testing.T) {
+	source := oldFixture(t)
+	addOldEvents(t, source)
+	destination := filepath.Join(t.TempDir(), "imported")
+	report, err := ImportOld(destination, source, false)
+	if err != nil {
+		t.Fatalf("ImportOld: %v", err)
+	}
+	if report.Events != 1 || report.EventImages != 2 || report.EventImageFiles != 3 {
+		t.Fatalf("report = %+v", report)
+	}
+	if len(report.MergedEvents) != 1 {
+		t.Fatalf("merged events = %+v", report.MergedEvents)
+	}
+	if len(report.MissingAssets) != 1 || !strings.Contains(report.MissingAssets[0], "thumb_i2.jpg") {
+		t.Fatalf("missing assets = %+v", report.MissingAssets)
+	}
+
+	workspace, err := Open(destination)
+	if err != nil {
+		t.Fatalf("open destination: %v", err)
+	}
+	defer workspace.Close()
+	events, err := workspace.KeyEventsByYear(t.Context(), "2026")
+	if err != nil || len(events) != 1 {
+		t.Fatalf("events = %+v, err=%v", events, err)
+	}
+	event := events[0]
+	if event.ID != "e2" || event.Title != "聚餐" || event.Content != "另一份" || event.Color != "#D9705A" {
+		t.Fatalf("merged event = %+v", event)
+	}
+	images, err := workspace.KeyEventImages(t.Context(), "2026-01-15")
+	if err != nil || len(images) != 2 {
+		t.Fatalf("images = %+v, err=%v", images, err)
+	}
+	if images[0].ID != "i1" || images[0].SortOrder != 1 || images[1].ID != "i2" || images[1].SortOrder != 2 {
+		t.Fatalf("images = %+v", images)
+	}
+	for _, image := range images {
+		for _, relative := range []string{image.FilePath, image.ThumbPath} {
+			if relative == "key_events/2026-01-15/thumb_i2.jpg" {
+				continue
+			}
+			if _, err := os.Stat(filepath.Join(destination, "data", "assets", filepath.FromSlash(relative))); err != nil {
+				t.Fatalf("imported asset %q: %v", relative, err)
+			}
+		}
+	}
+}
+
+func TestImportOldNormalizesTheTwoDarkenedEventColors(t *testing.T) {
+	source := oldFixture(t)
+	db, err := sql.Open("sqlite", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`CREATE TABLE key_event (
+		id TEXT PRIMARY KEY, date TEXT NOT NULL, title TEXT, content TEXT, color TEXT,
+		created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, ledger_id TEXT NOT NULL DEFAULT '')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("INSERT INTO key_event (id, date, title, content, color, created_at, updated_at, ledger_id) " +
+		"VALUES ('e1', '2026-02-02', '旧色', '', '#c6963a', 1, 2, 'l1')"); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+
+	destination := filepath.Join(t.TempDir(), "imported")
+	if _, err := ImportOld(destination, source, false); err != nil {
+		t.Fatalf("ImportOld: %v", err)
+	}
+	workspace, err := Open(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer workspace.Close()
+	event, err := workspace.KeyEvent(t.Context(), "2026-02-02")
+	if err != nil || event.Color != "#B08534" {
+		t.Fatalf("colour = %q, err=%v", event.Color, err)
+	}
+}
+
+func TestImportOldStrictRejectsOrphanEventImages(t *testing.T) {
+	source := oldFixture(t)
+	addOldEvents(t, source)
+	db, err := sql.Open("sqlite", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("INSERT INTO key_event_image (id, ledger_id, event_date, file_path, sort_order, created_at) " +
+		"VALUES ('orphan', 'l1', '2026-03-03', 'key_events/2026-03-03/x.jpg', 1, 100)"); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+
+	destination := filepath.Join(t.TempDir(), "rejected")
+	if _, err := ImportOld(destination, source, true); err == nil {
+		t.Fatal("strict import accepted an image without an event")
+	}
+	if _, err := os.Stat(filepath.Join(destination, "transactions.db")); !os.IsNotExist(err) {
+		t.Fatalf("failed import left a database: %v", err)
 	}
 }

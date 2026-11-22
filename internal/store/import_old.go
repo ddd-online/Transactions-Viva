@@ -5,29 +5,49 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+
+	"transactions/internal/domain"
 )
 
 // ImportReport is what an old-workspace import copied and what it noticed.
 type ImportReport struct {
-	Ledgers      int
-	Categories   int
-	Tags         int
-	Records      int
-	RecordTags   int
-	Templates    int
-	Charts       int
-	Orphans      []string
-	SourceSchema int
+	Ledgers         int
+	Categories      int
+	Tags            int
+	Records         int
+	RecordTags      int
+	Templates       int
+	Charts          int
+	Events          int
+	EventImages     int
+	EventImageFiles int
+	Orphans         []string
+	// MergedEvents explains old events that shared a date with another ledger:
+	// the destination keeps one event per day, so a merge is data the user
+	// should hear about (the old workspace still has the dropped copy).
+	MergedEvents []string
+	// MissingAssets are image files the old workspace did not have. Their rows
+	// are still imported; the page shows the picture as missing.
+	MissingAssets []string
+	SourceSchema  int
 }
 
-// ImportOld copies the five accounting tables from an old application database
-// into a new workspace. The old database is opened read-only; the destination
-// must be a new directory or an empty one. The old stock/event/diary/todo
-// tables are deliberately ignored; saved charts are copied when present.
+// ImportOld copies the old application's data into a new workspace. The old
+// database is opened read-only; the destination must be a new directory or an
+// empty one. The accounting tables, saved charts and key events (with their
+// image files) are copied; the old stock, diary and todo tables are deliberately
+// ignored.
+//
+// Events are the one place the shapes differ: the old application stored one
+// event per (ledger, date), while this workspace keeps one per date. Events that
+// share a date are merged into the newest row and reported, and every image of
+// that date is kept.
 func ImportOld(destinationDirectory, sourceDatabase string, strict bool) (ImportReport, error) {
 	var report ImportReport
 	if strings.TrimSpace(sourceDatabase) == "" {
@@ -77,6 +97,10 @@ func ImportOld(destinationDirectory, sourceDatabase string, strict bool) (Import
 		return report, fmt.Errorf("导入：旧库有 %d 处孤儿数据（-strict），%s", len(report.Orphans), strings.Join(report.Orphans, "；"))
 	}
 
+	hasEvents, err := tableExists(source, "key_event")
+	if err != nil {
+		return report, err
+	}
 	workspace, err := Open(destinationDirectory)
 	if err != nil {
 		return report, err
@@ -85,12 +109,14 @@ func ImportOld(destinationDirectory, sourceDatabase string, strict bool) (Import
 		_ = workspace.Close()
 		if err != nil {
 			cleanupDatabase(destinationPath)
+			_ = os.RemoveAll(filepath.Join(destinationDirectory, "data", "assets"))
 		}
 	}()
 	db, err := workspace.dbHandle()
 	if err != nil {
 		return report, err
 	}
+	var eventImages []domain.KeyEventImage
 
 	err = inTx(context.Background(), db, func(tx *sql.Tx) error {
 		if report.Ledgers, err = copyLedgers(source, tx); err != nil {
@@ -118,10 +144,22 @@ func ImportOld(destinationDirectory, sourceDatabase string, strict bool) (Import
 				return err
 			}
 		}
+		if hasEvents {
+			events, images, merged, err := copyKeyEvents(source, tx)
+			if err != nil {
+				return err
+			}
+			report.Events, report.EventImages = events, len(images)
+			report.MergedEvents = merged
+			eventImages = images
+		}
 		return nil
 	})
 	if err != nil {
 		return report, fmt.Errorf("导入：写入目标库失败（%w）", err)
+	}
+	if len(eventImages) > 0 {
+		report.EventImageFiles, report.MissingAssets = copyEventAssets(sourcePath, destinationDirectory, eventImages)
 	}
 	return report, nil
 }
@@ -178,6 +216,21 @@ func oldOrphans(db *sql.DB) ([]string, error) {
 		{"标签指向不存在的账本", "SELECT COUNT(*) FROM tag WHERE ledger_id NOT IN (SELECT id FROM ledger)"},
 		{"记录标签指向不存在的记录", "SELECT COUNT(*) FROM transaction_record_tag WHERE transaction_id NOT IN (SELECT transaction_id FROM transaction_record)"},
 		{"记录标签指向不存在的账本", "SELECT COUNT(*) FROM transaction_record_tag WHERE ledger_id NOT IN (SELECT id FROM ledger)"},
+	}
+	hasImages, err := tableExists(db, "key_event_image")
+	if err != nil {
+		return nil, err
+	}
+	hasEvents, err := tableExists(db, "key_event")
+	if err != nil {
+		return nil, err
+	}
+	if hasImages && hasEvents {
+		checks = append(checks, struct {
+			label string
+			query string
+		}{"图片指向不存在的事件", "SELECT COUNT(*) FROM key_event_image i WHERE NOT EXISTS " +
+			"(SELECT 1 FROM key_event e WHERE e.ledger_id = i.ledger_id AND e.date = i.event_date)"})
 	}
 	var orphans []string
 	for _, check := range checks {
@@ -425,4 +478,304 @@ func cleanupDatabase(path string) {
 	for _, suffix := range []string{"", "-wal", "-shm"} {
 		_ = os.Remove(path + suffix)
 	}
+}
+
+// oldEvent is one row of the old key_event table.
+type oldEvent struct {
+	id        string
+	date      string
+	title     string
+	content   string
+	color     string
+	createdAt int64
+	updatedAt int64
+	ledgerID  string
+}
+
+// copyKeyEvents copies the old per-ledger events into the workspace's one
+// per-date table. The same date may exist in several ledgers; the newest row
+// supplies the text and every image of that date is kept, which is reported so
+// the user knows a second copy existed.
+func copyKeyEvents(source *sql.DB, tx *sql.Tx) (int, []domain.KeyEventImage, []string, error) {
+	rows, err := source.Query(
+		"SELECT id, date, COALESCE(title, ''), COALESCE(content, ''), COALESCE(color, ''), " +
+			"created_at, updated_at, COALESCE(ledger_id, '') FROM key_event")
+	if err != nil {
+		return 0, nil, nil, err
+	}
+	byDate := map[string][]oldEvent{}
+	var dates []string
+	for rows.Next() {
+		var event oldEvent
+		if err := rows.Scan(&event.id, &event.date, &event.title, &event.content, &event.color,
+			&event.createdAt, &event.updatedAt, &event.ledgerID); err != nil {
+			rows.Close()
+			return 0, nil, nil, err
+		}
+		if _, exists := byDate[event.date]; !exists {
+			dates = append(dates, event.date)
+		}
+		byDate[event.date] = append(byDate[event.date], event)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return 0, nil, nil, err
+	}
+	rows.Close()
+	sort.Strings(dates)
+	ledgerNames := oldLedgerNames(source)
+
+	imported := map[string]bool{}
+	var merged []string
+	for _, date := range dates {
+		group := byDate[date]
+		survivor := group[0]
+		for _, event := range group[1:] {
+			if event.updatedAt > survivor.updatedAt ||
+				(event.updatedAt == survivor.updatedAt && event.id < survivor.id) {
+				survivor = event
+			}
+		}
+		if _, err := tx.Exec(
+			"INSERT INTO key_event (id, date, title, content, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+			survivor.id, survivor.date, survivor.title, survivor.content,
+			normalizeOldEventColor(survivor.color), survivor.createdAt, survivor.updatedAt,
+		); err != nil {
+			return 0, nil, nil, err
+		}
+		imported[date] = true
+		if len(group) > 1 {
+			var dropped []string
+			for _, event := range group {
+				if event.id == survivor.id {
+					continue
+				}
+				dropped = append(dropped, "「"+oldEventName(event)+"」（"+oldLedgerName(ledgerNames, event.ledgerID)+"）")
+			}
+			merged = append(merged, fmt.Sprintf("事件 %s：保留「%s」（%s），并入 %s",
+				date, oldEventName(survivor), oldLedgerName(ledgerNames, survivor.ledgerID),
+				strings.Join(dropped, "、")))
+		}
+	}
+
+	hasImages, err := tableExists(source, "key_event_image")
+	if err != nil {
+		return 0, nil, nil, err
+	}
+	if !hasImages {
+		return len(dates), nil, merged, nil
+	}
+	images, err := oldEventImages(source)
+	if err != nil {
+		return 0, nil, nil, err
+	}
+	sort.SliceStable(images, func(i, j int) bool {
+		left, right := images[i], images[j]
+		if left.EventDate != right.EventDate {
+			return left.EventDate < right.EventDate
+		}
+		if left.CreatedAt != right.CreatedAt {
+			return left.CreatedAt < right.CreatedAt
+		}
+		if left.SortOrder != right.SortOrder {
+			return left.SortOrder < right.SortOrder
+		}
+		return left.ID < right.ID
+	})
+	nextOrder := 1
+	lastDate := ""
+	var kept []domain.KeyEventImage
+	for _, image := range images {
+		if !imported[image.EventDate] {
+			// oldOrphans reports these; a non-strict import leaves them out.
+			continue
+		}
+		if image.EventDate != lastDate {
+			nextOrder, lastDate = 1, image.EventDate
+		}
+		image.SortOrder = nextOrder
+		nextOrder++
+		if _, err := tx.Exec(
+			"INSERT INTO key_event_image (id, event_date, file_path, thumb_path, original_path, "+
+				"motion_path, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+			image.ID, image.EventDate, image.FilePath, image.ThumbPath, image.OriginalPath,
+			image.MotionPath, image.SortOrder, image.CreatedAt,
+		); err != nil {
+			return 0, nil, nil, err
+		}
+		kept = append(kept, image)
+	}
+	return len(dates), kept, merged, nil
+}
+
+// oldEventImages reads the old image rows, tolerating a table from before the
+// original_path / motion_path columns existed.
+func oldEventImages(source *sql.DB) ([]domain.KeyEventImage, error) {
+	columns := []string{
+		"SELECT id, COALESCE(ledger_id, ''), event_date, file_path, thumb_path, ",
+	}
+	original := "''"
+	if exists, err := tableHasColumn(source, "key_event_image", "original_path"); err != nil {
+		return nil, err
+	} else if exists {
+		original = "original_path"
+	}
+	motion := "''"
+	if exists, err := tableHasColumn(source, "key_event_image", "motion_path"); err != nil {
+		return nil, err
+	} else if exists {
+		motion = "motion_path"
+	}
+	query := columns[0] + original + ", " + motion +
+		", sort_order, created_at FROM key_event_image"
+	rows, err := source.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var images []domain.KeyEventImage
+	var ledgerID string
+	for rows.Next() {
+		var image domain.KeyEventImage
+		if err := rows.Scan(&image.ID, &ledgerID, &image.EventDate, &image.FilePath,
+			&image.ThumbPath, &image.OriginalPath, &image.MotionPath,
+			&image.SortOrder, &image.CreatedAt); err != nil {
+			return nil, err
+		}
+		images = append(images, image)
+	}
+	return images, rows.Err()
+}
+
+// oldLedgerNames maps ledger ids to names for the merge report.
+func oldLedgerNames(source *sql.DB) map[string]string {
+	names := map[string]string{}
+	rows, err := source.Query("SELECT id, name FROM ledger")
+	if err != nil {
+		return names
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err == nil {
+			names[id] = name
+		}
+	}
+	return names
+}
+
+// oldEventName is what a report calls an old event.
+func oldEventName(event oldEvent) string {
+	if title := strings.TrimSpace(event.title); title != "" {
+		return title
+	}
+	if event.date != "" {
+		return event.date
+	}
+	return event.id
+}
+
+// oldLedgerName names the old event's ledger; an unknown id is shown as written.
+func oldLedgerName(names map[string]string, id string) string {
+	if name := names[id]; name != "" {
+		return name
+	}
+	if id == "" {
+		return "未知账本"
+	}
+	return id
+}
+
+// normalizeOldEventColor maps the two identity colours the old application
+// darkened (its migration event_tone_contrast) to the values this palette
+// carries. The importer opens the old database read-only, so that migration
+// never ran against a very old workspace.
+func normalizeOldEventColor(value string) string {
+	switch strings.ToUpper(strings.TrimSpace(value)) {
+	case "#C6963A":
+		return "#B08534"
+	case "#D48838":
+		return "#C17C33"
+	}
+	return value
+}
+
+// copyEventAssets copies the event image files the imported rows name. A file
+// the old workspace no longer has is reported, not fatal: the row still tells
+// the page which picture belonged there.
+func copyEventAssets(sourcePath, destinationDirectory string, images []domain.KeyEventImage) (int, []string) {
+	sourceRoot := filepath.Join(filepath.Dir(sourcePath), "data", "assets")
+	destinationRoot := filepath.Join(destinationDirectory, "data", "assets")
+	copied := 0
+	var missing []string
+	seen := map[string]bool{}
+	for _, image := range images {
+		for _, relative := range []string{image.FilePath, image.ThumbPath, image.OriginalPath, image.MotionPath} {
+			if relative == "" || seen[relative] {
+				continue
+			}
+			seen[relative] = true
+			sourceFile, ok := joinAssetPath(sourceRoot, relative)
+			if !ok {
+				missing = append(missing, relative+"（路径非法）")
+				continue
+			}
+			if info, err := os.Stat(sourceFile); err != nil || info.IsDir() {
+				missing = append(missing, relative+"（旧工作空间里没有这个文件）")
+				continue
+			}
+			destinationFile, ok := joinAssetPath(destinationRoot, relative)
+			if !ok {
+				missing = append(missing, relative+"（路径非法）")
+				continue
+			}
+			if err := os.MkdirAll(filepath.Dir(destinationFile), 0o755); err != nil {
+				missing = append(missing, relative+"（"+err.Error()+"）")
+				continue
+			}
+			if err := copyFileBytes(sourceFile, destinationFile); err != nil {
+				missing = append(missing, relative+"（"+err.Error()+"）")
+				continue
+			}
+			copied++
+		}
+	}
+	return copied, missing
+}
+
+// joinAssetPath resolves a stored relative path under root, refusing escapes.
+func joinAssetPath(root, relative string) (string, bool) {
+	rootAbs, err := filepath.Abs(root)
+	if err != nil {
+		return "", false
+	}
+	candidate := filepath.Join(rootAbs, filepath.FromSlash(relative))
+	rel, err := filepath.Rel(rootAbs, candidate)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", false
+	}
+	return candidate, true
+}
+
+// copyFileBytes copies one file, removing a partly written destination.
+func copyFileBytes(source, destination string) error {
+	in, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.Create(destination)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		_ = os.Remove(destination)
+		return err
+	}
+	if err := out.Close(); err != nil {
+		_ = os.Remove(destination)
+		return err
+	}
+	return nil
 }
