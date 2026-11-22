@@ -71,73 +71,86 @@ func stockFeeFormOf(fee domain.StockFeeSetting) stockFeeForm {
 // stockSettingsSection is 设置 · 股票设置: the stock tab's old 设置 screen,
 // moved into the settings page and laid out as groups of settings rows.
 func (m *Model) stockSettingsSection(c ui.C, spec Spec) {
-	ui.Column(c).FillWidth().Gap(layout.GroupGap).Children(func() {
-		controls.Section(c, "账户", func() { m.stockAccounts(c, spec) })
-		if spec.Stock == nil {
-			if spec.StockError != "" {
+	groups := []controls.GroupSpec{{
+		Title: "账户",
+		Body:  func() { m.stockAccountRows(c, spec) },
+	}}
+	if spec.Stock == nil {
+		if spec.StockError != "" {
+			groups = append(groups, controls.GroupSpec{Raw: true, Body: func() {
 				typography.Caption(c, spec.StockError).Color(c.Theme().Danger)
-			}
-			return
+			}})
 		}
-		stock := spec.Stock
+		controls.Page(c, "股票设置", groups...)
+		return
+	}
+	stock := spec.Stock
+	groups = append(groups,
+		controls.GroupSpec{Title: "交易与复盘", Body: func() {
+			m.stockTradeSettings(c, spec, stock)
+		}},
+		controls.GroupSpec{Title: "数据管理", Body: func() {
+			m.stockDataSettings(c, spec, stock)
+		}},
+	)
+	controls.Page(c, "股票设置", groups...)
+}
 
-		controls.Group(c, "交易与复盘", func() {
-			m.stockTagsRow(c, spec, stock)
-			ui.Divider(c)
-			controls.Row(c, "本轮复盘模板", "最多 200 字；留空使用内置模板。", func() {
-				if ui.Button(c, "修改").Secondary().Clicked() {
-					m.openStockTemplate(stock, false)
-				}
-			})
-			ui.Divider(c)
-			controls.Row(c, "每日复盘模板", "最多 200 字；留空使用内置模板。", func() {
-				if ui.Button(c, "修改").Secondary().Clicked() {
-					m.openStockTemplate(stock, true)
-				}
-			})
-			ui.Divider(c)
-			controls.Row(c, "交易费用", stockFeeSummary(stock.Fee), func() {
-				if ui.Button(c, "修改").Secondary().Clicked() {
-					m.stock.feeForm = stockFeeFormOf(stock.Fee)
-					m.stock.feeError = ""
-					m.stock.feeOpen = true
-				}
-			})
-		})
-
-		controls.Group(c, "数据管理", func() {
-			controls.Row(c, "最近操作",
-				"追加本金、支取、利息归本和每笔委托各记一条，保留最近 10 条；回滚会撤销最近一次操作。",
-				func() {
-					if ui.Button(c, "查看记录").Secondary().Clicked() {
-						m.stock.operationsOpen = true
-					}
-					rollback := ui.Button(c, "回滚").Secondary().Disabled(len(stock.Operations) == 0)
-					if len(stock.Operations) == 0 {
-						rollback = rollback.Tooltip("暂无可回滚的操作")
-					}
-					if rollback.Clicked() {
-						m.rollbackStock(spec)
-					}
-				})
-			ui.Divider(c)
-			controls.Row(c, "归档到新账户",
-				"把当前账户的本金、资金记录和全部股票数据迁到新账户；原账户只保留标签、模板和费用设置。归档前请先清空全部持仓。",
-				func() {
-					if ui.Button(c, "归档到新账户").Secondary().Clicked() {
-						m.stock.archiveOpen, m.stock.archiveError, m.stock.archiveName = true, "", ""
-					}
-				})
-			ui.Divider(c)
-			controls.Row(c, "重置股票数据",
-				"清空当前账户的全部股票数据，包括本金、资金、持仓、成交、轮次、复盘、心得、标签、模板与费用设置。此操作不可恢复。",
-				func() {
-					if ui.Button(c, "重置股票数据").Destructive().Clicked() {
-						m.stock.resetOpen = true
-					}
-				})
-		})
+func (m *Model) stockTradeSettings(c ui.C, spec Spec, stock *StockConfig) {
+	m.stockTagsRow(c, spec, stock)
+	ui.Divider(c)
+	controls.Row(c, "本轮复盘模板", "最多 200 字；留空使用内置模板。", func() {
+		if ui.Button(c, "修改").Secondary().Clicked() {
+			m.openStockTemplate(stock, false)
+		}
 	})
+	ui.Divider(c)
+	controls.Row(c, "每日复盘模板", "最多 200 字；留空使用内置模板。", func() {
+		if ui.Button(c, "修改").Secondary().Clicked() {
+			m.openStockTemplate(stock, true)
+		}
+	})
+	ui.Divider(c)
+	controls.Row(c, "交易费用", stockFeeSummary(stock.Fee), func() {
+		if ui.Button(c, "修改").Secondary().Clicked() {
+			m.stock.feeForm = stockFeeFormOf(stock.Fee)
+			m.stock.feeError = ""
+			m.stock.feeOpen = true
+		}
+	})
+}
+
+func (m *Model) stockDataSettings(c ui.C, spec Spec, stock *StockConfig) {
+	controls.Row(c, "最近操作",
+		"追加本金、支取、利息归本和每笔委托各记一条，保留最近 10 条；回滚会撤销最近一次操作。",
+		func() {
+			if ui.Button(c, "查看记录").Secondary().Clicked() {
+				m.stock.operationsOpen = true
+			}
+			rollback := ui.Button(c, "回滚").Secondary().Disabled(len(stock.Operations) == 0)
+			if len(stock.Operations) == 0 {
+				rollback = rollback.Tooltip("暂无可回滚的操作")
+			}
+			if rollback.Clicked() {
+				m.rollbackStock(spec)
+			}
+		})
+	ui.Divider(c)
+	controls.Row(c, "归档到新账户",
+		"把当前账户的本金、资金记录和全部股票数据迁到新账户；原账户只保留标签、模板和费用设置。归档前请先清空全部持仓。",
+		func() {
+			if ui.Button(c, "归档到新账户").Secondary().Clicked() {
+				m.stock.archiveOpen, m.stock.archiveError, m.stock.archiveName = true, "", ""
+			}
+		})
+	ui.Divider(c)
+	controls.Row(c, "重置股票数据",
+		"清空当前账户的全部股票数据，包括本金、资金、持仓、成交、轮次、复盘、心得、标签、模板与费用设置。此操作不可恢复。",
+		func() {
+			if ui.Button(c, "重置股票数据").Destructive().Clicked() {
+				m.stock.resetOpen = true
+			}
+		})
 }
 
 func (m *Model) stockTagsRow(c ui.C, spec Spec, stock *StockConfig) {

@@ -35,15 +35,9 @@ const (
 	tabAbout
 )
 
-// The page's own measurements, taken from the reference application's settings
-// The page's own measurements: the shared rail width, a 760 wide reading column
-// with the page's inset on either side, and a 36 high settings row.
+// The page's own measurements: the shared rail width and the navigation rows.
 const (
 	navWidth      = layout.RailWidth
-	columnMax     = float32(760)
-	columnMargin  = layout.GroupGap
-	columnTop     = float32(32)
-	columnBottom  = layout.GroupGap
 	navEntryHigh  = float32(36)
 	navEntrySpace = float32(4)
 )
@@ -369,30 +363,23 @@ func (m *Model) nav(c ui.C) {
 	})
 }
 
-// page is the chosen section: its title and its controls.
+// page is the chosen section: its title and its controls, in the section's own
+// scroll viewport.
 func (m *Model) page(c ui.C, entry section, spec Spec) {
-	ui.Scroll(c).Grow(1).FillHeight().Items(ui.Center).Children(func() {
-		ui.Column(c).FillWidth().MaxWidth(columnMax).
-			MarginSides(columnTop, columnMargin, columnBottom, columnMargin).
-			Children(func() {
-				typography.Title(c, entry.title).
-					MarginBottom(layout.GroupGap)
-				switch entry.tab {
-				case tabGeneral:
-					m.general(c, spec)
-				case tabLedgers:
-					m.ledgers(c, spec)
-				case tabStockSettings:
-					m.stockSettingsSection(c, spec)
-				case tabDiary:
-					m.diaryConfig(c, spec)
-				case tabAbout:
-					m.about(c, spec)
-				default:
-					m.pending(c, entry)
-				}
-			})
-	})
+	switch entry.tab {
+	case tabGeneral:
+		m.general(c, spec)
+	case tabLedgers:
+		m.ledgers(c, spec)
+	case tabStockSettings:
+		m.stockSettingsSection(c, spec)
+	case tabDiary:
+		m.diaryConfig(c, spec)
+	case tabAbout:
+		m.about(c, spec)
+	default:
+		m.pending(c, entry)
+	}
 }
 
 // general is 通用设置: the application's own preferences, the proxy placeholder
@@ -402,11 +389,11 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 // than on a page of it, so they belong beside the other things the application
 // itself sets.
 func (m *Model) general(c ui.C, spec Spec) {
-	ui.Column(c).FillWidth().Gap(layout.GroupGap).Children(func() {
-		m.generalPreferences(c, spec)
-		m.proxy(c)
-		m.featureSwitches(c, spec)
-	})
+	controls.Page(c, "通用设置",
+		controls.GroupSpec{Title: "常规", Body: func() { m.generalPreferences(c, spec) }},
+		controls.GroupSpec{Title: "网络代理", Body: func() { m.proxy(c) }},
+		controls.GroupSpec{Title: "功能开关", Body: func() { m.featureSwitches(c, spec) }},
+	)
 }
 
 // generalPreferences is 常规: the workspace, the appearance and the close
@@ -416,26 +403,24 @@ func (m *Model) generalPreferences(c ui.C, spec Spec) {
 	if !spec.TrayAvailable {
 		trayNote = "当前系统没有可用的托盘，选「最小化到托盘」时关闭会直接退出。"
 	}
-	controls.Group(c, "常规", func() {
-		controls.Row(c, "工作空间", workspaceNote(spec.Workspace), func() {
-			if ui.Button(c, "切换").Secondary().Clicked() {
-				m.report("打开工作空间失败", spec.OnPickWorkspace)
-			}
-		})
-		ui.Divider(c)
-		controls.Row(c, "外观", "", func() {
-			value := spec.Appearance
-			if ui.Choice(c, &value, appearanceOptions[:], appearanceLabel).Changed() {
-				m.report("保存外观失败", func() error { return spec.OnAppearance(value) })
-			}
-		})
-		ui.Divider(c)
-		controls.Row(c, "关闭行为", trayNote, func() {
-			value := spec.CloseBehavior
-			if ui.Choice(c, &value, closeBehaviorOptions[:], closeBehaviorLabel).Changed() {
-				m.report("保存关闭行为失败", func() error { return spec.OnCloseBehavior(value) })
-			}
-		})
+	controls.Row(c, "工作空间", workspaceNote(spec.Workspace), func() {
+		if ui.Button(c, "切换").Secondary().Clicked() {
+			m.report("打开工作空间失败", spec.OnPickWorkspace)
+		}
+	})
+	ui.Divider(c)
+	controls.Row(c, "外观", "", func() {
+		value := spec.Appearance
+		if ui.Choice(c, &value, appearanceOptions[:], appearanceLabel).Changed() {
+			m.report("保存外观失败", func() error { return spec.OnAppearance(value) })
+		}
+	})
+	ui.Divider(c)
+	controls.Row(c, "关闭行为", trayNote, func() {
+		value := spec.CloseBehavior
+		if ui.Choice(c, &value, closeBehaviorOptions[:], closeBehaviorLabel).Changed() {
+			m.report("保存关闭行为失败", func() error { return spec.OnCloseBehavior(value) })
+		}
 	})
 }
 
@@ -443,10 +428,8 @@ func (m *Model) generalPreferences(c ui.C, spec Spec) {
 // settings are migrated, and a row that only says 暂未支持 reads as a group the
 // user can skip rather than as part of 常规.
 func (m *Model) proxy(c ui.C) {
-	controls.Group(c, "网络代理", func() {
-		controls.Row(c, "代理", "行情、涨停池与更新检查走代理。", func() {
-			typography.Caption(c, "暂未支持")
-		})
+	controls.Row(c, "代理", "行情、涨停池与更新检查走代理。", func() {
+		typography.Caption(c, "暂未支持")
 	})
 }
 
@@ -454,22 +437,20 @@ func (m *Model) proxy(c ui.C) {
 // takes its section out of the navigation at once, which is why the group says
 // so rather than leaving the reader to discover it.
 func (m *Model) featureSwitches(c ui.C, spec Spec) {
-	controls.Group(c, "功能开关", func() {
-		for index, entry := range featureRows {
-			if index > 0 {
-				ui.Divider(c)
-			}
-			entry := entry
-			controls.Row(c, entry.title, "", func() {
-				on := spec.Features.Enabled(entry.key)
-				// The row's title already says what this switch is; the label
-				// stays for assistive technology and for the tests.
-				if ui.Switch(c, &on, "").Label(entry.title + "功能开关").Changed() {
-					m.report("保存功能开关失败", func() error { return spec.OnFeature(entry.key, on) })
-				}
-			})
+	for index, entry := range featureRows {
+		if index > 0 {
+			ui.Divider(c)
 		}
-	})
+		entry := entry
+		controls.Row(c, entry.title, "", func() {
+			on := spec.Features.Enabled(entry.key)
+			// The row's title already says what this switch is; the label
+			// stays for assistive technology and for the tests.
+			if ui.Switch(c, &on, "").Label(entry.title + "功能开关").Changed() {
+				m.report("保存功能开关失败", func() error { return spec.OnFeature(entry.key, on) })
+			}
+		})
+	}
 }
 
 // ledgers is 账本管理, its own section of the panel: one card, one row per
@@ -477,50 +458,52 @@ func (m *Model) featureSwitches(c ui.C, spec Spec) {
 // card's last row. A ledger the accounting pages are reading is marked 当前; the
 // last one cannot be deleted, because accounting always needs one to read.
 func (m *Model) ledgers(c ui.C, spec Spec) {
+	controls.Page(c, "账本管理", controls.GroupSpec{Body: func() { m.ledgerRows(c, spec) }})
+}
+
+func (m *Model) ledgerRows(c ui.C, spec Spec) {
 	theme := c.Theme()
 	metrics := theme.Metrics
-	controls.Card(c, func() {
-		if len(spec.Ledgers) == 0 {
-			controls.Row(c, "还没有账本", "打开工作空间后可以在这里新增、重命名或删除账本。", nil)
-			return
+	if len(spec.Ledgers) == 0 {
+		controls.Row(c, "还没有账本", "打开工作空间后可以在这里新增、重命名或删除账本。", nil)
+		return
+	}
+	for index := range spec.Ledgers {
+		if index > 0 {
+			ui.Divider(c)
 		}
-		for index := range spec.Ledgers {
-			if index > 0 {
-				ui.Divider(c)
+		one := spec.Ledgers[index]
+		controls.Row(c, one.Name, describe(one.Description), func() {
+			if spec.ActiveLedger == one.ID {
+				typography.Caption(c, "当前")
 			}
-			one := spec.Ledgers[index]
-			controls.Row(c, one.Name, describe(one.Description), func() {
-				if spec.ActiveLedger == one.ID {
-					typography.Caption(c, "当前")
-				}
-				if ui.Button(c, "编辑账本 "+one.Name).Ghost().Icon(icons.Pencil).
-					IconOnly().Tooltip("编辑名称与描述").Clicked() {
-					m.openLedgerForm(spec, one.ID)
-				}
-				// The last ledger stays: a workspace without one would reopen on
-				// a fresh 默认账本, as if the deletion had failed.
-				last := len(spec.Ledgers) <= 1
-				remove := ui.Button(c, "删除账本 "+one.Name).Ghost().Icon(icons.Trash2).
-					IconOnly().Disabled(last)
-				if last {
-					remove = remove.Tooltip("至少保留一个账本")
-				} else {
-					remove = remove.Tooltip("删除账本")
-				}
-				if remove.Clicked() {
-					m.ledgerDelete = ledgerDelete{open: true, id: one.ID, name: one.Name}
-				}
-			})
-		}
-		ui.Divider(c)
-		// The action row is a 32 px button with a gap around it: shorter than a
-		// settings row, because it acts on the list rather than setting it.
-		ui.Row(c).Height(metrics.ControlHeight + 2*metrics.GapItem).FillWidth().
-			PadX(metrics.PadSurface).Items(ui.Center).Children(func() {
-			if ui.Button(c, "新增账本").Ghost().Icon(icons.Plus).Clicked() {
-				m.openLedgerForm(spec, "")
+			if ui.Button(c, "编辑账本 "+one.Name).Ghost().Icon(icons.Pencil).
+				IconOnly().Tooltip("编辑名称与描述").Clicked() {
+				m.openLedgerForm(spec, one.ID)
+			}
+			// The last ledger stays: a workspace without one would reopen on
+			// a fresh 默认账本, as if the deletion had failed.
+			last := len(spec.Ledgers) <= 1
+			remove := ui.Button(c, "删除账本 "+one.Name).Ghost().Icon(icons.Trash2).
+				IconOnly().Disabled(last)
+			if last {
+				remove = remove.Tooltip("至少保留一个账本")
+			} else {
+				remove = remove.Tooltip("删除账本")
+			}
+			if remove.Clicked() {
+				m.ledgerDelete = ledgerDelete{open: true, id: one.ID, name: one.Name}
 			}
 		})
+	}
+	ui.Divider(c)
+	// The action row is a 32 px button with a gap around it: shorter than a
+	// settings row, because it acts on the list rather than setting it.
+	ui.Row(c).Height(metrics.ControlHeight + 2*metrics.GapItem).FillWidth().
+		PadX(metrics.PadSurface).Items(ui.Center).Children(func() {
+		if ui.Button(c, "新增账本").Ghost().Icon(icons.Plus).Clicked() {
+			m.openLedgerForm(spec, "")
+		}
 	})
 }
 
@@ -636,55 +619,53 @@ func (m *Model) ledgerDeleteDialog(c ui.C, spec Spec) {
 
 // stockAccounts is 设置 · 股票账户: a workspace-level list, managed exactly like
 // the ledger list. The stock toolbar's 账户 selector reads the same list.
-func (m *Model) stockAccounts(c ui.C, spec Spec) {
+func (m *Model) stockAccountRows(c ui.C, spec Spec) {
 	theme := c.Theme()
 	metrics := theme.Metrics
-	controls.Card(c, func() {
-		if len(spec.StockAccounts) == 0 {
-			controls.Row(c, "还没有股票账户", "打开股票页时会自动创建一个默认股票账户。", nil)
-		} else {
-			for index := range spec.StockAccounts {
-				if index > 0 {
-					ui.Divider(c)
-				}
-				one := spec.StockAccounts[index]
-				c.Key("stock-account-" + one.ID)
-				controls.Row(c, one.Name, describe(one.Description), func() {
-					if spec.ActiveStockAccount == one.ID {
-						typography.Caption(c, "当前")
-					} else if ui.Button(c, "设为当前").Link().
-						Tooltip("把「" + one.Name + "」设为股票页当前账户").Clicked() {
-						if spec.OnSetStockAccount != nil {
-							if err := spec.OnSetStockAccount(one.ID); err != nil {
-								m.toaster.Show(err.Error(), "", ui.ToastError)
-							}
+	if len(spec.StockAccounts) == 0 {
+		controls.Row(c, "还没有股票账户", "打开股票页时会自动创建一个默认股票账户。", nil)
+	} else {
+		for index := range spec.StockAccounts {
+			if index > 0 {
+				ui.Divider(c)
+			}
+			one := spec.StockAccounts[index]
+			c.Key("stock-account-" + one.ID)
+			controls.Row(c, one.Name, describe(one.Description), func() {
+				if spec.ActiveStockAccount == one.ID {
+					typography.Caption(c, "当前")
+				} else if ui.Button(c, "设为当前").Link().
+					Tooltip("把「" + one.Name + "」设为股票页当前账户").Clicked() {
+					if spec.OnSetStockAccount != nil {
+						if err := spec.OnSetStockAccount(one.ID); err != nil {
+							m.toaster.Show(err.Error(), "", ui.ToastError)
 						}
 					}
-					if ui.Button(c, "编辑股票账户 "+one.Name).Ghost().Icon(icons.Pencil).
-						IconOnly().Tooltip("编辑名称与描述").Clicked() {
-						m.openStockAccountForm(spec, one.ID)
-					}
-					last := len(spec.StockAccounts) <= 1
-					remove := ui.Button(c, "删除股票账户 "+one.Name).Ghost().Icon(icons.Trash2).
-						IconOnly().Disabled(last)
-					if last {
-						remove = remove.Tooltip("至少保留一个股票账户")
-					} else {
-						remove = remove.Tooltip("删除股票账户")
-					}
-					if remove.Clicked() {
-						m.stockDelete = ledgerDelete{open: true, id: one.ID, name: one.Name}
-					}
-				})
-			}
-			ui.Divider(c)
+				}
+				if ui.Button(c, "编辑股票账户 "+one.Name).Ghost().Icon(icons.Pencil).
+					IconOnly().Tooltip("编辑名称与描述").Clicked() {
+					m.openStockAccountForm(spec, one.ID)
+				}
+				last := len(spec.StockAccounts) <= 1
+				remove := ui.Button(c, "删除股票账户 "+one.Name).Ghost().Icon(icons.Trash2).
+					IconOnly().Disabled(last)
+				if last {
+					remove = remove.Tooltip("至少保留一个股票账户")
+				} else {
+					remove = remove.Tooltip("删除股票账户")
+				}
+				if remove.Clicked() {
+					m.stockDelete = ledgerDelete{open: true, id: one.ID, name: one.Name}
+				}
+			})
 		}
-		ui.Row(c).Height(metrics.ControlHeight + 2*metrics.GapItem).FillWidth().
-			PadX(metrics.PadSurface).Items(ui.Center).Children(func() {
-			if ui.Button(c, "新增股票账户").Ghost().Icon(icons.Plus).Clicked() {
-				m.openStockAccountForm(spec, "")
-			}
-		})
+		ui.Divider(c)
+	}
+	ui.Row(c).Height(metrics.ControlHeight + 2*metrics.GapItem).FillWidth().
+		PadX(metrics.PadSurface).Items(ui.Center).Children(func() {
+		if ui.Button(c, "新增股票账户").Ghost().Icon(icons.Plus).Clicked() {
+			m.openStockAccountForm(spec, "")
+		}
 	})
 }
 
@@ -801,12 +782,10 @@ func workspaceNote(workspace string) string {
 // 工作空间: the icon-free buttons are quiet, and a finished batch reports itself
 // on the line under the card.
 func (m *Model) diaryConfig(c ui.C, spec Spec) {
-	// Two groups, the way 关于软件 stacks 版本信息 / 更新 / 项目: a name over its
-	// block, and the blocks separated by the group gap.
-	ui.Column(c).FillWidth().Gap(layout.GroupGap).Children(func() {
-		m.diaryBooks(c, spec)
-		m.diaryTransfer(c, spec)
-	})
+	controls.Page(c, "日记配置",
+		controls.GroupSpec{Title: "日记本", Body: func() { m.diaryBooks(c, spec) }},
+		controls.GroupSpec{Title: "导入导出", Body: func() { m.diaryTransfer(c, spec) }},
+	)
 }
 
 // diaryBooks is 日记本: the workspace's notebooks, one row each with its name,
@@ -815,44 +794,42 @@ func (m *Model) diaryConfig(c ui.C, spec Spec) {
 func (m *Model) diaryBooks(c ui.C, spec Spec) {
 	theme := c.Theme()
 	metrics := theme.Metrics
-	controls.Group(c, "日记本", func() {
-		if len(spec.DiaryBooks) == 0 {
-			controls.Row(c, "还没有日记本", "打开工作空间后可以在这里新建、重命名或删除日记本。", nil)
-			return
+	if len(spec.DiaryBooks) == 0 {
+		controls.Row(c, "还没有日记本", "打开工作空间后可以在这里新建、重命名或删除日记本。", nil)
+		return
+	}
+	for index := range spec.DiaryBooks {
+		if index > 0 {
+			ui.Divider(c)
 		}
-		for index := range spec.DiaryBooks {
-			if index > 0 {
-				ui.Divider(c)
+		one := spec.DiaryBooks[index]
+		controls.Row(c, one.Name, describe(one.Description), func() {
+			if spec.ActiveDiaryBook == one.ID {
+				typography.Caption(c, "当前")
 			}
-			one := spec.DiaryBooks[index]
-			controls.Row(c, one.Name, describe(one.Description), func() {
-				if spec.ActiveDiaryBook == one.ID {
-					typography.Caption(c, "当前")
-				}
-				if ui.Button(c, "编辑日记本 "+one.Name).Ghost().Icon(icons.Pencil).
-					IconOnly().Tooltip("编辑名称与描述").Clicked() {
-					m.openBookForm(spec, one.ID)
-				}
-				last := len(spec.DiaryBooks) <= 1
-				remove := ui.Button(c, "删除日记本 "+one.Name).Ghost().Icon(icons.Trash2).
-					IconOnly().Disabled(last)
-				if last {
-					remove = remove.Tooltip("至少保留一本日记本")
-				} else {
-					remove = remove.Tooltip("删除日记本")
-				}
-				if remove.Clicked() {
-					m.bookDelete = bookDelete{open: true, id: one.ID, name: one.Name}
-				}
-			})
-		}
-		ui.Divider(c)
-		ui.Row(c).Height(metrics.ControlHeight + 2*metrics.GapItem).FillWidth().
-			PadX(metrics.PadSurface).Items(ui.Center).Children(func() {
-			if ui.Button(c, "新建日记本").Ghost().Icon(icons.Plus).Clicked() {
-				m.openBookForm(spec, "")
+			if ui.Button(c, "编辑日记本 "+one.Name).Ghost().Icon(icons.Pencil).
+				IconOnly().Tooltip("编辑名称与描述").Clicked() {
+				m.openBookForm(spec, one.ID)
+			}
+			last := len(spec.DiaryBooks) <= 1
+			remove := ui.Button(c, "删除日记本 "+one.Name).Ghost().Icon(icons.Trash2).
+				IconOnly().Disabled(last)
+			if last {
+				remove = remove.Tooltip("至少保留一本日记本")
+			} else {
+				remove = remove.Tooltip("删除日记本")
+			}
+			if remove.Clicked() {
+				m.bookDelete = bookDelete{open: true, id: one.ID, name: one.Name}
 			}
 		})
+	}
+	ui.Divider(c)
+	ui.Row(c).Height(metrics.ControlHeight + 2*metrics.GapItem).FillWidth().
+		PadX(metrics.PadSurface).Items(ui.Center).Children(func() {
+		if ui.Button(c, "新建日记本").Ghost().Icon(icons.Plus).Clicked() {
+			m.openBookForm(spec, "")
+		}
 	})
 }
 
@@ -966,47 +943,45 @@ func (m *Model) bookDeleteDialog(c ui.C, spec Spec) {
 // the 日记 page is showing.
 func (m *Model) diaryTransfer(c ui.C, spec Spec) {
 	ready := spec.ImportDiary != nil && spec.ExportDiary != nil
-	controls.Group(c, "导入导出", func() {
-		controls.Row(c, "导入日记", importNote(spec), func() {
-			button := ui.Button(c, "批量导入").Secondary().Disabled(!ready)
-			if button.Clicked() {
-				m.importDiary(spec)
-			}
-		})
-		ui.Divider(c)
-		controls.Row(c, "导出日记", exportNote(spec), func() {
-			button := ui.Button(c, "批量导出").Secondary().Disabled(!ready)
-			if button.Clicked() {
-				m.exportDiary(spec)
-			}
-		})
-		ui.Divider(c)
-		controls.Row(c, "导出范围", "", func() {
-			if ui.Choice(c, &m.diary.scope, domain.DiaryExportScopeNames[:],
-				domain.DiaryExportScope.Label).Changed() {
-				m.diary.status, m.diary.failure = "", ""
-				m.ensurePeriod()
-			}
-			if m.diary.scope == domain.DiaryScopeAll {
-				return
-			}
-			grain := datepicker.ByYear
-			if m.diary.scope == domain.DiaryScopeMonth {
-				grain = datepicker.ByMonth
-			}
-			datepicker.Picker(c, &m.diary.pick, datepicker.Spec{
-				Label: "导出期间", Start: m.diary.period, Grain: grain,
-				CloseOnPick: true, Viewport: c.Bounds(),
-				OnRange: func(start, _ string) {
-					m.diary.period, m.diary.status, m.diary.failure = start, "", ""
-				},
-			})
-		})
-		if m.diary.status != "" || m.diary.failure != "" || !ready {
-			ui.Divider(c)
-			m.diaryResultRow(c, ready)
+	controls.Row(c, "导入日记", importNote(spec), func() {
+		button := ui.Button(c, "批量导入").Secondary().Disabled(!ready)
+		if button.Clicked() {
+			m.importDiary(spec)
 		}
 	})
+	ui.Divider(c)
+	controls.Row(c, "导出日记", exportNote(spec), func() {
+		button := ui.Button(c, "批量导出").Secondary().Disabled(!ready)
+		if button.Clicked() {
+			m.exportDiary(spec)
+		}
+	})
+	ui.Divider(c)
+	controls.Row(c, "导出范围", "", func() {
+		if ui.Choice(c, &m.diary.scope, domain.DiaryExportScopeNames[:],
+			domain.DiaryExportScope.Label).Changed() {
+			m.diary.status, m.diary.failure = "", ""
+			m.ensurePeriod()
+		}
+		if m.diary.scope == domain.DiaryScopeAll {
+			return
+		}
+		grain := datepicker.ByYear
+		if m.diary.scope == domain.DiaryScopeMonth {
+			grain = datepicker.ByMonth
+		}
+		datepicker.Picker(c, &m.diary.pick, datepicker.Spec{
+			Label: "导出期间", Start: m.diary.period, Grain: grain,
+			CloseOnPick: true, Viewport: c.Bounds(),
+			OnRange: func(start, _ string) {
+				m.diary.period, m.diary.status, m.diary.failure = start, "", ""
+			},
+		})
+	})
+	if m.diary.status != "" || m.diary.failure != "" || !ready {
+		ui.Divider(c)
+		m.diaryResultRow(c, ready)
+	}
 }
 
 // diaryResultRow is the group's last row: what the last command did, or why the
@@ -1123,7 +1098,7 @@ func (m *Model) exportDiary(spec Spec) {
 // pending is a section whose controls are migrated in a later stage: each row
 // reports that rather than pretending to work.
 func (m *Model) pending(c ui.C, entry section) {
-	controls.Group(c, "", func() {
+	controls.Page(c, entry.title, controls.GroupSpec{Body: func() {
 		for index := range entry.rows {
 			if index > 0 {
 				ui.Divider(c)
@@ -1134,7 +1109,7 @@ func (m *Model) pending(c ui.C, entry section) {
 				typography.Caption(c, "暂未支持")
 			})
 		}
-	})
+	}})
 }
 
 // report runs one of the shell's commands and shows its failure as a toast.

@@ -34,19 +34,17 @@ const (
 // scale and its own links.
 func (m *Model) about(c ui.C, spec Spec) {
 	facts := buildinfo.Read()
-	ui.Column(c).Gap(layout.GroupGap).Children(func() {
-		m.aboutHeader(c, spec, facts)
-		controls.Section(c, "版本信息", func() { m.aboutFacts(c, facts) })
-		controls.Section(c, "更新", func() {
-			controls.Group(c, "", func() {
-				controls.Row(c, "检查更新", "新版本检查尚未接入。", func() {
-					typography.Caption(c, "暂未支持")
-				})
+	controls.Page(c, "关于软件",
+		controls.GroupSpec{Raw: true, Body: func() { m.aboutHeader(c, spec, facts) }},
+		controls.GroupSpec{Title: "版本信息", Body: func() { m.aboutFacts(c, facts) }},
+		controls.GroupSpec{Title: "更新", Body: func() {
+			controls.Row(c, "检查更新", "新版本检查尚未接入。", func() {
+				typography.Caption(c, "暂未支持")
 			})
-		})
-		controls.Section(c, "项目", func() { m.aboutLinks(c, spec) })
-		m.aboutColophon(c, spec)
-	})
+		}},
+		controls.GroupSpec{Title: "项目", Body: func() { m.aboutLinks(c, spec) }},
+		controls.GroupSpec{Raw: true, Body: func() { m.aboutColophon(c, spec) }},
+	)
 }
 
 // aboutHeader is the application's identity: the mark, the name, one line about
