@@ -805,16 +805,6 @@ func (p *statisticsPanel) detailRow(c ui.C, point domain.StockStatisticsPoint, t
 	theme := c.Theme()
 	row := ui.Row(c.KeyInt(point.Sequence)).Height(layout.RowHeight).
 		Width(tableWidth).PadX(detailPadX).Gap(detailGap).Items(ui.Center)
-	row.Draw(func(d *ui.DrawContext) {
-		width := d.Rect.Width - 2*detailPadX
-		if width <= 0 {
-			return
-		}
-		d.Canvas.Fill(gfx.Rect{
-			X: d.Rect.X + detailPadX, Y: d.Rect.Bottom() - 1,
-			Width: width, Height: 1,
-		}, d.Theme.Border)
-	})
 	row.Children(func() {
 		detailDate(c, point.OpenedAt, widths[detailOpened])
 		detailDate(c, point.ClosedAt, widths[detailClosed])

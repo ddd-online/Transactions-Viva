@@ -219,7 +219,6 @@ func (p *lessonsPanel) lessonRow(c ui.C, lesson *domain.StockLesson) {
 		p.sourceCell(c, lesson)
 		p.actionsCell(c, lesson)
 	})
-	ui.Divider(c)
 }
 
 func (p *lessonsPanel) sourceCell(c ui.C, lesson *domain.StockLesson) {

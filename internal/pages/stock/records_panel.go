@@ -817,11 +817,8 @@ func (p *recordsPanel) tradeTable(c ui.C, round domain.StockRoundDetail) {
 			ui.Spacer(c)
 			typography.Caption(c, "操作").Width(tradeActionWidth).TextCenter()
 		})
-		for index, trade := range round.Trades {
+		for _, trade := range round.Trades {
 			p.tradeRow(c, trade)
-			if index < len(round.Trades)-1 {
-				ui.Divider(c)
-			}
 		}
 		if len(round.Trades) == 0 {
 			typography.Caption(c, "本轮没有成交").PadX(12).PadY(8)

@@ -328,19 +328,7 @@ func (m *Model) row(row ui.ListRow) {
 	row.Element.FillWidth().MinHeight(rowHeight).PadSides(4, tablePadX, 4, tablePadX).
 		Gap(tableGap).Items(ui.Center).
 		Hover(ui.Look{}.Background(theme.Hover)).
-		Focus(ui.Look{}.Ring(2, theme.Ring)).
-		Draw(func(d *ui.DrawContext) {
-			width := d.Rect.Width - 2*tablePadX
-			if width <= 0 {
-				return
-			}
-			d.Canvas.Fill(gfx.Rect{
-				X:      d.Rect.X + tablePadX,
-				Y:      d.Rect.Bottom() - 1,
-				Width:  width,
-				Height: 1,
-			}, d.Theme.Border)
-		})
+		Focus(ui.Look{}.Ring(2, theme.Ring))
 
 	ui.Row(row.C).Width(dragColumnWidth).Justify(ui.Center).Children(func() {
 		ui.Icon(row.C, icons.GripVertical).Size(16, 16).Color(theme.MutedForeground)
