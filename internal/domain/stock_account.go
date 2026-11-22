@@ -113,3 +113,9 @@ type StockOperationRollback struct {
 	Skipped bool
 	Action  string
 }
+
+// StockReviewSetting 是账户当前生效的两份复盘模板（空串在读取时已换成内置模板）。
+type StockReviewSetting struct {
+	Template      string
+	DailyTemplate string
+}

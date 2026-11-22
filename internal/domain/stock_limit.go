@@ -81,6 +81,24 @@ type StockLimitLadder struct {
 	Metrics      StockLimitMetrics
 }
 
+// StockLimitDay 是某一天涨停池的缓存标记。
+type StockLimitDay struct {
+	TradeDate string
+	Status    string
+	Count     int
+	FetchedAt int64
+}
+
+// StockLimitQuote 是某一天收盘定稿时补到的行情快照。
+type StockLimitQuote struct {
+	TradeDate       string
+	StockCode       string
+	OpenPct         *float64
+	ClosePct        *float64
+	ClosePriceMilli *int64
+	FetchedAt       int64
+}
+
 // LimitLadderData 是不含日期 / 状态的天梯内容。
 type LimitLadderData struct {
 	Rungs   []StockLimitRung

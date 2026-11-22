@@ -79,4 +79,55 @@ type StockRepository interface {
 	// RollbackStockOperation undoes the newest operation; a target that no
 	// longer exists reports skipped instead of failing.
 	RollbackStockOperation(ctx context.Context, accountID string) (domain.StockOperationRollback, error)
+
+	// Raw reads used by the account / positions / history / lessons screens.
+	StockPositions(ctx context.Context, accountID string) ([]domain.StockPosition, error)
+	// StockTrades returns every trade of the account, time ascending, including
+	// the hidden 0-share close markers.
+	StockTrades(ctx context.Context, accountID string) ([]domain.StockTrade, error)
+	StockRounds(ctx context.Context, accountID string) ([]domain.StockTradeRound, error)
+	StockHistories(ctx context.Context, accountID string) ([]domain.StockTradeHistory, error)
+	StockDayReviews(ctx context.Context, accountID string) ([]domain.StockDayReview, error)
+	StockLessons(ctx context.Context, accountID string) ([]domain.StockLesson, error)
+	StockLedgerEntries(ctx context.Context, accountID string) ([]domain.StockLedgerEntry, error)
+
+	UpdateStockPositionReview(ctx context.Context, accountID, stockCode, review string) error
+	UpdateStockPositionTag(ctx context.Context, accountID, stockCode, tag string) error
+	// UpdateStockDayReview writes (or clears, when review is empty) one current
+	// round's day review and returns the stock's current day reviews.
+	UpdateStockDayReview(ctx context.Context, accountID, stockCode, date, review string) ([]domain.StockDayReview, error)
+	UpdateStockRoundReview(ctx context.Context, accountID, roundID, review string) error
+	UpdateStockRoundTag(ctx context.Context, accountID, roundID, tag string) error
+
+	StockRoundOptions(ctx context.Context, accountID string) ([]domain.StockRoundOption, error)
+	CreateStockLesson(ctx context.Context, accountID, text, roundID string) (domain.StockLesson, error)
+	UpdateStockLesson(ctx context.Context, accountID, lessonID, text, roundID string) (domain.StockLesson, error)
+	DeleteStockLesson(ctx context.Context, accountID, lessonID string) error
+
+	StockLedger(ctx context.Context, accountID, stockCode, roundID string) (*domain.StockLedgerEntry, error)
+	SaveStockLedger(ctx context.Context, entry domain.StockLedgerEntry) (domain.StockLedgerEntry, error)
+
+	StockFeeSetting(ctx context.Context, accountID string) (domain.StockFeeSetting, error)
+	SaveStockFeeSetting(ctx context.Context, accountID string, fee domain.RoundFee) (domain.StockFeeSetting, error)
+	StockTradeTags(ctx context.Context, accountID string) ([]string, error)
+	SaveStockTradeTags(ctx context.Context, accountID string, tags []string) ([]string, error)
+	StockReviewTemplates(ctx context.Context, accountID string) (domain.StockReviewSetting, error)
+	// SaveStockReviewTemplate keeps the other template when daily is nil.
+	SaveStockReviewTemplate(ctx context.Context, accountID, template string, daily *string) (domain.StockReviewSetting, error)
+
+	StockStatistics(ctx context.Context, query domain.StockStatisticsQuery) (domain.StockStatistics, error)
+	// ResetStockAccount clears the account's holdings / trades / settings and
+	// sets its principal to zero; the named account itself stays.
+	ResetStockAccount(ctx context.Context, accountID string) error
+	// ArchiveStockAccount moves the account's data to a new account; the old
+	// account keeps its name and settings but loses the data and principal.
+	ArchiveStockAccount(ctx context.Context, accountID, name string) (domain.StockAccount, error)
+
+	// Market ladder cache. These rows are workspace-level, not account-scoped.
+	StockLimitDay(ctx context.Context, date string) (*domain.StockLimitDay, error)
+	StockLimitEntries(ctx context.Context, date string) ([]domain.StockLimitEntry, error)
+	SaveStockLimitDay(ctx context.Context, date, status string, count int, fetchedAt int64) error
+	SaveStockLimitEntries(ctx context.Context, date string, entries []domain.StockLimitEntry, fetchedAt int64) error
+	StockLimitQuotes(ctx context.Context, date string) (map[string]domain.StockLimitQuote, error)
+	SaveStockLimitQuotes(ctx context.Context, date string, quotes map[string]domain.StockLimitQuote, fetchedAt int64) error
 }
