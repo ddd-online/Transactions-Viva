@@ -76,13 +76,6 @@ var sections = [...]section{
 	{
 		tab:   tabData,
 		title: "数据备份",
-		rows: []setting{
-			{"最近工作空间", "最近打开的本地工作空间，可直接切换。"},
-			{"备份位置", "手动备份与恢复前的副本都放这里。"},
-			{"手动备份", "数据库与图片资产一起保存。"},
-			{"自动备份", "每天第一次打开时存一份只含数据库的快照，保留最近 7 份。"},
-			{"从备份恢复", "用备份替换当前工作空间，完成后重启应用。"},
-		},
 	},
 	{
 		tab:   tabAbout,
@@ -173,6 +166,21 @@ type Spec struct {
 	// file system. nil means no workspace is open and the buttons are disabled.
 	ImportDiary func() (DiaryImport, error)
 	ExportDiary func(scope domain.DiaryExportScope, period string) (DiaryExport, error)
+
+	// 数据备份 works on the open workspace. The shell resolves the backup
+	// directory, writes / restores the files and reopens the workspace after a
+	// restore; the page only asks and reports.
+	BackupDir             string
+	AutoBackup            bool
+	RecentWorkspaces      []string
+	OnBackupNow           func() (BackupResult, error)
+	OnListBackups         func() ([]BackupEntry, error)
+	OnRestoreBackup       func(BackupEntry) error
+	OnPickRestoreFile     func() (BackupEntry, bool, error)
+	OnChangeBackupDir     func() error
+	OnOpenPath            func(string) error
+	OnSetAutoBackup       func(bool) error
+	OnOpenRecentWorkspace func(string) error
 }
 
 // DiaryImport is what one batch import did, as the section's status line reads
@@ -251,6 +259,15 @@ type Model struct {
 	// stock is 股票设置's drafts; its data is Spec.Stock.
 	stock stockState
 
+	// 数据备份: entries are loaded when the section becomes visible, then after
+	// every write. restoreOpen is the confirmation for one entry.
+	backupTab       tab
+	backupLoaded    bool
+	backupEntries   []BackupEntry
+	backupError     string
+	backupRestore   BackupEntry
+	backupRestoreOn bool
+
 	// diary is 日记配置's own state: what an export covers, the period it
 	// picked, and the last command's status or failures.
 	diary diaryState
@@ -314,6 +331,10 @@ func New() *Model { return &Model{} }
 
 // View declares the page: the category list, a divider and the chosen section.
 func (m *Model) View(c ui.C, spec Spec) {
+	if m.backupTab != m.tab {
+		m.backupTab = m.tab
+		m.backupLoaded = false
+	}
 	ui.Row(c).Fill().Children(func() {
 		m.nav(c)
 		// A vertical divider is a Divider in a Row.
@@ -329,6 +350,7 @@ func (m *Model) View(c ui.C, spec Spec) {
 	m.stockOperationsDialog(c, spec)
 	m.stockArchiveDialog(c, spec)
 	m.stockResetDialog(c, spec)
+	m.backupRestoreDialog(c, spec)
 	m.bookDialog(c, spec)
 	m.bookDeleteDialog(c, spec)
 	ui.Toasts(c, &m.toaster)
@@ -386,6 +408,8 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 		m.stockSettingsSection(c, spec)
 	case tabDiary:
 		m.diaryConfig(c, spec)
+	case tabData:
+		m.dataBackup(c, spec)
 	case tabAbout:
 		m.about(c, spec)
 	default:

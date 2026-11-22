@@ -10,6 +10,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/backup"
 	"transactions/internal/components/typography"
 	"transactions/internal/config"
 	"transactions/internal/icons"
@@ -79,6 +80,7 @@ type Model struct {
 	events   *events.Model
 	diary    *diary.Model
 	settings *settings.Model
+	backups  *backup.Service
 
 	// workspace is the open SQLite workspace; nil means the user still has to
 	// choose one. workspaceErr is the last open failure, shown by the gate.
@@ -94,6 +96,7 @@ type Model struct {
 	// pickers.
 	pickImages   func() ([]string, error)
 	pickSaveFile func(options app.SaveFileOptions) (string, error)
+	pickBackup   func() (string, error)
 }
 
 // New returns the shell with the default configuration, pinned to the light
@@ -123,6 +126,7 @@ func NewWithConfig(cfg config.AppConfig, store *config.Store) *Model {
 		events:      events.New(),
 		diary:       diary.New(),
 		settings:    settings.New(),
+		backups:     backup.New(),
 	}
 	// pickDirectory is the platform's directory chooser. Tests replace it, so a
 	// run never opens a real dialog; the diary import and export use it too.
@@ -142,6 +146,19 @@ func NewWithConfig(cfg config.AppConfig, store *config.Store) *Model {
 	}
 	m.pickSaveFile = func(options app.SaveFileOptions) (string, error) {
 		return app.SaveFile(options)
+	}
+	m.pickBackup = func() (string, error) {
+		files, err := app.OpenFiles(app.OpenFileOptions{
+			Title: "选择备份文件",
+			Filters: []app.FileFilter{{
+				Name:    "SQLite 数据库",
+				Pattern: "*.db",
+			}},
+		})
+		if err != nil || len(files) == 0 {
+			return "", err
+		}
+		return files[0], nil
 	}
 	m.events.SetLinksOpen(cfg.KeyEventLinkedOpen)
 	m.events.SetCommands(m.eventCommands())

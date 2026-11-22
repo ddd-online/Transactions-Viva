@@ -26,7 +26,9 @@ func (m *Model) openConfiguredWorkspace() {
 	}
 	if err := m.adoptWorkspace(workspace); err != nil {
 		m.workspaceErr = err.Error()
+		return
 	}
+	m.autoBackupIfNeeded()
 }
 
 // adoptWorkspace makes ws the open workspace and reloads the accounting pages.

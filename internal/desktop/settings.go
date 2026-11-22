@@ -23,8 +23,12 @@ var errNoDiaryWorkspace = errors.New("还没有打开工作空间")
 // goes through here.
 func (m *Model) settingsSpec() settings.Spec {
 	stock, stockErr := m.stockSettingsConfig()
+	workspaceDir := m.config.WorkspaceDir
+	if m.workspace != nil {
+		workspaceDir = m.workspace.Directory()
+	}
 	return settings.Spec{
-		Workspace:       m.config.WorkspaceDir,
+		Workspace:       workspaceDir,
 		Appearance:      m.config.Appearance,
 		CloseBehavior:   m.config.CloseBehavior,
 		Features:        m.config.Features,
@@ -57,6 +61,18 @@ func (m *Model) settingsSpec() settings.Spec {
 		OnResetStockAccount:       m.resetStockAccount,
 		ImportDiary:               m.importDiary,
 		ExportDiary:               m.exportDiary,
+
+		BackupDir:             m.backupDir(),
+		AutoBackup:            m.config.AutoBackup,
+		RecentWorkspaces:      m.config.RecentWorkspaces,
+		OnBackupNow:           m.createManualBackup,
+		OnListBackups:         m.listBackups,
+		OnRestoreBackup:       m.restoreBackup,
+		OnPickRestoreFile:     m.pickRestoreBackup,
+		OnChangeBackupDir:     m.changeBackupDir,
+		OnOpenPath:            m.openPath,
+		OnSetAutoBackup:       m.setAutoBackup,
+		OnOpenRecentWorkspace: m.openRecentWorkspace,
 
 		DiaryBooks:        m.diary.Books(),
 		ActiveDiaryBook:   m.diary.ActiveBook(),
@@ -430,6 +446,7 @@ func (m *Model) pickWorkspaceDir() error {
 		return err
 	}
 	m.workspaceErr = ""
+	m.autoBackupIfNeeded()
 	return nil
 }
 
