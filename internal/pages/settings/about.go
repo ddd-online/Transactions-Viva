@@ -36,9 +36,13 @@ func (m *Model) about(c ui.C, spec Spec) {
 	facts := buildinfo.Read()
 	controls.Page(c, "关于软件",
 		controls.GroupSpec{Raw: true, Body: func() { m.aboutHeader(c, spec, facts) }},
-		controls.GroupSpec{Title: "版本信息", Body: func() { m.aboutFacts(c, facts) }},
+		controls.GroupSpec{Raw: true, Body: func() {
+			controls.Section(c, "版本信息", func() { m.aboutFacts(c, facts) })
+		}},
 		controls.GroupSpec{Title: "更新", Body: func() { m.update(c, spec) }},
-		controls.GroupSpec{Title: "项目", Body: func() { m.aboutLinks(c, spec) }},
+		controls.GroupSpec{Raw: true, Body: func() {
+			controls.Section(c, "项目", func() { m.aboutLinks(c, spec) })
+		}},
 		controls.GroupSpec{Raw: true, Body: func() { m.aboutColophon(c, spec) }},
 	)
 	m.updateNotesModal(c)
