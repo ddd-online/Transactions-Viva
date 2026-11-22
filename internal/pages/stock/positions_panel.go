@@ -591,7 +591,7 @@ func (p *positionsPanel) detailMetrics(c ui.C, position *domain.StockPosition) {
 		changeText, changeValue = positionsQuoteChange(quote)
 	}
 
-	ui.Flow(c).Gap(layout.Gap).LineGap(layout.Gap).Children(func() {
+	ui.Row(c).FillWidth().Gap(layout.Gap).Children(func() {
 		positionsMetric(c, "现价", priceText, theme.Foreground)
 		changeColor := theme.Foreground
 		if knownQuote && changeValue != 0 {
@@ -599,7 +599,7 @@ func (p *positionsPanel) detailMetrics(c ui.C, position *domain.StockPosition) {
 		}
 		positionsMetric(c, "当日涨跌", changeText, changeColor)
 		positionsMetric(c, "持仓市值", money(marketValue), theme.Foreground)
-		ui.Column(c).Width(104).Gap(2).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).Gap(2).Children(func() {
 			typography.Caption(c, "浮动盈亏")
 			ui.Text(c, money(pnl)).FontSize(typography.SizeBody).Mono().
 				Color(pnlColor(*theme, pnl))
@@ -610,7 +610,7 @@ func (p *positionsPanel) detailMetrics(c ui.C, position *domain.StockPosition) {
 }
 
 func positionsMetric(c ui.C, label, value string, color gfx.Color) {
-	ui.Column(c).Width(104).Gap(2).Children(func() {
+	ui.Column(c).Grow(1).Basis(0).Gap(2).Children(func() {
 		typography.Caption(c, label)
 		ui.Text(c, value).FontSize(typography.SizeBody).Mono().Color(color)
 	})
