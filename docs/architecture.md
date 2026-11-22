@@ -65,6 +65,7 @@ main → desktop → pages → components
 | `internal/stockquote` | 腾讯行情（GBK、3 秒），`Fetcher` 接口，失败返回空 | `electron/services/stock-quote.ts` |
 | `internal/stocklimit` | 东财涨停池（8 秒）与天梯缓存策略，`Service.Ladder` | `electron/services/stock-limit*.ts`、`shared/domain/limit-ladder.ts` |
 | `internal/backup` | 备份命名 / 保留裁剪、VACUUM 快照、手动 / 自动备份、恢复前副本与备份列表 | `shared/domain/backup.ts`、`electron/services/backup.ts` |
+| `internal/proxy` | 代理三态、手动地址归一化、环境变量 / Windows 系统代理探测与共享 HTTP client | `shared/domain/proxy.ts`、`electron/ipc/handlers/settings.ts` 的代理部分 |
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
 | `internal/pages/events` | 事件页：年份列表、身份色、图片画廊与灯箱、跨账本关联交易（事件是工作空间级数据） | `src/pages/events*`、`event-*`、`electron/services/key-event.ts` |
 | `internal/assets` | 工作空间图片资产：路径校验、落盘 / 删除 / 另存、解码、EXIF 方向与缩略图 | `electron/services/assets.ts`、`image-import.ts`、`image-resize.ts`、`heic-decode.ts` |
@@ -154,8 +155,11 @@ main → desktop → pages → components
   成功后才关闭旧库并写入 `workspaceDir` 和最近 5 条 `recentWorkspaces`；失败保留旧工作空间）、
   外观（浅色 / 深色 / 跟随系统；标题栏开关写同一个值，`app.WatchSystemAppearance` 让跟随
   系统时会重绘）、关闭行为（`OnCloseRequest`：直接退出 / 隐藏到托盘 / 弹窗询问；托盘用
-  Viva 的 `StatusItem`，没有状态区时回退为退出）。同一页的另两组是「网络代理」（独立一组，
-  仍是占位，标「暂未支持」）与
+  Viva 的 `StatusItem`，没有状态区时回退为退出）。同一页的「网络代理」是不使用 / 自动探测 /
+  手动三态：自动探测先读环境变量（`ALL_PROXY` → `HTTPS_PROXY` → `HTTP_PROXY`，含小写与
+  `NO_PROXY`），再读 Windows Internet Options 的静态代理（不解析 PAC）；手动只接受
+  `http://host:port`，由 `internal/proxy` 归一化并给出文案；保存后立即重建行情与涨停池的
+  HTTP client，「检测」通过同一 client 请求一次并显示结果。之后是
   「功能开关」（不再单独占一个导航小节），写 `features` 的全局默认；`ledgerFeatures` 的账本
   覆盖规则已在 `config` 里，但还没有接到真实账本上。关掉的分区立即从 Sidebar 消失，五个全关时落到设置。
 - 关于软件是成立的页面（对齐 motty 的关于页）：身份卡（标志、名称、一句话定位、「复制版本信息」）→「版本信息」2×2 事实网格 →「更新」一行（尚未接入，标「暂未支持」）→「项目」两张外链卡 →「界面由 Viva 绘制」尾注。事实来自 `internal/buildinfo`（`debug.ReadBuildInfo` 的提交与日期 + `runtime`，一次读取）；「复制」与「打开链接」走 `Spec` 回调外壳（`app.SetClipboardText` / `app.OpenURL`，在驱动下记录而不碰真实系统）。
