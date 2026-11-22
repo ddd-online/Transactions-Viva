@@ -67,7 +67,7 @@ main → desktop → pages → components
 | `internal/backup` | 备份命名 / 保留裁剪、VACUUM 快照、手动 / 自动备份、恢复前副本与备份列表 | `shared/domain/backup.ts`、`electron/services/backup.ts` |
 | `internal/proxy` | 代理三态、手动地址归一化、环境变量 / Windows 系统代理探测与共享 HTTP client | `shared/domain/proxy.ts`、`electron/ipc/handlers/settings.ts` 的代理部分 |
 | `internal/update` | GitHub release 检查、安装包下载 / SHA256 校验、进度回调与拉起安装程序 | `shared/domain/update.ts`、`electron/services/updater.ts` |
-| `internal/pages/todo` | 待办：共享账本选择、主题看板 / 四象限、事项与进度、历史、旧库导入 | `src/pages/todo*`、`electron/services/todo.ts` |
+| `internal/pages/todo` | 待办：共享账本选择、分组事项表 / 四象限、事项与进度、历史、旧库导入 | `src/pages/todo*`、`electron/services/todo.ts` |
 | `internal/pages/events` | 事件页：年份列表、身份色、图片画廊与灯箱、跨账本关联交易（事件是工作空间级数据） | `src/pages/events*`、`event-*`、`electron/services/key-event.ts` |
 | `internal/assets` | 工作空间图片资产：路径校验、落盘 / 删除 / 另存、解码、EXIF 方向与缩略图 | `electron/services/assets.ts`、`image-import.ts`、`image-resize.ts`、`heic-decode.ts` |
 | `internal/events` | 事件图片的导入 / 删除编排：实况照片配对、逐张报告、清文件 | `electron/services/key-event.ts` 的 `addImage` / `deleteImage` |
@@ -320,8 +320,9 @@ main → desktop → pages → components
   `ui.Effect` 里执行，不阻塞绘制；代理仍按配置文件的 `proxy` 构造 HTTP client。
 - 待办页（`internal/pages/todo`，旧工程 `src/pages/todo*` / `electron/services/todo.ts`）：
   **属于账本**，与旧库的 `ledger_id` 一致；工具栏的「账本」是 `accounting/ledger.Store` 的同一个
-  选择，记账 / 日记 / 待办三处切换互相同步。看板是按窗口宽度换行的主题列（不横向滚动；
-  列宽在 270–380px 之间，窄窗两列、宽窗三到四列，列不拉满窗口，同一行按最高列对齐），列头可折叠、通过
+  选择，记账 / 日记 / 待办三处切换互相同步。列表是分组表格：一行表头，每个主题一条浅色分组带
+  （标题 / 数量 / 折叠 / 主题操作 / 删除 / 添加），事项行按列显示两档、截止与进度；没有卡片，
+  也没有横向滚动，窄窗只收列宽。分组带可折叠，通过
   「主题操作」菜单前移 / 后移 / 删除；事项行有完成圆圈、标题、六档紧急 /
   重要度、截止日（逾期 / 今天高亮）与进度计数，点开内联进度，弹窗编辑事项（日期与两档）。
   历史按 `completed_at` 倒序列出，可恢复、删除、查看并订正进度；四象限按紧急 × 重要分成
