@@ -222,11 +222,11 @@ func (m *Model) toolbar(c ui.C) {
 		}
 		ui.Divider(c).Height(24)
 		if m.tab == tabBoard {
-			current := "看板"
+			current := "列表"
 			if m.view == viewQuadrant {
 				current = "四象限"
 			}
-			if ui.Choice(c, &current, []string{"看板", "四象限"}, nil).Changed() {
+			if ui.Choice(c, &current, []string{"列表", "四象限"}, nil).Changed() {
 				if current == "四象限" {
 					m.view = viewQuadrant
 				} else {
