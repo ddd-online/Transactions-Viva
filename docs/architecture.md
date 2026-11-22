@@ -397,14 +397,14 @@ main → desktop → pages → components
 - **`viva dev` 的 reload host 不转发原生文本事件。** worker 协议只带画面、指针、按键和
   滚轮；`Config.TextInput` 和页面的 TextField 提供者不会到达宿主，所以 `viva dev` 下的
   `ui.TextField` 有光标却无法输入（记录描述、图表名称、模板名称都一样），不是某个弹窗的
-  问题。需要输入文本时用 `go run .` / `make run` 或打包后的原生窗口；不要用 dev host 判断
+  问题。需要输入文本时用 `go run . -dev` / `make run` 或打包后的原生窗口；不要用 dev host 判断
   表单输入是否可用。Viva 的 conformance 也明确记录了这一点（Native text events in
   `viva dev`：worker protocol does not carry them）。
 - **`viva dev` 下悬停不刷新。** 开发宿主的画面是 worker 的绘制快照，悬停身份由宿主随
   `PaintRequest` 带回 worker（`Canvas.SetInteraction`）；而 worker 收到一个普通指针移动时，
   只把它交给应用的 `Config.Pointer`，页面自己有指针通道（`Canvas.ListensForPointer`，例如
   `ui.Control` 的 Handlers）时才会走指针 pass 重绘。结果是右键菜单项、列表行这类「只靠
-  `Canvas.Hovered()` 变样式」的悬停，在 `viva dev` 里看不到变化；`go run .` / 打包版走真实
+  `Canvas.Hovered()` 变样式」的悬停，在 `viva dev` 里看不到变化；`go run . -dev` / 打包版走真实
   窗口，悬停正常。判断悬停或悬停底色是否成立要用真实窗口（驱动测试也算），别用 dev host。
 - **`viva dev` 的 reload host 不接收窗口按钮的样式回调。** worker 协议只把 `ClearColor`
   的四个分量送给宿主，`Config.WindowControls` 是函数，过不去；宿主只在 worker 启动时按
@@ -412,7 +412,7 @@ main → desktop → pages → components
   明暗开关切外观，页面变了、三个窗口按钮不变——浅色下白字几乎看不见。发布版走
   `app.RunApplication`，Viva 每帧调用 `WindowControls`，按钮跟着主题走（`internal/desktop`
   的 `TestWindowControlsFollowTheTheme` 守着这条）。`viva dev` 里切完外观保存一次文件让
-  worker 重启，或直接用 `go run .` / `make run`，都能拿到正确墨色。
+  worker 重启，或直接用 `go run . -dev` / `make run`，都能拿到正确墨色。
 - **Select 的下拉动画没收尾。** `ui` 画一个打开的下拉时用自己的 `gfx.Canvas.BeginPresence`
   起了入场的组（`slide-in-from-*-2`，8px），却没有结束它；同一帧里之后第一个
   `EndPresence`——也就是弹窗在自己 `End` 里做的那一次——会把这个组收掉，并把下拉的

@@ -189,19 +189,24 @@ func NewWithConfig(cfg config.AppConfig, store *config.Store) *Model {
 // Run opens the application window and blocks until it closes. It loads the
 // configuration, follows the system appearance while the configuration asks
 // for it, and keeps one status-area icon so closing to the tray has a way back.
-func Run() error {
+// dev selects the development config for a native window, as `go run . -dev`
+// does; the reload host (`viva dev`) always counts as development.
+func Run(dev bool) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
 	}
-	development := devMode()
+	reloadHost := devMode()
+	development := dev || reloadHost
 	store := config.Load(config.Path(home, development))
 	model := NewWithConfig(store.Config(), store)
-	model.development = development
+	// Only the reload host needs its own close behavior: it paints on the
+	// host's schedule, so a native prompt could wait for an unrelated frame.
+	model.development = reloadHost
 	model.openConfiguredWorkspace()
 	defer model.closeWorkspace()
 	page := ui.NewPage(ui.PageConfig{Tree: &model.tree, View: model.page, Theme: &model.theme})
-	if development {
+	if reloadHost {
 		// `viva dev` drives the page through the reload worker inside
 		// RunCanvas. RunApplication has no such worker: it would open a native
 		// window and the reload host would time out waiting for the connection.

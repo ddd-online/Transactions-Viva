@@ -105,7 +105,9 @@
 ## 开发
 
 ```sh
-go run .                    # 打开原生窗口（文本输入可用）
+go run . -dev               # 原生窗口 + 开发配置 ~/.transactions.dev.json（文本输入可用）
+go run .                    # 原生窗口 + 生产配置 ~/.transactions.json
+make run                    # 同 go run . -dev
 viva dev .                  # 热重载开发；reload host 不转发原生文本事件
 go test ./... -count=1      # 无窗口驱动测试 + 领域单测
 go vet ./... && go tool viva vet  # 静态检查（CLI 版本由 go.mod 钉住）
@@ -113,7 +115,7 @@ viva build                  # 发布构建
 ```
 
 > `viva dev .` 的热重载宿主只转发画面、指针与按键，不携带原生文本事件：所有 `ui.TextField`
-> 在它下面都有光标却打不出字。需要测图表名称、记录描述这类表单输入时，用 `go run .` 或打包后的
+> 在它下面都有光标却打不出字。需要测图表名称、记录描述这类表单输入时，用 `go run . -dev` 或打包后的
 > 原生窗口。
 
 ## 导入旧数据

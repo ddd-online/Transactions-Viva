@@ -1,7 +1,12 @@
-.PHONY: run dev test vet build
+.PHONY: run run-prod dev test vet build
 
-# Run the application.
+# Run the application with the development config (~/.transactions.dev.json).
+# Text input works here, unlike the `viva dev` reload host.
 run:
+	go run . -dev
+
+# Run the application with the production config (~/.transactions.json).
+run-prod:
 	go run .
 
 # Run with hot reload (the entry is root main.go).

@@ -12,12 +12,13 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 
 当前阶段：**外壳、配置与通用设置、记账四页、待办、事件与日记、股票六页（设置已移入设置页）、SQLite 数据层已落地；记账四页、待办、事件、日记与股票读写工作空间；旧数据可导入（含股票与待办）。**
 
-- 入口是根目录 `main.go`：只做 `log.Fatal(desktop.Run())`，`viva.toml` 的 `package = "."`。
-  开发时 `viva dev .`，一次性运行 `go run .`。注意：`viva dev` 的 reload host 不转发原生
+- 入口是根目录 `main.go`：解析 `-dev` 后只做 `log.Fatal(desktop.Run(dev))`，`viva.toml` 的 `package = "."`。
+  开发时 `viva dev .`，一次性运行 `go run . -dev`（读 `~/.transactions.dev.json`；不带 `-dev`
+  的 `go run .` 用生产配置）。注意：`viva dev` 的 reload host 不转发原生
   文本事件，所有 `ui.TextField` 在它下面都只有光标、不能输入；它也不刷新宿主侧的悬停，
   右键菜单项 / 列表行的 hover 在 dev 下看不出来（`go run .`、打包版和驱动测试都正常，
   见 `docs/architecture.md` 的「框架缺口」）。需要测表单输入或悬停时用
-  `go run .` / `make run` 或打包版。
+  `go run . -dev` / `make run` 或打包版。
 - 外壳（标题栏 / 左侧导航 / 设置页）、页面骨架、领域类型与文档已就位。
 - 记账-记录页已迁移前端：工具栏、时间范围、表头排序、表格、分页、收支统计与
   新增 / 编辑记录弹窗都在。弹窗照旧工程 `record-composer.tsx` 排列模板、日期、类型、分类、
@@ -112,7 +113,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   日记本的增删改走 `diary.Model`（与账本的增删改走 `accounting.Model` 对称），导入后日记页重载。
   两组用的是设置页统一的设置组组件 `controls.Section`（组名 + 组内容，8px；组与组 24px），
   与「关于软件」的版本信息 / 更新 / 项目同一套节奏。
-- 用户配置已落地：`internal/config` 读写 `~/.transactions.json`（`viva dev` 期间是
+- 用户配置已落地：`internal/config` 读写 `~/.transactions.json`（`viva dev` 与 `go run . -dev` 期间是
   `~/.transactions.dev.json`），逐字段归一化，写回保留未知顶层键，写入走 `.tmp` + rename。
   窗口尺寸 / 位置（关闭时保存）、工作空间、外观、关闭行为、功能开关与账本级覆盖都在里面；
   `desktop.Run` 启动时加载，设置页的改动立即写回。
@@ -184,7 +185,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 ## 工程结构
 
 ```text
-main.go                  真实入口：只做 log.Fatal(desktop.Run())
+main.go                  真实入口：解析 -dev 后 log.Fatal(desktop.Run(dev))
 internal/desktop/        应用外壳：窗口、自绘标题栏、Sidebar 导航、设置页、主题
 internal/icons/          由 SVG 编译出的矢量图标（viva icons）
 internal/pages/          各功能页：accounting、stock、todo、events、diary、settings
