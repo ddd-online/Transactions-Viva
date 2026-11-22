@@ -175,6 +175,8 @@ internal/pages/          各功能页：accounting、stock、todo、events、dia
 internal/diary/          日记文件的导入导出（扫描、编码回退链、写文件），只依赖 domain 与 repository
 internal/assets/         工作空间图片资产：路径校验、落盘 / 删除 / 另存、解码、EXIF 方向与缩略图
 internal/events/         事件图片的导入 / 删除编排：实况配对、逐张报告、清文件
+internal/stockquote/     腾讯行情（GBK、3 秒超时），页面只依赖 Fetcher
+internal/stocklimit/     东财涨停池（8 秒）与天梯缓存策略
 internal/components/     可复用的 UI：占位空态，datepicker / pagination / selectbox / semantic 子包
 internal/pages/settings/controls/  只属于设置页的分组卡片 / 设置行
 internal/domain/         纯领域规则与数据形状：金额、记录、账本、事件、日记、待办、股票

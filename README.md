@@ -61,6 +61,22 @@
 
 ![事件：深色](docs/events-dark.png)
 
+![股票：账户页与工作空间级账户切换](docs/stock-account.png)
+
+![股票：持仓、本轮成交与复盘](docs/stock-positions.png)
+
+![股票：已清仓轮次与底部汇总](docs/stock-records.png)
+
+![股票：一句话心得与轮次跳转](docs/stock-lessons.png)
+
+![股票：结算统计、曲线与明细](docs/stock-statistics.png)
+
+![股票：连板天梯](docs/stock-ladder.png)
+
+![股票：账户设置](docs/stock-settings.png)
+
+![设置：股票账户管理](docs/stock-accounts-settings.png)
+
 ![设置：日记配置（日记本 + 导入导出）](docs/diary-settings.png)
 
 ![设置：账本管理](docs/ledger-management.png)
