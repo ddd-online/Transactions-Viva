@@ -58,7 +58,7 @@ const (
 
 	// TableHeaderInsetX and TableHeaderInsetY set the shared table header band
 	// inside the table edge, so the band never merges with the page's side rail.
-	TableHeaderInsetX float32 = 12
+	TableHeaderInsetX float32 = 6
 	TableHeaderInsetY float32 = 4
 )
 
