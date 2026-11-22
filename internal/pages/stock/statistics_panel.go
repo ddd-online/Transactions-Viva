@@ -426,16 +426,13 @@ func (p *statisticsPanel) cards(c ui.C) {
 	kelly := domain.KellyPercent(latest.Span, latest.WinCount, latest.PnlRatio)
 	avgWinColor := semantic.Expense(*theme)
 	avgLossColor := semantic.Income(*theme)
-	// These four have no red/green meaning: a loss-making cumulative PnL is
-	// still the primary reading, not an error-colored one.
-	primary := theme.Primary
 	cards := []struct {
 		label, hint, value, caption string
 		size                        float32
 		color                       *gfx.Color
 	}{
 		{pnlLabel, "", money(latest.TotalPnl), statScope(p.strategy, latest.Span),
-			typography.SizeTitle, &primary},
+			typography.SizeTitle, statColor(*theme, latest.TotalPnl)},
 		{"凯利值", "按胜率与盈亏比算出的下注比例", kellyText(kelly), kellyCaption(kelly),
 			typography.SizeSection, nil},
 		{"平均盈利", domain.MetricHint(domain.MetricAvgWin), money(latest.AvgWin),
@@ -443,11 +440,11 @@ func (p *statisticsPanel) cards(c ui.C) {
 		{"平均亏损", domain.MetricHint(domain.MetricAvgLoss), money(latest.AvgLoss),
 			strconv.Itoa(latest.LossCount) + " 笔亏损", typography.SizeSection, &avgLossColor},
 		{"胜率", domain.MetricHint(domain.MetricWinRate), statPercent(latest.WinRate),
-			winLossCaption(latest), typography.SizeSection, &primary},
+			winLossCaption(latest), typography.SizeSection, nil},
 		{"盈亏比", domain.MetricHint(domain.MetricPnlRatio), ratioText(latest.PnlRatio),
-			"", typography.SizeSection, &primary},
+			"", typography.SizeSection, nil},
 		{"期望值", domain.MetricHint(domain.MetricExpectancy), money(latest.Expectancy),
-			"", typography.SizeSection, &primary},
+			"", typography.SizeSection, statColor(*theme, latest.Expectancy)},
 		{"最大回撤", domain.MetricHint(domain.MetricMaxDrawdown),
 			statPercent(latest.MaxDrawdownPct), "从高点回落 " + money(latest.MaxDrawdown),
 			typography.SizeSection, nil},
@@ -587,17 +584,20 @@ func (p *statisticsPanel) appendXAxis(dst []byte, value float32) []byte {
 		points[index].Sequence, points[index].Span)...)
 }
 
-// chartColor follows A-shares: a figure above zero is red, below it green. A
-// drawdown is always a loss, so its curve is green whatever the axis says.
+// chartColor uses the primary accent for readings that have no red/green
+// meaning: cumulative PnL can be negative without becoming an "error", and a
+// win rate, PnL ratio or expectancy is just a number. The three genuinely
+// directional curves keep A-share semantics.
 func (p *statisticsPanel) chartColor(theme gfx.Theme) gfx.Color {
-	if p.metric == domain.MetricMaxDrawdown {
+	switch p.metric {
+	case domain.MetricTotalPnl, domain.MetricWinRate, domain.MetricPnlRatio, domain.MetricExpectancy:
+		return theme.Primary
+	case domain.MetricAvgWin:
+		return semantic.Expense(theme)
+	case domain.MetricAvgLoss, domain.MetricMaxDrawdown:
 		return semantic.Income(theme)
 	}
-	points := p.chartPoints()
-	if len(points) > 0 && statChartValue(p.metric, points[len(points)-1]) < 0 {
-		return semantic.Income(theme)
-	}
-	return semantic.Expense(theme)
+	return theme.Primary
 }
 
 // drawHover paints the crosshair, the point and the tooltip of the hovered

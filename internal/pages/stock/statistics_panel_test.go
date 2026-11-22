@@ -11,6 +11,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/semantic"
 	"transactions/internal/domain"
 	"transactions/internal/repository"
 )
@@ -368,4 +369,30 @@ func countTexts(driver *app.Driver, value string) int {
 		}
 	}
 	return count
+}
+
+// A negative cumulative PnL is still a normal reading, not an error: its curve,
+// and the curves of the three other non-directional metrics, use the primary
+// accent. Only the genuinely directional curves keep A-share semantics.
+func TestStatisticsChartColor(t *testing.T) {
+	theme := ui.LightTheme()
+	base := domain.StockStatisticsPoint{TotalPnl: -100}
+	for _, metric := range []domain.StockMetric{
+		domain.MetricTotalPnl, domain.MetricWinRate, domain.MetricPnlRatio, domain.MetricExpectancy,
+	} {
+		panel := &statisticsPanel{metric: metric, stats: domain.StockStatistics{Points: []domain.StockStatisticsPoint{base}}}
+		if got := panel.chartColor(theme); got != theme.Primary {
+			t.Fatalf("%s curve = %v, want primary %v", metric, got, theme.Primary)
+		}
+	}
+	for metric, want := range map[domain.StockMetric]gfx.Color{
+		domain.MetricAvgWin:      semantic.Expense(theme),
+		domain.MetricAvgLoss:     semantic.Income(theme),
+		domain.MetricMaxDrawdown: semantic.Income(theme),
+	} {
+		panel := &statisticsPanel{metric: metric, stats: domain.StockStatistics{Points: []domain.StockStatisticsPoint{base}}}
+		if got := panel.chartColor(theme); got != want {
+			t.Fatalf("%s curve = %v, want %v", metric, got, want)
+		}
+	}
 }
