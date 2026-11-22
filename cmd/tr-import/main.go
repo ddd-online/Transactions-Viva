@@ -1,6 +1,7 @@
 // Command tr-import copies an old Transactions workspace's accounting tables,
-// saved charts, key events and stock data (mapped to workspace stock accounts)
-// into a new schema-v1 workspace. The old database is opened read-only; the
+// saved charts, key events, stock data (mapped to workspace stock accounts),
+// todo boards and diaries (one book per old ledger) into a new schema-v1
+// workspace. The old database is opened read-only; the
 // destination must not already contain transactions.db.
 //
 //	go run ./cmd/tr-import -from <old-workspace-or-transactions.db> -to <new-dir>
@@ -42,6 +43,7 @@ func main() {
 		report.StockAccounts, report.StockFunds, report.StockPositions, report.StockTrades,
 		report.StockRounds, report.StockLessons, report.StockLadderDays)
 	fmt.Printf("待办主题 %d，事项 %d，进度 %d\n", report.TodoCards, report.TodoItems, report.TodoProgress)
+	fmt.Printf("日记本 %d，日记 %d\n", report.DiaryBooks, report.DiaryEntries)
 	if report.SourceSchema > 0 {
 		fmt.Printf("旧数据库格式版本：%d\n", report.SourceSchema)
 	}

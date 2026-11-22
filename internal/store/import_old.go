@@ -34,6 +34,8 @@ type ImportReport struct {
 	TodoCards       int
 	TodoItems       int
 	TodoProgress    int
+	DiaryBooks      int
+	DiaryEntries    int
 	Events          int
 	EventImages     int
 	EventImageFiles int
@@ -51,7 +53,9 @@ type ImportReport struct {
 // ImportOld copies the old application's data into a new v1 workspace. The old
 // database is opened read-only; the destination must be a new directory or an
 // empty one. The accounting tables, saved charts, key events (with their image
-// files), stock tables and todo boards are copied; diary is still ignored.
+// files), stock tables, todo boards and diaries are copied. Old diaries are
+// ledger-scoped, so each ledger with diary rows becomes a diary book; rows
+// without a ledger go to 未归属日记.
 //
 // Events are the one place the shapes differ: the old application stored one
 // event per (ledger, date), while this workspace keeps one per date. Events that
@@ -194,6 +198,9 @@ func ImportOld(destinationDirectory, sourceDatabase string, strict bool) (Import
 		report.TodoCards = todo.Cards
 		report.TodoItems = todo.Items
 		report.TodoProgress = todo.Progress
+		if report.DiaryBooks, report.DiaryEntries, err = copyDiary(source, tx); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
@@ -230,6 +237,109 @@ func openOldDatabase(path string) (*sql.DB, error) {
 		return nil, fmt.Errorf("导入：打开旧数据库失败（%w）", err)
 	}
 	return db, nil
+}
+
+// oldDiaryEntry is one old diary row before it is assigned to a book.
+type oldDiaryEntry struct {
+	id        string
+	date      string
+	content   string
+	wordCount int
+	mood      string
+	createdAt int64
+	updatedAt int64
+	ledgerID  string
+	ledger    string
+}
+
+// copyDiary imports the old ledger-scoped diary as one book per old ledger.
+// Keeping the ledgers separate preserves dates that occur in more than one old
+// ledger; the new page supports multiple books for exactly this reason.
+func copyDiary(source *sql.DB, tx *sql.Tx) (books, entries int, err error) {
+	exists, err := tableExists(source, "diary_entry")
+	if err != nil || !exists {
+		return 0, 0, err
+	}
+	rows, err := source.Query(`SELECT d.id, d.date, COALESCE(d.content, ''),
+		COALESCE(d.word_count, 0), COALESCE(d.mood, ''), d.created_at, d.updated_at,
+		COALESCE(d.ledger_id, ''), COALESCE(l.name, '')
+		FROM diary_entry d LEFT JOIN ledger l ON l.id = d.ledger_id
+		ORDER BY d.ledger_id, d.date`)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer rows.Close()
+	var groups [][]oldDiaryEntry
+	index := make(map[string]int)
+	for rows.Next() {
+		var entry oldDiaryEntry
+		if err := rows.Scan(&entry.id, &entry.date, &entry.content, &entry.wordCount,
+			&entry.mood, &entry.createdAt, &entry.updatedAt, &entry.ledgerID,
+			&entry.ledger); err != nil {
+			return 0, 0, err
+		}
+		group, ok := index[entry.ledgerID]
+		if !ok {
+			group = len(groups)
+			index[entry.ledgerID] = group
+			groups = append(groups, nil)
+		}
+		groups[group] = append(groups[group], entry)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, 0, err
+	}
+	var sortOrder int
+	if err := tx.QueryRow("SELECT COALESCE(MAX(sort_order), -1) FROM diary_book").Scan(&sortOrder); err != nil {
+		return 0, 0, err
+	}
+	sortOrder++
+	for _, group := range groups {
+		first := group[0]
+		name := strings.TrimSpace(first.ledger)
+		if name == "" {
+			if first.ledgerID == "" {
+				name = "未归属日记"
+			} else {
+				name = "旧账本 " + first.ledgerID
+			}
+		}
+		bookID := "book-import-unassigned"
+		description := "旧工作空间未归属账本的日记"
+		if first.ledgerID != "" {
+			bookID = "book-import-" + first.ledgerID
+			description = fmt.Sprintf("旧账本「%s」的日记", name)
+		}
+		createdAt, updatedAt := first.createdAt, first.updatedAt
+		for _, entry := range group[1:] {
+			if entry.createdAt < createdAt {
+				createdAt = entry.createdAt
+			}
+			if entry.updatedAt > updatedAt {
+				updatedAt = entry.updatedAt
+			}
+		}
+		if _, err := tx.Exec(`INSERT INTO diary_book
+			(book_id, name, description, sort_order, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?)`,
+			bookID, name, description, sortOrder, createdAt, updatedAt); err != nil {
+			return books, entries, err
+		}
+		sortOrder++
+		books++
+		for _, entry := range group {
+			mood := domain.NormalizeDiaryMood(entry.mood)
+			if _, err := tx.Exec(`INSERT INTO diary_entry
+				(id, date, content, word_count, mood, created_at, updated_at, book_id)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+				entry.id, entry.date, entry.content, entry.wordCount, mood,
+				entry.createdAt, entry.updatedAt, bookID); err != nil {
+				return books, entries, err
+			}
+			entries++
+		}
+	}
+	return books, entries, nil
 }
 
 func validateOldTables(db *sql.DB) error {

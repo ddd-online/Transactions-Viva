@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"transactions/internal/domain"
 )
 
 func oldFixture(t *testing.T) string {
@@ -44,6 +46,10 @@ func oldFixture(t *testing.T) string {
 		"INSERT INTO todo_item (id, ledger_id, card_id, title, start_date, due_date, urgency, importance, status, completed_at, created_at, updated_at) " +
 			"VALUES ('ti1', 'l1', 'tc1', '写周报', '2026-01-01', '2026-01-02', 3, 4, 'done', 500, 100, 500)",
 		"INSERT INTO todo_progress (id, ledger_id, item_id, content, created_at, done) VALUES ('tp1', 'l1', 'ti1', '列大纲', 300, 1)",
+		"CREATE TABLE diary_entry (id TEXT PRIMARY KEY, date TEXT NOT NULL, content TEXT, word_count INTEGER NOT NULL DEFAULT 0, mood TEXT DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, ledger_id TEXT NOT NULL DEFAULT '')",
+		"INSERT INTO diary_entry (id, date, content, word_count, mood, created_at, updated_at, ledger_id) VALUES ('d1', '2026-01-15', '家里的第一篇', 6, '开心', 1100, 1200, 'l1')",
+		"INSERT INTO diary_entry (id, date, content, word_count, mood, created_at, updated_at, ledger_id) VALUES ('d2', '2026-01-16', '旅行第一天', 5, '平静', 1300, 1400, 'l2')",
+		"INSERT INTO diary_entry (id, date, content, word_count, mood, created_at, updated_at, ledger_id) VALUES ('d3', '2026-01-17', '没有账本的日记', 7, '', 1500, 1600, '')",
 	}
 	for _, statement := range statements {
 		if _, err := db.Exec(statement); err != nil {
@@ -62,7 +68,8 @@ func TestImportOldCopiesAccountingTables(t *testing.T) {
 	}
 	if report.Ledgers != 2 || report.Categories != 1 || report.Tags != 1 ||
 		report.Records != 1 || report.RecordTags != 1 || report.Templates != 1 || report.Charts != 1 ||
-		report.TodoCards != 1 || report.TodoItems != 1 || report.TodoProgress != 1 {
+		report.TodoCards != 1 || report.TodoItems != 1 || report.TodoProgress != 1 ||
+		report.DiaryBooks != 3 || report.DiaryEntries != 3 {
 		t.Fatalf("report = %+v", report)
 	}
 	if report.SourceSchema != 12 {
@@ -311,5 +318,54 @@ func TestImportOldStrictRejectsOrphanEventImages(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(destination, "transactions.db")); !os.IsNotExist(err) {
 		t.Fatalf("failed import left a database: %v", err)
+	}
+}
+
+func TestImportOldCopiesDiaryAsBooks(t *testing.T) {
+	source := oldFixture(t)
+	destination := filepath.Join(t.TempDir(), "imported")
+	if _, err := ImportOld(destination, source, false); err != nil {
+		t.Fatalf("ImportOld: %v", err)
+	}
+	workspace, err := Open(destination)
+	if err != nil {
+		t.Fatalf("open destination: %v", err)
+	}
+	defer workspace.Close()
+	books, err := workspace.DiaryBooks(t.Context())
+	if err != nil {
+		t.Fatalf("diary books: %v", err)
+	}
+	if len(books) != 4 { // the seeded default book and one per old ledger
+		t.Fatalf("books = %+v, want 4", books)
+	}
+	var home, trip, unassigned domain.DiaryBook
+	for _, book := range books {
+		switch book.Name {
+		case "家庭账本":
+			home = book
+		case "旅行账本":
+			trip = book
+		case "未归属日记":
+			unassigned = book
+		}
+	}
+	if home.ID == "" || trip.ID == "" || unassigned.ID == "" {
+		t.Fatalf("imported books = %+v", books)
+	}
+	entries, err := workspace.DiaryEntries(t.Context(), home.ID)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("home entries = %+v, err=%v", entries, err)
+	}
+	entry := entries[0]
+	if entry.Date != "2026-01-15" || entry.Content != "家里的第一篇" ||
+		entry.WordCount != 6 || entry.Mood != "😊" {
+		t.Fatalf("home entry = %+v", entry)
+	}
+	if entries, err := workspace.DiaryEntries(t.Context(), trip.ID); err != nil || len(entries) != 1 || entries[0].Mood != "😐" {
+		t.Fatalf("trip entries = %+v, err=%v", entries, err)
+	}
+	if entries, err := workspace.DiaryEntries(t.Context(), unassigned.ID); err != nil || len(entries) != 1 || entries[0].Content != "没有账本的日记" {
+		t.Fatalf("unassigned entries = %+v, err=%v", entries, err)
 	}
 }
