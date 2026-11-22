@@ -71,8 +71,7 @@ type State struct {
 	// Visible is the first day of the month the day grid shows.
 	Visible time.Time
 
-	tree    gfx.Tree
-	cells   gfx.Scope
+	cells   [gridColumns * gridRows]gfx.ID
 	dismiss gfx.ID
 	prev    gfx.ID
 	next    gfx.ID
@@ -82,13 +81,10 @@ type State struct {
 	presets            [datePresetCount]gfx.ID
 }
 
-// NewState builds a picker's state and the identities of its cells.
-func NewState() State {
-	var state State
-	feature := state.tree.Feature("date-picker")
-	state.cells = state.tree.Sub(feature, state.tree.Name("cell"))
-	return state
-}
+// NewState returns an empty picker state. Its cell identities are bound from
+// the page on each paint, so the panel's buttons take presses like any other
+// control.
+func NewState() State { return State{} }
 
 // Spec is what one picker shows and what a pick does.
 type Spec struct {
@@ -188,7 +184,8 @@ func fieldWidth(canvas *gfx.Canvas, theme *gfx.Theme) float32 {
 	return width
 }
 
-// bind names the panel's hit identities for this paint.
+// bind names the panel's hit identities for this paint, including the grid
+// cells, so their button hits belong to the page tree.
 func (state *State) bind(c ui.C) {
 	state.dismiss = ui.ID(c)
 	state.prev = ui.ID(c)
@@ -197,6 +194,9 @@ func (state *State) bind(c ui.C) {
 	state.yearNext = ui.ID(c)
 	for index := range state.presets {
 		state.presets[index] = ui.ID(c)
+	}
+	for index := range state.cells {
+		state.cells[index] = ui.ID(c)
 	}
 }
 
@@ -285,12 +285,21 @@ func (state *State) measure(canvas *gfx.Canvas, theme gfx.Theme, spec Spec, anch
 		presetsWidth += gap
 	}
 	width = max(width, presetsWidth-gap) + 2*metrics.PadSurface
-
+	height := 2*metrics.PadSurface + cell + gap + gridHeight + gap + presetsHeight
+	y := anchor.Y + anchor.Height + gap
+	if spec.Viewport.Height > 0 {
+		if y+height > spec.Viewport.Bottom() {
+			// A form above a short window would otherwise open the panel off
+			// screen; flip it over the field and keep it inside the viewport.
+			y = anchor.Y - gap - height
+		}
+		y = max(spec.Viewport.Y, min(y, spec.Viewport.Bottom()-height))
+	}
 	bounds := gfx.Rect{
 		X:      min(anchor.X, max(spec.Viewport.Right()-width, 0)),
-		Y:      anchor.Y + anchor.Height + gap,
+		Y:      y,
 		Width:  width,
-		Height: 2*metrics.PadSurface + cell + gap + gridHeight + gap + presetsHeight,
+		Height: height,
 	}
 	inner := bounds.Inset(gfx.All(metrics.PadSurface))
 	return layout{
@@ -387,7 +396,7 @@ func (state *State) paintGrid(canvas *gfx.Canvas, theme gfx.Theme, spec Spec, pl
 // range, muted inside it, bordered for today, plain otherwise.
 func (state *State) paintCell(canvas *gfx.Canvas, theme gfx.Theme, spec Spec,
 	cell gfx.Rect, index int, from, to, label, today string) {
-	button := viva.BeginButton(canvas, theme, state.cells.At(index), cell)
+	button := viva.BeginButton(canvas, theme, state.cells[index], cell)
 	switch {
 	case spec.MaxDate != "" && to > spec.MaxDate:
 		button.Disabled().Ghost(label)
@@ -438,9 +447,12 @@ func (state *State) handle(d *ui.DrawContext, spec Spec) {
 		state.step(spec, 1)
 		changed = true
 	default:
-		if index, ok := canvas.ClickedIn(state.cells); ok {
-			state.pickCell(spec, index)
-			changed = true
+		for index := range state.cells {
+			if canvas.Clicked(state.cells[index]) {
+				state.pickCell(spec, index)
+				changed = true
+				break
+			}
 		}
 		for index, preset := range datePresets(spec.Grain, spec.CloseOnPick) {
 			if preset.label == "" {
