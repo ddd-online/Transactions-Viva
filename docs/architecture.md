@@ -77,7 +77,7 @@ main → desktop → pages → components
 | `internal/components/selectbox` | `ui.Select` 的包装，补上框架漏收的动画组 | — |
 | `internal/buildinfo` | 版本、构建提交、运行平台与运行时；关于软件读它，`viva.toml` 的版本由测试对齐 | 旧工程 `settings-about.tsx` 的版本面板 |
 | `internal/components/typography` | 字号 / 字重的五个角色（Caption 12 · Body 14 · Section 16 · Title 20 · Metric 24） | `src/styles/tokens.css` 的 `--transactions-size-text-*`，收掉 12/13/14 的 1px 档 |
-| `internal/pages/<page>/controls` | 只属于某一个页面的组件：目前是设置页的分组卡片 / 设置行 | 旧工程同页目录下的组件 |
+| `internal/pages/<page>/controls` | 只属于某一个页面的组件：目前是设置页的滚动页 / 分组卡片 / 设置行 | 旧工程同页目录下的组件 |
 | `internal/domain` | 金额、模型、常量、股票费用、统计、图表规则 | `shared/domain` |
 | `internal/config` | `AppConfig`、功能开关、默认值、读写 / 归一化 / 未知键保留 | `shared/types/config.ts`、`electron/config.ts`、`electron/services/config.ts` |
 | `internal/repository` | 页面数据契约：账本 / 分类标签 / 记录 / 模板的查询与写入 | `electron/ipc/handlers` 的命令边界 |
@@ -324,10 +324,11 @@ main → desktop → pages → components
   就是单独一项。页面通过 `Tabs() []string`、`Tab() int`、`SelectTab(int)` 暴露子功能，
   内容里不画 `ui.Tabs`。
 - 设置页的版式是「设置组」：一个 16px 700 的组名加它下面的内容，组名与内容间距 8px，
-  组与组 24px。这件事只有一处实现——`internal/pages/settings/controls` 的 `Section`（组名 +
-  内容）与 `Group`（组名 + 一张 `Card`），关于软件的「版本信息 / 更新 / 项目」、日记配置的
-  「日记本 / 导入导出」与通用设置的「常规 / 功能开关」都用它；一个页面要堆多组时，用
-  `ui.Column(c).Gap(layout.GroupGap)` 把它们包起来，别再手写间距。
+  组与组 24px。右栏只有一处实现——`internal/pages/settings/controls.Page`：它自己撑满
+  右栏、拥有垂直滚动视口、把 760px 阅读列居中，并按 `GroupGap` 排列传入的 `GroupSpec`。
+  每个设置小节只填 `GroupSpec`（`Title` + 行内容；`Raw` 给身份头 / 尾注这类不套卡的块），
+  不再自己包 `Column` 或手写组间距。`Section` / `Group` / `Card` 仍是组本身的实现，
+  关于软件的「版本信息 / 更新 / 项目」、日记配置的「日记本 / 导入导出」与股票设置都用同一套。
 - 组件按归属放：可复用的组件放在 `internal/components` 自己的子包里（`datepicker`、
   `pagination`、`selectbox`，包名即组件名，导出名不再重复包名）；只有某一个页面用的组件
   才放在该页面的 `controls` 子包里（例如 `internal/pages/settings/controls` 的 `Group` /

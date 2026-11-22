@@ -179,7 +179,7 @@ internal/events/         事件图片的导入 / 删除编排：实况配对、�
 internal/stockquote/     腾讯行情（GBK、3 秒超时），页面只依赖 Fetcher
 internal/stocklimit/     东财涨停池（8 秒）与天梯缓存策略
 internal/components/     可复用的 UI：占位空态，datepicker / pagination / selectbox / semantic 子包
-internal/pages/settings/controls/  只属于设置页的分组卡片 / 设置行
+internal/pages/settings/controls/  设置页的滚动页 / 分组卡片 / 设置行
 internal/domain/         纯领域规则与数据形状：金额、记录、账本、事件、日记、待办、股票
 internal/repository/     页面使用的数据契约（接口 / 查询 / 错误），不依赖 SQLite
 internal/config/         应用配置：形状、默认值、读写与归一化（~/.transactions.json）
