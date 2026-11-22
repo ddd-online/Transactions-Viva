@@ -223,7 +223,8 @@ func (p *lessonsPanel) lessonRow(c ui.C, lesson *domain.StockLesson) {
 
 func (p *lessonsPanel) sourceCell(c ui.C, lesson *domain.StockLesson) {
 	theme := c.Theme()
-	ui.Column(c).Width(lessonSourceWidth).Gap(2).Children(func() {
+	ui.Column(c).Width(lessonSourceWidth).MinWidth(lessonSourceWidth).Shrink(0).
+		Gap(2).Children(func() {
 		if lesson.RoundID == "" {
 			typography.Body(c, "未关联交易轮次").Muted().Ellipsis()
 			return
@@ -242,8 +243,8 @@ func (p *lessonsPanel) sourceCell(c ui.C, lesson *domain.StockLesson) {
 
 func (p *lessonsPanel) actionsCell(c ui.C, lesson *domain.StockLesson) {
 	canJump := lesson.RoundID != "" && lesson.SourceAvailable && p.onOpenRound != nil
-	ui.Row(c).Width(lessonActionWidth).Gap(2).Items(ui.Center).
-		Justify(ui.End).Children(func() {
+	ui.Row(c).Width(lessonActionWidth).MinWidth(lessonActionWidth).Shrink(0).
+		Gap(2).Items(ui.Center).Justify(ui.End).Children(func() {
 		edit := ui.Button(c, "编辑心得").Ghost().Icon(icons.Pencil).
 			XSmall().IconOnly().Tooltip("编辑")
 		if edit.Clicked() {
