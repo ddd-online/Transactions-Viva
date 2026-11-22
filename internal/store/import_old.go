@@ -31,6 +31,9 @@ type ImportReport struct {
 	StockRounds     int
 	StockLessons    int
 	StockLadderDays int
+	TodoCards       int
+	TodoItems       int
+	TodoProgress    int
 	Events          int
 	EventImages     int
 	EventImageFiles int
@@ -47,9 +50,8 @@ type ImportReport struct {
 
 // ImportOld copies the old application's data into a new workspace. The old
 // database is opened read-only; the destination must be a new directory or an
-// empty one. The accounting tables, saved charts and key events (with their
-// image files) are copied; the old stock, diary and todo tables are deliberately
-// ignored.
+// empty one. The accounting tables, saved charts, key events (with their image
+// files), stock tables and todo boards are copied; diary is still ignored.
 //
 // Events are the one place the shapes differ: the old application stored one
 // event per (ledger, date), while this workspace keeps one per date. Events that
@@ -185,6 +187,13 @@ func ImportOld(destinationDirectory, sourceDatabase string, strict bool) (Import
 		report.StockRounds = stock.Rounds
 		report.StockLessons = stock.Lessons
 		report.StockLadderDays = stock.LadderDays
+		todo, err := copyTodo(source, tx)
+		if err != nil {
+			return err
+		}
+		report.TodoCards = todo.Cards
+		report.TodoItems = todo.Items
+		report.TodoProgress = todo.Progress
 		return nil
 	})
 	if err != nil {
@@ -265,6 +274,36 @@ func oldOrphans(db *sql.DB) ([]string, error) {
 			"(SELECT 1 FROM key_event e WHERE e.ledger_id = i.ledger_id AND e.date = i.event_date)"})
 	}
 	var orphans []string
+	hasTodoCards, err := tableExists(db, "todo_card")
+	if err != nil {
+		return nil, err
+	}
+	hasTodoItems, err := tableExists(db, "todo_item")
+	if err != nil {
+		return nil, err
+	}
+	hasTodoProgress, err := tableExists(db, "todo_progress")
+	if err != nil {
+		return nil, err
+	}
+	if hasTodoCards {
+		checks = append(checks,
+			struct {
+				label string
+				query string
+			}{"待办主题指向不存在的账本", "SELECT COUNT(*) FROM todo_card WHERE ledger_id NOT IN (SELECT id FROM ledger)"},
+			struct {
+				label string
+				query string
+			}{"待办事项指向不存在的卡片", "SELECT COUNT(*) FROM todo_item WHERE card_id NOT IN (SELECT id FROM todo_card)"},
+		)
+	}
+	if hasTodoItems && hasTodoProgress {
+		checks = append(checks, struct {
+			label string
+			query string
+		}{"待办进度指向不存在的事项", "SELECT COUNT(*) FROM todo_progress WHERE item_id NOT IN (SELECT id FROM todo_item)"})
+	}
 	for _, check := range checks {
 		var count int
 		if err := db.QueryRow(check.query).Scan(&count); err != nil {
@@ -389,6 +428,113 @@ func tableHasColumn(db *sql.DB, table, column string) (bool, error) {
 		}
 	}
 	return false, rows.Err()
+}
+
+type todoImport struct {
+	Cards    int
+	Items    int
+	Progress int
+}
+
+// copyTodo imports the old todo board, keeping ids, timestamps, ordering and
+// completed state. Old 11-stop urgency / importance values are snapped onto the
+// six stops the new pages write.
+func copyTodo(source *sql.DB, tx *sql.Tx) (todoImport, error) {
+	var report todoImport
+	hasCards, err := tableExists(source, "todo_card")
+	if err != nil || !hasCards {
+		return report, err
+	}
+	rows, err := source.Query("SELECT id, ledger_id, title, created_at, updated_at, sort_order FROM todo_card")
+	if err != nil {
+		return report, err
+	}
+	for rows.Next() {
+		var id, ledgerID, title string
+		var createdAt, updatedAt int64
+		var sortOrder int
+		if err := rows.Scan(&id, &ledgerID, &title, &createdAt, &updatedAt, &sortOrder); err != nil {
+			rows.Close()
+			return report, err
+		}
+		if _, err := tx.Exec("INSERT INTO todo_card (id, ledger_id, title, created_at, updated_at, sort_order) VALUES (?, ?, ?, ?, ?, ?)",
+			id, ledgerID, title, createdAt, updatedAt, sortOrder); err != nil {
+			rows.Close()
+			return report, err
+		}
+		report.Cards++
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return report, err
+	}
+	rows.Close()
+
+	hasItems, err := tableExists(source, "todo_item")
+	if err != nil || !hasItems {
+		return report, err
+	}
+	items, err := source.Query("SELECT id, ledger_id, card_id, title, start_date, due_date, urgency, importance, status, completed_at, created_at, updated_at FROM todo_item")
+	if err != nil {
+		return report, err
+	}
+	for items.Next() {
+		var id, ledgerID, cardID, title, startDate, dueDate, status string
+		var urgency, importance int
+		var completedAt, createdAt, updatedAt int64
+		if err := items.Scan(&id, &ledgerID, &cardID, &title, &startDate, &dueDate, &urgency, &importance,
+			&status, &completedAt, &createdAt, &updatedAt); err != nil {
+			items.Close()
+			return report, err
+		}
+		if status != domain.TodoDone {
+			status = domain.TodoDoing
+			completedAt = 0
+		}
+		urgency = domain.SnapTodoLevel(urgency)
+		importance = domain.SnapTodoLevel(importance)
+		if _, err := tx.Exec("INSERT INTO todo_item ("+todoItemColumns+") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			id, ledgerID, cardID, title, startDate, dueDate, urgency, importance, status, completedAt, createdAt, updatedAt); err != nil {
+			items.Close()
+			return report, err
+		}
+		report.Items++
+	}
+	if err := items.Err(); err != nil {
+		items.Close()
+		return report, err
+	}
+	items.Close()
+
+	hasProgress, err := tableExists(source, "todo_progress")
+	if err != nil || !hasProgress {
+		return report, err
+	}
+	progress, err := source.Query("SELECT id, ledger_id, item_id, content, created_at, done FROM todo_progress")
+	if err != nil {
+		return report, err
+	}
+	for progress.Next() {
+		var id, ledgerID, itemID, content string
+		var createdAt int64
+		var done int
+		if err := progress.Scan(&id, &ledgerID, &itemID, &content, &createdAt, &done); err != nil {
+			progress.Close()
+			return report, err
+		}
+		if _, err := tx.Exec("INSERT INTO todo_progress ("+todoProgressColumns+") VALUES (?, ?, ?, ?, ?, ?)",
+			id, ledgerID, itemID, content, createdAt, done != 0); err != nil {
+			progress.Close()
+			return report, err
+		}
+		report.Progress++
+	}
+	if err := progress.Err(); err != nil {
+		progress.Close()
+		return report, err
+	}
+	progress.Close()
+	return report, nil
 }
 
 func copyCharts(source *sql.DB, tx *sql.Tx) (int, error) {

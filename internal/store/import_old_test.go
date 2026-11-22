@@ -24,6 +24,9 @@ func oldFixture(t *testing.T) string {
 	if _, err := db.Exec(chartSchema); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := db.Exec(todoSchema); err != nil {
+		t.Fatal(err)
+	}
 	statements := []string{
 		"INSERT INTO ledger (id, name, description, created_at, updated_at) VALUES ('l1', '家庭账本', '', 100, 200)",
 		"INSERT INTO ledger (id, name, description, created_at, updated_at) VALUES ('l2', '旅行账本', '', 300, 400)",
@@ -39,6 +42,10 @@ func oldFixture(t *testing.T) string {
 		"INSERT INTO app_meta (key, value) VALUES ('schema_version', '12')",
 		"CREATE TABLE stock_account (id TEXT PRIMARY KEY, ledger_id TEXT NOT NULL DEFAULT '', principal_cents INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)",
 		"INSERT INTO stock_account (id, ledger_id, principal_cents, created_at, updated_at) VALUES ('s1', 'l1', 100000, 100, 200)",
+		"INSERT INTO todo_card (id, ledger_id, title, created_at, updated_at, sort_order) VALUES ('tc1', 'l1', '本周', 100, 200, 1)",
+		"INSERT INTO todo_item (id, ledger_id, card_id, title, start_date, due_date, urgency, importance, status, completed_at, created_at, updated_at) " +
+			"VALUES ('ti1', 'l1', 'tc1', '写周报', '2026-01-01', '2026-01-02', 3, 4, 'done', 500, 100, 500)",
+		"INSERT INTO todo_progress (id, ledger_id, item_id, content, created_at, done) VALUES ('tp1', 'l1', 'ti1', '列大纲', 300, 1)",
 	}
 	for _, statement := range statements {
 		if _, err := db.Exec(statement); err != nil {
@@ -56,7 +63,8 @@ func TestImportOldCopiesAccountingTables(t *testing.T) {
 		t.Fatalf("ImportOld: %v", err)
 	}
 	if report.Ledgers != 2 || report.Categories != 1 || report.Tags != 1 ||
-		report.Records != 1 || report.RecordTags != 1 || report.Templates != 1 || report.Charts != 1 {
+		report.Records != 1 || report.RecordTags != 1 || report.Templates != 1 || report.Charts != 1 ||
+		report.TodoCards != 1 || report.TodoItems != 1 || report.TodoProgress != 1 {
 		t.Fatalf("report = %+v", report)
 	}
 	if report.SourceSchema != 12 {
@@ -89,6 +97,13 @@ func TestImportOldCopiesAccountingTables(t *testing.T) {
 	templates, err := workspace.Templates(t.Context(), "l1")
 	if err != nil || len(templates) != 1 || templates[0].Flags != "outlier" || templates[0].Description != "" {
 		t.Fatalf("templates = %+v, err=%v", templates, err)
+	}
+	if cards, err := workspace.TodoCards(t.Context(), "l1"); err != nil || len(cards) != 1 || cards[0].Title != "本周" {
+		t.Fatalf("todo cards = %+v, err=%v", cards, err)
+	}
+	if history, err := workspace.TodoHistory(t.Context(), "l1"); err != nil || len(history) != 1 ||
+		history[0].Item.Importance != 5 || len(history[0].Item.Progress) != 1 || !history[0].Item.Progress[0].Done {
+		t.Fatalf("todo history = %+v, err=%v", history, err)
 	}
 }
 

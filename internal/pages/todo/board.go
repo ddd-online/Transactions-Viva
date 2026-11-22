@@ -1,0 +1,294 @@
+package todo
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/vivaui/viva/gfx"
+	"github.com/vivaui/viva/ui"
+
+	"transactions/internal/components/layout"
+	"transactions/internal/components/typography"
+	"transactions/internal/domain"
+	"transactions/internal/icons"
+)
+
+const (
+	todoColumnWidth = float32(292)
+	todoColumnGap   = float32(16)
+)
+
+// board is the horizontal theme board. Every column scrolls its own items, so a
+// long theme never pushes the other themes out of reach.
+func (m *Model) board(c ui.C) {
+	if len(m.cards) == 0 {
+		theme := c.Theme()
+		ui.Column(c).Fill().Center().Gap(10).Children(func() {
+			ui.Icon(c, icons.Todo).Size(30, 30).Color(theme.MutedForeground)
+			typography.Title(c, "把下一件事放到板上")
+			typography.Body(c, "先建一个主题，再往里面加事项。主题像一列，待办事项只占一行。").Muted().TextCenter()
+			if ui.Button(c, "新建主题").Icon(icons.Plus).Clicked() {
+				m.openCardForm()
+			}
+		})
+		return
+	}
+	ui.Scroll(c).Grow(1).Sideways().Scrollbars().Children(func() {
+		ui.Row(c).FillHeight().Items(ui.Start).Gap(todoColumnGap).
+			PadSides(layout.Inset, layout.Inset, 20, layout.Inset).Children(func() {
+			for index := range m.cards {
+				m.column(c, index, &m.cards[index])
+			}
+			m.newCardTile(c)
+		})
+	})
+}
+
+func (m *Model) moveCard(index, delta int) {
+	target := index + delta
+	if index < 0 || index >= len(m.cards) || target < 0 || target >= len(m.cards) {
+		return
+	}
+	cards := append([]domain.TodoCard(nil), m.cards...)
+	cards[index], cards[target] = cards[target], cards[index]
+	ids := make([]string, len(cards))
+	for i := range cards {
+		ids[i] = cards[i].ID
+	}
+	if err := m.todos.ReorderTodoCards(m.context(), m.ledgers.Active(), ids); err != nil {
+		m.fail(err)
+		return
+	}
+	m.reload()
+}
+
+func (m *Model) newCardTile(c ui.C) {
+	theme := c.Theme()
+	ui.Column(c).Width(todoColumnWidth).Height(104).Shrink(0).
+		Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).Dashed().
+		Background(theme.Card).Center().Children(func() {
+		if ui.Button(c, "新建主题").Ghost().Icon(icons.Plus).Clicked() {
+			m.openCardForm()
+		}
+	})
+}
+
+func (m *Model) column(c ui.C, index int, card *domain.TodoCard) {
+	theme := c.Theme()
+	open := !m.collapsed[card.ID]
+	c.Key("todo-card-" + card.ID)
+	ui.Column(c).Width(todoColumnWidth).FillHeight().Shrink(0).
+		Background(theme.Card).Radius(theme.Metrics.RadiusSurface).
+		Border(1, theme.Border).Children(func() {
+		ui.Row(c).Height(46).FillWidth().PadSides(12, 8, 0, 12).Gap(8).Items(ui.Center).Children(func() {
+			title := ui.Row(c).Grow(1).Gap(6).Items(ui.Center).
+				Hit(ui.ID(c), "折叠主题 "+card.Title).Children(func() {
+				typography.Body(c, card.Title).Bold().Ellipsis()
+				typography.Caption(c, fmt.Sprintf("%d", len(card.Items))).Mono()
+				m.disclosure(c, open)
+			})
+			if title.Clicked() {
+				m.collapsed[card.ID] = open
+			}
+			more := ui.Button(c, "主题操作").Ghost().Icon(icons.GripVertical).IconOnly().
+				Tooltip("调整主题顺序")
+			if more.Clicked() {
+				m.cardMenu = true
+				m.cardMenuID = card.ID
+			}
+			if m.cardMenuID == card.ID {
+				ui.Menu(c, more, &m.cardMenu, func(menu *ui.MenuItems) {
+					if menu.Item("前移").Disabled(index == 0).Clicked() {
+						m.moveCard(index, -1)
+					}
+					if menu.Item("后移").Disabled(index == len(m.cards)-1).Clicked() {
+						m.moveCard(index, 1)
+					}
+					menu.Separator()
+					if menu.Item("删除主题").Destructive().Clicked() {
+						m.deleteCard = deleteCard{open: true, id: card.ID, title: card.Title}
+					}
+				})
+			}
+			if ui.Button(c, "删除主题").Ghost().Icon(icons.Trash2).IconOnly().
+				Tooltip("删除主题").Clicked() {
+				m.deleteCard = deleteCard{open: true, id: card.ID, title: card.Title}
+			}
+			if ui.Button(c, "添加事项").Ghost().Icon(icons.Plus).IconOnly().
+				Tooltip("添加事项").Clicked() {
+				m.collapsed[card.ID] = false
+				m.openItemForm(card.ID, nil)
+			}
+		})
+		if !open {
+			return
+		}
+		ui.Divider(c)
+		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
+			ui.Column(c).FillWidth().Gap(2).PadY(6).Children(func() {
+				for index := range card.Items {
+					m.itemRow(c, &card.Items[index])
+				}
+				if len(card.Items) == 0 {
+					ui.Column(c).FillWidth().PadSides(12, 12, 18, 12).Gap(4).Children(func() {
+						typography.Caption(c, "还没有事项").Muted()
+						if ui.Button(c, "添加第一件事项").Link().Clicked() {
+							m.openItemForm(card.ID, nil)
+						}
+					})
+				}
+			})
+		})
+	})
+}
+
+func (m *Model) disclosure(c ui.C, open bool) {
+	glyph := icons.ChevronRight
+	if open {
+		glyph = icons.ChevronDown
+	}
+	ui.Icon(c, glyph).Size(12, 12).Color(c.Theme().MutedForeground)
+}
+
+func (m *Model) itemRow(c ui.C, item *domain.TodoItem) {
+	theme := c.Theme()
+	expanded := m.expanded[item.ID]
+	ui.Column(c).FillWidth().Children(func() {
+		c.Key("todo-item-" + item.ID)
+		ui.Row(c).FillWidth().PadSides(12, 8, 6, 12).
+			Gap(8).Items(ui.Center).Children(func() {
+			check := ui.Row(c).Size(16, 16).Shrink(0).Radius(8).
+				Border(1, theme.Border).Center().
+				HitWith(ui.ID(c), "标记完成："+item.Title, gfx.HitOptions{
+					Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
+				}).Hover(ui.Look{}.Background(theme.Accent)).Focus(ui.Look{}.Ring(2, theme.Ring))
+			if check.Clicked() {
+				m.setStatus(item.ID, domain.TodoStatusDone)
+			}
+
+			main := ui.Column(c).Grow(1).Gap(3).
+				Hit(ui.ID(c), "展开进度 "+item.Title).Children(func() {
+				ui.Row(c).FillWidth().Gap(4).Items(ui.Center).Children(func() {
+					typography.Body(c, item.Title).MaxLines(2).Grow(1)
+					m.disclosure(c, expanded)
+				})
+				m.itemMeta(c, *item)
+			})
+			if main.Clicked() {
+				m.expanded[item.ID] = !expanded
+			}
+			if ui.Button(c, "编辑事项").Ghost().Icon(icons.Pencil).IconOnly().
+				Tooltip("编辑事项").Clicked() {
+				m.openItemForm(item.CardID, item)
+			}
+			if ui.Button(c, "删除事项").Ghost().Icon(icons.Trash2).IconOnly().
+				Tooltip("删除事项").Clicked() {
+				m.deleteItem = deleteItem{open: true, id: item.ID, title: item.Title}
+			}
+		})
+		if expanded {
+			m.progressSection(c, item)
+		}
+	})
+}
+
+func (m *Model) itemMeta(c ui.C, item domain.TodoItem) {
+	theme := c.Theme()
+	today := time.Now().Format(domain.TodoDateLayout)
+	due := domain.TodoDueState(item.DueDate, today)
+	ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
+		if item.Urgency >= 1 || item.Importance >= 1 {
+			typography.Caption(c, "紧 "+domain.TodoLevelLabel(item.Urgency)+
+				" · 重 "+domain.TodoLevelLabel(item.Importance))
+		}
+		if item.DueDate != "" {
+			label := item.DueDate
+			color := theme.MutedForeground
+			if due == "overdue" {
+				label, color = "逾期 · "+label, theme.Danger
+			} else if due == "today" {
+				label, color = "今天截止", theme.Primary
+			}
+			typography.Caption(c, label).Color(color)
+		}
+		if len(item.Progress) > 0 {
+			done := domain.TodoDoneCount(item.Progress)
+			typography.Caption(c, fmt.Sprintf("进度 %d/%d", done, len(item.Progress))).Mono()
+		}
+	})
+}
+
+func (m *Model) progressSection(c ui.C, item *domain.TodoItem) {
+	ui.Column(c).FillWidth().PadSides(36, 12, 10, 12).Gap(6).Children(func() {
+		ui.Divider(c)
+		for index := range item.Progress {
+			m.progressRow(c, &item.Progress[index])
+		}
+		ui.Row(c).FillWidth().Gap(6).Children(func() {
+			draft := m.progressDraft[item.ID]
+			field := ui.TextField(c, &draft, "新增进度", "记一句进展…").Grow(1)
+			if field.Changed() {
+				m.progressDraft[item.ID] = draft
+			}
+			if field.Submitted() {
+				m.progressDraft[item.ID] = draft
+				m.addProgress(item.ID)
+			}
+			if ui.Button(c, "添加").Small().Outline().Clicked() {
+				m.addProgress(item.ID)
+			}
+			if len(item.Progress) > 0 && ui.Button(c, "编辑记录").Small().Ghost().Clicked() {
+				m.openProgress(*item)
+			}
+		})
+	})
+}
+
+func (m *Model) progressRow(c ui.C, progress *domain.TodoProgress) {
+	theme := c.Theme()
+	c.Key("todo-progress-" + progress.ID)
+	ui.Row(c).FillWidth().Gap(6).Items(ui.Center).Children(func() {
+		check := ui.Row(c).Size(14, 14).Shrink(0).Radius(7).Border(1, theme.Border).Center().
+			HitWith(ui.ID(c), "勾选进度", gfx.HitOptions{
+				Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
+			}).Hover(ui.Look{}.Background(theme.Accent))
+		check.Children(func() {
+			if progress.Done {
+				ui.Icon(c, icons.CircleCheck).Size(12, 12).Color(theme.Success)
+			}
+		})
+		if check.Clicked() {
+			if err := m.todos.SetTodoProgressDone(m.context(), m.ledgers.Active(), progress.ID, !progress.Done); err != nil {
+				m.fail(err)
+			} else {
+				m.reload()
+			}
+		}
+		text := typography.Caption(c, progress.Content).Grow(1)
+		if progress.Done {
+			text.Muted()
+		}
+		typography.Caption(c, time.Unix(progress.CreatedAt, 0).Format("01-02 15:04")).Mono()
+		if ui.Button(c, "删除进度").Ghost().Icon(icons.Trash2).IconOnly().
+			Tooltip("删除进度").Clicked() {
+			if err := m.todos.DeleteTodoProgress(m.context(), m.ledgers.Active(), progress.ID); err != nil {
+				m.fail(err)
+			} else {
+				m.reload()
+			}
+		}
+	})
+}
+
+func (m *Model) addProgress(itemID string) {
+	text := m.progressDraft[itemID]
+	if text == "" {
+		return
+	}
+	if _, err := m.todos.AddTodoProgress(m.context(), m.ledgers.Active(), itemID, text); err != nil {
+		m.fail(err)
+		return
+	}
+	m.progressDraft[itemID] = ""
+	m.reload()
+}

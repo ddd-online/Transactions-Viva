@@ -41,6 +41,7 @@ func main() {
 	fmt.Printf("股票账户 %d，资金记录 %d，持仓 %d，成交 %d，轮次 %d，心得 %d，天梯日 %d\n",
 		report.StockAccounts, report.StockFunds, report.StockPositions, report.StockTrades,
 		report.StockRounds, report.StockLessons, report.StockLadderDays)
+	fmt.Printf("待办主题 %d，事项 %d，进度 %d\n", report.TodoCards, report.TodoItems, report.TodoProgress)
 	if report.SourceSchema > 0 {
 		fmt.Printf("旧数据库格式版本：%d\n", report.SourceSchema)
 	}

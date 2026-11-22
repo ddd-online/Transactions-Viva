@@ -103,11 +103,11 @@ func TestDeleteStockAccountCascadesAndKeepsTheLast(t *testing.T) {
 	}
 }
 
-func TestSchemaV6AddsIdentityAndStockTables(t *testing.T) {
+func TestSchemaCreatesIdentityStockAndTodoTables(t *testing.T) {
 	workspace := testWorkspace(t)
 	db := workspace.db
 	version, exists, err := schemaVersion(db)
-	if err != nil || !exists || version != 6 {
+	if err != nil || !exists || version != targetVersion() {
 		t.Fatalf("version = %d exists=%v err=%v", version, exists, err)
 	}
 	if !hasAppID(db) {
@@ -145,7 +145,7 @@ func TestV6DatabaseIsNotMistakenForTheOldApplication(t *testing.T) {
 	}
 }
 
-func TestV5DatabaseMigratesToStockTables(t *testing.T) {
+func TestV5DatabaseMigratesToStockAndTodoTables(t *testing.T) {
 	directory := t.TempDir()
 	path := filepath.Join(directory, "transactions.db")
 	db, err := sql.Open("sqlite", path)
@@ -171,10 +171,15 @@ func TestV5DatabaseMigratesToStockTables(t *testing.T) {
 	}
 	defer workspace.Close()
 	version, _, _ := schemaVersion(workspace.db)
-	if version != 6 {
+	if version != targetVersion() {
 		t.Fatalf("migrated version = %d", version)
 	}
 	if !hasAppID(workspace.db) {
 		t.Fatal("app_id missing after migration")
+	}
+	for _, table := range []string{"todo_card", "todo_item", "todo_progress"} {
+		if ok, err := tableExists(workspace.db, table); err != nil || !ok {
+			t.Fatalf("migrated table %s missing: %v", table, err)
+		}
 	}
 }

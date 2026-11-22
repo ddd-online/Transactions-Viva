@@ -19,6 +19,7 @@ var diarySchema = mustReadSchema("schema/0003_diary.sql")
 var diaryBookSchema = mustReadSchema("schema/0004_diary_book.sql")
 var keyEventSchema = mustReadSchema("schema/0005_key_event.sql")
 var stockSchema = mustReadSchema("schema/0006_stock.sql")
+var todoSchema = mustReadSchema("schema/0007_todo.sql")
 
 func mustReadSchema(name string) string {
 	data, err := schemaFiles.ReadFile(name)
@@ -43,6 +44,7 @@ var migrations = []migration{
 	{version: 4, name: "diary_book", sql: diaryBookSchema},
 	{version: 5, name: "key_event", sql: keyEventSchema},
 	{version: 6, name: "stock", sql: stockSchema},
+	{version: 7, name: "todo", sql: todoSchema},
 }
 
 func targetVersion() int { return migrations[len(migrations)-1].version }

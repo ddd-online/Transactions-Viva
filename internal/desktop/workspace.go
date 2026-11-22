@@ -37,6 +37,7 @@ func (m *Model) openConfiguredWorkspace() {
 func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 	if workspace == nil {
 		m.accounting.SetRepository(nil)
+		m.todo.SetRepository(nil, nil)
 		m.diary.SetDataSource(nil)
 		m.events.SetDataSource(nil)
 		_ = m.stock.SetRepository(nil)
@@ -53,6 +54,7 @@ func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 		}
 		if m.workspace != nil {
 			_ = m.accounting.SetRepository(m.workspace)
+			m.todo.SetRepository(m.workspace, m.workspace)
 			m.diary.SetDataSource(m.workspace)
 			m.events.SetDataSource(m.workspace)
 			_ = m.stock.SetRepository(m.workspace)
@@ -61,6 +63,7 @@ func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 		return err
 	}
 	// The 日记 page reads the same workspace and the same ledger list.
+	m.todo.SetRepository(workspace, workspace)
 	m.diary.SetDataSource(workspace)
 	// Events belong to the workspace itself, so the page reads it and nothing
 	// about a ledger.
@@ -70,6 +73,7 @@ func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 	if err := m.stock.SetRepository(workspace); err != nil {
 		if m.workspace != nil {
 			_ = m.accounting.SetRepository(m.workspace)
+			m.todo.SetRepository(m.workspace, m.workspace)
 			m.diary.SetDataSource(m.workspace)
 			m.events.SetDataSource(m.workspace)
 			_ = m.stock.SetRepository(m.workspace)

@@ -1,10 +1,12 @@
 package domain
 
-// 待办：卡片是「主题」，事项挂在卡片下；完成不是搬表，只把 status 置成 done
-// 并记 CompletedAt。卡片视图只取 doing，历史视图只取 done。
-// Urgency / Importance 是六档之一：-5 / -3 / -1 / 1 / 3 / 5。
+import "time"
 
-// TodoCard 是一个待办主题。
+// TodoDateLayout is the only accepted date shape for todo start / due dates.
+const TodoDateLayout = "2006-01-02"
+
+// TodoCard is one theme column. Cards belong to a ledger and are ordered by
+// sort_order; a card with no items still exists.
 type TodoCard struct {
 	ID        string
 	LedgerID  string
@@ -12,25 +14,28 @@ type TodoCard struct {
 	CreatedAt int64
 	UpdatedAt int64
 	SortOrder int
+	Items     []TodoItem
 }
 
-// TodoItem 是一个待办事项。
+// TodoItem is one task. Dates are local YYYY-MM-DD; an empty date means unset.
+// Status is TodoStatusDoing or TodoStatusDone; completed_at is 0 while doing.
 type TodoItem struct {
 	ID          string
 	LedgerID    string
 	CardID      string
 	Title       string
-	StartDate   string // 日粒度 YYYY-MM-DD；空串 = 没填
+	StartDate   string
 	DueDate     string
 	Urgency     int
 	Importance  int
-	Status      string // doing / done
-	CompletedAt int64  // 完成时刻（Unix 秒；未完成 = 0）
+	Status      string
+	CompletedAt int64
 	CreatedAt   int64
 	UpdatedAt   int64
+	Progress    []TodoProgress
 }
 
-// TodoProgress 是一条进度记录。正文可以订正；订正不改变 CreatedAt 与 Done。
+// TodoProgress is one log line under an item.
 type TodoProgress struct {
 	ID        string
 	LedgerID  string
@@ -38,4 +43,61 @@ type TodoProgress struct {
 	Content   string
 	Done      bool
 	CreatedAt int64
+}
+
+// TodoHistory is a completed item with the title of its card.
+type TodoHistory struct {
+	Item      TodoItem
+	CardTitle string
+}
+
+const (
+	TodoStatusDoing = TodoDoing
+	TodoStatusDone  = TodoDone
+
+	TodoCardTitleMax = 200
+	TodoItemTitleMax = 500
+	TodoProgressMax  = 2000
+)
+
+// TodoDefaultLevel is the neutral stop used by a new item.
+const TodoDefaultLevel = DefaultTodoLevel
+
+// TodoDueState is how a due date reads today: overdue, today, future, or none.
+func TodoDueState(dueDate, today string) string {
+	if dueDate == "" {
+		return ""
+	}
+	switch {
+	case dueDate < today:
+		return "overdue"
+	case dueDate == today:
+		return "today"
+	default:
+		return "future"
+	}
+}
+
+// ParseTodoDate accepts exactly YYYY-MM-DD and a real calendar date. An empty
+// string is allowed (no date) and returns ("", true).
+func ParseTodoDate(value string) (string, bool) {
+	if value == "" {
+		return "", true
+	}
+	parsed, err := time.ParseInLocation(TodoDateLayout, value, time.Local)
+	if err != nil || parsed.Format(TodoDateLayout) != value {
+		return "", false
+	}
+	return value, true
+}
+
+// TodoDoneCount counts completed progress lines.
+func TodoDoneCount(items []TodoProgress) int {
+	done := 0
+	for _, item := range items {
+		if item.Done {
+			done++
+		}
+	}
+	return done
 }
