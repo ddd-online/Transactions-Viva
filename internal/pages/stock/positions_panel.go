@@ -892,18 +892,13 @@ func (p *positionsPanel) dailyDialog(c ui.C) {
 	ui.ModalWith(c, &p.dailyOpen, title, ui.ModalSpec{Width: 560}, func() {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 			if p.dailyEditDate != "" {
-				ui.Column(c).Gap(4).Children(func() {
-					typography.Caption(c, "日期")
-					ui.Text(c, p.dailyEditDate).FontSize(typography.SizeBody).Mono()
-				})
+				ui.Text(c, p.dailyEditDate).FontSize(typography.SizeBody).Mono()
 			} else {
-				positionsFormField(c, "日期", func() {
-					datepicker.Picker(c, &p.dailyPick, datepicker.Spec{
-						Label: "日期", Start: p.dailyDate, Grain: datepicker.ByDay,
-						Fill: true, CloseOnPick: true, MaxDate: domain.DiaryToday(),
-						Viewport: c.Bounds(),
-						OnRange:  func(start, _ string) { p.dailyDate = start },
-					})
+				datepicker.Picker(c, &p.dailyPick, datepicker.Spec{
+					Label: "日期", Start: p.dailyDate, Grain: datepicker.ByDay,
+					Fill: true, CloseOnPick: true, MaxDate: domain.DiaryToday(),
+					Viewport: c.Bounds(),
+					OnRange:  func(start, _ string) { p.dailyDate = start },
 				})
 			}
 			ui.TextArea(c, &p.dailyText, "复盘", "记录今天的盘面与判断").Height(160)
