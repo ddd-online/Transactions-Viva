@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
   发布：校验版本 / 标签 / 工作树 / 产物 / 发布说明 → 创建 GitHub Release 并上传安装包。
 
@@ -58,7 +58,7 @@ try {
 
     # Release 正文只能是本次版本这一节：应用内「关于 / 更新」显示的就是 release 正文，
     # 历史条目留在各自版本的 release 里。这里再切一次，文件里攒了历史也不会整份发出去。
-    $allNotes = Get-Content -LiteralPath $notes -Raw
+    $allNotes = Get-Content -LiteralPath $notes -Raw -Encoding UTF8
     $allSections = [regex]::Matches($allNotes, '(?m)^##\s*\[')
     if ($allSections.Count -ne 1) {
         throw "release_notes.md 只能有当前版本一节，实际 $($allSections.Count) 节"
