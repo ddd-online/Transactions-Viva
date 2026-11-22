@@ -1,5 +1,9 @@
-# Build output: `viva build`, `go build`, and packaged artifacts.
-/build/
+# Build output: `viva build`, `go build`, and packaged artifacts. The release
+# scripts and notes are source and stay tracked.
+/build/*
+!/build/*.ps1
+!/build/release_notes.md
+!/build/release_template.md
 *.exe
 /transactions
 *.test
