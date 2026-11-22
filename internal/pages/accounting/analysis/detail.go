@@ -105,10 +105,7 @@ func (m *Model) chartTableHead(c ui.C, chart *domain.Chart) {
 // row per curve. The rows share the table with the chart above them, so the
 // page ends on the totals band instead of trailing into empty space.
 func (m *Model) curveTable(c ui.C, chart *domain.Chart) {
-	theme := c.Theme()
-	ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().
-		PadX(layout.BlockGap).Gap(layout.ColumnGap).Items(ui.Center).
-		Background(theme.Muted).Children(func() {
+	layout.TableHeader(c, layout.TableHeaderSpec{PadX: layout.BlockGap, Gap: layout.ColumnGap}, func(c ui.C) {
 		typography.Caption(c, "名称").Width(curveNameWidth)
 		// The type column is centered: its header and the capsule under it sit
 		// in the middle of the same cell, so the column reads as one block.
@@ -196,9 +193,7 @@ func (m *Model) pieTable(c ui.C, chart *domain.Chart) {
 	// The first column is whatever the pie groups by, so the header can never
 	// disagree with the control in the page header.
 	groupColumn := groupLabel(chart.GroupField)
-	ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().
-		PadX(layout.BlockGap).Gap(layout.ColumnGap).Items(ui.Center).
-		Background(theme.Muted).Children(func() {
+	layout.TableHeader(c, layout.TableHeaderSpec{PadX: layout.BlockGap, Gap: layout.ColumnGap}, func(c ui.C) {
 		typography.Caption(c, groupColumn).Grow(1)
 		ui.Row(c).Width(curveAmountWidth).Justify(ui.End).Children(func() {
 			typography.Caption(c, "金额")

@@ -270,8 +270,7 @@ func (p *accountPanel) fundSection(c ui.C) {
 
 func fundHeader(c ui.C) {
 	theme := c.Theme()
-	ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().PadX(layout.Inset).
-		Gap(layout.ColumnGap).Items(ui.Center).Background(theme.Muted).Children(func() {
+	layout.TableHeader(c, layout.TableHeaderSpec{PadX: layout.Inset, Gap: layout.ColumnGap}, func(c ui.C) {
 		ui.Text(c, "日期").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(92).TextCenter()
 		ui.Text(c, "事件").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(240)
 		ui.Text(c, "金额变化").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(104).TextEnd()

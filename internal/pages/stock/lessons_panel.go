@@ -203,13 +203,11 @@ func (p *lessonsPanel) toolbar(c ui.C) {
 }
 
 func (p *lessonsPanel) tableHeader(c ui.C) {
-	ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().PadX(layout.Inset).
-		Gap(layout.ColumnGap).Items(ui.Center).Background(c.Theme().Muted).
-		Children(func() {
-			typography.Caption(c, "心得").Grow(1)
-			typography.Caption(c, "关联交易").Width(lessonSourceWidth)
-			typography.Caption(c, "操作").Width(lessonActionWidth).TextCenter()
-		})
+	layout.TableHeader(c, layout.TableHeaderSpec{PadX: layout.Inset, Gap: layout.ColumnGap}, func(c ui.C) {
+		typography.Caption(c, "心得").Grow(1)
+		typography.Caption(c, "关联交易").Width(lessonSourceWidth)
+		typography.Caption(c, "操作").Width(lessonActionWidth).TextCenter()
+	})
 }
 
 func (p *lessonsPanel) lessonRow(c ui.C, lesson *domain.StockLesson) {

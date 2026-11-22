@@ -773,10 +773,7 @@ func (p *positionsPanel) tradesSection(c ui.C, position *domain.StockPosition) {
 }
 
 func (p *positionsPanel) tradeHeader(c ui.C) {
-	theme := c.Theme()
-	ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().
-		PadX(layout.Gap).Gap(layout.Gap).Items(ui.Center).
-		Background(theme.Muted).Children(func() {
+	layout.TableHeader(c, layout.TableHeaderSpec{PadX: layout.Gap, Gap: layout.Gap}, func(c ui.C) {
 		positionsTradeHeaderCell(c, "时间", positionsTradeTimeWidth, tradeAlignCenter)
 		positionsTradeHeaderCell(c, "类型", positionsTradeTypeWidth, tradeAlignCenter)
 		positionsTradeHeaderCell(c, "成交价", positionsTradePriceWidth, tradeAlignEnd)

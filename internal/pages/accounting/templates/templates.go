@@ -280,10 +280,7 @@ func (m *Model) table(c ui.C) {
 }
 
 func (m *Model) header(c ui.C) {
-	theme := c.Theme()
-	ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().
-		PadX(tablePadX).Gap(tableGap).Items(ui.Center).
-		Background(theme.Muted).Children(func() {
+	layout.TableHeader(c, layout.TableHeaderSpec{PadX: tablePadX, Gap: tableGap}, func(c ui.C) {
 		ui.Row(c).Width(dragColumnWidth)
 		headerText(c, "模板名称", nameWeight, 120)
 		headerCenter(c, "交易类型", typeColumnWidth)

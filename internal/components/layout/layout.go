@@ -55,6 +55,11 @@ const (
 
 	// GroupGap separates one group of content from the next.
 	GroupGap float32 = 24
+
+	// TableHeaderInsetX and TableHeaderInsetY set the shared table header band
+	// inside the table edge, so the band never merges with the page's side rail.
+	TableHeaderInsetX float32 = 12
+	TableHeaderInsetY float32 = 4
 )
 
 // Toolbar is the standard band above a page's content: one 56px row, the
@@ -84,4 +89,41 @@ func Page(c ui.C, toolbar, body func(ui.C)) {
 		}
 		body(c)
 	})
+}
+
+// TableHeaderSpec is one table's header geometry. A zero Height uses the
+// standard table-header height; a zero Width fills the available width.
+type TableHeaderSpec struct {
+	Height float32
+	Width  float32
+	PadX   float32
+	Gap    float32
+}
+
+// TableHeader draws the shared inset header band: a rounded Muted surface set
+// in from the table by TableHeaderInsetX and TableHeaderInsetY, with the column
+// labels laid out on the full table width so header cells stay over their rows.
+func TableHeader(c ui.C, spec TableHeaderSpec, body func(ui.C)) {
+	height := spec.Height
+	if height <= 0 {
+		height = TableHeaderHeight
+	}
+	row := ui.Row(c).Height(height)
+	if spec.Width > 0 {
+		row = row.Width(spec.Width)
+	} else {
+		row = row.FillWidth()
+	}
+	row.PadX(spec.PadX).Gap(spec.Gap).Items(ui.Center).
+		Draw(func(d *ui.DrawContext) {
+			band := d.Rect
+			band.X += TableHeaderInsetX
+			band.Width -= 2 * TableHeaderInsetX
+			band.Y += TableHeaderInsetY
+			band.Height -= 2 * TableHeaderInsetY
+			if band.Width <= 0 || band.Height <= 0 {
+				return
+			}
+			d.Canvas.Rounded(band, d.Theme.Metrics.RadiusItem(), d.Theme.Muted)
+		}).Children(func() { body(c) })
 }

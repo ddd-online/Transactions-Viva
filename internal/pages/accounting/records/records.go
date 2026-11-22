@@ -412,11 +412,8 @@ func (m *Model) applySort() {
 
 // table is the column header and the scrolling rows.
 func (m *Model) table(c ui.C) {
-	theme := c.Theme()
 	ui.Column(c).Grow(1).FillWidth().Children(func() {
-		ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().
-			PadX(layout.Inset).Gap(layout.ColumnGap).Items(ui.Center).
-			Background(theme.Muted).Children(func() {
+		layout.TableHeader(c, layout.TableHeaderSpec{PadX: layout.Inset, Gap: layout.ColumnGap}, func(c ui.C) {
 			m.sortHeader(c, "日期", sortDate, recordDateWidth, false)
 			typography.Caption(c, "类型").Width(recordTypeWidth)
 			typography.Caption(c, "分类").Width(recordCategoryWidth).TextCenter()

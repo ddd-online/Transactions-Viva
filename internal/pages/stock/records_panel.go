@@ -803,10 +803,8 @@ func (p *recordsPanel) recordSection(c ui.C, name string, action func(), body fu
 // tradeTable is the read-only trade table of one round. Editing and deleting
 // are the optional actions; a close fill cannot be edited, as in the old page.
 func (p *recordsPanel) tradeTable(c ui.C, round domain.StockRoundDetail) {
-	theme := c.Theme()
 	ui.Column(c).FillWidth().Children(func() {
-		ui.Row(c).Height(30).FillWidth().PadX(12).Gap(4).Items(ui.Center).
-			Background(theme.Muted).Children(func() {
+		layout.TableHeader(c, layout.TableHeaderSpec{Height: 30, PadX: 12, Gap: 4}, func(c ui.C) {
 			typography.Caption(c, "时间").Width(tradeTimeWidth).TextCenter()
 			typography.Caption(c, "类型").Width(tradeTypeWidth).TextCenter()
 			typography.Caption(c, "成交价").Grow(1).Basis(tradePriceMin).

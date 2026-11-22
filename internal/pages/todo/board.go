@@ -49,7 +49,7 @@ func (m *Model) board(c ui.C) {
 }
 
 func (m *Model) boardHeader(c ui.C) {
-	ui.Row(c).Height(34).FillWidth().PadSides(14, 10, 8, 10).Gap(10).Items(ui.Center).Children(func() {
+	layout.TableHeader(c, layout.TableHeaderSpec{Height: 34, PadX: 10, Gap: 10}, func(c ui.C) {
 		ui.Row(c).Grow(1).Children(func() {
 			typography.Caption(c, "事项")
 		})

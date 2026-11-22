@@ -760,24 +760,21 @@ func (p *statisticsPanel) detail(c ui.C) {
 }
 
 func (p *statisticsPanel) detailHeader(c ui.C) {
-	theme := c.Theme()
 	headers := [...]string{
 		"建仓", "清仓", "股票", "标签", "盈亏", "累计", "胜负", "胜率",
 		"平均盈利", "平均亏损", "盈亏比", "期望值", "回撤",
 	}
-	ui.Row(c).Height(layout.TableHeaderHeight).Width(detailTableWidth()).
-		PadX(detailPadX).Gap(detailGap).Items(ui.Center).Background(theme.Muted).
-		Children(func() {
-			for index, header := range headers {
-				cell := typography.Caption(c, header).Width(detailWidths[index]).Ellipsis()
-				switch index {
-				case detailOpened, detailClosed, detailTag:
-					cell.TextCenter()
-				default:
-					cell.TextEnd()
-				}
+	layout.TableHeader(c, layout.TableHeaderSpec{Width: detailTableWidth(), PadX: detailPadX, Gap: detailGap}, func(c ui.C) {
+		for index, header := range headers {
+			cell := typography.Caption(c, header).Width(detailWidths[index]).Ellipsis()
+			switch index {
+			case detailOpened, detailClosed, detailTag:
+				cell.TextCenter()
+			default:
+				cell.TextEnd()
 			}
-		})
+		}
+	})
 }
 
 func (p *statisticsPanel) detailRow(c ui.C, point domain.StockStatisticsPoint) {

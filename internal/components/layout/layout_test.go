@@ -43,3 +43,29 @@ func TestPagePutsToolbarAboveContentAndCentersIt(t *testing.T) {
 		t.Fatalf("content starts at %.1f, want below the %.0fpx toolbar", body.Y, ToolbarHeight)
 	}
 }
+
+func TestTableHeaderKeepsLabelsInsideTheBand(t *testing.T) {
+	page := ui.NewPage(ui.PageConfig{View: func(c ui.C) {
+		Page(c, nil, func(c ui.C) {
+			TableHeader(c, TableHeaderSpec{PadX: 16, Gap: 8}, func(c ui.C) {
+				ui.Button(c, "标头").Ghost()
+			})
+		})
+	}})
+	driver, err := app.NewDriver(ui.Configure(page, app.Config{Width: 600, Height: 400}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(driver.Close)
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label != "标头" {
+			continue
+		}
+		center := hit.Bounds.Y + hit.Bounds.Height/2
+		if center < 0 || center > TableHeaderHeight {
+			t.Fatalf("table header label center %.1f is outside the %.0fpx band", center, TableHeaderHeight)
+		}
+		return
+	}
+	t.Fatal("table header label not painted")
+}

@@ -119,7 +119,7 @@ const (
 )
 
 func (m *Model) historyHeader(c ui.C) {
-	ui.Row(c).Height(34).FillWidth().PadSides(14, 8, 8, 14).Gap(10).Items(ui.Center).Children(func() {
+	layout.TableHeader(c, layout.TableHeaderSpec{Height: 34, PadX: 14, Gap: 10}, func(c ui.C) {
 		ui.Row(c).Width(historyTimeWidth).Children(func() {
 			typography.Caption(c, "完成时间")
 		})
