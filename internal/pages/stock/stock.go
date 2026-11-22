@@ -128,6 +128,14 @@ func (m *Model) SetLimitService(service *stocklimit.Service) {
 // service with the same client.
 func (m *Model) QuoteFetcher() stockquote.Fetcher { return m.quotes }
 
+// SetQuotes replaces the market source after the outbound proxy changes.
+func (m *Model) SetQuotes(quotes stockquote.Fetcher) {
+	m.quotes = quotes
+	m.accountPanel.quotes = quotes
+	m.positions.quotes = quotes
+	m.records.setQuotes(quotes)
+}
+
 // loadAccounts rereads the workspace's accounts and keeps the active one when
 // it survived. When ensure is true an empty workspace gets 默认股票账户.
 func (m *Model) loadAccounts(ensure bool) error {

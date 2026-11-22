@@ -9,6 +9,7 @@
 package settings
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -181,6 +182,13 @@ type Spec struct {
 	OnOpenPath            func(string) error
 	OnSetAutoBackup       func(bool) error
 	OnOpenRecentWorkspace func(string) error
+
+	// 网络代理: all three modes share one setting; the shell validates it and
+	// rebuilds the outbound clients.
+	Proxy         config.ProxySetting
+	ProxyResolved string
+	OnSaveProxy   func(config.ProxySetting) (config.ProxySetting, error)
+	OnTestProxy   func(config.ProxySetting) (ProxyTestResult, error)
 }
 
 // DiaryImport is what one batch import did, as the section's status line reads
@@ -268,6 +276,19 @@ type Model struct {
 	backupRestore   BackupEntry
 	backupRestoreOn bool
 
+	// 网络代理 draft: the URL is edited locally until 保存, while the mode is
+	// written immediately like the other segmented controls.
+	proxyLoaded bool
+	proxyURL    string
+	proxyMode   config.ProxyMode
+	proxyState  string
+
+	proxyEffect   *ui.EffectState[ProxyTestResult, config.ProxySetting]
+	proxyTestFn   func(config.ProxySetting) (ProxyTestResult, error)
+	proxyTestAsk  config.ProxySetting
+	proxyTestKey  string
+	proxyTestDone string
+
 	// diary is 日记配置's own state: what an export covers, the period it
 	// picked, and the last command's status or failures.
 	diary diaryState
@@ -327,7 +348,16 @@ type ledgerDelete struct {
 }
 
 // New returns the settings page on 通用设置.
-func New() *Model { return &Model{} }
+func New() *Model {
+	m := &Model{}
+	m.proxyEffect = ui.NewEffectKeyed(func(_ context.Context, setting config.ProxySetting) (ProxyTestResult, error) {
+		if m.proxyTestFn == nil {
+			return ProxyTestResult{}, nil
+		}
+		return m.proxyTestFn(setting)
+	})
+	return m
+}
 
 // View declares the page: the category list, a divider and the chosen section.
 func (m *Model) View(c ui.C, spec Spec) {
@@ -426,7 +456,7 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 func (m *Model) general(c ui.C, spec Spec) {
 	controls.Page(c, "通用设置",
 		controls.GroupSpec{Title: "常规", Body: func() { m.generalPreferences(c, spec) }},
-		controls.GroupSpec{Title: "网络代理", Body: func() { m.proxy(c) }},
+		controls.GroupSpec{Title: "网络代理", Body: func() { m.proxy(c, spec) }},
 		controls.GroupSpec{Title: "功能开关", Body: func() { m.featureSwitches(c, spec) }},
 	)
 }
@@ -456,15 +486,6 @@ func (m *Model) generalPreferences(c ui.C, spec Spec) {
 		if ui.Choice(c, &value, closeBehaviorOptions[:], closeBehaviorLabel).Changed() {
 			m.report("保存关闭行为失败", func() error { return spec.OnCloseBehavior(value) })
 		}
-	})
-}
-
-// proxy is 网络代理, a group of its own: it is a placeholder until the proxy
-// settings are migrated, and a row that only says 暂未支持 reads as a group the
-// user can skip rather than as part of 常规.
-func (m *Model) proxy(c ui.C) {
-	controls.Row(c, "代理", "行情、涨停池与更新检查走代理。", func() {
-		typography.Caption(c, "暂未支持")
 	})
 }
 

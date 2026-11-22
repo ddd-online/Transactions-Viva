@@ -74,6 +74,11 @@ func (m *Model) settingsSpec() settings.Spec {
 		OnSetAutoBackup:       m.setAutoBackup,
 		OnOpenRecentWorkspace: m.openRecentWorkspace,
 
+		Proxy:         m.config.Proxy,
+		ProxyResolved: m.proxyResolved(),
+		OnSaveProxy:   m.saveProxy,
+		OnTestProxy:   m.testProxy,
+
 		DiaryBooks:        m.diary.Books(),
 		ActiveDiaryBook:   m.diary.ActiveBook(),
 		OnCreateDiaryBook: m.createDiaryBook,
