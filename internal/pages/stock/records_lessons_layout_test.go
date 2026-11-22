@@ -132,7 +132,7 @@ func TestRecordsPanelFitsMinimumWindow(t *testing.T) {
 	if !ok {
 		t.Fatal("the largest round is not expanded by default")
 	}
-	// The 240 px history rail must keep its width when the expanded round's
+	// The 280 px history rail must keep its width when the expanded round's
 	// table raises the detail's minimum width; otherwise the stock cards
 	// compress and their text is clipped.
 	if round.Bounds.X < layout.RailWidth {

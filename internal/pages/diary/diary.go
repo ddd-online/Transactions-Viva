@@ -35,10 +35,6 @@ import (
 // write, short enough that 已保存 is honest by the time the user looks at it.
 const saveDelay = 600 * time.Millisecond
 
-// railWidth is the date tree's column: narrower than the 240 px rail of the
-// other pages, because a day row is a number, a mood and a word count.
-const railWidth = float32(220)
-
 // savePhase is what the toolbar says about the draft.
 type savePhase uint8
 
@@ -346,7 +342,7 @@ func (m *Model) saveState(c ui.C) {
 // rail is the date tree column: its own header with the count, then the tree.
 func (m *Model) rail(c ui.C) {
 	theme := c.Theme()
-	ui.Column(c).Width(railWidth).FillHeight().Children(func() {
+	ui.Column(c).Width(layout.RailWidth).FillHeight().Children(func() {
 		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
 			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
 			typography.Section(c, "日记")

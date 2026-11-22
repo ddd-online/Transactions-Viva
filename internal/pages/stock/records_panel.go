@@ -395,7 +395,7 @@ func (p *recordsPanel) CloseOverlays() {
 	p.deleteOpen = false
 }
 
-// View declares the screen: toolbar, the 240 px rail, the round column and
+// View declares the screen: toolbar, the 280 px rail, the round column and
 // the 40 px summary band.
 func (p *recordsPanel) View(c ui.C) {
 	if p.repo == nil || p.active() == "" {
@@ -441,7 +441,7 @@ func (p *recordsPanel) toolbar(c ui.C) {
 	})
 }
 
-// historyRail is the 240 px list of closed stocks. Its cards carry the current
+// historyRail is the 280 px list of closed stocks. Its cards carry the current
 // price and accumulated profit, then the round count, last close and rate.
 func (p *recordsPanel) historyRail(c ui.C) {
 	p.rebuildHistoryView(p.historyFind.Text())

@@ -23,7 +23,7 @@ import (
 	"transactions/internal/stockquote"
 )
 
-// positionsPanel is the 持仓 screen: the account's open positions in a 240 px
+// positionsPanel is the 持仓 screen: the account's open positions in a 280 px
 // rail, and the chosen position's detail on the right — quotes, the round's fee,
 // the trade ledger, the daily reviews, the round review and the current round's
 // trades. Every write goes through the account's repository; the panel keeps no

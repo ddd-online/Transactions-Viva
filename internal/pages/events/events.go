@@ -33,15 +33,12 @@ import (
 	"transactions/internal/repository"
 )
 
-// The page's measurements. The rails follow the old page's clamp(): wide enough
-// for a title on a narrow window, capped so the centre pane keeps most of the
-// width.
+// The page's measurements. The left rail uses the shared page rail width so it
+// lines up with every other section; the linked-trades rail keeps the old
+// page's clamp because it is a secondary pane, not a section rail.
 const (
-	railMin        float32 = 200
-	railMax        float32 = 280
 	linksMin       float32 = 180
 	linksMax       float32 = 280
-	railShare              = 0.20
 	linksShare             = 0.19
 	cardMinHeight  float32 = 80
 	stageMinHeight float32 = 160
@@ -272,7 +269,7 @@ func (m *Model) View(c ui.C) {
 		}
 		ui.Row(c).Grow(1).FillWidth().Children(func() {
 			width := c.Bounds().Width
-			m.rail(c, clamp(width*railShare, railMin, railMax))
+			m.rail(c, layout.RailWidth)
 			ui.Divider(c)
 			m.detail(c)
 			if m.linksOpen {

@@ -22,9 +22,10 @@ const (
 	Inset float32 = 16
 
 	// RailWidth is the width of a page's own section rail: the analysis chart
-	// list, the tags category column and the settings navigation. The shell's
-	// navigation is a different, narrower column and does not use it.
-	RailWidth float32 = 240
+	// list, the tags category column, the settings navigation, the stock
+	// positions / records rail, the diary date tree and the event list. The
+	// shell's navigation is a different, narrower column and does not use it.
+	RailWidth float32 = 280
 
 	// ToolbarHeight is the band above a page's content: ledger, filters and the
 	// page's primary action.
