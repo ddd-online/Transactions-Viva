@@ -121,7 +121,7 @@ func (m *Model) group(c ui.C, index int, card *domain.TodoCard) {
 	}
 	m.boardHeader(c)
 	if len(card.Items) == 0 {
-		ui.Row(c).Height(44).FillWidth().PadSides(14, 10, 8, 10).Gap(10).Items(ui.Center).Children(func() {
+		ui.Row(c).Height(44).FillWidth().PadSides(10, 10, 10, 10).Gap(10).Items(ui.Center).Children(func() {
 			typography.Caption(c, "还没有事项").Muted().Grow(1)
 			if ui.Button(c, "添加第一件事项").Link().Clicked() {
 				m.openItemForm(card.ID, nil)
@@ -139,7 +139,7 @@ func (m *Model) itemRow(c ui.C, item *domain.TodoItem) {
 	expanded := m.expanded[item.ID]
 	c.Key("todo-item-" + item.ID)
 	ui.Column(c).FillWidth().Children(func() {
-		ui.Row(c).MinHeight(48).FillWidth().PadSides(14, 10, 6, 14).Gap(10).
+		ui.Row(c).MinHeight(48).FillWidth().PadSides(10, 10, 10, 14).Gap(10).
 			Items(ui.Center).Children(func() {
 			ui.Row(c).Grow(1).Gap(8).Items(ui.Center).Children(func() {
 				check := ui.Row(c).Size(16, 16).Shrink(0).Radius(8).
