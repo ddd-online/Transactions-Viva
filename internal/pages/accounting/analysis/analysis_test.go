@@ -283,3 +283,25 @@ func TestFoldPieSlices(t *testing.T) {
 		t.Fatalf("folded label = %q", folded[9].Label)
 	}
 }
+
+func TestPresetCurveTableHasNoActionColumn(t *testing.T) {
+	m := newTestModel(t)
+	page := ui.NewPage(ui.PageConfig{View: m.View})
+	driver, err := app.NewDriver(ui.Configure(page, app.Config{Width: 1500, Height: 1000}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(driver.Close)
+	foundTotal := false
+	for _, text := range driver.Snapshot().Texts {
+		if text.Value == "操作" {
+			t.Fatal("a preset curve table still reserves an 操作 column")
+		}
+		if text.Value == "合计" {
+			foundTotal = true
+		}
+	}
+	if !foundTotal {
+		t.Fatal("the preset curve table did not paint 合计")
+	}
+}

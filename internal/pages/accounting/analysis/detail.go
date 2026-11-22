@@ -31,6 +31,8 @@ const (
 	// scrolls sideways instead of clipping a column.
 	curveTableMinWidth float32 = curveNameWidth + curveTypeWidth + curveOutlierWidth +
 		curveConditionMin + curveAmountWidth + curveActionWidth + 5*layout.ColumnGap
+	// A preset has no 操作 column, so it is one action column narrower.
+	curveTableMinWidthPreset = curveTableMinWidth - curveActionWidth - layout.ColumnGap
 
 	// emptyTableBody is the room the table keeps for its own empty sentence on
 	// a chart with no rows: the sentence must not be cut, and it should not
@@ -69,8 +71,12 @@ func (m *Model) chartTable(c ui.C, chart *domain.Chart) {
 		m.chartTableHead(c, chart)
 		// The header scrolls with its rows, so a window too narrow for the
 		// columns scrolls the table sideways instead of cutting one off.
+		minWidth := curveTableMinWidth
+		if chart.IsPreset {
+			minWidth = curveTableMinWidthPreset
+		}
 		ui.Scroll(c).Grow(1).FillWidth().Sideways().Scrollbars().Children(func() {
-			ui.Column(c).FillWidth().MinWidth(curveTableMinWidth).Children(func() {
+			ui.Column(c).FillWidth().MinWidth(minWidth).Children(func() {
 				if chart.ChartType == chartPie {
 					m.pieTable(c, chart)
 					return
@@ -119,13 +125,10 @@ func (m *Model) curveTable(c ui.C, chart *domain.Chart) {
 		ui.Row(c).Width(curveAmountWidth).Justify(ui.End).Children(func() {
 			typography.Caption(c, "合计")
 		})
-		// A preset has no commands, so it gets no 操作 column; the width stays
-		// on the rows so the figures keep their grid.
-		if chart.IsPreset {
-			// An empty cell, not a Spacer: a Spacer grows and would steal the
-			// 条件 column's room, pushing 合计 left of the figures.
-			ui.Row(c).Width(curveActionWidth)
-		} else {
+		// A preset has no commands, so it has no 操作 column at all. Keeping
+		// an empty cell there left a blank strip after 合计; without the
+		// column, 合计 is the rightmost column and sits on the table edge.
+		if !chart.IsPreset {
 			ui.Row(c).Width(curveActionWidth).Justify(ui.End).Children(func() {
 				typography.Caption(c, "操作")
 			})
@@ -170,19 +173,18 @@ func (m *Model) curveRow(c ui.C, chart *domain.Chart, index int, line *domain.Ch
 		ui.Row(c).Width(curveAmountWidth).Justify(ui.End).Children(func() {
 			typography.Body(c, domain.CentsToYuan(m.seriesTotal(index))).Mono()
 		})
-		ui.Row(c).Width(curveActionWidth).Gap(2).Justify(ui.End).Children(func() {
-			if chart.IsPreset {
-				return
-			}
-			if ui.Button(c, "编辑曲线 "+line.Label).Ghost().Small().Icon(icons.Pencil).
-				IconOnly().Tooltip("编辑曲线").Clicked() {
-				m.openLine(chart, index)
-			}
-			if ui.Button(c, "删除曲线 "+line.Label).Ghost().Small().Icon(icons.Trash2).
-				IconOnly().Tooltip("删除曲线").Clicked() {
-				m.removeLine(chart, index)
-			}
-		})
+		if !chart.IsPreset {
+			ui.Row(c).Width(curveActionWidth).Gap(2).Justify(ui.End).Children(func() {
+				if ui.Button(c, "编辑曲线 "+line.Label).Ghost().Small().Icon(icons.Pencil).
+					IconOnly().Tooltip("编辑曲线").Clicked() {
+					m.openLine(chart, index)
+				}
+				if ui.Button(c, "删除曲线 "+line.Label).Ghost().Small().Icon(icons.Trash2).
+					IconOnly().Tooltip("删除曲线").Clicked() {
+					m.removeLine(chart, index)
+				}
+			})
+		}
 	})
 }
 
