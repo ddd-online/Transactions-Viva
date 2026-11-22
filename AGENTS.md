@@ -308,6 +308,24 @@ git add -A && git commit -m "feat(scope): 中文摘要"
   在本仓库之外，绝不 `git add` 它们。
 - 每轮工作结束前 `git status --short` 必须为空。
 
+### 推送与发布
+
+**平时的修改只 commit，不 push、不打标签、不创建 GitHub Release。** 不要把“改完并提交”
+自动延伸成发布；版本号也不要为普通修改而提升。
+
+只有用户在当次对话里明确要求“发布 / 推送 / 创建 release”时才执行远端操作，且发布前必须
+按顺序完成全量验证：
+
+```sh
+gofmt -l .                  # 必须没有输出
+go vet ./...                # 必须通过
+go tool viva vet            # 必须通过
+go test ./... -count=1      # 必须通过
+```
+
+验证通过后，再按 `docs/release.md` 用 `build/build.ps1` 构建、按 `build/release.ps1`
+发布；tag、`git push` 与 `gh release create` 都属于“发布”动作，未经明确要求不做。
+
 ## Viva 速查
 
 下面是 Viva 的写作方式。框架版本以 `go.mod` 为准（v0.6.7；CLI 用 `go tool viva`，PATH 上的独立 `viva` 可单独升级）；页面代码如果不确定某个

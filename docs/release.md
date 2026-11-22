@@ -3,6 +3,10 @@
 发布规范沿用旧工程 `D:\github\Transactions\build\` 的约定：版本、标签、正文、产物名与清理
 都由脚本检查，不靠记忆。当前仓库把构建系统从 Electron 换成了 Viva，但流程与模板保持一致。
 
+**发布不是默认动作。** 日常修改只 commit；只有用户在当次对话里明确要求“发布 / 推送 /
+创建 release”时，才执行 push、打标签、创建 GitHub Release。发布前必须完成下方第 3 节的
+全量验证。
+
 ## 1. 版本
 
 版本只有一个来源：`viva.toml` 的 `[app] version`。`internal/buildinfo.Version` 必须与它相同，
