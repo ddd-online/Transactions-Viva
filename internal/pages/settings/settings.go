@@ -29,7 +29,6 @@ type tab uint8
 const (
 	tabGeneral tab = iota
 	tabLedgers
-	tabStockAccounts
 	tabStockSettings
 	tabData
 	tabDiary
@@ -71,10 +70,6 @@ var sections = [...]section{
 	{
 		tab:   tabLedgers,
 		title: "账本管理",
-	},
-	{
-		tab:   tabStockAccounts,
-		title: "股票账户",
 	},
 	{
 		tab:   tabStockSettings,
@@ -387,8 +382,6 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 					m.general(c, spec)
 				case tabLedgers:
 					m.ledgers(c, spec)
-				case tabStockAccounts:
-					m.stockAccounts(c, spec)
 				case tabStockSettings:
 					m.stockSettingsSection(c, spec)
 				case tabDiary:
@@ -649,35 +642,43 @@ func (m *Model) stockAccounts(c ui.C, spec Spec) {
 	controls.Card(c, func() {
 		if len(spec.StockAccounts) == 0 {
 			controls.Row(c, "还没有股票账户", "打开股票页时会自动创建一个默认股票账户。", nil)
-			return
-		}
-		for index := range spec.StockAccounts {
-			if index > 0 {
-				ui.Divider(c)
+		} else {
+			for index := range spec.StockAccounts {
+				if index > 0 {
+					ui.Divider(c)
+				}
+				one := spec.StockAccounts[index]
+				c.Key("stock-account-" + one.ID)
+				controls.Row(c, one.Name, describe(one.Description), func() {
+					if spec.ActiveStockAccount == one.ID {
+						typography.Caption(c, "当前")
+					} else if ui.Button(c, "设为当前").Link().
+						Tooltip("把「" + one.Name + "」设为股票页当前账户").Clicked() {
+						if spec.OnSetStockAccount != nil {
+							if err := spec.OnSetStockAccount(one.ID); err != nil {
+								m.toaster.Show(err.Error(), "", ui.ToastError)
+							}
+						}
+					}
+					if ui.Button(c, "编辑股票账户 "+one.Name).Ghost().Icon(icons.Pencil).
+						IconOnly().Tooltip("编辑名称与描述").Clicked() {
+						m.openStockAccountForm(spec, one.ID)
+					}
+					last := len(spec.StockAccounts) <= 1
+					remove := ui.Button(c, "删除股票账户 "+one.Name).Ghost().Icon(icons.Trash2).
+						IconOnly().Disabled(last)
+					if last {
+						remove = remove.Tooltip("至少保留一个股票账户")
+					} else {
+						remove = remove.Tooltip("删除股票账户")
+					}
+					if remove.Clicked() {
+						m.stockDelete = ledgerDelete{open: true, id: one.ID, name: one.Name}
+					}
+				})
 			}
-			one := spec.StockAccounts[index]
-			controls.Row(c, one.Name, describe(one.Description), func() {
-				if spec.ActiveStockAccount == one.ID {
-					typography.Caption(c, "当前")
-				}
-				if ui.Button(c, "编辑股票账户 "+one.Name).Ghost().Icon(icons.Pencil).
-					IconOnly().Tooltip("编辑名称与描述").Clicked() {
-					m.openStockAccountForm(spec, one.ID)
-				}
-				last := len(spec.StockAccounts) <= 1
-				remove := ui.Button(c, "删除股票账户 "+one.Name).Ghost().Icon(icons.Trash2).
-					IconOnly().Disabled(last)
-				if last {
-					remove = remove.Tooltip("至少保留一个股票账户")
-				} else {
-					remove = remove.Tooltip("删除股票账户")
-				}
-				if remove.Clicked() {
-					m.stockDelete = ledgerDelete{open: true, id: one.ID, name: one.Name}
-				}
-			})
+			ui.Divider(c)
 		}
-		ui.Divider(c)
 		ui.Row(c).Height(metrics.ControlHeight + 2*metrics.GapItem).FillWidth().
 			PadX(metrics.PadSurface).Items(ui.Center).Children(func() {
 			if ui.Button(c, "新增股票账户").Ghost().Icon(icons.Plus).Clicked() {

@@ -31,7 +31,7 @@ func TestStockAccountPageAddsPrincipal(t *testing.T) {
 func TestSettingsManagesStockAccounts(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "设置")
-	click(t, driver, "股票账户")
+	click(t, driver, "股票设置")
 	if !shows(driver, "默认股票账户") {
 		t.Fatal("default stock account missing")
 	}
@@ -47,5 +47,15 @@ func TestSettingsManagesStockAccounts(t *testing.T) {
 	}
 	if model.stock.ActiveAccount() == "" {
 		t.Fatal("created account was not selected")
+	}
+	var defaultID string
+	for _, account := range model.stock.Accounts() {
+		if account.Name == "默认股票账户" {
+			defaultID = account.ID
+		}
+	}
+	click(t, driver, "设为当前")
+	if model.stock.ActiveAccount() != defaultID {
+		t.Fatalf("active account = %s, want %s", model.stock.ActiveAccount(), defaultID)
 	}
 }

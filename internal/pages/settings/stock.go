@@ -11,7 +11,6 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/layout"
-	"transactions/internal/components/selectbox"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/pages/settings/controls"
@@ -72,35 +71,14 @@ func stockFeeFormOf(fee domain.StockFeeSetting) stockFeeForm {
 // stockSettingsSection is 设置 · 股票设置: the stock tab's old 设置 screen,
 // moved into the settings page and laid out as groups of settings rows.
 func (m *Model) stockSettingsSection(c ui.C, spec Spec) {
+	controls.Section(c, "账户", func() { m.stockAccounts(c, spec) })
 	if spec.Stock == nil {
-		controls.Group(c, "股票设置", func() {
-			controls.Row(c, "还没有股票账户", "打开股票页时会自动创建一个默认股票账户。", nil)
-		})
 		if spec.StockError != "" {
 			typography.Caption(c, spec.StockError).Color(c.Theme().Danger)
 		}
 		return
 	}
 	stock := spec.Stock
-
-	controls.Group(c, "当前账户", func() {
-		active := spec.ActiveStockAccount
-		ids := make([]string, 0, len(spec.StockAccounts))
-		names := make(map[string]string, len(spec.StockAccounts))
-		for _, account := range spec.StockAccounts {
-			ids = append(ids, account.ID)
-			names[account.ID] = account.Name
-		}
-		controls.Row(c, "设置作用账户", "交易标签、复盘模板、费用与数据管理都只作用于这个账户。", func() {
-			if selectbox.Select(c, &active, ids, func(id string) string { return names[id] }).Label("股票账户").Changed() {
-				if spec.OnSetStockAccount != nil {
-					if err := spec.OnSetStockAccount(active); err != nil {
-						m.toaster.Show(stockConfigError(err), "", ui.ToastError)
-					}
-				}
-			}
-		})
-	})
 
 	controls.Group(c, "交易", func() {
 		m.stockTagsRow(c, spec, stock)

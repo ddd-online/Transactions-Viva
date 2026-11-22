@@ -13,8 +13,8 @@ func TestStockSettingsMovedIntoTheSettingsPage(t *testing.T) {
 		!shows(driver, "操作记录") || !shows(driver, "归档") || !shows(driver, "重置") {
 		t.Fatal("stock settings groups are missing")
 	}
-	if !shows(driver, "设置作用账户") {
-		t.Fatal("stock settings account row is missing")
+	if !shows(driver, "默认股票账户") || !shows(driver, "新增股票账户") {
+		t.Fatal("stock account list is missing")
 	}
 	click(t, driver, "新增交易标签")
 	driver.Type("低吸")
