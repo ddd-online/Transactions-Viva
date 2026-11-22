@@ -324,14 +324,10 @@ func (m *Model) toolbar(c ui.C) {
 }
 
 func (m *Model) chartRail(c ui.C) {
-	theme := c.Theme()
 	ui.Column(c).Width(layout.RailWidth).FillHeight().Children(func() {
 		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
 			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
 			typography.Section(c, "图表")
-			ui.Text(c, fmt.Sprintf("%d", len(m.charts))).FontSize(typography.SizeCaption).
-				Color(theme.MutedForeground).Background(theme.Muted).
-				Radius(theme.Metrics.RadiusItem()).PadX(6).PadY(1)
 			ui.Spacer(c)
 		})
 		ui.Divider(c)
