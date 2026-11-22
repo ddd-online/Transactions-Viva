@@ -325,7 +325,7 @@ main → desktop → pages → components
   内容里不画 `ui.Tabs`。
 - 设置页的版式是「设置组」：一个 16px 700 的组名加它下面的内容，组名与内容间距 8px，
   组与组 24px。右栏只有一处实现——`internal/pages/settings/controls.Page`：它自己撑满
-  右栏、拥有垂直滚动视口、把 760px 阅读列居中，并按 `GroupGap` 排列传入的 `GroupSpec`。
+  右栏、把 760px 阅读列居中、固定小节标题，并让设置组在标题下方的独立视口里滚动，按 `GroupGap` 排列传入的 `GroupSpec`。
   每个设置小节只填 `GroupSpec`（`Title` + 行内容；`Raw` 给身份头 / 尾注这类不套卡的块），
   不再自己包 `Column` 或手写组间距。`Section` / `Group` / `Card` 仍是组本身的实现，
   关于软件的「版本信息 / 更新 / 项目」、日记配置的「日记本 / 导入导出」与股票设置都用同一套。

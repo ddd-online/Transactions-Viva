@@ -26,19 +26,27 @@ type GroupSpec struct {
 	Raw   bool
 }
 
-// Page is the right pane of the settings page: the section title and the
-// groups, in one vertical scroller. Every group is separated by GroupGap, so a
-// page cannot drift from the others by forgetting its own gap.
+// Page is the right pane of the settings page: a fixed section title over the
+// groups, which live in one vertical scroller. Every group is separated by
+// GroupGap, so a page cannot drift from the others by forgetting its own gap.
 //
 // The page owns the scroll viewport, not the window: a long section scrolls
-// under the fixed left navigation.
+// under the fixed title and the fixed left navigation.
 func Page(c ui.C, title string, groups ...GroupSpec) {
 	ui.Column(c).Grow(1).FillHeight().Children(func() {
+		// The section name stays put; only the groups below it scroll.
+		ui.Column(c).FillWidth().Items(ui.Center).Children(func() {
+			ui.Column(c).FillWidth().MaxWidth(PageMaxWidth).
+				MarginSides(pageTop, pageSide, 0, pageSide).
+				MarginBottom(layout.GroupGap).
+				Children(func() {
+					typography.Title(c, title)
+				})
+		})
 		ui.Scroll(c).Grow(1).FillWidth().Items(ui.Center).Children(func() {
 			ui.Column(c).FillWidth().MaxWidth(PageMaxWidth).
-				MarginSides(pageTop, pageSide, pageBottom, pageSide).
+				MarginSides(0, pageSide, pageBottom, pageSide).
 				Children(func() {
-					typography.Title(c, title).MarginBottom(layout.GroupGap)
 					ui.Column(c).FillWidth().Gap(layout.GroupGap).Children(func() {
 						for _, group := range groups {
 							group := group
