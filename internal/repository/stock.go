@@ -107,6 +107,11 @@ type StockRepository interface {
 	StockLedger(ctx context.Context, accountID, stockCode, roundID string) (*domain.StockLedgerEntry, error)
 	SaveStockLedger(ctx context.Context, entry domain.StockLedgerEntry) (domain.StockLedgerEntry, error)
 
+	// RefreshStockName rewrites the displayed name copies after a quote lookup.
+	// It does not touch updated_at of the history collection or any text
+	// snapshot in fund records / operation logs.
+	RefreshStockName(ctx context.Context, accountID, stockCode, stockName string) error
+
 	StockFeeSetting(ctx context.Context, accountID string) (domain.StockFeeSetting, error)
 	SaveStockFeeSetting(ctx context.Context, accountID string, fee domain.RoundFee) (domain.StockFeeSetting, error)
 	StockTradeTags(ctx context.Context, accountID string) ([]string, error)

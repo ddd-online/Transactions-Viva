@@ -1358,11 +1358,17 @@ func (p *positionsPanel) ensureRefreshName(c ui.C) {
 		return
 	}
 	old := position.StockName
-	p.renameLocal(result.Code, result.Name)
 	if result.Name == old {
 		p.notify("名称未变", ui.ToastDefault)
 		return
 	}
+	if p.repo != nil {
+		if err := p.repo.RefreshStockName(context.Background(), p.active(), result.Code, result.Name); err != nil {
+			p.notify("刷新名称失败："+err.Error(), ui.ToastError)
+			return
+		}
+	}
+	p.renameLocal(result.Code, result.Name)
 	p.notify("名称已更新："+result.Name, ui.ToastSuccess)
 }
 
