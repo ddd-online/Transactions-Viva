@@ -409,6 +409,9 @@ func New() *Model {
 
 // View declares the page: the category list, a divider and the chosen section.
 func (m *Model) View(c ui.C, spec Spec) {
+	// The update's work is declared here and by the shell on every paint, so
+	// switching sections does not cancel a download (see KeepUpdate).
+	m.KeepUpdate(c)
 	if m.backupTab != m.tab {
 		m.backupTab = m.tab
 		m.backupLoaded = false

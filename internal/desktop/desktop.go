@@ -4,6 +4,7 @@
 package desktop
 
 import (
+	"context"
 	"os"
 
 	"github.com/vivaui/viva/app"
@@ -47,6 +48,10 @@ type Model struct {
 	quit func()
 	// launchUpdate starts the downloaded installer; tests replace it.
 	launchUpdate func(string) error
+	// checkUpdateFn and downloadUpdateFn stand in for the GitHub client;
+	// a run leaves them nil and they reach the real one.
+	checkUpdateFn    func(context.Context) (settings.UpdateRelease, error)
+	downloadUpdateFn func(context.Context, string, string, func(settings.UpdateProgress)) (string, error)
 
 	// window and tray are the native handles Run opens; close.go and tray.go
 	// use them. trayOK says the status area accepted the icon.
@@ -373,6 +378,9 @@ const (
 // page declares the whole window: title bar, navigation and content. The
 // window's own surface is the shell the card floats on.
 func (m *Model) page(c ui.C) {
+	// The update keeps running while another section is shown: an effect the
+	// paint stops declaring is cancelled, so the shell declares it every paint.
+	m.settings.KeepUpdate(c)
 	leading, trailing := app.TitlebarInsets()
 	theme := c.Theme()
 	ui.Column(c).Fill().Background(theme.Muted).Children(func() {

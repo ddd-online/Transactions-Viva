@@ -42,21 +42,15 @@ const (
 	updateFailed      = "failed"
 )
 
-// update is the 更新 group: one action at a time, release notes behind a
-// button, and the download's own progress bar.
-func (m *Model) update(c ui.C, spec Spec) {
-	theme := c.Theme()
-	metrics := theme.Metrics
-	m.updateFnMu.Lock()
-	m.updateCheckFn = spec.UpdateCheck
-	m.updateDownloadFn = spec.UpdateDownload
-	m.updateInstallFn = spec.UpdateInstall
-	m.updateInvalidate = spec.UpdateInvalidate
-	m.updateFnMu.Unlock()
+// KeepUpdate declares the update work for as long as the window is painting.
+// Viva cancels an effect the paint stops declaring, so a download declared only
+// by the 关于软件 section would be aborted by leaving 设置 and start over when
+// the section came back. The shell calls this on every paint; View calls it
+// too, so the section still runs its work when it is painted on its own.
+func (m *Model) KeepUpdate(c ui.C) {
 	if m.updateStatus == "" {
 		m.updateStatus = updateIdle
 	}
-
 	if m.updateCheckToken > 0 {
 		ui.Effect(c, m.updateCheckState, m.updateCheckToken)
 		if result, err, ok := m.updateCheckState.Take(); ok {
@@ -91,6 +85,22 @@ func (m *Model) update(c ui.C, spec Spec) {
 				m.setUpdateProgress(100, "")
 			}
 		}
+	}
+}
+
+// update is the 更新 group: one action at a time, release notes behind a
+// button, and the download's own progress bar.
+func (m *Model) update(c ui.C, spec Spec) {
+	theme := c.Theme()
+	metrics := theme.Metrics
+	m.updateFnMu.Lock()
+	m.updateCheckFn = spec.UpdateCheck
+	m.updateDownloadFn = spec.UpdateDownload
+	m.updateInstallFn = spec.UpdateInstall
+	m.updateInvalidate = spec.UpdateInvalidate
+	m.updateFnMu.Unlock()
+	if m.updateStatus == "" {
+		m.updateStatus = updateIdle
 	}
 
 	percent, speed := m.updateProgress()
