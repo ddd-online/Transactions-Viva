@@ -142,8 +142,7 @@ func (m *Model) historyRow(c ui.C, entry *domain.TodoHistory) {
 	theme := c.Theme()
 	item := entry.Item
 	c.Key("todo-history-" + item.ID)
-	ui.Row(c).FillWidth().PadSides(14, 10, 10, 14).Gap(10).Items(ui.Center).
-		Hover(ui.Look{}.Background(theme.Accent)).Children(func() {
+	ui.Row(c).FillWidth().PadSides(14, 10, 10, 14).Gap(10).Items(ui.Center).Children(func() {
 		ui.Row(c).Width(historyTimeWidth).Gap(6).Items(ui.Center).Children(func() {
 			ui.Icon(c, icons.CircleCheck).Size(13, 13).Shrink(0).Color(theme.Success)
 			typography.Caption(c, time.Unix(item.CompletedAt, 0).Format("01-02 15:04")).Mono()

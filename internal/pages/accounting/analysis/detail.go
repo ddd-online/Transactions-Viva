@@ -153,8 +153,7 @@ func (m *Model) curveRow(c ui.C, chart *domain.Chart, index int, line *domain.Ch
 	theme := c.Theme()
 	ui.Row(c).Height(layout.RowHeight).FillWidth().
 		PadX(layout.BlockGap).Gap(layout.ColumnGap).Items(ui.Center).
-		Radius(theme.Metrics.RadiusControl).
-		Hover(ui.Look{}.Background(theme.Hover)).Children(func() {
+		Radius(theme.Metrics.RadiusControl).Children(func() {
 		ui.Row(c).Width(curveNameWidth).Gap(layout.Gap).Items(ui.Center).Children(func() {
 			dot(c, seriesColor(*theme, index))
 			typography.Body(c, line.Label).Grow(1).Ellipsis()
@@ -219,8 +218,7 @@ func (m *Model) pieTable(c ui.C, chart *domain.Chart) {
 		c.KeyInt(index)
 		ui.Row(c).Height(layout.RowHeight).FillWidth().
 			PadX(layout.BlockGap).Gap(layout.ColumnGap).Items(ui.Center).
-			Radius(theme.Metrics.RadiusControl).
-			Hover(ui.Look{}.Background(theme.Hover)).Children(func() {
+			Radius(theme.Metrics.RadiusControl).Children(func() {
 			ui.Row(c).Grow(1).Gap(layout.Gap).Items(ui.Center).Children(func() {
 				dot(c, pieColor(*theme, index))
 				typography.Body(c, slice.Label).Grow(1).Ellipsis()

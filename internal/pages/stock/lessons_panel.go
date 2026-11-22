@@ -217,11 +217,9 @@ func (p *lessonsPanel) tableHeader(c ui.C) {
 }
 
 func (p *lessonsPanel) lessonRow(c ui.C, lesson *domain.StockLesson) {
-	theme := c.Theme()
 	c.Key(lesson.ID)
 	ui.Row(c).MinHeight(64).FillWidth().PadX(layout.Inset).
-		Gap(layout.ColumnGap).Items(ui.Center).
-		Hover(ui.Look{}.Background(theme.Hover)).Children(func() {
+		Gap(layout.ColumnGap).Items(ui.Center).Children(func() {
 		ui.Text(c, lesson.Text).FontSize(typography.SizeBody).
 			Basis(0).Grow(1).MinWidth(0).MaxLines(2)
 		p.sourceCell(c, lesson)

@@ -436,10 +436,10 @@ func (p *positionsPanel) positionCard(c ui.C, position *domain.StockPosition) {
 	card := ui.Column(c.Key(position.StockCode)).FillWidth().
 		Pad(layout.BlockGap).Gap(4).
 		Radius(theme.Metrics.RadiusControl).
-		Hover(ui.Look{}.Background(theme.Hover)).
 		HitWith(ui.ID(c), position.StockName+" "+position.StockCode, gfx.HitOptions{
 			Cursor: gfx.PointerCursorHand, Selected: selected,
-		})
+		}).
+		Hover(ui.Look{}.Background(theme.Hover))
 	if selected {
 		card = card.Background(theme.Primary.WithAlpha(0.14))
 	}

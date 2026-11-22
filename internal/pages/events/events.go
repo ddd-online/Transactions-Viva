@@ -363,9 +363,9 @@ func (m *Model) card(c ui.C, event *domain.KeyEvent) {
 	c.Key(event.Date)
 	row := ui.Row(c).MinHeight(cardMinHeight).FillWidth().
 		Background(background).
+		HitWith(ui.ID(c), title, gfx.HitOptions{Role: gfx.RoleButton, Selected: selected}).
 		Hover(ui.Look{}.Background(theme.Hover)).
-		Focus(ui.Look{}.Ring(2, theme.Ring)).
-		HitWith(ui.ID(c), title, gfx.HitOptions{Role: gfx.RoleButton, Selected: selected})
+		Focus(ui.Look{}.Ring(2, theme.Ring))
 	row.Children(func() {
 		ui.Row(c).Width(3).FillHeight().Background(tone)
 		ui.Column(c).Grow(1).MinWidth(0).PadSides(12, 36, 12, 12).Gap(2).Children(func() {

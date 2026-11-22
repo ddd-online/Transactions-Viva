@@ -52,8 +52,7 @@ func (m *Model) linksPanel(c ui.C, width float32) {
 func (m *Model) linkedRow(c ui.C, entry *repository.RecordEntry) {
 	theme := c.Theme()
 	record := entry.Record
-	ui.Column(c).FillWidth().Pad(layout.BlockGap).Gap(4).
-		Hover(ui.Look{}.Background(theme.Hover)).Children(func() {
+	ui.Column(c).FillWidth().Pad(layout.BlockGap).Gap(4).Children(func() {
 		ui.Row(c).FillWidth().Gap(layout.Gap).Items(ui.Center).Children(func() {
 			typography.Body(c, linkedTitle(record)).Weight(gfx.WeightMedium).
 				Grow(1).Shrink(1).MinWidth(0).Ellipsis()
