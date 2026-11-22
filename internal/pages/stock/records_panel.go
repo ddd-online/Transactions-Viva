@@ -22,18 +22,18 @@ import (
 	"transactions/internal/stockquote"
 )
 
-// Column widths shared by the trade table header and its rows. The right
-// column is about 500 px wide at the 960 px minimum window (240 px rail + the
-// shell's navigation), so the table is sized to fit it without sideways
-// scrolling: 12 px insets, 4 px gaps and the widths below add up to 468 px.
+// Column widths shared by the trade table header and its rows. The fixed
+// columns keep the table readable at the 960 px minimum window; the price,
+// amount and fee columns share what is left, so the table widens with the
+// detail instead of leaving a blank strip before 操作.
 const (
-	tradeTimeWidth   = float32(80)
-	tradeTypeWidth   = float32(38)
-	tradePriceWidth  = float32(64)
-	tradeLotsWidth   = float32(32)
-	tradeAmountWidth = float32(80)
-	tradeFeeWidth    = float32(62)
-	tradeActionWidth = float32(60)
+	tradeTimeWidth   = float32(96)
+	tradeTypeWidth   = float32(56)
+	tradeLotsWidth   = float32(48)
+	tradePriceMin    = float32(56)
+	tradeAmountMin   = float32(64)
+	tradeFeeMin      = float32(56)
+	tradeActionWidth = float32(56)
 
 	// Below this window width the round header gives up its single line: the
 	// round, its stats, the P&L and the two controls no longer fit together.
@@ -739,12 +739,15 @@ func (p *recordsPanel) tradeTable(c ui.C, round domain.StockRoundDetail) {
 	ui.Column(c).FillWidth().Children(func() {
 		ui.Row(c).Height(30).FillWidth().PadX(12).Gap(4).Items(ui.Center).
 			Background(theme.Muted).Children(func() {
-			typography.Caption(c, "时间").Width(tradeTimeWidth)
-			typography.Caption(c, "类型").Width(tradeTypeWidth)
-			typography.Caption(c, "成交价").Width(tradePriceWidth).TextEnd()
-			typography.Caption(c, "手数").Width(tradeLotsWidth).TextCenter()
-			typography.Caption(c, "金额").Width(tradeAmountWidth).TextEnd()
-			typography.Caption(c, "费用").Width(tradeFeeWidth).TextEnd()
+			typography.Caption(c, "时间").Width(tradeTimeWidth).TextCenter()
+			typography.Caption(c, "类型").Width(tradeTypeWidth).TextCenter()
+			typography.Caption(c, "成交价").Grow(1).Basis(tradePriceMin).
+				MinWidth(tradePriceMin).TextEnd()
+			typography.Caption(c, "手数").Width(tradeLotsWidth).TextEnd()
+			typography.Caption(c, "金额").Grow(1).Basis(tradeAmountMin).
+				MinWidth(tradeAmountMin).TextEnd()
+			typography.Caption(c, "费用").Grow(1).Basis(tradeFeeMin).
+				MinWidth(tradeFeeMin).TextEnd()
 			ui.Spacer(c)
 			typography.Caption(c, "操作").Width(tradeActionWidth).TextCenter()
 		})
@@ -758,29 +761,32 @@ func (p *recordsPanel) tradeTable(c ui.C, round domain.StockRoundDetail) {
 }
 
 func (p *recordsPanel) tradeRow(c ui.C, trade domain.StockTrade) {
+	theme := c.Theme()
 	c.Key(trade.ID)
 	ui.Row(c).Height(36).FillWidth().PadX(12).Gap(4).Items(ui.Center).
 		Children(func() {
 			ui.Text(c, historyShortDateTime(trade.TradeTime)).
 				FontSize(typography.SizeCaption).Mono().
-				Width(tradeTimeWidth).Ellipsis()
-			typography.Caption(c, domain.TradeTypeLabel(trade.TradeType)).
-				Width(tradeTypeWidth)
+				Width(tradeTimeWidth).TextCenter().Ellipsis()
+			ui.Text(c, domain.TradeTypeLabel(trade.TradeType)).
+				FontSize(typography.SizeCaption).
+				Color(positionsTradeTypeColor(*theme, trade.TradeType)).
+				Width(tradeTypeWidth).TextCenter()
 			ui.Text(c, domain.MilliToYuan(trade.PriceMilli)).
 				FontSize(typography.SizeBody).Mono().
-				Width(tradePriceWidth).TextEnd()
+				Grow(1).Basis(tradePriceMin).MinWidth(tradePriceMin).TextEnd()
 			ui.Text(c, strconv.Itoa(trade.Lots)).
 				FontSize(typography.SizeCaption).Mono().
-				Width(tradeLotsWidth).TextCenter()
+				Width(tradeLotsWidth).TextEnd()
 			ui.Text(c, domain.CentsToYuan(trade.AmountCents)).
 				FontSize(typography.SizeBody).Mono().
-				Width(tradeAmountWidth).TextEnd()
+				Grow(1).Basis(tradeAmountMin).MinWidth(tradeAmountMin).TextEnd()
 			ui.Text(c, money(trade.FeeCents)).
 				FontSize(typography.SizeBody).Mono().
-				Width(tradeFeeWidth).TextEnd()
+				Grow(1).Basis(tradeFeeMin).MinWidth(tradeFeeMin).TextEnd()
 			ui.Spacer(c)
 			ui.Row(c).Width(tradeActionWidth).Gap(2).Items(ui.Center).
-				Justify(ui.End).Children(func() {
+				Justify(ui.Center).Children(func() {
 				if trade.TradeType != domain.TradeClose {
 					edit := ui.Button(c, "编辑成交").
 						Ghost().Icon(icons.Pencil).XSmall().IconOnly().Tooltip("编辑")
