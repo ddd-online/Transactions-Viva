@@ -74,6 +74,9 @@ func TestImportOldCopiesAccountingTables(t *testing.T) {
 		t.Fatalf("open destination: %v", err)
 	}
 	defer workspace.Close()
+	if version, _, err := schemaVersion(workspace.db); err != nil || version != 1 {
+		t.Fatalf("destination schema = %d, err=%v, want v1", version, err)
+	}
 	ledgers, err := workspace.Ledgers(t.Context())
 	if err != nil || len(ledgers) != 2 || ledgers[0].ID != "l1" {
 		t.Fatalf("ledgers = %+v, err=%v", ledgers, err)
