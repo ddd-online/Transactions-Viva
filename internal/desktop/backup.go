@@ -3,6 +3,7 @@ package desktop
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/vivaui/viva/app"
@@ -29,6 +30,36 @@ func (m *Model) createManualBackup() (settings.BackupResult, error) {
 	return settings.BackupResult{
 		Name: result.Name, SizeBytes: result.SizeBytes, Duration: result.Duration,
 	}, nil
+}
+
+// deleteBackup removes one row's files from the backup directory.
+func (m *Model) deleteBackup(entry settings.BackupEntry) error {
+	return m.backups.Delete(m.backupDir(), entry.Path)
+}
+
+// removeRecentWorkspace forgets one path in the recent list. The open workspace
+// is unaffected; opening it again puts it back at the front.
+func (m *Model) removeRecentWorkspace(directory string) error {
+	directory = strings.TrimSpace(directory)
+	if directory == "" {
+		return nil
+	}
+	previous := append([]string(nil), m.config.RecentWorkspaces...)
+	next := make([]string, 0, len(previous))
+	for _, path := range previous {
+		if !strings.EqualFold(filepath.Clean(path), filepath.Clean(directory)) {
+			next = append(next, path)
+		}
+	}
+	if len(next) == len(previous) {
+		return nil
+	}
+	m.config.RecentWorkspaces = next
+	if err := m.persist(); err != nil {
+		m.config.RecentWorkspaces = previous
+		return err
+	}
+	return nil
 }
 
 func (m *Model) listBackups() ([]settings.BackupEntry, error) {

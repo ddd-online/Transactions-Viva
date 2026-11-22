@@ -172,17 +172,19 @@ type Spec struct {
 	// 数据备份 works on the open workspace. The shell resolves the backup
 	// directory, writes / restores the files and reopens the workspace after a
 	// restore; the page only asks and reports.
-	BackupDir             string
-	AutoBackup            bool
-	RecentWorkspaces      []string
-	OnBackupNow           func() (BackupResult, error)
-	OnListBackups         func() ([]BackupEntry, error)
-	OnRestoreBackup       func(BackupEntry) error
-	OnPickRestoreFile     func() (BackupEntry, bool, error)
-	OnChangeBackupDir     func() error
-	OnOpenPath            func(string) error
-	OnSetAutoBackup       func(bool) error
-	OnOpenRecentWorkspace func(string) error
+	BackupDir               string
+	AutoBackup              bool
+	RecentWorkspaces        []string
+	OnBackupNow             func() (BackupResult, error)
+	OnListBackups           func() ([]BackupEntry, error)
+	OnRestoreBackup         func(BackupEntry) error
+	OnDeleteBackup          func(BackupEntry) error
+	OnPickRestoreFile       func() (BackupEntry, bool, error)
+	OnChangeBackupDir       func() error
+	OnOpenPath              func(string) error
+	OnSetAutoBackup         func(bool) error
+	OnOpenRecentWorkspace   func(string) error
+	OnRemoveRecentWorkspace func(string) error
 
 	// 网络代理: all three modes share one setting; the shell validates it and
 	// rebuilds the outbound clients.
@@ -284,6 +286,8 @@ type Model struct {
 	backupError     string
 	backupRestore   BackupEntry
 	backupRestoreOn bool
+	backupDelete    BackupEntry
+	backupDeleteOn  bool
 
 	// 网络代理 draft: the URL is edited locally until 保存, while the mode is
 	// written immediately like the other segmented controls.
@@ -432,6 +436,7 @@ func (m *Model) View(c ui.C, spec Spec) {
 	m.stockArchiveDialog(c, spec)
 	m.stockResetDialog(c, spec)
 	m.backupRestoreDialog(c, spec)
+	m.backupDeleteDialog(c, spec)
 	m.bookDialog(c, spec)
 	m.bookDeleteDialog(c, spec)
 	ui.Toasts(c, &m.toaster)

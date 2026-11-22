@@ -1595,3 +1595,20 @@ func TestAnalysisLineEditor(t *testing.T) {
 		t.Fatal("the curve conditions are not shown")
 	}
 }
+
+func TestRemoveRecentWorkspaceForgetsPath(t *testing.T) {
+	model := New()
+	model.config.RecentWorkspaces = []string{`C:\one`, `C:\two`}
+	if err := model.removeRecentWorkspace(`c:\ONE`); err != nil {
+		t.Fatal(err)
+	}
+	if len(model.config.RecentWorkspaces) != 1 || model.config.RecentWorkspaces[0] != `C:\two` {
+		t.Fatalf("recent = %v", model.config.RecentWorkspaces)
+	}
+	if err := model.removeRecentWorkspace(`C:\missing`); err != nil {
+		t.Fatal(err)
+	}
+	if len(model.config.RecentWorkspaces) != 1 {
+		t.Fatalf("removing a missing path changed recent = %v", model.config.RecentWorkspaces)
+	}
+}

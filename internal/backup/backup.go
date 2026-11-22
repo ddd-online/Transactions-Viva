@@ -150,6 +150,35 @@ func (s *Service) List(directory string) []Entry {
 	return entries
 }
 
+// Delete removes one backup inside directory. It refuses paths outside that
+// directory, so a caller cannot turn a stale row into a delete anywhere on disk.
+func (s *Service) Delete(directory, path string) error {
+	directory, err := filepath.Abs(directory)
+	if err != nil {
+		return fmt.Errorf("删除备份：%w", err)
+	}
+	target, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("删除备份：%w", err)
+	}
+	relative, err := filepath.Rel(directory, target)
+	if err != nil || relative == "." || relative == ".." ||
+		strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
+		return errors.New("删除备份：路径不在备份目录内")
+	}
+	info, err := os.Lstat(target)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("删除备份：%w", err)
+	}
+	if info.IsDir() {
+		return os.RemoveAll(target)
+	}
+	return os.Remove(target)
+}
+
 // EntryAt describes one explicitly chosen file or directory. It is used by the
 // "restore from file" path, where the file need not be in the backup directory.
 func (s *Service) EntryAt(path string) (Entry, error) {

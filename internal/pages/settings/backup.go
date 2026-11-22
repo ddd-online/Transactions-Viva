@@ -168,11 +168,18 @@ func (m *Model) backupRestoreGroup(c ui.C, spec Spec) {
 				}
 			})
 			if entry.Restorable {
-				if ui.Button(c, "恢复").Secondary().Clicked() {
+				if ui.Button(c, "恢复").Secondary().Small().Clicked() {
 					m.backupRestore, m.backupRestoreOn = entry, true
 				}
 			} else {
 				typography.Caption(c, "不可恢复").Muted()
+			}
+			remove := ui.Button(c, "删除").DestructiveOutline().Small()
+			if spec.OnDeleteBackup == nil {
+				remove = remove.Disabled(true)
+			}
+			if remove.Clicked() {
+				m.backupDelete, m.backupDeleteOn = entry, true
 			}
 		})
 	}
@@ -192,14 +199,21 @@ func (m *Model) backupRecentGroup(c ui.C, spec Spec) {
 			controls.Row(c, filepath.Base(directory), directory, func() {
 				if current {
 					typography.Caption(c, "当前")
-					return
+				} else {
+					button := ui.Button(c, "切换").Link()
+					if spec.OnOpenRecentWorkspace == nil {
+						button = button.Disabled(true)
+					}
+					if button.Clicked() {
+						m.report("切换工作空间失败", func() error { return spec.OnOpenRecentWorkspace(directory) })
+					}
 				}
-				button := ui.Button(c, "切换").Link()
-				if spec.OnOpenRecentWorkspace == nil {
-					button = button.Disabled(true)
+				remove := ui.Button(c, "移除").Ghost().Small()
+				if spec.OnRemoveRecentWorkspace == nil {
+					remove = remove.Disabled(true)
 				}
-				if button.Clicked() {
-					m.report("切换工作空间失败", func() error { return spec.OnOpenRecentWorkspace(directory) })
+				if remove.Clicked() {
+					m.report("移除最近工作空间失败", func() error { return spec.OnRemoveRecentWorkspace(directory) })
 				}
 			})
 		}
@@ -262,6 +276,38 @@ func (m *Model) backupRestoreDialog(c ui.C, spec Spec) {
 			m.backupRestoreOn = false
 			m.backupLoaded = false
 			m.toaster.Show("已从备份恢复，恢复前的数据已另存一份", "", ui.ToastSuccess)
+		}
+	})
+}
+
+func (m *Model) backupDeleteDialog(c ui.C, spec Spec) {
+	if !m.backupDeleteOn {
+		return
+	}
+	entry := m.backupDelete
+	ui.ModalWith(c, &m.backupDeleteOn, "删除备份", ui.ModalSpec{
+		Width:       460,
+		Description: "只删除这一份备份，不会影响当前工作空间。",
+	}, func() {
+		ui.Column(c).FillWidth().Gap(4).Children(func() {
+			typography.Body(c, entry.Name)
+			typography.Caption(c, entry.Path).Mono().Ellipsis()
+		})
+	}, func() {
+		if ui.Button(c, "取消").Outline().Clicked() {
+			m.backupDeleteOn = false
+		}
+		if ui.Button(c, "删除").Destructive().Clicked() {
+			if spec.OnDeleteBackup == nil {
+				return
+			}
+			if err := spec.OnDeleteBackup(entry); err != nil {
+				m.toaster.Show(err.Error(), "", ui.ToastError)
+				return
+			}
+			m.backupDeleteOn = false
+			m.backupLoaded = false
+			m.toaster.Show("备份已删除", "", ui.ToastSuccess)
 		}
 	})
 }

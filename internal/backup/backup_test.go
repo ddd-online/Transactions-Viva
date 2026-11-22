@@ -125,6 +125,30 @@ func TestRestoreReplacesDatabaseAndSavesPreRestore(t *testing.T) {
 	}
 }
 
+func TestDeleteBackupRemovesOnlyInsideDirectory(t *testing.T) {
+	workspace, backupDir, _, service, _ := testBackup(t)
+	result, err := service.CreateManual(context.Background(), workspace, backupDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Delete(backupDir, result.Path); err != nil {
+		t.Fatalf("delete backup: %v", err)
+	}
+	if entries := service.List(backupDir); len(entries) != 0 {
+		t.Fatalf("entries after delete = %+v", entries)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.db")
+	if err := os.WriteFile(outside, []byte("do not delete"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Delete(backupDir, outside); err == nil {
+		t.Fatal("Delete removed a path outside the backup directory")
+	}
+	if _, err := os.Stat(outside); err != nil {
+		t.Fatalf("outside file was removed: %v", err)
+	}
+}
+
 func TestDirProblemRejectsWorkspaceInside(t *testing.T) {
 	workspace := t.TempDir()
 	if DirProblem(workspace, workspace) == "" {
