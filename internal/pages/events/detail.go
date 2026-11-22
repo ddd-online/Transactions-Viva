@@ -3,6 +3,7 @@ package events
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
@@ -13,21 +14,49 @@ import (
 	"transactions/internal/icons"
 )
 
-// detail is the middle pane: the tone palette, the pictures, the body and the
-// actions. With no event selected it is the page's empty state.
+// detail is the middle pane: the selected day's identity and pictures, its body,
+// its tone and the actions. With no event selected it is the page's empty state.
 func (m *Model) detail(c ui.C) {
 	if !m.hasEvent {
 		m.emptyDetail(c)
 		return
 	}
-	ui.Column(c).Grow(1).FillHeight().Pad(layout.Inset).
-		Gap(layout.BlockGap).Children(func() {
-		m.swatches(c)
+	// Basis(0) is what keeps the three panes inside the window at its narrowest:
+	// the tone row's preferred width would otherwise widen the centre and push
+	// the linked rail past the right edge.
+	ui.Column(c).Grow(1).Basis(0).Shrink(1).MinWidth(0).FillHeight().Children(func() {
+		m.detailHeader(c)
 		ui.Divider(c)
-		m.gallery(c)
-		m.description(c)
-		ui.Divider(c)
-		m.actions(c)
+		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).FillHeight().Pad(layout.Inset).
+			Gap(layout.BlockGap).Children(func() {
+			m.gallery(c)
+			m.description(c)
+			if len(m.images) == 0 {
+				// A text-led day ends after its body; the tone and actions keep
+				// to the foot of the pane instead of floating under the text.
+				ui.Spacer(c)
+			}
+			m.swatches(c)
+			ui.Divider(c)
+			m.actions(c)
+		})
+	})
+}
+
+// detailHeader names the selected day the way a rail header names its pane:
+// title, date, and how many pictures the day holds. Without it the middle pane
+// had no identity of its own; with a long title the left card is the only place
+// that could say which day is being read.
+func (m *Model) detailHeader(c ui.C) {
+	ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().Shrink(1).MinWidth(0).
+		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+		typography.Section(c, displayTitle(m.event)).Grow(1).Shrink(1).MinWidth(0).Ellipsis()
+		if strings.TrimSpace(m.event.Title) != "" {
+			typography.Caption(c, domain.DiaryDateCn(m.event.Date)).Muted().Shrink(0)
+		}
+		if count := len(m.images); count > 0 {
+			typography.Caption(c, fmt.Sprintf("%d 张图片", count)).Muted().Shrink(0)
+		}
 	})
 }
 
@@ -40,64 +69,75 @@ func (m *Model) emptyDetail(c ui.C) {
 	})
 }
 
-// swatches is the twenty-tone palette plus 使用默认颜色. Selecting one stores it
-// immediately; the tone colours are content, so they are read from the palette,
-// not from the theme.
+// swatches is the twenty-tone palette plus 使用默认颜色, kept at the foot with the
+// actions as the day's properties. Selecting one stores it immediately; the tone
+// colours are content, so they are read from the palette, not from the theme.
+// The palette is one focus group: twenty-one separate tab stops at the foot
+// would make the keyboard walk every tone before the next control.
 func (m *Model) swatches(c ui.C) {
 	theme := c.Theme()
-	ui.Flow(c).Gap(layout.Gap).Children(func() {
-		for _, tone := range eventTones {
-			value, name := tone.value, tone.name
-			chosen := m.color == value
-			border := toneColor(value, *theme)
+	ui.Row(c).FillWidth().Shrink(1).MinWidth(0).Gap(layout.Gap).Items(ui.Start).Children(func() {
+		typography.Caption(c, "颜色").Muted().Shrink(0)
+		ui.Flow(c).Grow(1).Shrink(1).MinWidth(0).Gap(layout.Gap).
+			FocusGroup(ui.FocusHorizontal).Children(func() {
+			for _, tone := range eventTones {
+				value, name := tone.value, tone.name
+				chosen := m.color == value
+				border := toneColor(value, *theme)
+				if chosen {
+					border = theme.Foreground
+				}
+				c.Key("tone-" + value)
+				box := ui.Row(c).Size(swatchSize, swatchSize).Radius(swatchSize/2).
+					Background(toneColor(value, *theme)).Border(2, border).
+					Hover(ui.Look{}.Border(theme.Foreground)).
+					Focus(ui.Look{}.Ring(2, theme.Ring)).
+					HitWith(ui.ID(c), name, gfx.HitOptions{Role: gfx.RoleButton, Selected: chosen}).
+					Tooltip(name)
+				if box.Clicked() {
+					m.changeColor(value)
+				}
+			}
+			c.Key("tone-default")
+			chosen := m.color == ""
+			border := theme.Input
 			if chosen {
 				border = theme.Foreground
 			}
-			c.Key("tone-" + value)
-			box := ui.Row(c).Size(swatchSize, swatchSize).Radius(swatchSize/2).
-				Background(toneColor(value, *theme)).Border(2, border).
+			clear := ui.Row(c).Size(swatchSize, swatchSize).Radius(swatchSize/2).
+				Border(2, border).
 				Hover(ui.Look{}.Border(theme.Foreground)).
 				Focus(ui.Look{}.Ring(2, theme.Ring)).
-				HitWith(ui.ID(c), name, gfx.HitOptions{Role: gfx.RoleButton, Selected: chosen}).
-				Tooltip(name)
-			if box.Clicked() {
-				m.changeColor(value)
+				HitWith(ui.ID(c), "使用默认颜色", gfx.HitOptions{Role: gfx.RoleButton, Selected: chosen}).
+				Tooltip("使用默认颜色")
+			if !chosen {
+				clear = clear.Dashed()
 			}
-		}
-		c.Key("tone-default")
-		chosen := m.color == ""
-		border := theme.Input
-		if chosen {
-			border = theme.Foreground
-		}
-		clear := ui.Row(c).Size(swatchSize, swatchSize).Radius(swatchSize/2).
-			Border(2, border).
-			Hover(ui.Look{}.Border(theme.Foreground)).
-			Focus(ui.Look{}.Ring(2, theme.Ring)).
-			HitWith(ui.ID(c), "使用默认颜色", gfx.HitOptions{Role: gfx.RoleButton, Selected: chosen}).
-			Tooltip("使用默认颜色")
-		if !chosen {
-			clear = clear.Dashed()
-		}
-		if clear.Clicked() {
-			m.changeColor("")
-		}
+			if clear.Clicked() {
+				m.changeColor("")
+			}
+		})
 	})
 }
 
-// gallery is the stage and the thumbnail column, or the dashed empty state that
+// gallery is the stage and the thumbnail column, or the compact empty state that
 // is also the place the user adds the first picture.
 func (m *Model) gallery(c ui.C) {
 	theme := c.Theme()
 	if len(m.images) == 0 {
-		ui.Row(c).Grow(1).FillWidth().MinHeight(stageMinHeight).
+		ui.Row(c).Height(emptyGalleryHeight).FillWidth().
 			Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).
 			Background(theme.Muted).Center().Children(func() {
-			typography.Body(c, "暂无图片").Muted()
+			ui.Row(c).Gap(layout.Gap).Items(ui.Center).Children(func() {
+				typography.Body(c, "暂无图片").Muted()
+				if ui.Button(c, "添加图片").Secondary().Small().Icon(icons.Plus).Clicked() {
+					m.addImages()
+				}
+			})
 		})
 		return
 	}
-	ui.Row(c).Grow(1).FillWidth().MinHeight(stageMinHeight).
+	ui.Row(c).Grow(1).Shrink(1).MinWidth(0).FillWidth().MinHeight(stageMinHeight).
 		Gap(layout.BlockGap).Children(func() {
 		m.stage(c)
 		m.thumbs(c)
@@ -210,10 +250,26 @@ func liveSuffix(image domain.KeyEventImage) string {
 }
 
 // description is the body: a muted well that scrolls, or the editor while the
-// user writes. It is plain text; newlines are kept and Markdown is literal.
+// user writes. It is plain text; newlines are kept and Markdown is literal. The
+// well stops growing at a reading height instead of taking half the pane: a
+// short note should not leave a tall empty slab under the pictures.
 func (m *Model) description(c ui.C) {
 	theme := c.Theme()
-	ui.Column(c).Grow(1).MinHeight(120).FillWidth().
+	limit := bodyMaxHeight
+	if len(m.images) == 0 {
+		limit = bodyMaxTextHeight
+	}
+	if c.Bounds().Height < 760 {
+		// At the smallest window the header, the palette and the footer are
+		// fixed costs; the body gives up its reading height rather than push
+		// the actions below the frame.
+		limit = bodyShortLimit
+	}
+	height := bodyHeight(m.event.Content, limit)
+	if m.editing {
+		height = min(max(height, bodyEditHeight), limit)
+	}
+	ui.Column(c).Height(height).Shrink(1).MinWidth(0).FillWidth().
 		Radius(theme.Metrics.RadiusSurface).Background(theme.Muted).Children(func() {
 		if m.editing {
 			ui.TextArea(c, &m.draft, "事件描述", "写下这件事……").Fill().
@@ -231,6 +287,26 @@ func (m *Model) description(c ui.C) {
 	})
 }
 
+// bodyHeight is how tall the body well stands: it follows the text up to the
+// pane's limit instead of always taking a fixed share of the window. The measure
+// is deliberately conservative (28 code points a line) so a narrow window errs
+// toward a scroll rather than hiding a line; editing keeps a usable field.
+func bodyHeight(content string, limit float32) float32 {
+	lines := 0
+	for _, paragraph := range strings.Split(content, "\n") {
+		count := utf8.RuneCountInString(paragraph)
+		if count == 0 {
+			lines++
+			continue
+		}
+		lines += (count + 27) / 28
+	}
+	if lines == 0 {
+		lines = 1
+	}
+	return min(max(float32(24+lines*22), bodyMinHeight), limit)
+}
+
 // actions is the footer: 添加图片 and 编辑描述 at rest, 取消 and 保存 while
 // editing.
 func (m *Model) actions(c ui.C) {
@@ -245,8 +321,10 @@ func (m *Model) actions(c ui.C) {
 			}
 			return
 		}
-		if ui.Button(c, "添加图片").Secondary().Icon(icons.Plus).Clicked() {
-			m.addImages()
+		if len(m.images) > 0 {
+			if ui.Button(c, "添加图片").Secondary().Icon(icons.Plus).Clicked() {
+				m.addImages()
+			}
 		}
 		ui.Spacer(c)
 		if ui.Button(c, "编辑描述").Secondary().Icon(icons.Pencil).Clicked() {

@@ -43,10 +43,19 @@ const (
 	railShare              = 0.20
 	linksShare             = 0.19
 	cardMinHeight  float32 = 80
-	stageMinHeight float32 = 200
+	stageMinHeight float32 = 160
 	thumbWidth     float32 = 160
 	thumbHeight    float32 = 90
 	swatchSize     float32 = 22
+	// emptyGalleryHeight keeps the no-photo state a line of information, not a
+	// pane: the body is the content of a day without pictures.
+	emptyGalleryHeight float32 = 120
+	bodyMinHeight      float32 = 96
+	bodyMaxHeight      float32 = 200
+	bodyMaxTextHeight  float32 = 280
+	bodyShortLimit     float32 = 140
+	bodyEditHeight     float32 = 160
+	linkedAmountWidth  float32 = 80
 )
 
 // AddImagesResult is what one 添加图片 did: how many images were stored and the
@@ -268,6 +277,7 @@ func (m *Model) toolbar(c ui.C) {
 			// A year cell names both ends of the range at once, so the panel
 			// closes on the pick as a form's date field does.
 			CloseOnPick: true,
+			Width:       148,
 			Viewport:    m.bounds,
 			OnRange: func(start, _ string) {
 				m.setYear(start)

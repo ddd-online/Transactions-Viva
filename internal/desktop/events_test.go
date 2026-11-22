@@ -405,18 +405,69 @@ func TestEventGalleryWithManyImagesStaysInsideTheWindow(t *testing.T) {
 	click(t, driver, "事件")
 	click(t, driver, "多图")
 
+	// The smallest window is the one that exposes a gallery or a footer that
+	// believes it is wider than the pane, and the compact palette at the foot.
+	for _, size := range []struct{ width, height int }{
+		{1100, 800},
+		{960, 620},
+	} {
+		if err := driver.Resize(size.width, size.height); err != nil {
+			t.Fatal(err)
+		}
+		settle(t, driver)
+		frame := driver.Frame()
+		found := 0
+		for _, hit := range driver.Snapshot().Hits {
+			switch hit.Label {
+			case "保存图片", "添加图片", "编辑描述", "使用默认颜色":
+				found++
+				right := hit.Bounds.X + hit.Bounds.Width
+				bottom := hit.Bounds.Y + hit.Bounds.Height
+				if bottom > frame.Height+0.5 || right > frame.Width+0.5 {
+					t.Fatalf("%q at %vx%v is outside the %vx%v window",
+						hit.Label, size.width, size.height, frame.Width, frame.Height)
+				}
+			}
+		}
+		if found < 4 {
+			t.Fatalf("at %vx%v found only %d of the gallery/footer/palette controls",
+				size.width, size.height, found)
+		}
+	}
+}
+
+// TestEventLongBodyKeepsTheFooterAtTheSmallestWindow guards the body's reading
+// height: a long, picture-less day must give height back at 960x620 instead of
+// pushing the palette and the actions below the window.
+func TestEventLongBodyKeepsTheFooterAtTheSmallestWindow(t *testing.T) {
+	driver, model := open(t)
+	date := time.Now().Format("2006-01-02")
+	content := strings.Repeat("很长的一段记录，写满了搬家那天的细节。", 40)
+	if _, err := model.workspace.SaveKeyEvent(context.Background(), date, "长文", content, "#7868A0"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "事件")
+	click(t, driver, "长文")
+	if err := driver.Resize(960, 620); err != nil {
+		t.Fatal(err)
+	}
+	settle(t, driver)
+
 	frame := driver.Frame()
 	found := 0
 	for _, hit := range driver.Snapshot().Hits {
 		switch hit.Label {
-		case "保存图片", "添加图片", "编辑描述":
+		case "添加图片", "编辑描述", "使用默认颜色":
 			found++
-			if bottom := hit.Bounds.Y + hit.Bounds.Height; bottom > frame.Height+0.5 {
-				t.Fatalf("%q is at y=%v, below the %v-high window", hit.Label, bottom, frame.Height)
+			right := hit.Bounds.X + hit.Bounds.Width
+			bottom := hit.Bounds.Y + hit.Bounds.Height
+			if bottom > frame.Height+0.5 || right > frame.Width+0.5 {
+				t.Fatalf("%q at %v,%v is outside the %vx%v window",
+					hit.Label, hit.Bounds.X, hit.Bounds.Y, frame.Width, frame.Height)
 			}
 		}
 	}
 	if found < 3 {
-		t.Fatalf("found only %d of the gallery/footer controls", found)
+		t.Fatalf("found only %d of the empty-gallery/footer/palette controls", found)
 	}
 }

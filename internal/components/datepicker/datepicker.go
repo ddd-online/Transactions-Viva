@@ -106,6 +106,10 @@ type Spec struct {
 	Periods bool
 	// Fill stretches the trigger to its container, for a form's field row.
 	Fill bool
+	// Width fixes the trigger's width. Zero uses the widest range of any grain,
+	// so a range field keeps one width as its value grows. A caller that shows
+	// only one small value (a page's year) sets a narrower width.
+	Width float32
 	// Placeholder is what the trigger says while nothing is chosen.
 	Placeholder string
 	// Viewport is the page's rectangle: a press anywhere in it closes the panel.
@@ -151,6 +155,8 @@ func Picker(c ui.C, state *State, spec Spec) {
 		field := ui.Button(c, triggerText(spec)).Outline().Icon(icons.Calendar)
 		if spec.Fill {
 			field = field.FillWidth()
+		} else if spec.Width > 0 {
+			field = field.Width(spec.Width)
 		} else {
 			field = field.Width(fieldWidth(c.Canvas(), theme))
 		}
