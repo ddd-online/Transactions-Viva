@@ -157,7 +157,21 @@ type positionsLedgerNumbers struct {
 	hasSell   bool
 }
 
-const positionsTradeTableWidth float32 = 664
+const (
+	positionsTradeTimeWidth   float32 = 168
+	positionsTradeTypeWidth   float32 = 56
+	positionsTradePriceWidth  float32 = 96
+	positionsTradeLotsWidth   float32 = 64
+	positionsTradeAmountWidth float32 = 120
+	positionsTradeFeeWidth    float32 = 96
+	positionsTradeCashWidth   float32 = 120
+	positionsTradeActionWidth float32 = 56
+	// The table carries one spacer before 操作, so it has eight gaps.
+	positionsTradeTableWidth = positionsTradeTimeWidth + positionsTradeTypeWidth +
+		positionsTradePriceWidth + positionsTradeLotsWidth + positionsTradeAmountWidth +
+		positionsTradeFeeWidth + positionsTradeCashWidth + positionsTradeActionWidth +
+		8*layout.Gap + 2*layout.Gap
+)
 
 func newPositionsPanel(accounts *accountStore, quotes stockquote.Fetcher) *positionsPanel {
 	p := &positionsPanel{
@@ -798,23 +812,32 @@ func (p *positionsPanel) tradeHeader(c ui.C) {
 	ui.Row(c).Height(layout.TableHeaderHeight).FillWidth().
 		PadX(layout.Gap).Gap(layout.Gap).Items(ui.Center).
 		Background(theme.Muted).Children(func() {
-		positionsTradeHeaderCell(c, "时间", 140, false)
-		positionsTradeHeaderCell(c, "类型", 44, false)
-		positionsTradeHeaderCell(c, "成交价", 64, true)
-		positionsTradeHeaderCell(c, "手数", 40, true)
-		positionsTradeHeaderCell(c, "成交金额", 84, true)
-		positionsTradeHeaderCell(c, "费用", 64, true)
-		positionsTradeHeaderCell(c, "资金变动", 90, true)
+		positionsTradeHeaderCell(c, "时间", positionsTradeTimeWidth, tradeAlignCenter)
+		positionsTradeHeaderCell(c, "类型", positionsTradeTypeWidth, tradeAlignCenter)
+		positionsTradeHeaderCell(c, "成交价", positionsTradePriceWidth, tradeAlignEnd)
+		positionsTradeHeaderCell(c, "手数", positionsTradeLotsWidth, tradeAlignEnd)
+		positionsTradeHeaderCell(c, "成交金额", positionsTradeAmountWidth, tradeAlignEnd)
+		positionsTradeHeaderCell(c, "费用", positionsTradeFeeWidth, tradeAlignEnd)
+		positionsTradeHeaderCell(c, "资金变动", positionsTradeCashWidth, tradeAlignEnd)
 		ui.Spacer(c)
-		ui.Text(c, "操作").FontSize(typography.SizeCaption).Width(64).
-			TextCenter().Color(theme.MutedForeground)
+		positionsTradeHeaderCell(c, "操作", positionsTradeActionWidth, tradeAlignCenter)
 	})
 }
 
-func positionsTradeHeaderCell(c ui.C, label string, width float32, end bool) {
+type tradeCellAlign uint8
+
+const (
+	tradeAlignCenter tradeCellAlign = iota
+	tradeAlignEnd
+)
+
+func positionsTradeHeaderCell(c ui.C, label string, width float32, align tradeCellAlign) {
 	box := ui.Text(c, label).FontSize(typography.SizeCaption).Width(width).
 		Color(c.Theme().MutedForeground)
-	if end {
+	switch align {
+	case tradeAlignCenter:
+		box.TextCenter()
+	case tradeAlignEnd:
 		box.TextEnd()
 	}
 }
@@ -828,21 +851,22 @@ func (p *positionsPanel) tradeRow(c ui.C, trade domain.StockTrade) {
 	ui.Row(c.Key(trade.ID)).Height(layout.RowHeight).FillWidth().
 		PadX(layout.Gap).Gap(layout.Gap).Items(ui.Center).Children(func() {
 		ui.Text(c, positionsDateTime(trade.TradeTime)).FontSize(typography.SizeBody).
-			Mono().Width(140)
+			Mono().Width(positionsTradeTimeWidth).TextCenter()
 		ui.Text(c, domain.TradeTypeLabel(trade.TradeType)).FontSize(typography.SizeBody).
-			Color(positionsTradeTypeColor(*theme, trade.TradeType)).Width(44)
+			Color(positionsTradeTypeColor(*theme, trade.TradeType)).
+			Width(positionsTradeTypeWidth).TextCenter()
 		ui.Text(c, domain.MilliToYuan(trade.PriceMilli)).FontSize(typography.SizeBody).
-			Mono().Width(64).TextEnd()
+			Mono().Width(positionsTradePriceWidth).TextEnd()
 		ui.Text(c, strconv.Itoa(trade.Lots)).FontSize(typography.SizeBody).
-			Mono().Width(40).TextEnd()
+			Mono().Width(positionsTradeLotsWidth).TextEnd()
 		ui.Text(c, money(trade.AmountCents)).FontSize(typography.SizeBody).
-			Mono().Width(84).TextEnd()
+			Mono().Width(positionsTradeAmountWidth).TextEnd()
 		ui.Text(c, money(trade.FeeCents)).FontSize(typography.SizeBody).
-			Mono().Width(64).TextEnd()
+			Mono().Width(positionsTradeFeeWidth).TextEnd()
 		ui.Text(c, signedMoney(cash)).FontSize(typography.SizeBody).
-			Mono().Width(90).TextEnd().Color(pnlColor(*theme, cash))
+			Mono().Width(positionsTradeCashWidth).TextEnd().Color(pnlColor(*theme, cash))
 		ui.Spacer(c)
-		ui.Row(c).Width(64).Gap(2).Items(ui.Center).Children(func() {
+		ui.Row(c).Width(positionsTradeActionWidth).Gap(2).Items(ui.Center).Children(func() {
 			if ui.Button(c, "编辑").Ghost().Small().IconOnly().
 				Icon(icons.Pencil).Tooltip("编辑成交").Clicked() {
 				p.openTradeEdit(trade)
