@@ -64,6 +64,7 @@ main → desktop → pages → components
 | `internal/pages/stock` | 账户 / 持仓 / 记录 / 心得 / 统计 / 天梯 / 设置；账户是工作空间级、多账户，工具栏共享「账户」选择器 | `src/pages/stock*` |
 | `internal/stockquote` | 腾讯行情（GBK、3 秒），`Fetcher` 接口，失败返回空 | `electron/services/stock-quote.ts` |
 | `internal/stocklimit` | 东财涨停池（8 秒）与天梯缓存策略，`Service.Ladder` | `electron/services/stock-limit*.ts`、`shared/domain/limit-ladder.ts` |
+| `internal/backup` | 备份命名 / 保留裁剪、VACUUM 快照、手动 / 自动备份、恢复前副本与备份列表 | `shared/domain/backup.ts`、`electron/services/backup.ts` |
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
 | `internal/pages/events` | 事件页：年份列表、身份色、图片画廊与灯箱、跨账本关联交易（事件是工作空间级数据） | `src/pages/events*`、`event-*`、`electron/services/key-event.ts` |
 | `internal/assets` | 工作空间图片资产：路径校验、落盘 / 删除 / 另存、解码、EXIF 方向与缩略图 | `electron/services/assets.ts`、`image-import.ts`、`image-resize.ts`、`heic-decode.ts` |
@@ -84,8 +85,8 @@ main → desktop → pages → components
 | `internal/store` | SQLite 工作空间、schema v1 / 迁移、账本 / 分类标签 / 记录 / 模板仓储、旧库导入 | `electron/db`、`electron/services` 的持久化部分 |
 | `cmd/tr-import` | 旧工作空间导入命令 | `electron/services/*` 的导入 / 备份入口 |
 
-非 UI 的能力按职责拆到 `internal/<capability>`（对齐 motty 的做法），例如后续会出现的
-`backup`、`update`、`stockquote`、`proxy`。不要把所有东西都塞进 `desktop`。
+非 UI 的能力按职责拆到 `internal/<capability>`（对齐 motty 的做法），例如
+`backup`、`stockquote`、`stocklimit`、`diary`。不要把所有东西都塞进 `desktop`。
 
 ## SQLite 工作空间与数据层
 
@@ -329,6 +330,10 @@ main → desktop → pages → components
   每个设置小节只填 `GroupSpec`（`Title` + 行内容；`Raw` 给身份头 / 尾注这类不套卡的块），
   不再自己包 `Column` 或手写组间距。`Section` / `Group` / `Card` 仍是组本身的实现，
   关于软件的「版本信息 / 更新 / 项目」、日记配置的「日记本 / 导入导出」与股票设置都用同一套。
+- 设置 ·「数据备份」由 `internal/backup` 负责：手动备份用 `VACUUM INTO` 写「库 + assets」
+  目录，自动备份每天第一次打开工作空间时写单库快照；两者各自只保留最近 2 份。恢复前先把
+  当前库写成 `pre-restore-*.db`，恢复后由外壳重新 `store.Open` 同一目录并 `adoptWorkspace`，
+  不重启进程。备份位置、自动备份开关与最近工作空间写现有配置。
 - 组件按归属放：可复用的组件放在 `internal/components` 自己的子包里（`datepicker`、
   `pagination`、`selectbox`，包名即组件名，导出名不再重复包名）；只有某一个页面用的组件
   才放在该页面的 `controls` 子包里（例如 `internal/pages/settings/controls` 的 `Group` /
