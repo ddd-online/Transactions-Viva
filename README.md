@@ -73,9 +73,7 @@
 
 ![股票：连板天梯](docs/stock-ladder.png)
 
-![设置：股票设置（标签 / 模板 / 费用 / 数据管理）](docs/stock-settings.png)
-
-![设置：股票账户管理](docs/stock-accounts-settings.png)
+![设置：股票设置（账户 / 标签 / 模板 / 费用 / 数据管理）](docs/stock-settings.png)
 
 ![设置：日记配置（日记本 + 导入导出）](docs/diary-settings.png)
 

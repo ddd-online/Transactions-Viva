@@ -70,7 +70,7 @@ main → desktop → pages → components
 | `internal/events` | 事件图片的导入 / 删除编排：实况照片配对、逐张报告、清文件 | `electron/services/key-event.ts` 的 `addImage` / `deleteImage` |
 | `internal/pages/diary` | 日记页：日记本、日期树、正文与心情、自动保存、删除 | `src/pages/diary.tsx`、`src/components/diary-tree.tsx`、`mood-picker.tsx`、`shared/domain/diary-tree.ts`（日记本是与旧工程不同的地方，见下） |
 | `internal/diary` | 日记文件：递归扫描、编码回退链、写 `<date>.txt`（不依赖 UI，不直接碰 SQLite） | `electron/services/diary.ts` |
-| `internal/pages/settings` | 设置页七个分区：通用设置 / 账本管理 / 股票账户 / 股票设置 / 数据备份 / 日记配置 / 关于软件（通用设置页内再分「常规」与「功能开关」两组） | `src/pages/settings*`、`src/app-menu.tsx` 的「创建账本」 |
+| `internal/pages/settings` | 设置页六个分区：通用设置 / 账本管理 / 股票设置 / 数据备份 / 日记配置 / 关于软件（通用设置页内再分「常规」与「功能开关」两组；股票账户与账户设置同在「股票设置」） | `src/pages/settings*`、`src/app-menu.tsx` 的「创建账本」 |
 | `internal/components` | 可复用的片段：占位空态（后续的 page header、table cell 等） | `src/components` |
 | `internal/components/datepicker` | 日期 / 时间范围选择器（工具栏与表单同一组件） | `src/components/time-range-picker.tsx`、antd DatePicker |
 | `internal/components/pagination` | 分页栏：页大小 Select + Viva 分页 + 总数 | `src/components/pagination.tsx` |
@@ -285,7 +285,8 @@ main → desktop → pages → components
   股票账户）。一个工作空间有多个账户；`internal/pages/stock/account_store.go` 保存列表与当前
   账户，账户 / 持仓 / 记录 / 心得 / 统计 / 天梯六页工具栏最左共享同一个「账户」`selectbox.Select`，
   切换后 `stock.Model.dataChanged` 重载六页；天梯是市场数据，没有账户选择器。设置 ·
-  「股票账户」用与账本相同的行式管理 CRUD（最后一户不可删，删除单事务级联 12 张子表），
+  「股票设置」用与账本相同的行式管理账户（最后一户不可删，删除单事务级联 12 张子表），
+  同一小节的「交易」与「数据管理」组放标签、复盘模板、费用、操作记录 / 回滚、归档与重置。
   `desktop.settingsSpec` 把命令转给 `stock.Model`。工作空间打开且没有账户时股票页建
   「默认股票账户」。
   数据层：`internal/domain/stock_*.go` 负责费用 / 成本结转 / 当前轮 / 现金链 / 统计 / 天梯纯规则；
