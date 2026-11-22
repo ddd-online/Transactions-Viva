@@ -61,7 +61,6 @@ func (m *Model) quadrantPane(c ui.C, title string, items []quadrantItem) {
 			typography.Caption(c, fmt.Sprintf("%d", len(items))).Mono()
 			ui.Spacer(c)
 		})
-		ui.Divider(c)
 		if len(items) == 0 {
 			ui.Column(c).Grow(1).FillWidth().Center().Children(func() {
 				typography.Caption(c, "暂时空着").Muted()
