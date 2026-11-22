@@ -176,24 +176,18 @@ func ledgerSheetView(c ui.C, sheet ledgerSheet) {
 		ledgerGroup(c, "清仓结果", func() {
 			ui.Flow(c).Gap(layout.GroupGap).LineGap(layout.BlockGap).Children(func() {
 				if !sheet.Closed {
-					ledgerValue(c, "卖出价", "清仓后回填", false,
-						theme.MutedForeground, "", theme.MutedForeground)
-					ledgerValue(c, "卖出净额", "清仓后回填", false,
-						theme.MutedForeground, "", theme.MutedForeground)
-					ledgerValue(c, "净盈亏", "清仓后回填", false,
-						theme.MutedForeground, "", theme.MutedForeground)
+					ledgerValueInline(c, "卖出价", "清仓后回填", false, theme.MutedForeground)
+					ledgerValueInline(c, "卖出净额", "清仓后回填", false, theme.MutedForeground)
+					ledgerValueInline(c, "净盈亏", "清仓后回填", false, theme.MutedForeground)
 					return
 				}
 				tone := theme.Foreground
 				if sheet.HasNet {
 					tone = pnlColor(*theme, sheet.NetCents)
 				}
-				ledgerValue(c, "卖出价", ledgerOrDash(sheet.SellPrice), true,
-					theme.Foreground, "", theme.MutedForeground)
-				ledgerValue(c, "卖出净额", ledgerOrDash(sheet.SellNet), true,
-					theme.Foreground, "", theme.MutedForeground)
-				ledgerValue(c, "净盈亏", ledgerOrDash(sheet.NetPnl), true,
-					tone, "", theme.MutedForeground)
+				ledgerValueInline(c, "卖出价", ledgerOrDash(sheet.SellPrice), true, theme.Foreground)
+				ledgerValueInline(c, "卖出净额", ledgerOrDash(sheet.SellNet), true, theme.Foreground)
+				ledgerValueInline(c, "净盈亏", ledgerOrDash(sheet.NetPnl), true, tone)
 			})
 		})
 		ledgerGroup(c, "执行复盘", func() {
@@ -221,15 +215,21 @@ func ledgerProse(c ui.C, label, text string) {
 }
 
 func ledgerProseWidth(c ui.C, label, text string, width float32) {
-	column := ui.Column(c).Gap(4)
+	row := ui.Row(c).Gap(8).Items(ui.Center)
 	if width > 0 {
-		column = column.Width(width)
+		row = row.Width(width)
 	} else {
-		column = column.Grow(1)
+		row = row.Grow(1)
 	}
-	column.Children(func() {
-		typography.Caption(c, label)
-		ledgerProseText(c, text, 720)
+	row.Children(func() {
+		typography.Caption(c, label).Shrink(0)
+		text = strings.TrimSpace(text)
+		if text == "" {
+			typography.Caption(c, "—").Color(c.Theme().MutedForeground)
+			return
+		}
+		ui.Text(c, text).FontSize(typography.SizeBody).
+			Grow(1).MinWidth(0).Ellipsis()
 	})
 }
 
@@ -256,6 +256,20 @@ func ledgerValue(c ui.C, label, value string, mono bool, tone gfx.Color, note st
 		}
 		if note != "" {
 			ui.Text(c, note).FontSize(typography.SizeCaption).Mono().Color(noteTone)
+		}
+	})
+}
+
+// ledgerValueInline is a read-only value with its label on the same line. The
+// clear-result and review fields use it so an unfilled value does not make the
+// field two lines tall.
+func ledgerValueInline(c ui.C, label, value string, mono bool, tone gfx.Color) {
+	ui.Row(c).Width(160).Gap(6).Items(ui.Center).Children(func() {
+		typography.Caption(c, label).Width(56).Shrink(0).Ellipsis()
+		cell := ui.Text(c, value).FontSize(typography.SizeBody).
+			Grow(1).MinWidth(0).Ellipsis().Color(tone)
+		if mono {
+			cell.Mono()
 		}
 	})
 }
