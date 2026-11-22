@@ -14,11 +14,11 @@ import (
 )
 
 const (
-	boardUrgencyWidth   = float32(56)
-	boardImportantWidth = float32(56)
-	boardDueWidth       = float32(96)
+	boardUrgencyWidth   = float32(64)
+	boardImportantWidth = float32(64)
+	boardDueWidth       = float32(104)
 	boardProgressWidth  = float32(64)
-	boardActionWidth    = float32(128)
+	boardActionWidth    = float32(104)
 )
 
 // board is the doing items table: one header row, then a band per theme and its
