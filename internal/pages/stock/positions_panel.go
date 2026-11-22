@@ -397,9 +397,6 @@ func (p *positionsPanel) rail(c ui.C) {
 		ui.Scroll(c).Grow(1).Children(func() {
 			ui.Column(c).Gap(4).PadSides(4, 8, 4, 8).Children(func() {
 				for i := range p.positions {
-					if i > 0 {
-						ui.Divider(c)
-					}
 					position := &p.positions[i]
 					p.positionCard(c, position)
 				}
