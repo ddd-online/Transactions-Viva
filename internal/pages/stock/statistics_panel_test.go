@@ -405,3 +405,25 @@ func TestStatisticsChartColor(t *testing.T) {
 		}
 	}
 }
+
+func TestDetailTableFillsAvailableWidth(t *testing.T) {
+	minWidth := detailTableWidth()
+	table, widths := detailTableSize(minWidth + 200)
+	if table != minWidth+200 {
+		t.Fatalf("wide table width = %.0f, want %.0f", table, minWidth+200)
+	}
+	if widths[detailStock] <= detailWidths[detailStock] {
+		t.Fatalf("wide stock width = %.0f, want more than %.0f", widths[detailStock], detailWidths[detailStock])
+	}
+	total := detailPadX*2 + detailGap*(detailColumnCount-1)
+	for _, width := range widths {
+		total += width
+	}
+	if total < table-1 || total > table+1 {
+		t.Fatalf("wide columns total %.0f, want %.0f", total, table)
+	}
+	table, widths = detailTableSize(minWidth - 200)
+	if table != minWidth || widths != detailWidths {
+		t.Fatalf("narrow table/widths = %.0f/%v, want %.0f/%v", table, widths, minWidth, detailWidths)
+	}
+}

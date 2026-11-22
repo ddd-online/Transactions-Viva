@@ -719,14 +719,34 @@ const (
 	detailPadX float32 = 16
 )
 
-// detailTableWidth is the table's own width: wider than the 960 px window's
-// content column, so the table scrolls sideways instead of squeezing numbers.
+// detailTableWidth is the table's minimum width: wider than the 960 px
+// window's content column, so the table scrolls sideways instead of squeezing
+// numbers, while a wider window stretches the stock column to fill it.
 func detailTableWidth() float32 {
 	total := detailPadX * 2
 	for _, width := range detailWidths {
 		total += width
 	}
 	return total + detailGap*(detailColumnCount-1)
+}
+
+// detailTableSize fits the table to the available width. All columns grow by
+// the same factor, so the extra room is shared instead of collecting in one
+// wide column; below the minimum the table keeps its width and scrolls
+// sideways.
+func detailTableSize(available float32) (table float32, widths [detailColumnCount]float32) {
+	table = detailTableWidth()
+	if available > table {
+		table = available
+	}
+	fixed := detailPadX*2 + detailGap*(detailColumnCount-1)
+	total := table - fixed
+	base := detailTableWidth() - fixed
+	scale := total / base
+	for index, width := range detailWidths {
+		widths[index] = width * scale
+	}
+	return table, widths
 }
 
 // detail is the newest-first table of every settlement, 15 rows a page.
@@ -739,12 +759,16 @@ func (p *statisticsPanel) detail(c ui.C) {
 	ui.Column(c).Grow(1).FillWidth().Children(func() {
 		// The table is its own scroll area: rows scroll vertically, the 13
 		// columns scroll sideways at the minimum window width, and the pagination
-		// stays on the page's bottom edge.
-		ui.Scroll(c).Grow(1).Sideways().Scrollbars().Children(func() {
-			ui.Column(c).Width(detailTableWidth()).Children(func() {
-				p.detailHeader(c)
+		// stays on the page's bottom edge. The viewport width, not the window,
+		// decides how far the stock column stretches, so the last column ends at
+		// the scroll edge instead of under the page padding.
+		area := ui.Scroll(c).Grow(1).Sideways().Scrollbars()
+		tableWidth, widths := detailTableSize(area.ScrollState().ViewportWidth)
+		area.Children(func() {
+			ui.Column(c).Width(tableWidth).Children(func() {
+				p.detailHeader(c, tableWidth, widths)
 				for index := start; index < end; index++ {
-					p.detailRow(c, rows[index])
+					p.detailRow(c, rows[index], tableWidth, widths)
 				}
 			})
 		})
@@ -759,14 +783,14 @@ func (p *statisticsPanel) detail(c ui.C) {
 	})
 }
 
-func (p *statisticsPanel) detailHeader(c ui.C) {
+func (p *statisticsPanel) detailHeader(c ui.C, tableWidth float32, widths [detailColumnCount]float32) {
 	headers := [...]string{
 		"建仓", "清仓", "股票", "标签", "盈亏", "累计", "胜负", "胜率",
 		"平均盈利", "平均亏损", "盈亏比", "期望值", "回撤",
 	}
-	layout.TableHeader(c, layout.TableHeaderSpec{Width: detailTableWidth(), PadX: detailPadX, Gap: detailGap}, func(c ui.C) {
+	layout.TableHeader(c, layout.TableHeaderSpec{Width: tableWidth, PadX: detailPadX, Gap: detailGap}, func(c ui.C) {
 		for index, header := range headers {
-			cell := typography.Caption(c, header).Width(detailWidths[index]).Ellipsis()
+			cell := typography.Caption(c, header).Width(widths[index]).Ellipsis()
 			switch index {
 			case detailOpened, detailClosed, detailTag:
 				cell.TextCenter()
@@ -777,10 +801,10 @@ func (p *statisticsPanel) detailHeader(c ui.C) {
 	})
 }
 
-func (p *statisticsPanel) detailRow(c ui.C, point domain.StockStatisticsPoint) {
+func (p *statisticsPanel) detailRow(c ui.C, point domain.StockStatisticsPoint, tableWidth float32, widths [detailColumnCount]float32) {
 	theme := c.Theme()
 	row := ui.Row(c.KeyInt(point.Sequence)).Height(layout.RowHeight).
-		Width(detailTableWidth()).PadX(detailPadX).Gap(detailGap).Items(ui.Center)
+		Width(tableWidth).PadX(detailPadX).Gap(detailGap).Items(ui.Center)
 	row.Draw(func(d *ui.DrawContext) {
 		width := d.Rect.Width - 2*detailPadX
 		if width <= 0 {
@@ -792,38 +816,38 @@ func (p *statisticsPanel) detailRow(c ui.C, point domain.StockStatisticsPoint) {
 		}, d.Theme.Border)
 	})
 	row.Children(func() {
-		detailDate(c, point.OpenedAt, detailWidths[detailOpened])
-		detailDate(c, point.ClosedAt, detailWidths[detailClosed])
-		p.detailStock(c, point)
+		detailDate(c, point.OpenedAt, widths[detailOpened])
+		detailDate(c, point.ClosedAt, widths[detailClosed])
+		p.detailStock(c, point, widths[detailStock])
 		tag := point.Tag
 		if tag == "" {
 			tag = "—"
 		}
 		ui.Text(c, tag).FontSize(typography.SizeBody).Muted().
-			Width(detailWidths[detailTag]).TextCenter().Ellipsis()
-		detailMoney(c, point.Pnl, detailWidths[detailPnl], statColor(*theme, point.Pnl))
-		detailMoney(c, point.TotalPnl, detailWidths[detailTotal], nil)
+			Width(widths[detailTag]).TextCenter().Ellipsis()
+		detailMoney(c, point.Pnl, widths[detailPnl], statColor(*theme, point.Pnl))
+		detailMoney(c, point.TotalPnl, widths[detailTotal], nil)
 		ui.Text(c, winLossText(point)).FontSize(typography.SizeCaption).
-			Width(detailWidths[detailWinLoss]).TextEnd().Ellipsis()
+			Width(widths[detailWinLoss]).TextEnd().Ellipsis()
 		ui.Text(c, statPercent(point.WinRate)).FontSize(typography.SizeBody).Mono().
-			Width(detailWidths[detailWinRate]).TextEnd()
+			Width(widths[detailWinRate]).TextEnd()
 		if point.AvgWin > 0 {
 			color := semantic.Expense(*theme)
-			detailMoney(c, point.AvgWin, detailWidths[detailAvgWin], &color)
+			detailMoney(c, point.AvgWin, widths[detailAvgWin], &color)
 		} else {
-			detailDash(c, detailWidths[detailAvgWin])
+			detailDash(c, widths[detailAvgWin])
 		}
 		if point.AvgLoss > 0 {
 			color := semantic.Income(*theme)
-			detailMoneyText(c, signedMoney(-point.AvgLoss), detailWidths[detailAvgLoss], &color)
+			detailMoneyText(c, signedMoney(-point.AvgLoss), widths[detailAvgLoss], &color)
 		} else {
-			detailDash(c, detailWidths[detailAvgLoss])
+			detailDash(c, widths[detailAvgLoss])
 		}
 		ui.Text(c, ratioText(point.PnlRatio)).FontSize(typography.SizeBody).Mono().
-			Width(detailWidths[detailRatio]).TextEnd()
-		detailMoney(c, point.Expectancy, detailWidths[detailExpectancy],
+			Width(widths[detailRatio]).TextEnd()
+		detailMoney(c, point.Expectancy, widths[detailExpectancy],
 			statColor(*theme, point.Expectancy))
-		ui.Column(c).Width(detailWidths[detailDrawdown]).Gap(0).Items(ui.End).
+		ui.Column(c).Width(widths[detailDrawdown]).Gap(0).Items(ui.End).
 			Children(func() {
 				ui.Text(c, statPercent(point.MaxDrawdownPct)).FontSize(typography.SizeCaption).
 					Mono().Color(semantic.Income(*theme))
@@ -835,7 +859,7 @@ func (p *statisticsPanel) detailRow(c ui.C, point domain.StockStatisticsPoint) {
 
 // detailStock is the one cell that does something: it opens the round on the
 // 记录 screen when the section has wired that jump.
-func (p *statisticsPanel) detailStock(c ui.C, point domain.StockStatisticsPoint) {
+func (p *statisticsPanel) detailStock(c ui.C, point domain.StockStatisticsPoint, width float32) {
 	label := strings.TrimSpace(point.StockName + " " + point.StockCode)
 	clickable := point.RoundID != "" && p.onOpenRound != nil
 	var id gfx.ID
@@ -844,7 +868,7 @@ func (p *statisticsPanel) detailStock(c ui.C, point domain.StockStatisticsPoint)
 		id = ui.ID(c)
 	}
 	cell := ui.Text(c, label).FontSize(typography.SizeBody).
-		Width(detailWidths[detailStock]).TextEnd().Ellipsis()
+		Width(width).TextEnd().Ellipsis()
 	if !clickable {
 		return
 	}
