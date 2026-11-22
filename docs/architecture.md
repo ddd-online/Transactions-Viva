@@ -66,6 +66,7 @@ main → desktop → pages → components
 | `internal/stocklimit` | 东财涨停池（8 秒）与天梯缓存策略，`Service.Ladder` | `electron/services/stock-limit*.ts`、`shared/domain/limit-ladder.ts` |
 | `internal/backup` | 备份命名 / 保留裁剪、VACUUM 快照、手动 / 自动备份、恢复前副本与备份列表 | `shared/domain/backup.ts`、`electron/services/backup.ts` |
 | `internal/proxy` | 代理三态、手动地址归一化、环境变量 / Windows 系统代理探测与共享 HTTP client | `shared/domain/proxy.ts`、`electron/ipc/handlers/settings.ts` 的代理部分 |
+| `internal/update` | GitHub release 检查、安装包下载 / SHA256 校验、进度回调与拉起安装程序 | `shared/domain/update.ts`、`electron/services/updater.ts` |
 | `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
 | `internal/pages/events` | 事件页：年份列表、身份色、图片画廊与灯箱、跨账本关联交易（事件是工作空间级数据） | `src/pages/events*`、`event-*`、`electron/services/key-event.ts` |
 | `internal/assets` | 工作空间图片资产：路径校验、落盘 / 删除 / 另存、解码、EXIF 方向与缩略图 | `electron/services/assets.ts`、`image-import.ts`、`image-resize.ts`、`heic-decode.ts` |
@@ -162,7 +163,8 @@ main → desktop → pages → components
   HTTP client，「检测」通过同一 client 请求一次并显示结果。之后是
   「功能开关」（不再单独占一个导航小节），写 `features` 的全局默认；`ledgerFeatures` 的账本
   覆盖规则已在 `config` 里，但还没有接到真实账本上。关掉的分区立即从 Sidebar 消失，五个全关时落到设置。
-- 关于软件是成立的页面（对齐 motty 的关于页）：身份卡（标志、名称、一句话定位、「复制版本信息」）→「版本信息」2×2 事实网格 →「更新」一行（尚未接入，标「暂未支持」）→「项目」两张外链卡 →「界面由 Viva 绘制」尾注。事实来自 `internal/buildinfo`（`debug.ReadBuildInfo` 的提交与日期 + `runtime`，一次读取）；「复制」与「打开链接」走 `Spec` 回调外壳（`app.SetClipboardText` / `app.OpenURL`，在驱动下记录而不碰真实系统）。
+- 关于软件是成立的页面（对齐 motty 的关于页）：身份卡（标志、名称、一句话定位、「复制版本信息」）→「版本信息」2×2 事实网格 →「更新」→「项目」两张外链卡 →「界面由 Viva 绘制」尾注。事实来自 `internal/buildinfo`（`debug.ReadBuildInfo` 的提交与日期 + `runtime`，一次读取）；「复制」与「打开链接」走 `Spec` 回调外壳（`app.SetClipboardText` / `app.OpenURL`，在驱动下记录而不碰真实系统）。
+- 设置 ·「更新」由 `internal/update` 负责：检查 `github.com/ddd-online/Transactions-Viva` 的 latest release（走同一份代理配置），只认非 prerelease 且带 `.exe` asset 的版本；release body 在「查看更新内容」弹窗里按段落 / 标题渲染。下载到系统临时目录，边下边报进度（页面用 `ui.Progress`），完成后按 asset 的 SHA256 校验；「开始更新」用独立进程拉起安装程序，600ms 后调用 `Application.Quit` 让窗口、数据库和托盘按正常退出路径关闭。
 - 账本管理是设置自己的一个分区（排在通用设置之后）：列出工作空间的账本（名称 + 描述），
   可以新增、编辑（名称与描述一次写入）与删除，标出记账页正在读的那一本。三命令落在
   `accounting.Model`（`CreateLedger` / `UpdateLedger` / `DeleteLedger`），因为它持有四个记账页

@@ -137,6 +137,10 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   可更改和打开。恢复前先把当前库另存为 `pre-restore-*.db`，恢复后在同一窗口重新打开工作空间；
   列表可恢复手动备份、自动备份与恢复前副本，「从文件恢复…」接受任意 `.db`。
   读取备份列表、写入快照、裁剪与恢复在 `internal/backup`。
+- 设置 ·「关于软件」的更新已可用：检查 GitHub 的 latest release（走同一份代理配置），有新版本时
+  可以打开「查看更新内容」弹窗读 release body；下载写临时目录、按 asset 的 SHA256 校验，
+  进度条用 `ui.Progress`，完成后变绿，点「开始更新」拉起安装程序并在 600ms 后优雅退出。
+  检查 / 下载 / 安装的 I/O 在 `internal/update`，页面只持有状态。
 - 运行入口按模式分叉：`viva dev`（有 `VIVA_RELOAD_ADDRESS`）必须走 `app.RunCanvas`——开发
   重载 worker 只在 `RunCanvas` 里连接宿主，换成 `RunApplication` 会打开真窗口并让宿主等
   连接直到超时；发布版走 `app.RunApplication` 才能拿到窗口 / Application 句柄，建托盘、
@@ -183,6 +187,7 @@ internal/assets/         工作空间图片资产：路径校验、落盘 / 删�
 internal/events/         事件图片的导入 / 删除编排：实况配对、逐张报告、清文件
 internal/backup/         备份命名、保留裁剪、快照 / 恢复与备份列表
 internal/proxy/          代理三态、地址归一化、自动探测与共享 HTTP client
+internal/update/         GitHub release 检查、安装包下载 / 校验与拉起安装程序
 internal/stockquote/     腾讯行情（GBK、3 秒超时），页面只依赖 Fetcher
 internal/stocklimit/     东财涨停池（8 秒）与天梯缓存策略
 internal/components/     可复用的 UI：占位空态，datepicker / pagination / selectbox / semantic 子包
@@ -230,8 +235,8 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
 5. **事件**（已完成）：事件画廊、图片资产与关联交易；实况照片只存不播（Viva 没有视频控件）。
 6. **股票**（已完成）：工作空间级多账户、持仓、成交记录、轮次、费用算法、统计、天梯、设置；
    旧库股票数据按账本映射成账户导入。
-7. **设置与数据**：配置持久化、通用设置、五个功能开关、网络代理、工作空间打开、旧数据导入
-   与数据备份 / 恢复已完成；更新检查还在后面。
+7. **设置与数据**：配置持久化、通用设置、五个功能开关、网络代理、工作空间打开、旧数据导入、
+   数据备份 / 恢复与更新检查已完成；剩下打包与发布流程。
 8. **打包**：`viva package`、图标、单实例、托盘、发布流程。
 
 每一阶段先对照旧工程的 E2E / 单测确认行为，再动下一步。**不要在没有行为依据时猜功能。**
