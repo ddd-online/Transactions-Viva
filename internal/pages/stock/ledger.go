@@ -373,15 +373,10 @@ func (e *ledgerEditor) dialog(c ui.C, repo repository.StockRepository, accountID
 					})
 				})
 				ledgerGroup(c, "执行复盘", func() {
-					ui.Row(c).FillWidth().Gap(layout.BlockGap).Items(ui.Start).Children(func() {
-						ledgerInput(c, "是否按系统执行", func() {
-							ui.TextField(c, &e.draft.followedSystem, "是否按系统执行",
-								"例如：是 / 否 / 部分").Grow(1)
-						}, "", theme.MutedForeground)
-						ledgerInput(c, "一句话", func() {
-							ui.TextField(c, &e.draft.summary, "一句话", "一句话总结这一轮").Grow(1)
-						}, "", theme.MutedForeground)
-					})
+					ledgerRadioGroup(c, "是否按系统执行", &e.draft.followedSystem)
+					ledgerInput(c, "一句话", func() {
+						ui.TextField(c, &e.draft.summary, "一句话", "一句话总结这一轮").Grow(1)
+					}, "", theme.MutedForeground)
 				})
 				if e.err != "" {
 					typography.Caption(c, e.err).Color(theme.Danger)
@@ -395,6 +390,32 @@ func (e *ledgerEditor) dialog(c ui.C, repo repository.StockRepository, accountID
 		if ui.Button(c, "保存").Clicked() {
 			e.save(repo, accountID)
 		}
+	})
+}
+
+// ledgerFollowedOptions are the answers 是否按系统执行 accepts. The empty value
+// is 未填写, so an optional field can be cleared again after it was answered.
+var ledgerFollowedOptions = [...]ledgerOption{
+	{value: "是", label: "是"},
+	{value: "否", label: "否"},
+	{value: "部分", label: "部分"},
+	{value: "", label: "未填写"},
+}
+
+type ledgerOption struct {
+	value string
+	label string
+}
+
+func ledgerRadioGroup(c ui.C, label string, value *string) {
+	ui.Column(c).FillWidth().Gap(4).Children(func() {
+		typography.Caption(c, label)
+		ui.Row(c).Gap(layout.GroupGap).Items(ui.Center).
+			FocusGroup(ui.FocusHorizontal).Children(func() {
+			for _, option := range ledgerFollowedOptions {
+				ui.Radio(c.Key("followed-"+option.label), value, option.value, option.label)
+			}
+		})
 	})
 }
 
