@@ -169,9 +169,23 @@ func TestRecordsRoundSections(t *testing.T) {
 	}
 	t.Cleanup(driver.Close)
 
-	for _, name := range []string{"交易记录", "交易台账", "每日复盘", "本轮复盘"} {
-		if !hasSnapshotText(driver, name) {
+	names := []string{"交易台账", "每日复盘", "本轮复盘", "交易记录"}
+	positions := map[string]float32{}
+	for _, text := range driver.Snapshot().Texts {
+		for _, name := range names {
+			if text.Value == name {
+				positions[name] = text.Bounds.Y
+			}
+		}
+	}
+	for _, name := range names {
+		if _, ok := positions[name]; !ok {
 			t.Fatalf("the expanded round has no %q section", name)
+		}
+	}
+	for index := 1; index < len(names); index++ {
+		if positions[names[index-1]] >= positions[names[index]] {
+			t.Fatalf("%q is not above %q: %v", names[index-1], names[index], positions)
 		}
 	}
 	if hasSnapshotText(driver, "1 条") {

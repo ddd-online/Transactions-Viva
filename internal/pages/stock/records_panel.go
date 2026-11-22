@@ -725,15 +725,17 @@ func (p *recordsPanel) toggleRound(roundID string) {
 
 func (p *recordsPanel) roundBody(c ui.C, round domain.StockRoundDetail) {
 	ui.Column(c).FillWidth().Gap(10).PadBottom(10).Children(func() {
-		p.recordSection(c, "交易记录", nil, func() {
-			p.tradeTable(c, round)
-		})
-		ui.Divider(c)
 		p.ledgerSection(c, round)
 		ui.Divider(c)
 		p.dailyReviews(c, round)
 		ui.Divider(c)
 		p.roundReview(c, round)
+		ui.Divider(c)
+		// 交易记录 is last: its table already draws the row separators, and the
+		// round's closing divider supplies the bottom line without doubling it.
+		p.recordSection(c, "交易记录", nil, func() {
+			p.tradeTable(c, round)
+		})
 	})
 }
 
@@ -773,8 +775,11 @@ func (p *recordsPanel) tradeTable(c ui.C, round domain.StockRoundDetail) {
 			ui.Spacer(c)
 			typography.Caption(c, "操作").Width(tradeActionWidth).TextCenter()
 		})
-		for _, trade := range round.Trades {
+		for index, trade := range round.Trades {
 			p.tradeRow(c, trade)
+			if index < len(round.Trades)-1 {
+				ui.Divider(c)
+			}
 		}
 		if len(round.Trades) == 0 {
 			typography.Caption(c, "本轮没有成交").PadX(12).PadY(8)
@@ -823,7 +828,6 @@ func (p *recordsPanel) tradeRow(c ui.C, trade domain.StockTrade) {
 				}
 			})
 		})
-	ui.Divider(c)
 }
 
 // ledgerSection is the round's trade ledger, read-only here.
