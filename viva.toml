@@ -1,6 +1,6 @@
 [app]
 name = "Transactions"
-id = "dev.example.transactions"
+id = "com.ddd-online.transactions"
 version = "0.1.0"
 executable = "transactions"
 package = "."
