@@ -153,39 +153,54 @@ func (m *Model) stockDataSettings(c ui.C, spec Spec, stock *StockConfig) {
 		})
 }
 
+const (
+	stockTagLimit    = 20
+	stockTagMaxChars = 8
+)
+
 func (m *Model) stockTagsRow(c ui.C, spec Spec, stock *StockConfig) {
 	theme := c.Theme()
-	ui.Row(c).MinHeight(c.Theme().Metrics.ControlHeight * 2).Shrink(0).
-		PadX(c.Theme().Metrics.PadSurface).Gap(c.Theme().Metrics.GapItem * 2).
-		Items(ui.Center).Children(func() {
-		ui.Column(c).Grow(1).Gap(4).Children(func() {
-			typography.Body(c, "交易标签").FillWidth().Ellipsis()
-			typography.CaptionParagraph(c, "最多 20 个，每个最多 8 个字；删除标签不会改动历史成交。", 2)
-			if len(stock.Tags) > 0 {
-				ui.Flow(c).Gap(4).LineGap(4).Children(func() {
-					for _, tag := range stock.Tags {
-						tag := tag
-						ui.Row(c.Key("stock-tag-" + tag)).PadX(8).PadY(2).Radius(5.5).
-							Background(theme.Muted).Items(ui.Center).Gap(4).Children(func() {
-							ui.Text(c, tag).FontSize(typography.SizeCaption).Color(theme.MutedForeground)
-							if tag == domain.DefaultStockTradeTag {
-								return
-							}
-							if ui.Button(c, "删除标签 "+tag).Ghost().Icon(stockCloseIcon).
-								IconOnly().Size(18, 18).Tooltip("删除标签「" + tag + "」").Clicked() {
-								m.saveStockTags(spec, withoutTag(stock.Tags, tag))
-							}
-						})
-					}
-				})
-			}
+	metrics := theme.Metrics
+	atLimit := len(stock.Tags) >= stockTagLimit
+	ui.Column(c).FillWidth().Shrink(0).
+		PadX(metrics.PadSurface).PadY(metrics.GapItem * 2).
+		Gap(metrics.GapItem).Children(func() {
+		ui.Row(c).FillWidth().Items(ui.Center).Gap(metrics.GapItem).Children(func() {
+			typography.Body(c, "交易标签").Grow(1)
+			typography.Caption(c, fmt.Sprintf("%d / %d", len(stock.Tags), stockTagLimit)).
+				Color(theme.MutedForeground)
 		})
-		ui.Row(c).Shrink(0).Items(ui.Center).Gap(c.Theme().Metrics.GapItem).Children(func() {
-			field := ui.TextField(c, &m.stock.newTag, "新增交易标签", "如：低吸").Width(220)
+		typography.CaptionParagraph(c,
+			fmt.Sprintf("最多 %d 个，每个最多 %d 个字；删除标签不会改动历史成交。", stockTagLimit, stockTagMaxChars), 2)
+		if len(stock.Tags) > 0 {
+			ui.Flow(c).Gap(6).LineGap(6).Children(func() {
+				for _, tag := range stock.Tags {
+					tag := tag
+					ui.Row(c.Key("stock-tag-" + tag)).PadX(8).PadY(2).Radius(5.5).
+						Background(theme.Muted).Items(ui.Center).Gap(4).Children(func() {
+						ui.Text(c, tag).FontSize(typography.SizeCaption).Color(theme.MutedForeground)
+						if tag == domain.DefaultStockTradeTag {
+							return
+						}
+						if ui.Button(c, "删除标签 "+tag).Ghost().Icon(stockCloseIcon).
+							IconOnly().Size(18, 18).Tooltip("删除标签「" + tag + "」").Clicked() {
+							m.saveStockTags(spec, withoutTag(stock.Tags, tag))
+						}
+					})
+				}
+			})
+		}
+		ui.Row(c).FillWidth().Items(ui.Center).Gap(metrics.GapItem).Children(func() {
+			field := ui.TextField(c, &m.stock.newTag, "新增交易标签", "如：低吸").
+				Grow(1).MaxWidth(360).Disabled(atLimit)
 			if field.Submitted() {
 				m.addStockTag(spec, stock)
 			}
-			if ui.Button(c, "添加标签").Secondary().Clicked() {
+			add := ui.Button(c, "添加标签").Secondary().Disabled(atLimit)
+			if atLimit {
+				add = add.Tooltip("最多 20 个标签")
+			}
+			if add.Clicked() {
 				m.addStockTag(spec, stock)
 			}
 		})
