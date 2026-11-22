@@ -14,12 +14,15 @@ import (
 )
 
 const (
-	todoColumnWidth = float32(292)
-	todoColumnGap   = float32(16)
+	todoColumnMin = float32(270)
+	todoColumnMax = float32(380)
+	todoColumnGap = float32(16)
 )
 
-// board is the horizontal theme board. Every column scrolls its own items, so a
-// long theme never pushes the other themes out of reach.
+// board is a responsive set of theme columns. The columns wrap into rows that
+// fit the window; there is no horizontal scroller, so a theme off to the right
+// is never hidden behind the wheel. Each column ends with its content and the
+// page scrolls vertically for more rows.
 func (m *Model) board(c ui.C) {
 	if len(m.cards) == 0 {
 		theme := c.Theme()
@@ -33,15 +36,37 @@ func (m *Model) board(c ui.C) {
 		})
 		return
 	}
-	ui.Scroll(c).Grow(1).Sideways().Scrollbars().Children(func() {
-		ui.Row(c).FillHeight().Items(ui.Start).Gap(todoColumnGap).
+	_, columnWidth := boardColumns(m.bounds.Width, len(m.cards))
+	ui.Scroll(c).Grow(1).Children(func() {
+		ui.Flow(c).FillWidth().Items(ui.Start).Gap(todoColumnGap).LineGap(todoColumnGap).
 			PadSides(layout.Inset, layout.Inset, 20, layout.Inset).Children(func() {
 			for index := range m.cards {
-				m.column(c, index, &m.cards[index])
+				m.column(c, index, &m.cards[index], columnWidth)
 			}
-			m.newCardTile(c)
 		})
 	})
+}
+
+// boardColumns picks the widest column count whose columns still clear
+// todoColumnMin, capped at todoColumnMax. The extra theme tile participates so
+// the "新建主题" tile stays on the same row as the last theme when it fits.
+func boardColumns(available float32, items int) (int, float32) {
+	available -= 2 * layout.Inset
+	if available <= 0 {
+		return 1, todoColumnMin
+	}
+	columns := int((available + todoColumnGap) / (todoColumnMin + todoColumnGap))
+	if columns < 1 {
+		columns = 1
+	}
+	if columns > items && items > 0 {
+		columns = items
+	}
+	width := (available - todoColumnGap*float32(columns-1)) / float32(columns)
+	if width > todoColumnMax {
+		width = todoColumnMax
+	}
+	return columns, width
 }
 
 func (m *Model) moveCard(index, delta int) {
@@ -62,22 +87,11 @@ func (m *Model) moveCard(index, delta int) {
 	m.reload()
 }
 
-func (m *Model) newCardTile(c ui.C) {
-	theme := c.Theme()
-	ui.Column(c).Width(todoColumnWidth).Height(104).Shrink(0).
-		Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).Dashed().
-		Background(theme.Card).Center().Children(func() {
-		if ui.Button(c, "新建主题").Ghost().Icon(icons.Plus).Clicked() {
-			m.openCardForm()
-		}
-	})
-}
-
-func (m *Model) column(c ui.C, index int, card *domain.TodoCard) {
+func (m *Model) column(c ui.C, index int, card *domain.TodoCard, width float32) {
 	theme := c.Theme()
 	open := !m.collapsed[card.ID]
 	c.Key("todo-card-" + card.ID)
-	ui.Column(c).Width(todoColumnWidth).FillHeight().Shrink(0).
+	ui.Column(c).Width(width).MinHeight(150).Shrink(0).Self(ui.Start).
 		Background(theme.Card).Radius(theme.Metrics.RadiusSurface).
 		Border(1, theme.Border).Children(func() {
 		ui.Row(c).Height(46).FillWidth().PadSides(12, 8, 0, 12).Gap(8).Items(ui.Center).Children(func() {
@@ -124,20 +138,18 @@ func (m *Model) column(c ui.C, index int, card *domain.TodoCard) {
 			return
 		}
 		ui.Divider(c)
-		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-			ui.Column(c).FillWidth().Gap(2).PadY(6).Children(func() {
-				for index := range card.Items {
-					m.itemRow(c, &card.Items[index])
-				}
-				if len(card.Items) == 0 {
-					ui.Column(c).FillWidth().PadSides(12, 12, 18, 12).Gap(4).Children(func() {
-						typography.Caption(c, "还没有事项").Muted()
-						if ui.Button(c, "添加第一件事项").Link().Clicked() {
-							m.openItemForm(card.ID, nil)
-						}
-					})
-				}
-			})
+		ui.Column(c).FillWidth().Gap(2).PadY(6).Children(func() {
+			for index := range card.Items {
+				m.itemRow(c, &card.Items[index])
+			}
+			if len(card.Items) == 0 {
+				ui.Column(c).FillWidth().PadSides(12, 12, 18, 12).Gap(4).Children(func() {
+					typography.Caption(c, "还没有事项").Muted()
+					if ui.Button(c, "添加第一件事项").Link().Clicked() {
+						m.openItemForm(card.ID, nil)
+					}
+				})
+			}
 		})
 	})
 }

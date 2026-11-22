@@ -31,18 +31,14 @@ func (m *Model) quadrant(c ui.C) {
 		}
 	}
 	titles := [4]string{"重要且紧急", "重要不紧急", "紧急不重要", "不紧急不重要"}
-	ui.Scroll(c).Grow(1).Children(func() {
-		ui.Column(c).FillWidth().PadSides(layout.Inset, layout.Inset, 20, layout.Inset).
-			Gap(12).Children(func() {
-			ui.Row(c).FillWidth().Items(ui.Start).Gap(12).Children(func() {
-				m.quadrantBox(c, titles[0], groups[0])
-				m.quadrantBox(c, titles[1], groups[1])
+	ui.Column(c).Fill().PadSides(layout.Inset, layout.Inset, 20, layout.Inset).
+		Gap(12).Children(func() {
+		for row := 0; row < 2; row++ {
+			ui.Row(c).FillWidth().Grow(1).Items(ui.Start).Gap(12).Children(func() {
+				m.quadrantBox(c, titles[row*2], groups[row*2])
+				m.quadrantBox(c, titles[row*2+1], groups[row*2+1])
 			})
-			ui.Row(c).FillWidth().Items(ui.Start).Gap(12).Children(func() {
-				m.quadrantBox(c, titles[2], groups[2])
-				m.quadrantBox(c, titles[3], groups[3])
-			})
-		})
+		}
 	})
 }
 
@@ -53,7 +49,7 @@ type quadrantItem struct {
 
 func (m *Model) quadrantBox(c ui.C, title string, items []quadrantItem) {
 	theme := c.Theme()
-	ui.Column(c).Grow(1).MinHeight(230).Background(theme.Card).
+	ui.Column(c).Grow(1).FillHeight().Background(theme.Card).
 		Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).Children(func() {
 		ui.Row(c).Height(42).FillWidth().PadX(14).Items(ui.Center).Gap(8).Children(func() {
 			typography.Body(c, title).Bold()
@@ -62,7 +58,7 @@ func (m *Model) quadrantBox(c ui.C, title string, items []quadrantItem) {
 		})
 		ui.Divider(c)
 		if len(items) == 0 {
-			ui.Column(c).Fill().Center().Children(func() {
+			ui.Column(c).Grow(1).FillWidth().Center().Children(func() {
 				typography.Caption(c, "暂时空着").Muted()
 			})
 			return
