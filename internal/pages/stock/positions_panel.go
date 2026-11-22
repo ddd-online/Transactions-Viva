@@ -385,24 +385,21 @@ func (p *positionsPanel) toolbar(c ui.C) {
 
 func (p *positionsPanel) rail(c ui.C) {
 	ui.Column(c).Width(layout.RailWidth).FillHeight().Children(func() {
-		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().PadX(layout.Inset).
-			Items(ui.Center).Children(func() {
-			typography.Section(c, "持仓")
-			ui.Spacer(c)
-			typography.Caption(c, strconv.Itoa(len(p.positions)))
-		})
 		if len(p.positions) == 0 {
 			emptystate.Notice(c, "当前没有持仓")
-		} else {
-			ui.Scroll(c).Grow(1).Children(func() {
-				ui.Column(c).Gap(4).PadSides(4, 4, 4, 4).Children(func() {
-					for i := range p.positions {
-						position := &p.positions[i]
-						p.positionCard(c, position)
-					}
-				})
-			})
+			return
 		}
+		ui.Scroll(c).Grow(1).Children(func() {
+			ui.Column(c).Gap(4).PadSides(layout.Inset, 4, 4, 4).Children(func() {
+				for i := range p.positions {
+					if i > 0 {
+						ui.Divider(c)
+					}
+					position := &p.positions[i]
+					p.positionCard(c, position)
+				}
+			})
+		})
 	})
 }
 
