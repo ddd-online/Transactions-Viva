@@ -1,7 +1,7 @@
 [app]
 name = "Transactions"
 id = "com.ddd-online.transactions"
-version = "0.1.2"
+version = "0.1.3"
 icon = "internal/appicon/icon.png"
 executable = "transactions"
 package = "."
