@@ -494,3 +494,43 @@ func TestDecodeRealHEICFixtures(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadViewCachesAStageSizedCopy(t *testing.T) {
+	workspace := t.TempDir()
+	root := Root(workspace)
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	photo := picture(2000, 1200, color.RGBA{R: 200, G: 120, B: 60, A: 255})
+	if err := os.WriteFile(filepath.Join(root, "photo.png"), pngBytes(t, photo), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	bitmap, err := LoadView(workspace, "photo.png", ViewMaxEdge)
+	if err != nil {
+		t.Fatalf("LoadView: %v", err)
+	}
+	if bitmap.Width > ViewMaxEdge || bitmap.Height > ViewMaxEdge {
+		t.Fatalf("the view is %dx%d, larger than %d", bitmap.Width, bitmap.Height, ViewMaxEdge)
+	}
+	view, err := Resolve(workspace, ViewPath("photo.png"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(view)
+	if err != nil {
+		t.Fatalf("the view copy was not written: %v", err)
+	}
+	if Sniff(data) != FormatJPEG {
+		t.Fatalf("the view copy is %s, want JPEG", Sniff(data))
+	}
+
+	again, err := LoadView(workspace, "photo.png", ViewMaxEdge)
+	if err != nil {
+		t.Fatalf("second LoadView: %v", err)
+	}
+	if again.Width != bitmap.Width || again.Height != bitmap.Height {
+		t.Fatalf("the cached view is %dx%d, first was %dx%d",
+			again.Width, again.Height, bitmap.Width, bitmap.Height)
+	}
+}

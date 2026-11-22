@@ -25,8 +25,15 @@ func TestEventImageCacheHoldsOnlyTheSelectedDay(t *testing.T) {
 	if err := model.adoptWorkspace(fixture.Workspace); err != nil {
 		t.Fatal(err)
 	}
-	bitmap := gfx.Bitmap{ID: 1, Width: 160, Height: 90, Stride: 160 * 4, Pix: make([]byte, 160*90*4)}
-	model.events.SetCommands(events.Commands{LoadImage: func(string) (gfx.Bitmap, error) { return bitmap, nil }})
+	bitmap := gfx.Bitmap{ID: 1, Width: 64, Height: 36, Stride: 64 * 4, Pix: make([]byte, 64*36*4)}
+	viewLoads := 0
+	model.events.SetCommands(events.Commands{
+		LoadImage: func(string) (gfx.Bitmap, error) { return bitmap, nil },
+		LoadView: func(string) (gfx.Bitmap, error) {
+			viewLoads++
+			return bitmap, nil
+		},
+	})
 	year := time.Now().Year()
 	days := []string{fmt.Sprintf("%d-11-22", year), fmt.Sprintf("%d-11-21", year)}
 	titles := []string{"缓存日 A", "缓存日 B"}
@@ -54,21 +61,35 @@ func TestEventImageCacheHoldsOnlyTheSelectedDay(t *testing.T) {
 	want := 6 * len(bitmap.Pix)
 	clickCache(t, driver, "事件")
 	clickCache(t, driver, titles[0])
-	assertCacheBytes(t, model, want, "after the first day")
+	waitCache(t, driver, model, want, "after the first day")
 	clickCache(t, driver, titles[1])
-	assertCacheBytes(t, model, want, "after switching days")
+	waitCache(t, driver, model, want, "after switching days")
 	for index := 1; index < 4; index++ {
 		clickCache(t, driver, fmt.Sprintf("查看第 %d 张图片，共 4 张", index+1))
-		assertCacheBytes(t, model, want, "after switching photos")
+		waitCache(t, driver, model, want, "after switching photos")
 	}
 	clickCache(t, driver, titles[0])
-	assertCacheBytes(t, model, want, "after returning to the first day")
+	waitCache(t, driver, model, want, "after returning to the first day")
+	if viewLoads == 0 {
+		t.Fatal("the stage never asked for a view copy")
+	}
 }
 
-func assertCacheBytes(t *testing.T, model *Model, want int, when string) {
+func waitCache(t *testing.T, driver *app.Driver, model *Model, want int, when string) {
 	t.Helper()
-	if got := model.events.CachedImageBytes(); got != want {
-		t.Fatalf("%s: decoded images hold %d bytes, want %d", when, got, want)
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if got := model.events.CachedImageBytes(); got == want {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%s: decoded images hold %d bytes, want %d",
+				when, model.events.CachedImageBytes(), want)
+		}
+		if err := driver.Paint(); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(time.Millisecond)
 	}
 }
 

@@ -29,6 +29,7 @@ func (m *Model) eventCommands() eventpage.Commands {
 		DeleteImage:  m.deleteEventImage,
 		SaveImage:    m.saveEventImage,
 		LoadImage:    m.loadEventImage,
+		LoadView:     m.loadEventView,
 		SetLinksOpen: m.setEventLinksOpen,
 	}
 }
@@ -126,6 +127,15 @@ func (m *Model) loadEventImage(relative string) (gfx.Bitmap, error) {
 		return gfx.Bitmap{}, errNoEventWorkspace
 	}
 	return assets.Load(m.workspace.Directory(), relative, assets.MaxDisplayEdge)
+}
+
+// loadEventView decodes the stage copy of a picture, smaller than the camera
+// original so switching events and pictures does not pay for a full decode.
+func (m *Model) loadEventView(relative string) (gfx.Bitmap, error) {
+	if m.workspace == nil {
+		return gfx.Bitmap{}, errNoEventWorkspace
+	}
+	return assets.LoadView(m.workspace.Directory(), relative, assets.ViewMaxEdge)
 }
 
 // setEventLinksOpen writes the linked rail's state to the configuration.

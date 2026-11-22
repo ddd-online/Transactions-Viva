@@ -12,6 +12,7 @@ import (
 	"image/png"
 	"math"
 	"os"
+	"path/filepath"
 
 	"github.com/gen2brain/h265/heic"
 	"github.com/vivaui/viva/gfx"
@@ -140,26 +141,92 @@ func Thumbnail(picture image.Image, maxWidth int) ([]byte, error) {
 // shows more pixels than that, and keeping a 12 megapixel photo for a 600 pixel
 // pane wastes memory for as long as the page lives.
 func Load(workspaceDir, relative string, maxEdge int) (gfx.Bitmap, error) {
-	full, err := Resolve(workspaceDir, relative)
-	if err != nil {
-		return gfx.Bitmap{}, err
-	}
-	info, err := os.Stat(full)
-	if err != nil {
-		return gfx.Bitmap{}, fmt.Errorf("读取图片失败：%w", err)
-	}
-	if info.Size() > MaxImageBytes {
-		return gfx.Bitmap{}, fmt.Errorf("图片过大（超过 %d MB）", MaxImageBytes>>20)
-	}
-	data, err := os.ReadFile(full)
-	if err != nil {
-		return gfx.Bitmap{}, fmt.Errorf("读取图片失败：%w", err)
-	}
-	picture, err := Decode(data)
+	picture, err := loadPicture(workspaceDir, relative)
 	if err != nil {
 		return gfx.Bitmap{}, err
 	}
 	return Bitmap(fitEdge(picture, maxEdge)), nil
+}
+
+// loadPicture reads and decodes one stored image, applying its EXIF orientation.
+func loadPicture(workspaceDir, relative string) (image.Image, error) {
+	full, err := Resolve(workspaceDir, relative)
+	if err != nil {
+		return nil, err
+	}
+	info, err := os.Stat(full)
+	if err != nil {
+		return nil, fmt.Errorf("读取图片失败：%w", err)
+	}
+	if info.Size() > MaxImageBytes {
+		return nil, fmt.Errorf("图片过大（超过 %d MB）", MaxImageBytes>>20)
+	}
+	data, err := os.ReadFile(full)
+	if err != nil {
+		return nil, fmt.Errorf("读取图片失败：%w", err)
+	}
+	return Decode(data)
+}
+
+// View makes the stage copy of a decoded picture: a JPEG no wider or taller than
+// maxEdge, so switching pictures decodes a small image instead of the camera
+// original every time.
+func View(picture image.Image, maxEdge int) ([]byte, error) {
+	if maxEdge <= 0 || maxEdge > ViewMaxEdge {
+		maxEdge = ViewMaxEdge
+	}
+	return EncodeJPEG(fitEdge(picture, maxEdge), ViewJPEGQuality)
+}
+
+// LoadView loads the stage copy of a stored image, making and caching it on
+// first use. A workspace imported before view copies existed gets one the first
+// time the picture is shown; every later switch decodes the small copy.
+func LoadView(workspaceDir, relative string, maxEdge int) (gfx.Bitmap, error) {
+	if maxEdge <= 0 || maxEdge > ViewMaxEdge {
+		maxEdge = ViewMaxEdge
+	}
+	if bitmap, err := Load(workspaceDir, ViewPath(relative), maxEdge); err == nil {
+		return bitmap, nil
+	}
+	picture, err := loadPicture(workspaceDir, relative)
+	if err != nil {
+		return gfx.Bitmap{}, err
+	}
+	scaled := fitEdge(picture, maxEdge)
+	if data, err := EncodeJPEG(scaled, ViewJPEGQuality); err == nil {
+		writeView(workspaceDir, ViewPath(relative), data)
+	}
+	return Bitmap(scaled), nil
+}
+
+// writeView caches one view copy. A failed write only costs the next load its
+// decode again, so it is not reported to the caller.
+func writeView(workspaceDir, relative string, data []byte) {
+	full, err := Resolve(workspaceDir, relative)
+	if err != nil {
+		return
+	}
+	directory := filepath.Dir(full)
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		return
+	}
+	file, err := os.CreateTemp(directory, ".view-*.jpg")
+	if err != nil {
+		return
+	}
+	temp := file.Name()
+	if _, err := file.Write(data); err != nil {
+		file.Close()
+		os.Remove(temp)
+		return
+	}
+	if err := file.Close(); err != nil {
+		os.Remove(temp)
+		return
+	}
+	if err := os.Rename(temp, full); err != nil {
+		os.Remove(temp)
+	}
 }
 
 // Bitmap converts a decoded picture into the canvas's immutable premultiplied

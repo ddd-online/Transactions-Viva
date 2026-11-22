@@ -1,6 +1,8 @@
 package events
 
 import (
+	"math"
+
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
@@ -72,33 +74,75 @@ func (m *Model) blur(image domain.KeyEventImage) (gfx.Bitmap, bool) {
 	}
 	base, ok := m.bitmap(image.ThumbPath)
 	if !ok {
-		base, ok = m.bitmap(image.FilePath)
+		base, ok = m.cached(image.FilePath)
 	}
 	if !ok {
 		return gfx.Bitmap{}, false
 	}
-	m.blurID, m.blurBitmap = image.ID, gfx.GaussianBlurBitmap(base, 12)
+	m.blurID, m.blurBitmap = image.ID, gfx.GaussianBlurBitmap(smallBitmap(base, blurWidth), blurSigma)
 	return m.blurBitmap, true
 }
 
-// ensureBitmaps decodes what the current selection paints: every thumbnail, the
-// selected photo and its blurred backdrop. It is called when the selection or
-// the list changes, not by View.
+// The backdrop is a blurred thumbnail stretched across the stage; at 96 px wide
+// it looks the same behind a scrim, and the blur takes a tenth of the time.
+const (
+	blurWidth = 96
+	blurSigma = 4
+)
+
+// smallBitmap shrinks a bitmap to at most width pixels with nearest sampling.
+// It is only for the stage backdrop, never for a picture the user reads.
+func smallBitmap(source gfx.Bitmap, width int) gfx.Bitmap {
+	if source.Width <= width || source.Width <= 0 || source.Height <= 0 {
+		return source
+	}
+	height := max(int(math.Round(float64(source.Height)*float64(width)/float64(source.Width))), 1)
+	pixels := make([]byte, width*height*4)
+	for y := range height {
+		sy := y * source.Height / height
+		row := pixels[y*width*4:]
+		for x := range width {
+			sx := x * source.Width / width
+			copy(row[x*4:x*4+4], source.Pix[sy*source.Stride+sx*4:])
+		}
+	}
+	return gfx.Bitmap{Width: width, Height: height, Stride: width * 4, Pix: pixels}
+}
+
+// ensureBitmaps decodes the thumbnails and prepares the selected image's
+// backdrop. The selected view copy is loaded by the display effect, so switching
+// events or pictures never blocks on a 12 megapixel camera original here.
 func (m *Model) ensureBitmaps() {
 	for index := range m.images {
 		image := m.images[index]
-		if _, ok := m.bitmap(image.ThumbPath); !ok {
-			// A missing thumbnail falls back to the display file, loaded here so
-			// a draw never decodes anything.
-			m.bitmap(image.FilePath)
-		}
+		m.bitmap(image.ThumbPath)
 	}
 	image, ok := m.mainImage()
 	if !ok {
 		return
 	}
-	m.keepDisplay(image.FilePath)
 	m.blur(*image)
+}
+
+// effectDisplay loads the selected image's view copy in the background and
+// caches the result. Until it arrives the stage paints the thumbnail, so the
+// click that changed the picture is not held up by the decode.
+func (m *Model) effectDisplay(c ui.C) {
+	image, ok := m.mainImage()
+	if !ok || image.FilePath == "" {
+		return
+	}
+	if _, cached := m.bits[image.FilePath]; cached {
+		return
+	}
+	ui.Effect(c, m.display, displayRequest{Path: image.FilePath, Serial: m.displaySerial})
+	if bitmap, err, ok := m.display.Take(); ok {
+		if err != nil {
+			m.bitErrs[image.FilePath] = err.Error()
+			return
+		}
+		m.cacheDisplay(image.FilePath, bitmap)
+	}
 }
 
 // drawStage paints the stage: the blurred thumbnail filling the pane, a scrim
@@ -112,6 +156,10 @@ func (m *Model) drawStage(d *ui.DrawContext, image domain.KeyEventImage) {
 	}
 	display, ok := m.cached(image.FilePath)
 	if !ok {
+		if thumb, ok := m.cached(image.ThumbPath); ok {
+			drawContained(d.Canvas, thumb, d.Rect)
+			return
+		}
 		m.paintMissing(d)
 		return
 	}
@@ -160,7 +208,6 @@ func (m *Model) openPreview() {
 	m.preview.zoom = 1
 	m.preview.pan = gfx.Point{}
 	m.preview.dragging = false
-	m.keepDisplay(image.FilePath)
 }
 
 // stepPreview moves the lightbox to the next or previous picture, wrapping.
@@ -174,9 +221,9 @@ func (m *Model) stepPreview(delta int) {
 	}
 	m.preview.index = index
 	m.selectedImageID = m.images[index].ID
+	m.displaySerial++
 	m.preview.zoom = 1
 	m.preview.pan = gfx.Point{}
-	m.bitmap(m.images[index].FilePath)
 	m.ensureBitmaps()
 }
 
@@ -255,6 +302,10 @@ func (m *Model) drawPreview(d *ui.DrawContext) {
 	}
 	display, ok := m.cached(image.FilePath)
 	if !ok {
+		if thumb, ok := m.cached(image.ThumbPath); ok {
+			drawContained(d.Canvas, thumb, d.Rect)
+			return
+		}
 		m.paintMissing(d)
 		return
 	}

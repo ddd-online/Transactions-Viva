@@ -184,6 +184,10 @@ func TestEventImagesAddOpenSaveAndDelete(t *testing.T) {
 	if _, err := os.Stat(display); err != nil {
 		t.Fatalf("the display file is missing: %v", err)
 	}
+	view := filepath.Join(directory, "data", "assets", filepath.FromSlash(assets.ViewPath(images[0].FilePath)))
+	if _, err := os.Stat(view); err != nil {
+		t.Fatalf("the stage view copy is missing: %v", err)
+	}
 
 	click(t, driver, "查看大图")
 	if !shows(driver, "1 / 1") {

@@ -20,6 +20,7 @@ func (m *Model) detail(c ui.C) {
 		m.emptyDetail(c)
 		return
 	}
+	m.effectDisplay(c)
 	// Basis(0) is what keeps the three panes inside the window at its narrowest:
 	// the tone row's preferred width would otherwise widen the centre and push
 	// the linked rail past the right edge.

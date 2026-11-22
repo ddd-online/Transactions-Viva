@@ -96,6 +96,10 @@ func addOne(ctx context.Context, repo repository.Repository, workspaceDir, date 
 	if err != nil {
 		return name + "：" + err.Error(), nil
 	}
+	view, err := assets.View(picture, assets.ViewMaxEdge)
+	if err != nil {
+		return name + "：" + err.Error(), nil
+	}
 	var motion []byte
 	motionExt := ""
 	if item.motion != "" {
@@ -110,6 +114,7 @@ func addOne(ctx context.Context, repo repository.Repository, workspaceDir, date 
 		Display:       item.display,
 		DisplayFormat: assets.Sniff(item.display),
 		Thumb:         thumb,
+		View:          view,
 		Motion:        motion,
 		MotionExt:     motionExt,
 	}
@@ -133,7 +138,7 @@ func addOne(ctx context.Context, repo repository.Repository, workspaceDir, date 
 		return name + "：" + err.Error(), nil
 	}
 	remove := func() {
-		assets.Remove(workspaceDir, stored.FilePath, stored.ThumbPath, stored.OriginalPath, stored.MotionPath)
+		assets.Remove(workspaceDir, stored.FilePath, stored.ThumbPath, stored.OriginalPath, stored.MotionPath, stored.ViewPath)
 	}
 	if _, err := repo.CreateKeyEventImage(ctx, domain.KeyEventImage{
 		ID:           id,
@@ -257,7 +262,7 @@ func DeleteEvent(ctx context.Context, repo repository.Repository, workspaceDir, 
 		return err
 	}
 	for _, image := range images {
-		assets.Remove(workspaceDir, image.FilePath, image.ThumbPath, image.OriginalPath, image.MotionPath)
+		assets.Remove(workspaceDir, image.FilePath, image.ThumbPath, image.OriginalPath, image.MotionPath, assets.ViewPath(image.FilePath))
 	}
 	return nil
 }
@@ -271,7 +276,7 @@ func DeleteImage(ctx context.Context, repo repository.Repository, workspaceDir, 
 	if image.ID == "" {
 		return nil
 	}
-	assets.Remove(workspaceDir, image.FilePath, image.ThumbPath, image.OriginalPath, image.MotionPath)
+	assets.Remove(workspaceDir, image.FilePath, image.ThumbPath, image.OriginalPath, image.MotionPath, assets.ViewPath(image.FilePath))
 	return nil
 }
 

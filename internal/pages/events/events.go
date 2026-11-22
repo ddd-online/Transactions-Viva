@@ -16,6 +16,7 @@ package events
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -76,8 +77,12 @@ type Commands struct {
 	DeleteImage func(imageID string) error
 	// SaveImage copies one stored image to where the user saves it.
 	SaveImage func(relativePath string) error
-	// LoadImage decodes one stored image for painting.
+	// LoadImage decodes one stored image for painting (a thumbnail, or the
+	// display file when no view copy exists).
 	LoadImage func(relativePath string) (gfx.Bitmap, error)
+	// LoadView decodes the small stage copy of a display image, making it on
+	// first use when the workspace predates view copies.
+	LoadView func(relativePath string) (gfx.Bitmap, error)
 	// SetLinksOpen persists the linked-transactions rail's open state.
 	SetLinksOpen func(open bool) error
 }
@@ -88,6 +93,14 @@ type addForm struct {
 	date  string
 	title string
 	pick  datepicker.State
+}
+
+// displayRequest names one stage copy. Serial changes when the selected event or
+// picture changes, so a path the effect already loaded is requested again after
+// its bitmap was released.
+type displayRequest struct {
+	Path   string
+	Serial int
 }
 
 // confirmation is one delete dialog: the event's day and name, or the image.
@@ -147,11 +160,13 @@ type Model struct {
 	// blurID/blurBitmap the one backdrop behind it. A gallery can hold hundreds
 	// of pictures and a year can hold hundreds of days: keeping every viewed
 	// full photo and every backdrop is not a cache, it is a leak.
-	bits        map[string]gfx.Bitmap
-	bitErrs     map[string]string
-	displayPath string
-	blurID      string
-	blurBitmap  gfx.Bitmap
+	bits          map[string]gfx.Bitmap
+	bitErrs       map[string]string
+	displayPath   string
+	displaySerial int
+	display       *ui.EffectState[gfx.Bitmap, displayRequest]
+	blurID        string
+	blurBitmap    gfx.Bitmap
 
 	add         addForm
 	deleteEvent confirmation
@@ -178,6 +193,16 @@ func New() *Model {
 		Scroll:  m.previewScroll,
 		Key:     m.previewKey,
 	}
+	m.display = ui.NewEffectKeyed(func(_ context.Context, request displayRequest) (gfx.Bitmap, error) {
+		loader := m.cmds.LoadView
+		if loader == nil {
+			loader = m.cmds.LoadImage
+		}
+		if loader == nil {
+			return gfx.Bitmap{}, fmt.Errorf("图片无法显示")
+		}
+		return loader(request.Path)
+	}).Sequential()
 	return m
 }
 
@@ -615,22 +640,18 @@ func (m *Model) dropBitmaps() {
 	m.bits = map[string]gfx.Bitmap{}
 	m.bitErrs = map[string]string{}
 	m.displayPath = ""
+	m.displaySerial++
 	m.blurID = ""
 	m.blurBitmap = gfx.Bitmap{}
 }
 
-// keepDisplay makes path the one full photo held decoded, releasing the one it
-// replaces. Thumbnails stay in bits; only the stage and the lightbox need a
-// display-size bitmap.
-func (m *Model) keepDisplay(path string) {
-	if path == "" {
-		return
-	}
+// cacheDisplay keeps the stage's view copy, releasing the one it replaces.
+func (m *Model) cacheDisplay(path string, bitmap gfx.Bitmap) {
 	if m.displayPath != "" && m.displayPath != path {
 		delete(m.bits, m.displayPath)
 	}
+	m.bits[path] = bitmap
 	m.displayPath = path
-	m.bitmap(path)
 }
 
 // keepImageSelection makes sure the stage names an image in the list.
@@ -812,6 +833,7 @@ func (m *Model) selectImage(id string) {
 		return
 	}
 	m.selectedImageID = id
+	m.displaySerial++
 	m.ensureBitmaps()
 }
 

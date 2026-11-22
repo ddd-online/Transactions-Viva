@@ -46,6 +46,12 @@ const (
 	ThumbnailWidth = 300
 	// ThumbnailQuality is the JPEG quality of a thumbnail.
 	ThumbnailQuality = 75
+	// ViewMaxEdge is the longest edge of the stage's view copy: large enough
+	// for the detail pane, small enough that switching pictures does not decode
+	// a 12 megapixel camera original every time.
+	ViewMaxEdge = 1600
+	// ViewJPEGQuality is the JPEG quality of that view copy.
+	ViewJPEGQuality = 85
 	// DisplayJPEGQuality is the JPEG quality of a HEIC still's display copy.
 	// The old application transcoded at 92: close to the original's look while
 	// still a format every platform draws without a codec.
@@ -57,6 +63,16 @@ func Root(workspaceDir string) string { return filepath.Join(workspaceDir, "data
 
 // keyEventDir is the relative directory of one day's event images.
 func keyEventDir(date string) string { return path.Join("key_events", date) }
+
+// ViewPath is the stage copy stored beside an image. It is derived, not stored
+// in the database: an older workspace gets one the first time the picture is
+// shown, and deleting the image removes it with the other files.
+func ViewPath(relative string) string {
+	if relative == "" {
+		return ""
+	}
+	return relative + ".view.jpg"
+}
 
 // Resolve turns a stored relative path into a file path inside the workspace's
 // assets directory. A path that escapes it (an absolute path, "..", a drive) is
@@ -96,6 +112,9 @@ type Files struct {
 	DisplayFormat Format
 	// Thumb is the JPEG thumbnail made from the still.
 	Thumb []byte
+	// View is a smaller JPEG the stage paints; empty leaves it to the loader to
+	// make one on first use.
+	View []byte
 	// Motion is the live photo's video; MotionExt says what it is.
 	Motion    []byte
 	MotionExt string
@@ -112,6 +131,7 @@ type Paths struct {
 	ThumbPath    string
 	OriginalPath string
 	MotionPath   string
+	ViewPath     string
 }
 
 // NewName is the image's id and the stem its files are named after.
@@ -141,6 +161,9 @@ func Save(workspaceDir, date, name string, files Files) (Paths, error) {
 	if len(files.Thumb) == 0 || Sniff(files.Thumb) != FormatJPEG {
 		return Paths{}, errors.New("缩略图必须是 JPEG")
 	}
+	if len(files.View) > 0 && Sniff(files.View) != FormatJPEG {
+		return Paths{}, errors.New("展示图必须是 JPEG")
+	}
 	motionExt := strings.ToLower(strings.TrimSpace(files.MotionExt))
 	if len(files.Motion) > 0 && !motionExtension(motionExt) {
 		return Paths{}, fmt.Errorf("实况视频格式不支持：%s", files.MotionExt)
@@ -157,6 +180,7 @@ func Save(workspaceDir, date, name string, files Files) (Paths, error) {
 	}
 	displayName := name + "." + files.DisplayFormat.Extension()
 	thumbName := "thumb_" + name + ".jpg"
+	viewName := displayName + ".view.jpg"
 	originalName := ""
 	if len(files.Original) > 0 {
 		originalName = name + "." + files.OriginalFormat.Extension()
@@ -170,7 +194,7 @@ func Save(workspaceDir, date, name string, files Files) (Paths, error) {
 		FilePath:  path.Join(keyEventDir(date), displayName),
 		ThumbPath: path.Join(keyEventDir(date), thumbName),
 	}
-	written := make([]string, 0, 4)
+	written := make([]string, 0, 5)
 	write := func(fileName string, data []byte) error {
 		full := filepath.Join(directory, fileName)
 		if err := os.WriteFile(full, data, 0o644); err != nil {
@@ -185,6 +209,13 @@ func Save(workspaceDir, date, name string, files Files) (Paths, error) {
 	if err := write(thumbName, files.Thumb); err != nil {
 		removeAll(written)
 		return Paths{}, fmt.Errorf("保存缩略图失败：%w", err)
+	}
+	if len(files.View) > 0 {
+		if err := write(viewName, files.View); err != nil {
+			removeAll(written)
+			return Paths{}, fmt.Errorf("保存展示图失败：%w", err)
+		}
+		paths.ViewPath = path.Join(keyEventDir(date), viewName)
 	}
 	if originalName != "" {
 		if err := write(originalName, files.Original); err != nil {
