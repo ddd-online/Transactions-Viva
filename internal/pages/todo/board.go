@@ -77,14 +77,15 @@ func (m *Model) group(c ui.C, index int, card *domain.TodoCard) {
 		title := ui.Row(c).Grow(1).Gap(6).Items(ui.Center).
 			Hit(ui.ID(c), "折叠主题 "+card.Title).Children(func() {
 			typography.Body(c, card.Title).Bold().Ellipsis()
-			typography.Caption(c, fmt.Sprintf("%d", len(card.Items))).Mono()
 			m.disclosure(c, open)
 		})
 		if title.Clicked() {
 			m.collapsed[card.ID] = open
 		}
 		more := ui.Button(c, "主题操作").Ghost().Icon(icons.GripVertical).IconOnly().
-			Tooltip("调整主题顺序")
+			Tooltip("调整主题顺序").
+			Hover(ui.Look{}.Background(theme.Accent)).
+			Pressed(ui.Look{}.Background(theme.Muted))
 		if more.Clicked() {
 			m.cardMenu = true
 			m.cardMenuID = card.ID
@@ -104,11 +105,15 @@ func (m *Model) group(c ui.C, index int, card *domain.TodoCard) {
 			})
 		}
 		if ui.Button(c, "删除主题").Ghost().Icon(icons.Trash2).IconOnly().
-			Tooltip("删除主题").Clicked() {
+			Tooltip("删除主题").
+			Hover(ui.Look{}.Background(theme.Accent)).
+			Pressed(ui.Look{}.Background(theme.Muted)).Clicked() {
 			m.deleteCard = deleteCard{open: true, id: card.ID, title: card.Title}
 		}
 		if ui.Button(c, "添加事项").Ghost().Icon(icons.Plus).IconOnly().
-			Tooltip("添加事项").Clicked() {
+			Tooltip("添加事项").
+			Hover(ui.Look{}.Background(theme.Accent)).
+			Pressed(ui.Look{}.Background(theme.Muted)).Clicked() {
 			m.collapsed[card.ID] = false
 			m.openItemForm(card.ID, nil)
 		}
