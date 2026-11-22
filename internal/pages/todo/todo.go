@@ -5,6 +5,7 @@ package todo
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
@@ -256,7 +257,7 @@ func (m *Model) toolbar(c ui.C) {
 			}
 		} else {
 			ui.Spacer(c)
-			typography.Caption(c, "已完成的事项按完成时间倒序")
+			typography.Caption(c, fmt.Sprintf("已完成 %d 项 · 按完成时间倒序", len(m.history)))
 		}
 	})
 }

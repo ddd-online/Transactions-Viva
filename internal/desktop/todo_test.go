@@ -34,7 +34,7 @@ func TestTodoBoardCardItemProgressAndHistory(t *testing.T) {
 	if !shows(driver, "写周报") || !shows(driver, "本周") {
 		t.Fatal("completed item is not in history")
 	}
-	clickContains(t, driver, "进度 0/1")
+	clickContains(t, driver, "0/1")
 	if !shows(driver, "进度 · 写周报") || !shows(driver, "先列大纲") {
 		t.Fatal("history progress dialog is missing")
 	}

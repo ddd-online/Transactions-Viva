@@ -88,6 +88,8 @@ func (m *Model) quadrantPane(c ui.C, title string, items []quadrantItem) {
 
 // historyView is the completed items list, one card with hairlines so the
 // completion date and card title line up across rows.
+// historyView is the completed items list. It is a flat table: one header row
+// and hairlines between rows, so it reads as a history, not as a card stack.
 func (m *Model) historyView(c ui.C) {
 	theme := c.Theme()
 	if len(m.history) == 0 {
@@ -100,17 +102,38 @@ func (m *Model) historyView(c ui.C) {
 	}
 	ui.Scroll(c).Grow(1).Children(func() {
 		ui.Column(c).FillWidth().PadSides(layout.Inset, layout.Inset, 20, layout.Inset).Children(func() {
-			ui.Column(c).FillWidth().Background(theme.Card).
-				Radius(theme.Metrics.RadiusSurface).Border(1, theme.Border).Children(func() {
-				ui.Row(c).Height(40).FillWidth().PadX(14).Items(ui.Center).Children(func() {
-					typography.Caption(c, fmt.Sprintf("已完成 %d 项", len(m.history)))
-				})
-				for index := range m.history {
-					entry := &m.history[index]
-					ui.Divider(c)
-					m.historyRow(c, entry)
-				}
-			})
+			m.historyHeader(c)
+			for index := range m.history {
+				ui.Divider(c)
+				m.historyRow(c, &m.history[index])
+			}
+		})
+	})
+}
+
+const (
+	historyTimeWidth     = float32(112)
+	historyCardWidth     = float32(120)
+	historyProgressWidth = float32(72)
+	historyActionWidth   = float32(116)
+)
+
+func (m *Model) historyHeader(c ui.C) {
+	ui.Row(c).Height(34).FillWidth().PadSides(14, 8, 8, 14).Gap(10).Items(ui.Center).Children(func() {
+		ui.Row(c).Width(historyTimeWidth).Children(func() {
+			typography.Caption(c, "完成时间")
+		})
+		ui.Row(c).Width(historyCardWidth).Children(func() {
+			typography.Caption(c, "主题")
+		})
+		ui.Row(c).Grow(1).Children(func() {
+			typography.Caption(c, "事项")
+		})
+		ui.Row(c).Width(historyProgressWidth).Justify(ui.Center).Children(func() {
+			typography.Caption(c, "进度")
+		})
+		ui.Row(c).Width(historyActionWidth).Justify(ui.End).Children(func() {
+			typography.Caption(c, "操作")
 		})
 	})
 }
@@ -119,29 +142,36 @@ func (m *Model) historyRow(c ui.C, entry *domain.TodoHistory) {
 	theme := c.Theme()
 	item := entry.Item
 	c.Key("todo-history-" + item.ID)
-	ui.Row(c).FillWidth().PadSides(14, 10, 10, 14).Gap(10).Items(ui.Center).Children(func() {
-		ui.Icon(c, icons.CircleCheck).Size(14, 14).Shrink(0).Color(theme.Success)
-		ui.Column(c).Grow(1).Gap(2).Children(func() {
-			typography.Body(c, item.Title).MaxLines(1).Ellipsis()
-			ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
-				typography.Caption(c, entry.CardTitle)
-				typography.Caption(c, "完成于 "+time.Unix(item.CompletedAt, 0).Format("2006-01-02 15:04")).Mono()
-			})
+	ui.Row(c).FillWidth().PadSides(14, 10, 10, 14).Gap(10).Items(ui.Center).
+		Hover(ui.Look{}.Background(theme.Accent)).Children(func() {
+		ui.Row(c).Width(historyTimeWidth).Gap(6).Items(ui.Center).Children(func() {
+			ui.Icon(c, icons.CircleCheck).Size(13, 13).Shrink(0).Color(theme.Success)
+			typography.Caption(c, time.Unix(item.CompletedAt, 0).Format("01-02 15:04")).Mono()
 		})
-		if len(item.Progress) > 0 {
-			label := fmt.Sprintf("进度 %d/%d", domain.TodoDoneCount(item.Progress), len(item.Progress))
-			if ui.Button(c, label).Ghost().Clicked() {
-				m.openProgress(item)
+		ui.Row(c).Width(historyCardWidth).Children(func() {
+			typography.Caption(c, entry.CardTitle).MaxLines(1).Ellipsis()
+		})
+		ui.Row(c).Grow(1).Children(func() {
+			typography.Body(c, item.Title).MaxLines(1).Ellipsis()
+		})
+		ui.Row(c).Width(historyProgressWidth).Justify(ui.Center).Children(func() {
+			if len(item.Progress) > 0 {
+				label := fmt.Sprintf("%d/%d", domain.TodoDoneCount(item.Progress), len(item.Progress))
+				if ui.Button(c, label).Ghost().Small().Clicked() {
+					m.openProgress(item)
+				}
+			} else {
+				typography.Caption(c, "—").Muted()
 			}
-		}
-		if ui.Button(c, "恢复").Outline().Small().Clicked() {
-			m.setStatus(item.ID, domain.TodoStatusDoing)
-		}
-		if ui.Button(c, "删除已完成事项").Ghost().Icon(icons.Trash2).IconOnly().
-			Tooltip("删除").Clicked() {
-			m.deleteItem = deleteItem{open: true, id: item.ID, title: item.Title}
-		}
+		})
+		ui.Row(c).Width(historyActionWidth).Justify(ui.End).Gap(4).Items(ui.Center).Children(func() {
+			if ui.Button(c, "恢复").Outline().Small().Clicked() {
+				m.setStatus(item.ID, domain.TodoStatusDoing)
+			}
+			if ui.Button(c, "删除已完成事项").Ghost().Icon(icons.Trash2).IconOnly().
+				Tooltip("删除").Clicked() {
+				m.deleteItem = deleteItem{open: true, id: item.ID, title: item.Title}
+			}
+		})
 	})
 }
-
-// historyRow is one completed item.
