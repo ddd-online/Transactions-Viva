@@ -12,6 +12,8 @@ import (
 
 const stockAccountColumns = "id, name, description, principal_cents, sort_order, created_at, updated_at"
 
+var _ repository.StockRepository = (*Workspace)(nil)
+
 // StockAccounts lists the workspace's stock accounts in display order.
 func (w *Workspace) StockAccounts(ctx context.Context) ([]domain.StockAccount, error) {
 	db, err := w.dbHandle()

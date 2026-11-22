@@ -8,6 +8,34 @@ import (
 	"transactions/internal/domain"
 )
 
+// StockFill 是委托里的一笔成交。价格单位厘，手数是 A 股手数（1 手 = 100 股）。
+type StockFill struct {
+	PriceMilli int64
+	Lots       int
+}
+
+// StockOrderRequest 是一次下单。RoundFee 只在建仓时接受；其余轮次沿用建仓快照。
+type StockOrderRequest struct {
+	AccountID string
+	StockCode string
+	StockName string
+	TradeType string
+	TradeTime int64
+	Remark    string
+	Tag       string
+	Fills     []StockFill
+	RoundFee  *domain.RoundFee
+}
+
+// StockTradeUpdate edits one fill. TradeTime <= 0 keeps the stored time.
+type StockTradeUpdate struct {
+	AccountID  string
+	TradeID    string
+	PriceMilli int64
+	Lots       int
+	TradeTime  int64
+}
+
 // StockRepository is the workspace data the 股票 section uses. Every stock row
 // is scoped by an account id; the market ladder tables are workspace-level.
 //
@@ -39,4 +67,16 @@ type StockRepository interface {
 
 	// StockOperations lists the rollbackable operations, newest first.
 	StockOperations(ctx context.Context, accountID string) ([]domain.StockOperation, error)
+
+	// CreateStockOrder records one order (one or more fills) and rebuilds the
+	// position, rounds, fund record and operation log in one transaction.
+	CreateStockOrder(ctx context.Context, request StockOrderRequest) ([]domain.StockTrade, error)
+	// UpdateStockTrade edits one fill's price / lots / time, recomputes the
+	// whole order's fees and replays the account.
+	UpdateStockTrade(ctx context.Context, request StockTradeUpdate) error
+	// DeleteStockOrder removes every fill of one order and replays the account.
+	DeleteStockOrder(ctx context.Context, accountID, orderID string) error
+	// RollbackStockOperation undoes the newest operation; a target that no
+	// longer exists reports skipped instead of failing.
+	RollbackStockOperation(ctx context.Context, accountID string) (domain.StockOperationRollback, error)
 }

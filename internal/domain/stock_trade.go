@@ -354,5 +354,19 @@ func RoundTradeCount(trades []StockTrade) int {
 	return count
 }
 
+// TradeOrderRemark 是资金记录备注：「名称 N手 @ 均价」，多笔补「（M笔成交）」。
+func TradeOrderRemark(stockName string, totalLots, totalAmount int64, count int) string {
+	shares := SharesOfLots(totalLots)
+	avgPriceMilli := int64(0)
+	if shares > 0 {
+		avgPriceMilli = int64(RoundHalfAwayFromZero(float64(totalAmount) * 10 / float64(shares)))
+	}
+	remark := stockName + " " + itoa(int(totalLots)) + "手 @ " + MilliToYuan(avgPriceMilli)
+	if count > 1 {
+		remark += "（" + itoa(count) + "笔成交）"
+	}
+	return remark
+}
+
 // MaxInt64 是费用 / 金额运算里判断溢出的边界。
 const MaxInt64 = int64(math.MaxInt64)
