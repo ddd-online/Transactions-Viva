@@ -189,7 +189,9 @@ func stockAccountOpenRounds(ctx context.Context, tx *sql.Tx, accountID string) (
 func loadStockTradesForCode(ctx context.Context, tx *sql.Tx, accountID, stockCode string) ([]domain.StockTrade, error) {
 	rows, err := tx.QueryContext(ctx,
 		"SELECT "+stockTradeColumns+" FROM stock_trade WHERE account_id = ? AND stock_code = ? "+
-			"ORDER BY trade_time ASC, created_at ASC, id ASC", accountID, stockCode)
+			"ORDER BY trade_time ASC, created_at ASC, "+
+			"CASE WHEN trade_type IN ('open','add') THEN 0 ELSE 1 END ASC, id ASC",
+		accountID, stockCode)
 	if err != nil {
 		return nil, fmt.Errorf("读取成交失败：%w", err)
 	}
