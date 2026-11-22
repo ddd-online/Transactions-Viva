@@ -947,6 +947,13 @@ func TestSettingsCategoriesSwitchThePage(t *testing.T) {
 	}
 }
 
+func TestWindowConfigUsesTheAppIcon(t *testing.T) {
+	config := newConfig(New())
+	if config.Icon.Size < 128 || len(config.Icon.RGBA) != config.Icon.Size*config.Icon.Size*4 {
+		t.Fatalf("window icon = size %d, %d bytes", config.Icon.Size, len(config.Icon.RGBA))
+	}
+}
+
 func TestWindowMinimumMatchesMotty(t *testing.T) {
 	cfg := config.Default()
 	cfg.Width, cfg.Height = 400, 300

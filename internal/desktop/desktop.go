@@ -10,6 +10,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/appicon"
 	"transactions/internal/backup"
 	"transactions/internal/components/typography"
 	"transactions/internal/config"
@@ -246,8 +247,10 @@ func newConfig(m *Model) app.Config {
 	}
 	width = max(width, MinimumWindowWidth)
 	height = max(height, MinimumWindowHeight)
+	icon, _ := appicon.Load()
 	config := app.Config{
 		Title:     "Transactions",
+		Icon:      icon,
 		Width:     width,
 		Height:    height,
 		MinWidth:  MinimumWindowWidth,
