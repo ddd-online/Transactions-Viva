@@ -30,8 +30,8 @@ const (
 	tabGeneral tab = iota
 	tabLedgers
 	tabStockSettings
-	tabData
 	tabDiary
+	tabData
 	tabAbout
 )
 
@@ -70,6 +70,10 @@ var sections = [...]section{
 		title: "股票设置",
 	},
 	{
+		tab:   tabDiary,
+		title: "日记配置",
+	},
+	{
 		tab:   tabData,
 		title: "数据备份",
 		rows: []setting{
@@ -81,13 +85,20 @@ var sections = [...]section{
 		},
 	},
 	{
-		tab:   tabDiary,
-		title: "日记配置",
-	},
-	{
 		tab:   tabAbout,
 		title: "关于软件",
 	},
+}
+
+// sectionOf returns the section entry for a tab. The nav may be reordered
+// without the enum order having to match the array indexes.
+func sectionOf(tab tab) section {
+	for _, entry := range sections {
+		if entry.tab == tab {
+			return entry
+		}
+	}
+	return sections[0]
 }
 
 // Spec is what the shell hands the page each paint: the configuration's current
@@ -307,7 +318,7 @@ func (m *Model) View(c ui.C, spec Spec) {
 		m.nav(c)
 		// A vertical divider is a Divider in a Row.
 		ui.Divider(c)
-		m.page(c, sections[m.tab], spec)
+		m.page(c, sectionOf(m.tab), spec)
 	})
 	m.ledgerDialog(c, spec)
 	m.ledgerDeleteDialog(c, spec)

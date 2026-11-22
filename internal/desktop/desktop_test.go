@@ -205,6 +205,15 @@ func hasControl(driver *app.Driver, name string) bool {
 	return false
 }
 
+func controlTop(driver *app.Driver, name string) float32 {
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == name && !hit.IsLabel {
+			return hit.Bounds.Y
+		}
+	}
+	return 0
+}
+
 func TestNavigationSwitchesSections(t *testing.T) {
 	driver, _ := open(t)
 	if !shows(driver, "记一笔") {
@@ -907,6 +916,14 @@ func TestSettingsCategoriesSwitchThePage(t *testing.T) {
 		if !hasControl(driver, name) {
 			t.Fatalf("settings list has no %q entry", name)
 		}
+	}
+	last := float32(-1)
+	for _, name := range []string{"通用设置", "账本管理", "股票设置", "日记配置", "数据备份", "关于软件"} {
+		top := controlTop(driver, name)
+		if top <= last {
+			t.Fatalf("settings section %q is out of order", name)
+		}
+		last = top
 	}
 	// 功能开关 is a group of 通用设置 now, not a section of the panel: the rail
 	// has no row for it, and the page the settings open on shows both groups.
