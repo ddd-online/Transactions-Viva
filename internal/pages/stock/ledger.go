@@ -102,20 +102,20 @@ func ledgerSheetOfView(view *domain.StockLedgerView) ledgerSheet {
 // ledgerSection is the 交易台账 block both pages paint: its head, the empty
 // state, and the grouped sheet. The records page paints the same body under
 // its own section head, so the head and the body are separate.
-func ledgerSection(c ui.C, sheet ledgerSheet, errorText string, onEdit func()) {
-	ui.Column(c).FillWidth().Gap(layout.Gap).Children(func() {
-		ledgerSectionHead(c, sheet, onEdit)
-		ledgerSectionBody(c, sheet, errorText, onEdit)
-	})
-}
-
-func ledgerSectionHead(c ui.C, sheet ledgerSheet, onEdit func()) {
-	ui.Row(c).FillWidth().Height(layout.SectionHeaderHeight).Items(ui.Center).Children(func() {
-		typography.Section(c, "交易台账")
-		ui.Spacer(c)
-		if ui.Button(c, ledgerActionLabel(sheet)).Outline().Small().Clicked() && onEdit != nil {
-			onEdit()
-		}
+// stockSection is the shared section head of the position and round details:
+// the name on the left, an optional action on the right, then the body. Both
+// pages keep the same vertical rhythm so a round and a live position read the
+// same way.
+func stockSection(c ui.C, name string, padX float32, action func(), body func()) {
+	ui.Column(c).FillWidth().Gap(4).PadBottom(8).Children(func() {
+		ui.Row(c).FillWidth().PadX(padX).PadTop(8).Items(ui.Center).Children(func() {
+			typography.Section(c, name)
+			ui.Spacer(c)
+			if action != nil {
+				action()
+			}
+		})
+		body()
 	})
 }
 

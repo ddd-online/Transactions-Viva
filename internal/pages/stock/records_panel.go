@@ -787,17 +787,7 @@ func (p *recordsPanel) roundBody(c ui.C, round domain.StockRoundDetail) {
 // header, an optional action, and the content under it. The four sections of a
 // round share this head so their name size, header height and gap match.
 func (p *recordsPanel) recordSection(c ui.C, name string, action func(), body func()) {
-	ui.Column(c).FillWidth().Gap(4).PadBottom(8).Children(func() {
-		ui.Row(c).FillWidth().PadX(12).PadTop(8).
-			Items(ui.Center).Children(func() {
-			typography.Section(c, name)
-			ui.Spacer(c)
-			if action != nil {
-				action()
-			}
-		})
-		body()
-	})
+	stockSection(c, name, 12, action, body)
 }
 
 // tradeTable is the read-only trade table of one round. Editing and deleting

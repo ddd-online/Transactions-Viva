@@ -522,9 +522,12 @@ func (p *positionsPanel) detailColumn(c ui.C) {
 		p.detailHeader(c, position)
 		ui.Divider(c)
 		ui.Scroll(c).Grow(1).Children(func() {
-			ui.Column(c).Pad(layout.Inset).Gap(layout.BlockGap).Children(func() {
-				p.detailMetrics(c, position)
-				p.feeLine(c, position)
+			ui.Column(c).FillWidth().Children(func() {
+				ui.Column(c).Pad(layout.Inset).PadBottom(layout.BlockGap).
+					Gap(layout.Gap).Children(func() {
+					p.detailMetrics(c, position)
+					p.feeLine(c, position)
+				})
 				ui.Divider(c)
 				p.ledgerSection(c, position)
 				ui.Divider(c)
@@ -633,7 +636,16 @@ func (p *positionsPanel) feeLine(c ui.C, position *domain.StockPosition) {
 // ------------------------------------------------------------------ 交易台账
 
 func (p *positionsPanel) ledgerSection(c ui.C, position *domain.StockPosition) {
-	ledgerSection(c, p.ledgerSheet(position), p.ledgerError, p.openLedger)
+	sheet := p.ledgerSheet(position)
+	stockSection(c, "交易台账", layout.Inset, func() {
+		if ui.Button(c, ledgerActionLabel(sheet)).Outline().Small().Clicked() {
+			p.openLedger()
+		}
+	}, func() {
+		ui.Column(c).FillWidth().PadX(layout.Inset).Children(func() {
+			ledgerSectionBody(c, sheet, p.ledgerError, p.openLedger)
+		})
+	})
 }
 
 // ledgerSheet maps the selected position's ledger and current-round numbers to
@@ -661,45 +673,44 @@ func (p *positionsPanel) ledgerSheet(position *domain.StockPosition) ledgerSheet
 func (p *positionsPanel) dailySection(c ui.C, position *domain.StockPosition) {
 	theme := c.Theme()
 	reviews := p.currentDayReviews(position.StockCode)
-	ui.Column(c).Gap(0).Children(func() {
-		ui.Row(c).FillWidth().Height(layout.SectionHeaderHeight).Items(ui.Center).Children(func() {
-			typography.Section(c, "每日复盘")
-			ui.Spacer(c)
-			if ui.Button(c, "写今日").Outline().Small().Clicked() {
-				p.openDailyToday(position)
+	stockSection(c, "每日复盘", layout.Inset, func() {
+		if ui.Button(c, "写今日").Outline().Small().Clicked() {
+			p.openDailyToday(position)
+		}
+	}, func() {
+		ui.Column(c).FillWidth().PadX(layout.Inset).Children(func() {
+			if len(reviews) == 0 {
+				row := ui.Row(c.Key("daily-empty")).FillWidth().Height(layout.RowHeight).
+					Gap(layout.Gap).Items(ui.Center).
+					HitWith(ui.ID(c), "写今日的每日复盘", gfx.HitOptions{Cursor: gfx.PointerCursorHand}).
+					Hover(ui.Look{}.Background(theme.Hover)).
+					Radius(theme.Metrics.RadiusControl)
+				row.Children(func() {
+					typography.Caption(c, "还没有写每日复盘，点「写今日」记下今天的盘面和判断。").
+						Color(theme.MutedForeground)
+				})
+				if row.Clicked() {
+					p.openDailyToday(position)
+				}
+				return
+			}
+			for _, review := range reviews {
+				review := review
+				row := ui.Row(c.Key(review.ID)).FillWidth().Height(layout.RowHeight).
+					Gap(layout.Gap).Items(ui.Center).
+					HitWith(ui.ID(c), "查看 "+review.ReviewDate+" 的每日复盘",
+						gfx.HitOptions{Cursor: gfx.PointerCursorHand}).
+					Hover(ui.Look{}.Background(theme.Hover)).
+					Radius(theme.Metrics.RadiusControl)
+				row.Children(func() {
+					ui.Text(c, review.ReviewDate).FontSize(typography.SizeBody).Mono().Width(88)
+					ui.Text(c, review.Review).FontSize(typography.SizeBody).Grow(1).Ellipsis()
+				})
+				if row.Clicked() {
+					p.openDailyRead(review)
+				}
 			}
 		})
-		if len(reviews) == 0 {
-			row := ui.Row(c.Key("daily-empty")).FillWidth().Height(layout.RowHeight).
-				PadX(4).Gap(layout.Gap).Items(ui.Center).
-				HitWith(ui.ID(c), "写今日的每日复盘", gfx.HitOptions{Cursor: gfx.PointerCursorHand}).
-				Hover(ui.Look{}.Background(theme.Hover)).
-				Radius(theme.Metrics.RadiusControl)
-			row.Children(func() {
-				typography.Caption(c, "还没有写每日复盘，点「写今日」记下今天的盘面和判断。").
-					Color(theme.MutedForeground)
-			})
-			if row.Clicked() {
-				p.openDailyToday(position)
-			}
-			return
-		}
-		for _, review := range reviews {
-			review := review
-			row := ui.Row(c.Key(review.ID)).FillWidth().Height(layout.RowHeight).
-				PadX(4).Gap(layout.Gap).Items(ui.Center).
-				HitWith(ui.ID(c), "查看 "+review.ReviewDate+" 的每日复盘",
-					gfx.HitOptions{Cursor: gfx.PointerCursorHand}).
-				Hover(ui.Look{}.Background(theme.Hover)).
-				Radius(theme.Metrics.RadiusControl)
-			row.Children(func() {
-				ui.Text(c, review.ReviewDate).FontSize(typography.SizeBody).Mono().Width(88)
-				ui.Text(c, review.Review).FontSize(typography.SizeBody).Grow(1).Ellipsis()
-			})
-			if row.Clicked() {
-				p.openDailyRead(review)
-			}
-		}
 	})
 }
 
@@ -708,36 +719,35 @@ func (p *positionsPanel) dailySection(c ui.C, position *domain.StockPosition) {
 func (p *positionsPanel) roundSection(c ui.C, position *domain.StockPosition) {
 	theme := c.Theme()
 	filled := strings.TrimSpace(position.Review) != ""
-	ui.Column(c).Gap(0).Children(func() {
-		ui.Row(c).FillWidth().Height(layout.SectionHeaderHeight).Items(ui.Center).Children(func() {
-			typography.Section(c, "本轮复盘")
-			ui.Spacer(c)
-			if ui.Button(c, "编辑").Outline().Small().Clicked() {
-				p.openRoundEdit()
+	text := position.Review
+	if !filled {
+		text = "还没有写本轮复盘，点「编辑」记录买入与卖出的理由。"
+	}
+	stockSection(c, "本轮复盘", layout.Inset, func() {
+		if ui.Button(c, "编辑").Outline().Small().Clicked() {
+			p.openRoundEdit()
+		}
+	}, func() {
+		ui.Column(c).FillWidth().PadX(layout.Inset).Children(func() {
+			row := ui.Row(c.Key("round-review")).FillWidth().Height(layout.RowHeight).
+				Gap(layout.Gap).Items(ui.Center).
+				HitWith(ui.ID(c), "查看本轮复盘", gfx.HitOptions{Cursor: gfx.PointerCursorHand}).
+				Hover(ui.Look{}.Background(theme.Hover)).
+				Radius(theme.Metrics.RadiusControl)
+			row.Children(func() {
+				preview := ui.Text(c, text).FontSize(typography.SizeBody).Grow(1).Ellipsis()
+				if !filled {
+					preview.Color(theme.MutedForeground)
+				}
+			})
+			if row.Clicked() {
+				if filled {
+					p.openRoundRead()
+				} else {
+					p.openRoundEdit()
+				}
 			}
 		})
-		text := position.Review
-		if !filled {
-			text = "还没有写本轮复盘，点「编辑」记录买入与卖出的理由。"
-		}
-		row := ui.Row(c.Key("round-review")).FillWidth().Height(layout.RowHeight).
-			PadX(4).Gap(layout.Gap).Items(ui.Center).
-			HitWith(ui.ID(c), "查看本轮复盘", gfx.HitOptions{Cursor: gfx.PointerCursorHand}).
-			Hover(ui.Look{}.Background(theme.Hover)).
-			Radius(theme.Metrics.RadiusControl)
-		row.Children(func() {
-			preview := ui.Text(c, text).FontSize(typography.SizeBody).Grow(1).Ellipsis()
-			if !filled {
-				preview.Color(theme.MutedForeground)
-			}
-		})
-		if row.Clicked() {
-			if filled {
-				p.openRoundRead()
-			} else {
-				p.openRoundEdit()
-			}
-		}
 	})
 }
 
@@ -745,29 +755,30 @@ func (p *positionsPanel) roundSection(c ui.C, position *domain.StockPosition) {
 
 func (p *positionsPanel) tradesSection(c ui.C, position *domain.StockPosition) {
 	trades := p.visibleTrades(position.StockCode)
-	ui.Column(c).Gap(layout.Gap).Children(func() {
-		ui.Row(c).FillWidth().Height(layout.SectionHeaderHeight).Items(ui.Center).Children(func() {
-			typography.Section(c, "成交记录")
-			ui.Spacer(c)
-			if len(trades) > 0 {
-				typography.Caption(c, "费用合计 "+money(domain.StockRoundFee(trades)))
-			}
-		})
-		if len(trades) == 0 {
-			typography.Caption(c, "本轮还没有成交").PadY(layout.BlockGap)
-			return
+	var action func()
+	if len(trades) > 0 {
+		action = func() {
+			typography.Caption(c, "费用合计 "+money(domain.StockRoundFee(trades)))
 		}
-		// The table is wider than the detail column and wider than it is
-		// comfortable to squeeze: give the horizontal scroll the table's own
-		// height, because a Scroll with no height of its own collapses.
-		height := layout.TableHeaderHeight +
-			layout.RowHeight*float32(len(trades)) + 12
-		ui.Scroll(c).Height(height).Sideways().Scrollbars().Children(func() {
-			ui.Column(c).FillWidth().MinWidth(positionsTradeTableWidth).Children(func() {
-				p.tradeHeader(c)
-				for _, trade := range trades {
-					p.tradeRow(c, trade)
-				}
+	}
+	stockSection(c, "成交记录", layout.Inset, action, func() {
+		ui.Column(c).FillWidth().PadX(layout.Inset).Children(func() {
+			if len(trades) == 0 {
+				typography.Caption(c, "本轮还没有成交").PadY(layout.BlockGap)
+				return
+			}
+			// The table is wider than the detail column and wider than it is
+			// comfortable to squeeze: give the horizontal scroll the table's own
+			// height, because a Scroll with no height of its own collapses.
+			height := layout.TableHeaderHeight +
+				layout.RowHeight*float32(len(trades)) + 12
+			ui.Scroll(c).Height(height).Sideways().Scrollbars().Children(func() {
+				ui.Column(c).FillWidth().MinWidth(positionsTradeTableWidth).Children(func() {
+					p.tradeHeader(c)
+					for _, trade := range trades {
+						p.tradeRow(c, trade)
+					}
+				})
 			})
 		})
 	})
