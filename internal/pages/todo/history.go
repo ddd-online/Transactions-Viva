@@ -100,8 +100,10 @@ func (m *Model) historyView(c ui.C) {
 		})
 		return
 	}
-	ui.Scroll(c).Grow(1).Children(func() {
-		ui.Column(c).FillWidth().PadSides(layout.Inset, layout.Inset, 20, layout.Inset).Children(func() {
+	area := ui.Scroll(c).Grow(1).Sideways().Scrollbars()
+	area.Children(func() {
+		ui.Column(c).FillWidth().MinWidth(historyTableMinWidth).
+			PadSides(layout.Inset, layout.Inset, 20, layout.Inset).Children(func() {
 			m.historyHeader(c)
 			for index := range m.history {
 				m.historyRow(c, &m.history[index])
@@ -113,20 +115,24 @@ func (m *Model) historyView(c ui.C) {
 const (
 	historyTimeWidth     = float32(112)
 	historyCardWidth     = float32(120)
+	historyItemMinWidth  = float32(180)
 	historyProgressWidth = float32(72)
 	historyActionWidth   = float32(116)
+	historyGap           = float32(10)
+	historyTableMinWidth = historyTimeWidth + historyCardWidth + historyItemMinWidth +
+		historyProgressWidth + historyActionWidth + 4*historyGap + 2*14
 )
 
 func (m *Model) historyHeader(c ui.C) {
-	layout.TableHeader(c, layout.TableHeaderSpec{Height: 34, PadX: 14, Gap: 10}, func(c ui.C) {
+	layout.TableHeader(c, layout.TableHeaderSpec{Height: 34, PadX: 14, Gap: historyGap}, func(c ui.C) {
 		ui.Row(c).Width(historyTimeWidth).Children(func() {
 			typography.Caption(c, "完成时间")
 		})
 		ui.Row(c).Width(historyCardWidth).Children(func() {
 			typography.Caption(c, "主题")
 		})
-		ui.Row(c).Grow(1).Children(func() {
-			typography.Caption(c, "事项")
+		ui.Row(c).Grow(1).Basis(0).MinWidth(historyItemMinWidth).Children(func() {
+			typography.Caption(c, "事项").Grow(1).MinWidth(0)
 		})
 		ui.Row(c).Width(historyProgressWidth).Justify(ui.Center).Children(func() {
 			typography.Caption(c, "进度")
@@ -141,16 +147,16 @@ func (m *Model) historyRow(c ui.C, entry *domain.TodoHistory) {
 	theme := c.Theme()
 	item := entry.Item
 	c.Key("todo-history-" + item.ID)
-	ui.Row(c).FillWidth().PadSides(14, 10, 10, 14).Gap(10).Items(ui.Center).Children(func() {
+	ui.Row(c).FillWidth().PadSides(14, 10, 10, 14).Gap(historyGap).Items(ui.Center).Children(func() {
 		ui.Row(c).Width(historyTimeWidth).Gap(6).Items(ui.Center).Children(func() {
 			ui.Icon(c, icons.CircleCheck).Size(13, 13).Shrink(0).Color(theme.Success)
 			typography.Caption(c, time.Unix(item.CompletedAt, 0).Format("01-02 15:04")).Mono()
 		})
 		ui.Row(c).Width(historyCardWidth).Children(func() {
-			typography.Caption(c, entry.CardTitle).MaxLines(1).Ellipsis()
+			typography.Caption(c, entry.CardTitle).Grow(1).MinWidth(0).MaxLines(1).Ellipsis()
 		})
-		ui.Row(c).Grow(1).Children(func() {
-			typography.Body(c, item.Title).MaxLines(1).Ellipsis()
+		ui.Row(c).Grow(1).Basis(0).MinWidth(historyItemMinWidth).Children(func() {
+			typography.Body(c, item.Title).Grow(1).MinWidth(0).MaxLines(1).Ellipsis()
 		})
 		ui.Row(c).Width(historyProgressWidth).Justify(ui.Center).Children(func() {
 			if len(item.Progress) > 0 {
