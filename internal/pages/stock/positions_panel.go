@@ -375,6 +375,9 @@ func (p *positionsPanel) toolbar(c ui.C) {
 		}
 		ui.Divider(c).Height(24)
 		ui.Spacer(c)
+		if ui.Button(c, "建仓").Clicked() {
+			p.openTrade(domain.TradeOpen, nil)
+		}
 	})
 }
 
@@ -400,11 +403,6 @@ func (p *positionsPanel) rail(c ui.C) {
 				})
 			})
 		}
-		ui.Row(c).FillWidth().PadX(layout.BlockGap).PadY(layout.BlockGap).Children(func() {
-			if ui.Button(c, "建仓").FillWidth().Clicked() {
-				p.openTrade(domain.TradeOpen, nil)
-			}
-		})
 	})
 }
 
@@ -508,7 +506,7 @@ func (p *positionsPanel) detail(c ui.C) {
 		if len(p.positions) == 0 {
 			ui.Column(c).Gap(4).PadY(layout.GroupGap).Children(func() {
 				typography.Section(c, "当前没有持仓")
-				typography.Body(c, "在左侧点「建仓」记录第一笔买入。").Muted()
+				typography.Body(c, "点顶部「建仓」记录第一笔买入。").Muted()
 			})
 		}
 		return
