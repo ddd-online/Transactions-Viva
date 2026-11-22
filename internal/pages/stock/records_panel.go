@@ -836,17 +836,17 @@ func (p *recordsPanel) tradeRow(c ui.C, trade domain.StockTrade) {
 	ui.Row(c).Height(36).FillWidth().PadX(12).Gap(4).Items(ui.Center).
 		Children(func() {
 			ui.Text(c, historyShortDateTime(trade.TradeTime)).
-				FontSize(typography.SizeCaption).Mono().
+				FontSize(typography.SizeBody).Mono().
 				Width(tradeTimeWidth).TextCenter().Ellipsis()
 			ui.Text(c, domain.TradeTypeLabel(trade.TradeType)).
-				FontSize(typography.SizeCaption).
+				FontSize(typography.SizeBody).Mono().
 				Color(positionsTradeTypeColor(*theme, trade.TradeType)).
 				Width(tradeTypeWidth).TextCenter()
 			ui.Text(c, domain.MilliToYuan(trade.PriceMilli)).
 				FontSize(typography.SizeBody).Mono().
 				Grow(1).Basis(tradePriceMin).MinWidth(tradePriceMin).TextEnd()
 			ui.Text(c, strconv.Itoa(trade.Lots)).
-				FontSize(typography.SizeCaption).Mono().
+				FontSize(typography.SizeBody).Mono().
 				Width(tradeLotsWidth).TextEnd()
 			ui.Text(c, domain.CentsToYuan(trade.AmountCents)).
 				FontSize(typography.SizeBody).Mono().
