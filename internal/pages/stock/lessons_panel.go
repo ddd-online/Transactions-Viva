@@ -25,7 +25,7 @@ const lessonTextLimit = 80
 // Column widths of the lesson table. The 心得 cell takes the rest.
 const (
 	lessonSourceWidth = float32(240)
-	lessonActionWidth = float32(160)
+	lessonActionWidth = float32(112)
 )
 
 // lessonsPanel is 股票 · 心得: the account's one-sentence lessons, their linked
@@ -250,18 +250,18 @@ func (p *lessonsPanel) actionsCell(c ui.C, lesson *domain.StockLesson) {
 	ui.Row(c).Width(lessonActionWidth).Gap(2).Items(ui.Center).
 		Justify(ui.End).Children(func() {
 		edit := ui.Button(c, "编辑心得").Ghost().Icon(icons.Pencil).
-			IconOnly().XSmall().Tooltip("编辑")
+			XSmall().IconOnly().Tooltip("编辑")
 		if edit.Clicked() {
 			p.openEdit(lesson)
 		}
 		jump := ui.Button(c, "查看来源轮次").Ghost().Icon(icons.ExternalLink).
-			IconOnly().XSmall().Disabled(!canJump)
+			XSmall().IconOnly().Disabled(!canJump)
 		jump.Tooltip(lessonJumpTip(lesson, p.onOpenRound != nil))
 		if jump.Clicked() && canJump {
 			p.onOpenRound(lesson.StockCode, lesson.RoundID)
 		}
 		remove := ui.Button(c, "删除心得").Ghost().Icon(icons.Trash2).
-			IconOnly().XSmall().Destructive().Tooltip("删除")
+			XSmall().IconOnly().Destructive().Tooltip("删除")
 		if remove.Clicked() {
 			p.askDelete(lesson)
 		}

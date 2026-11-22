@@ -738,13 +738,13 @@ func (p *recordsPanel) tradeRow(c ui.C, trade domain.StockTrade) {
 				Justify(ui.End).Children(func() {
 				if trade.TradeType != domain.TradeClose {
 					edit := ui.Button(c, "编辑成交").
-						Ghost().Icon(icons.Pencil).IconOnly().XSmall().Tooltip("编辑")
+						Ghost().Icon(icons.Pencil).XSmall().IconOnly().Tooltip("编辑")
 					if edit.Clicked() {
 						p.openTradeEdit(trade)
 					}
 				}
 				remove := ui.Button(c, "删除整笔委托").
-					Ghost().Icon(icons.Trash2).IconOnly().XSmall().Tooltip("删除")
+					Ghost().Icon(icons.Trash2).XSmall().IconOnly().Tooltip("删除")
 				if remove.Clicked() {
 					p.askDeleteOrder(trade)
 				}

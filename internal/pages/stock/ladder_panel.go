@@ -296,43 +296,20 @@ func (p *ladderPanel) boards(c ui.C) {
 }
 
 func (p *ladderPanel) rungs(c ui.C) {
-	// Wide means every rung still has room for a name, price, code and seal
-	// time side by side. A fixed threshold would overflow when a day has seven
-	// or eight rungs, so it is derived from the rung count.
-	const rungMinWidth float32 = 180
-	count := len(p.ladder.Rungs)
-	needed := float32(count)*rungMinWidth + float32(max(0, count-1))*layout.Gap + 2*layout.Inset
-	if count > 0 && p.bounds.Width >= needed {
-		ui.Row(c).FillWidth().Gap(layout.Gap).Children(func() {
-			for _, rung := range p.ladder.Rungs {
-				rung := rung
-				c.Key("rung-" + strconv.Itoa(rung.Level))
-				p.rung(c, rung, 0)
-			}
-		})
-		return
-	}
-	width := p.bounds.Width - 2*layout.Inset
-	if width < 240 {
-		width = 240
-	}
-	ui.Flow(c).Gap(layout.Gap).LineGap(layout.Gap).Children(func() {
+	// Grid decides the number of rungs per row from the content width, so a
+	// narrow window gets two columns instead of four clipped ones.
+	ui.Grid(c, 280).FillWidth().Gap(layout.Gap).Children(func() {
 		for _, rung := range p.ladder.Rungs {
 			rung := rung
 			c.Key("rung-" + strconv.Itoa(rung.Level))
-			p.rung(c, rung, width)
+			p.rung(c, rung)
 		}
 	})
 }
 
-func (p *ladderPanel) rung(c ui.C, rung domain.StockLimitRung, width float32) {
+func (p *ladderPanel) rung(c ui.C, rung domain.StockLimitRung) {
 	theme := c.Theme()
-	column := ui.Column(c).Background(theme.Card).Border(1, theme.Border).Radius(8).Pad(8).Gap(4)
-	if width > 0 {
-		column = column.Width(width)
-	} else {
-		column = column.Grow(1).MinWidth(0)
-	}
+	column := ui.Column(c).FillWidth().Background(theme.Card).Border(1, theme.Border).Radius(8).Pad(8).Gap(4)
 	isTop := p.ladder.Metrics.MaxLevel != nil && *p.ladder.Metrics.MaxLevel == rung.Level
 	column.Children(func() {
 		ui.Row(c).FillWidth().Items(ui.Baseline).Gap(4).Children(func() {

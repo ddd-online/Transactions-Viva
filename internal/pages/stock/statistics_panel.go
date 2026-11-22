@@ -403,24 +403,32 @@ func (p *statisticsPanel) cards(c ui.C) {
 	kelly := domain.KellyPercent(latest.Span, latest.WinCount, latest.PnlRatio)
 	avgWinColor := semantic.Expense(*theme)
 	avgLossColor := semantic.Income(*theme)
-	ui.Grid(c, 300).FillWidth().Gap(layout.Gap).Children(func() {
-		p.card(c, pnlLabel, "", money(latest.TotalPnl), statScope(p.strategy, latest.Span),
-			typography.SizeTitle, statColor(*theme, latest.TotalPnl))
-		p.card(c, "凯利值", "按胜率与盈亏比算出的下注比例", kellyText(kelly), kellyCaption(kelly),
-			typography.SizeSection, nil)
-		p.card(c, "平均盈利", domain.MetricHint(domain.MetricAvgWin), money(latest.AvgWin),
-			strconv.Itoa(latest.WinCount)+" 笔盈利", typography.SizeSection, &avgWinColor)
-		p.card(c, "平均亏损", domain.MetricHint(domain.MetricAvgLoss), money(latest.AvgLoss),
-			strconv.Itoa(latest.LossCount)+" 笔亏损", typography.SizeSection, &avgLossColor)
-		p.card(c, "胜率", domain.MetricHint(domain.MetricWinRate), statPercent(latest.WinRate),
-			winLossCaption(latest), typography.SizeSection, nil)
-		p.card(c, "盈亏比", domain.MetricHint(domain.MetricPnlRatio), ratioText(latest.PnlRatio),
-			"", typography.SizeSection, nil)
-		p.card(c, "期望值", domain.MetricHint(domain.MetricExpectancy), money(latest.Expectancy),
-			"", typography.SizeSection, statColor(*theme, latest.Expectancy))
-		p.card(c, "最大回撤", domain.MetricHint(domain.MetricMaxDrawdown),
-			statPercent(latest.MaxDrawdownPct), "从高点回落 "+money(latest.MaxDrawdown),
-			typography.SizeSection, nil)
+	cards := []struct {
+		label, hint, value, caption string
+		size                        float32
+		color                       *gfx.Color
+	}{
+		{pnlLabel, "", money(latest.TotalPnl), statScope(p.strategy, latest.Span),
+			typography.SizeTitle, statColor(*theme, latest.TotalPnl)},
+		{"凯利值", "按胜率与盈亏比算出的下注比例", kellyText(kelly), kellyCaption(kelly),
+			typography.SizeSection, nil},
+		{"平均盈利", domain.MetricHint(domain.MetricAvgWin), money(latest.AvgWin),
+			strconv.Itoa(latest.WinCount) + " 笔盈利", typography.SizeSection, &avgWinColor},
+		{"平均亏损", domain.MetricHint(domain.MetricAvgLoss), money(latest.AvgLoss),
+			strconv.Itoa(latest.LossCount) + " 笔亏损", typography.SizeSection, &avgLossColor},
+		{"胜率", domain.MetricHint(domain.MetricWinRate), statPercent(latest.WinRate),
+			winLossCaption(latest), typography.SizeSection, nil},
+		{"盈亏比", domain.MetricHint(domain.MetricPnlRatio), ratioText(latest.PnlRatio),
+			"", typography.SizeSection, nil},
+		{"期望值", domain.MetricHint(domain.MetricExpectancy), money(latest.Expectancy),
+			"", typography.SizeSection, statColor(*theme, latest.Expectancy)},
+		{"最大回撤", domain.MetricHint(domain.MetricMaxDrawdown),
+			statPercent(latest.MaxDrawdownPct), "从高点回落 " + money(latest.MaxDrawdown),
+			typography.SizeSection, nil},
+	}
+	metricRows(c, len(cards), func(c ui.C, index int) {
+		card := cards[index]
+		p.card(c, card.label, card.hint, card.value, card.caption, card.size, card.color)
 	})
 }
 
@@ -434,7 +442,7 @@ func (p *statisticsPanel) card(c ui.C, label, hint, value, caption string, size 
 	if hint != "" {
 		id = ui.ID(c)
 	}
-	column := ui.Column(c).Gap(4)
+	column := ui.Column(c).Grow(1).Basis(0).Gap(4)
 	if hint != "" {
 		column = column.HitWith(id, label, gfx.HitOptions{SkipFocus: true}).
 			Tooltip(hint)
