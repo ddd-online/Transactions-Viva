@@ -39,7 +39,6 @@ func (m *Model) board(c ui.C) {
 	}
 	ui.Scroll(c).Grow(1).Children(func() {
 		ui.Column(c).FillWidth().PadSides(layout.Inset, layout.Inset, 20, layout.Inset).Children(func() {
-			m.boardHeader(c)
 			for index := range m.cards {
 				m.group(c, index, &m.cards[index])
 			}
@@ -120,6 +119,7 @@ func (m *Model) group(c ui.C, index int, card *domain.TodoCard) {
 	if !open {
 		return
 	}
+	m.boardHeader(c)
 	if len(card.Items) == 0 {
 		ui.Row(c).Height(44).FillWidth().PadSides(14, 10, 8, 10).Gap(10).Items(ui.Center).Children(func() {
 			typography.Caption(c, "还没有事项").Muted().Grow(1)
