@@ -292,9 +292,7 @@ func (m *Model) View(c ui.C) {
 	}
 	m.noticeEdits(c.Canvas().Now())
 	m.settleDraft(c)
-	ui.Column(c).Fill().Children(func() {
-		m.toolbar(c)
-		ui.Divider(c)
+	layout.Page(c, m.toolbar, func(c ui.C) {
 		ui.Row(c).Grow(1).FillWidth().Children(func() {
 			m.rail(c)
 			ui.Divider(c)
@@ -308,8 +306,7 @@ func (m *Model) View(c ui.C) {
 // toolbar is the band above the two columns: the diary book, 今天, the date field,
 // and the draft's state with the delete command at the right.
 func (m *Model) toolbar(c ui.C) {
-	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
-		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+	layout.Toolbar(c, func() {
 		m.bookPicker(c)
 		ui.Divider(c).Height(24)
 		if ui.Button(c, "今天").Secondary().Clicked() {

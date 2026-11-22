@@ -264,9 +264,7 @@ func (m *Model) CloseOverlays() {
 func (m *Model) View(c ui.C) {
 	m.bounds = c.Bounds()
 	theme := c.Theme()
-	ui.Column(c).Fill().Children(func() {
-		m.toolbar(c)
-		ui.Divider(c)
+	layout.Page(c, m.toolbar, func(c ui.C) {
 		if m.errorMessage != "" {
 			ui.Column(c).FillWidth().PadX(layout.Inset).PadY(4).Children(func() {
 				typography.CaptionParagraph(c, m.errorMessage, 3).Color(theme.Danger)
@@ -293,8 +291,7 @@ func (m *Model) View(c ui.C) {
 // 新增事件. The old page read the active ledger from the title bar's menu; this
 // page has no ledger, so the band holds nothing about one.
 func (m *Model) toolbar(c ui.C) {
-	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
-		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+	layout.Toolbar(c, func() {
 		datepicker.Picker(c, &m.pick, datepicker.Spec{
 			Label:   "事件年份",
 			Start:   m.year + "-01-01",

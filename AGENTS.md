@@ -206,7 +206,7 @@ internal/proxy/          代理三态、地址归一化、自动探测与共享 
 internal/update/         GitHub release 检查、安装包下载 / 校验与拉起安装程序
 internal/stockquote/     腾讯行情（GBK、3 秒超时），页面只依赖 Fetcher
 internal/stocklimit/     东财涨停池（8 秒）与天梯缓存策略
-internal/components/     可复用的 UI：占位空态，datepicker / pagination / selectbox / semantic / chartanim 子包
+internal/components/     可复用的 UI：占位空态，layout 页面壳/工具栏，datepicker / pagination / selectbox / semantic / chartanim 子包
 internal/pages/settings/controls/  设置页的滚动页 / 分组卡片 / 设置行
 internal/domain/         纯领域规则与数据形状：金额、记录、账本、事件、日记、待办、股票
 internal/repository/     页面使用的数据契约（接口 / 查询 / 错误），不依赖 SQLite

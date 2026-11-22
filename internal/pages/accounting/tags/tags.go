@@ -253,9 +253,7 @@ func splitCategoryKey(value string) (name, transactionType string, ok bool) {
 
 // View declares the page: the type cards, the two columns and the dialogs.
 func (m *Model) View(c ui.C) {
-	ui.Column(c).Fill().Children(func() {
-		m.toolbar(c)
-		ui.Divider(c)
+	layout.Page(c, m.toolbar, func(c ui.C) {
 		ui.Row(c).Grow(1).FillWidth().Children(func() {
 			m.categoryColumn(c)
 			ui.Divider(c)
@@ -275,8 +273,7 @@ func (m *Model) CloseOverlays() {
 }
 
 func (m *Model) toolbar(c ui.C) {
-	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
-		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+	layout.Toolbar(c, func() {
 		if ledger.Picker(c, m.ledgers) && m.onLedgerChanged != nil {
 			m.onLedgerChanged()
 		}

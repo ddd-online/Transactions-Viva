@@ -205,9 +205,7 @@ func (m *Model) Reload() {
 
 // View declares the page: the table and its dialogs.
 func (m *Model) View(c ui.C) {
-	ui.Column(c).Fill().Children(func() {
-		m.toolbar(c)
-		ui.Divider(c)
+	layout.Page(c, m.toolbar, func(c ui.C) {
 		m.table(c)
 	})
 	m.formModal(c)
@@ -223,8 +221,7 @@ func (m *Model) CloseOverlays() {
 }
 
 func (m *Model) toolbar(c ui.C) {
-	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
-		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+	layout.Toolbar(c, func() {
 		if ledger.Picker(c, m.ledgers) && m.onLedgerChanged != nil {
 			m.onLedgerChanged()
 		}

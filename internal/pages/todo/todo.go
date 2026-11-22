@@ -175,9 +175,7 @@ func (m *Model) activeCount() int {
 func (m *Model) View(c ui.C) {
 	m.bounds = c.Bounds()
 	m.sync()
-	ui.Column(c).Fill().Children(func() {
-		m.toolbar(c)
-		ui.Divider(c)
+	layout.Page(c, m.toolbar, func(c ui.C) {
 		m.body(c)
 	})
 	m.cardFormView(c)
@@ -189,8 +187,7 @@ func (m *Model) View(c ui.C) {
 }
 
 func (m *Model) toolbar(c ui.C) {
-	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
-		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+	layout.Toolbar(c, func() {
 		if m.tab == tabBoard {
 			current := "列表"
 			if m.view == viewQuadrant {

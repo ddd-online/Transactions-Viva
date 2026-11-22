@@ -238,9 +238,7 @@ func (p *statisticsPanel) View(c ui.C) {
 		emptyAccountPage(c, "还没有股票账户", "工作空间里至少会有一个股票账户。")
 		return
 	}
-	ui.Column(c).Fill().Children(func() {
-		p.toolbar(c)
-		ui.Divider(c)
+	layout.Page(c, p.toolbar, func(c ui.C) {
 		if p.errorMessage != "" {
 			typography.CaptionParagraph(c, p.errorMessage, 2).Color(c.Theme().Danger).
 				PadX(layout.Inset).PadY(6)
@@ -331,13 +329,10 @@ func (p *statisticsPanel) toolbar(c ui.C) {
 	if c.Bounds().Width >= 1100 {
 		// One line: a Row centers the select boxes and the segmented choices
 		// on the toolbar's mid-line instead of leaving them at the Flow's top.
-		ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
-			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(contents)
+		layout.Toolbar(c, contents)
 		return
 	}
-	ui.Flow(c).FillWidth().MinHeight(layout.ToolbarHeight).
-		PadX(layout.Inset).PadY(6).Gap(layout.Gap).LineGap(layout.Gap).
-		Items(ui.Center).Children(contents)
+	layout.FlowToolbar(c, contents)
 }
 
 // applyRecent is the field's Enter: only a positive whole number becomes the

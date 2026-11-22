@@ -111,8 +111,7 @@ func (p *ladderPanel) View(c ui.C) {
 	p.bounds = c.Bounds()
 	p.ensure(c)
 	p.ensureOpen(c)
-	ui.Column(c).Fill().Children(func() {
-		p.toolbar(c)
+	layout.Page(c, p.toolbar, func(c ui.C) {
 		switch {
 		case p.actionError != "":
 			typography.Caption(c, p.actionError).Color(c.Theme().Danger).
@@ -129,8 +128,7 @@ func (p *ladderPanel) View(c ui.C) {
 }
 
 func (p *ladderPanel) toolbar(c ui.C) {
-	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().PadX(layout.Inset).
-		Gap(layout.Gap).Items(ui.Center).Children(func() {
+	layout.Toolbar(c, func() {
 		if ui.Button(c, "前一天").Ghost().Icon(icons.ChevronLeft).IconOnly().Clicked() {
 			p.shiftDate(-1)
 		}

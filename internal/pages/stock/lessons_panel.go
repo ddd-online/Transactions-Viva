@@ -155,13 +155,11 @@ func (p *lessonsPanel) View(c ui.C) {
 		return
 	}
 	theme := c.Theme()
-	ui.Column(c).Fill().Children(func() {
-		p.toolbar(c)
+	layout.Page(c, p.toolbar, func(c ui.C) {
 		if p.errorMessage != "" {
 			typography.Caption(c, p.errorMessage).Color(theme.Danger).
 				PadX(layout.Inset).PadY(6)
 		}
-		ui.Divider(c)
 		if len(p.lessons) == 0 {
 			if p.errorMessage == "" {
 				emptystate.Notice(c, "还没有心得")
@@ -185,8 +183,7 @@ func (p *lessonsPanel) View(c ui.C) {
 }
 
 func (p *lessonsPanel) toolbar(c ui.C) {
-	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().PadX(layout.Inset).
-		Gap(layout.Gap).Items(ui.Center).Children(func() {
+	layout.Toolbar(c, func() {
 		if p.accounts.picker(c) {
 			p.CloseOverlays()
 			p.editingID, p.text, p.stockCode, p.roundID = "", "", "", ""

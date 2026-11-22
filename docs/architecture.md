@@ -75,6 +75,7 @@ main → desktop → pages → components
 | `internal/diary` | 日记文件：递归扫描、编码回退链、写 `<date>.txt`（不依赖 UI，不直接碰 SQLite） | `electron/services/diary.ts` |
 | `internal/pages/settings` | 设置页六个分区：通用设置 / 账本管理 / 股票设置 / 日记配置 / 数据备份 / 关于软件（通用设置页内再分「常规」与「功能开关」两组；股票账户与账户设置同在「股票设置」） | `src/pages/settings*`、`src/app-menu.tsx` 的「创建账本」 |
 | `internal/components` | 可复用的片段：占位空态（后续的 page header、table cell 等） | `src/components` |
+| `internal/components/layout` | 页面壳 `Page`、工具栏 `Toolbar` / `FlowToolbar`：工具栏在上、发丝线、主内容在下，工具栏元素垂直居中 | — |
 | `internal/components/datepicker` | 日期 / 时间范围选择器（工具栏与表单同一组件） | `src/components/time-range-picker.tsx`、antd DatePicker |
 | `internal/components/pagination` | 分页栏：页大小 Select + Viva 分页 + 总数 | `src/components/pagination.tsx` |
 | `internal/components/selectbox` | `ui.Select` 的包装，补上框架漏收的动画组 | — |

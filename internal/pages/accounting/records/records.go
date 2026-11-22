@@ -268,9 +268,7 @@ func (m *Model) View(c ui.C) {
 		m.rangeStale = false
 		m.Reload()
 	}
-	ui.Column(c).Fill().Children(func() {
-		m.toolbar(c)
-		ui.Divider(c)
+	layout.Page(c, m.toolbar, func(c ui.C) {
 		m.table(c)
 		if len(m.shown) > 0 {
 			m.pager(c)
@@ -285,8 +283,7 @@ func (m *Model) View(c ui.C) {
 // toolbar is the page's actions, laid out like the old page's filter bar: the
 // time range on the left, and the sort beside the primary action on the right.
 func (m *Model) toolbar(c ui.C) {
-	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().
-		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+	layout.Toolbar(c, func() {
 		if ledger.Picker(c, m.ledgers) && m.onLedgerChanged != nil {
 			m.onLedgerChanged()
 		}

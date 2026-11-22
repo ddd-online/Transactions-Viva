@@ -151,8 +151,7 @@ func (p *accountPanel) View(c ui.C) {
 	}
 	p.ensureQuotes(c)
 	overview := p.overview()
-	ui.Column(c).Fill().Children(func() {
-		p.toolbar(c)
+	layout.Page(c, p.toolbar, func(c ui.C) {
 		if p.errorMessage != "" {
 			typography.Caption(c, p.errorMessage).Color(c.Theme().Danger).PadX(layout.Inset).PadY(6)
 		}
@@ -171,8 +170,7 @@ func (p *accountPanel) View(c ui.C) {
 }
 
 func (p *accountPanel) toolbar(c ui.C) {
-	ui.Row(c).Height(layout.ToolbarHeight).FillWidth().PadX(layout.Inset).
-		Gap(layout.Gap).Items(ui.Center).Children(func() {
+	layout.Toolbar(c, func() {
 		if p.accounts.picker(c) && p.onChange != nil {
 			p.onChange()
 		}
