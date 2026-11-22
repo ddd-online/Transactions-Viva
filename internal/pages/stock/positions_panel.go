@@ -531,19 +531,16 @@ func (p *positionsPanel) detailHeader(c ui.C, position *domain.StockPosition) {
 	if strings.TrimSpace(name) == "" {
 		name = position.StockCode
 	}
-	ui.Row(c).FillWidth().Gap(layout.Gap).Items(ui.Center).Children(func() {
-		ui.Column(c).Grow(1).Gap(2).Children(func() {
-			ui.Text(c, name).FontSize(typography.SizeSection).Bold().Ellipsis()
-			ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
-				ui.Text(c, position.StockCode).FontSize(typography.SizeCaption).
-					Mono().Color(theme.MutedForeground)
-				if ui.Button(c, "刷新").Small().Ghost().Disabled(p.quotes == nil).
-					Tooltip("按代码重新查询名称").Clicked() {
-					p.beginNameRefresh(position.StockCode)
-				}
-			})
-		})
-		ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
+	ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().Gap(layout.Gap).Items(ui.Center).Children(func() {
+		ui.Text(c, name).FontSize(typography.SizeSection).Bold().Ellipsis()
+		ui.Text(c, position.StockCode).FontSize(typography.SizeCaption).
+			Mono().Color(theme.MutedForeground).Shrink(0)
+		if ui.Button(c, "刷新").Small().Ghost().Shrink(0).Disabled(p.quotes == nil).
+			Tooltip("按代码重新查询名称").Clicked() {
+			p.beginNameRefresh(position.StockCode)
+		}
+		ui.Spacer(c)
+		ui.Row(c).Shrink(0).Gap(6).Items(ui.Center).Children(func() {
 			tag := domain.EffectivePositionTag(position.Tag)
 			if selectbox.Select(c, &tag, p.tagChoicesWith(tag), nil).
 				Label("交易标签").Width(88).Changed() {
