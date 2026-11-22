@@ -11,9 +11,9 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
-	"transactions/internal/components"
 	"transactions/internal/domain"
 	"transactions/internal/repository"
+	"transactions/internal/stocklimit"
 	"transactions/internal/stockquote"
 )
 
@@ -35,7 +35,8 @@ var tabs = [...]tab{
 
 var tabLabels = [...]string{"账户", "持仓", "记录", "心得", "统计", "天梯", "设置"}
 
-// panel is one screen of the section. Every panel shares the account store.
+// panel is one screen of the section. Every account-aware panel shares the
+// account store.
 type panel interface {
 	View(c ui.C)
 	Reload()
@@ -50,14 +51,12 @@ type Model struct {
 	quotes   stockquote.Fetcher
 
 	accountPanel *accountPanel
-
-	// pending panels are filled in by the later migration milestones.
-	positions  *pendingPanel
-	records    *pendingPanel
-	lessons    *pendingPanel
-	statistics *pendingPanel
-	ladder     *pendingPanel
-	settings   *pendingPanel
+	positions    *positionsPanel
+	records      *recordsPanel
+	lessons      *lessonsPanel
+	statistics   *statisticsPanel
+	ladder       *ladderPanel
+	settings     *settingsPanel
 
 	toaster ui.Toaster
 }
@@ -70,15 +69,30 @@ func New(quotes stockquote.Fetcher) *Model {
 		accounts:     accounts,
 		quotes:       quotes,
 		accountPanel: newAccountPanel(accounts, quotes),
-		positions:    newPendingPanel("持仓", "持仓列表、本轮盈亏与成交记录。"),
-		records:      newPendingPanel("记录", "已清仓股票的轮次与复盘。"),
-		lessons:      newPendingPanel("心得", "交易心得的列表与编辑。"),
-		statistics:   newPendingPanel("统计", "已实现盈亏、胜率与回撤。"),
-		ladder:       newPendingPanel("天梯", "按连板数排列的涨停梯队。"),
-		settings:     newPendingPanel("设置", "费用、标签、复盘模板与数据管理。"),
+		positions:    newPositionsPanel(accounts, quotes),
+		records:      newRecordsPanel(accounts),
+		lessons:      newLessonsPanel(accounts),
+		statistics:   newStatisticsPanel(accounts),
+		ladder:       newLadderPanel(nil),
+		settings:     newSettingsPanel(accounts),
 	}
+	m.records.setQuotes(quotes)
 	m.accountPanel.onChange = m.dataChanged
 	m.accountPanel.toaster = &m.toaster
+	m.positions.onChange = m.dataChanged
+	m.positions.toaster = &m.toaster
+	m.records.onChange = m.dataChanged
+	m.records.toaster = &m.toaster
+	m.records.openRound = m.openLessonForRound
+	m.lessons.onChange = m.dataChanged
+	m.lessons.toaster = &m.toaster
+	m.lessons.onOpenRound = m.openRound
+	m.statistics.onChange = m.dataChanged
+	m.statistics.toaster = &m.toaster
+	m.statistics.onOpenRound = m.openRound
+	m.settings.toaster = &m.toaster
+	m.settings.onChange = m.dataChanged
+	m.settings.onAccountsChanged = func() { _ = m.loadAccounts(false) }
 	return m
 }
 
@@ -89,15 +103,38 @@ func (m *Model) SetRepository(repo repository.StockRepository) error {
 	if repo == nil {
 		m.accounts.reset(nil)
 		m.accountPanel.setRepository(nil)
+		m.positions.setRepository(nil)
+		m.records.setRepository(nil)
+		m.lessons.setRepository(nil)
+		m.statistics.setRepository(nil)
+		m.settings.setRepository(nil)
 		return nil
 	}
 	if err := m.loadAccounts(true); err != nil {
 		return err
 	}
 	m.accountPanel.setRepository(repo)
+	m.positions.setRepository(repo)
+	m.records.setRepository(repo)
+	m.lessons.setRepository(repo)
+	m.statistics.setRepository(repo)
+	m.settings.setRepository(repo)
 	m.dataChanged()
 	return nil
 }
+
+// SetLimitService wires the market ladder source. It is called after the
+// workspace opens because the ladder cache lives in that workspace.
+func (m *Model) SetLimitService(service *stocklimit.Service) {
+	m.ladder.limits = service
+	m.ladder.have = false
+	m.ladder.serial++
+	m.ladder.Reload()
+}
+
+// QuoteFetcher is the section's quote source, for the shell to build the ladder
+// service with the same client.
+func (m *Model) QuoteFetcher() stockquote.Fetcher { return m.quotes }
 
 // loadAccounts rereads the workspace's accounts and keeps the active one when
 // it survived. When ensure is true an empty workspace gets 默认股票账户.
@@ -125,7 +162,7 @@ func (m *Model) loadAccounts(ensure bool) error {
 // stock section is shown.
 func (m *Model) Reload() {
 	if m.repo == nil {
-		m.SetRepository(nil)
+		_ = m.SetRepository(nil)
 		return
 	}
 	if err := m.loadAccounts(true); err != nil {
@@ -195,6 +232,18 @@ func (m *Model) dataChanged() {
 	m.settings.Reload()
 }
 
+// openRound selects a round on the records screen.
+func (m *Model) openRound(code, roundID string) {
+	m.tab = tabRecords
+	m.records.FocusRound(code, roundID)
+}
+
+// openLessonForRound opens the lessons composer for a round and switches to it.
+func (m *Model) openLessonForRound(code, roundID string) {
+	m.tab = tabLessons
+	m.lessons.OpenForRound(code, roundID)
+}
+
 // Tabs are the section's second-level navigation entries.
 func (m *Model) Tabs() []string { return tabLabels[:] }
 
@@ -240,9 +289,10 @@ func (m *Model) CloseOverlays() {
 	m.settings.CloseOverlays()
 }
 
-// Pointer is the statistics chart's hover. It is a no-op until that screen is
-// migrated.
-func (m *Model) Pointer(event gfx.PointerEvent) gfx.EventResult { return gfx.EventResult{} }
+// Pointer is the statistics chart's hover.
+func (m *Model) Pointer(event gfx.PointerEvent) gfx.EventResult {
+	return m.statistics.Pointer(event)
+}
 
 // View declares the page.
 func (m *Model) View(c ui.C) {
@@ -264,17 +314,3 @@ func (m *Model) View(c ui.C) {
 	}
 	ui.Toasts(c, &m.toaster)
 }
-
-// pendingPanel is a screen that has not been migrated yet.
-type pendingPanel struct {
-	title string
-	note  string
-}
-
-func newPendingPanel(title, note string) *pendingPanel {
-	return &pendingPanel{title: title, note: note}
-}
-
-func (p *pendingPanel) View(c ui.C)    { components.Pending(c, p.title, p.note) }
-func (p *pendingPanel) Reload()        {}
-func (p *pendingPanel) CloseOverlays() {}

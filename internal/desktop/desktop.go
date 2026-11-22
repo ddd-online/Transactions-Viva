@@ -20,6 +20,7 @@ import (
 	"transactions/internal/pages/settings"
 	"transactions/internal/pages/stock"
 	"transactions/internal/pages/todo"
+	"transactions/internal/stockquote"
 	storepkg "transactions/internal/store"
 )
 
@@ -111,12 +112,13 @@ func NewWithConfig(cfg config.AppConfig, store *config.Store) *Model {
 	// The 记账 pages and the 日记 page read one ledger list, so switching 账本 on
 	// either one is the same choice.
 	ledgers := ledger.NewStore()
+	quotes := stockquote.NewTencentFetcher()
 	m := &Model{
 		config:      cfg,
 		configStore: store,
 		accounting:  accounting.NewWithLedgers(ledgers),
 		ledgers:     ledgers,
-		stock:       stock.New(nil),
+		stock:       stock.New(quotes),
 		todo:        todo.New(),
 		events:      events.New(),
 		diary:       diary.New(),
@@ -270,6 +272,9 @@ func (m *Model) key(event gfx.KeyEvent) gfx.EventResult {
 func (m *Model) pointer(event gfx.PointerEvent) gfx.EventResult {
 	if m.section == SectionAccounting {
 		return m.accounting.Pointer(event)
+	}
+	if m.section == SectionStock {
+		return m.stock.Pointer(event)
 	}
 	return gfx.EventResult{}
 }
