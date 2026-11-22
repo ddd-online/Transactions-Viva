@@ -115,15 +115,16 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   `~/.transactions.dev.json`），逐字段归一化，写回保留未知顶层键，写入走 `.tmp` + rename。
   窗口尺寸 / 位置（关闭时保存）、工作空间、外观、关闭行为、功能开关与账本级覆盖都在里面；
   `desktop.Run` 启动时加载，设置页的改动立即写回。
-- SQLite 工作空间已落地：目录里的 `transactions.db`，schema v7 含 `app_meta` /
-  `ledger` / `transaction_record` / `transaction_record_tag` / `category` / `tag` /
+- SQLite 工作空间已落地：目录里的 `transactions.db`，0.1.0 使用**单一 schema v1**，一次建全
+  `app_meta` / `ledger` / `transaction_record` / `transaction_record_tag` / `category` / `tag` /
   `transaction_template` / `chart` / `diary_book` / `diary_entry` / `key_event` /
-  `key_event_image`、v6 的股票表以及 v7 的 `todo_card` / `todo_item` / `todo_progress`。**股票账户属于工作空间，所有股票子表用 `account_id`，
-  不挂 `ledger_id`**；天梯的 `stock_limit_*` 是市场数据，也不挂账户。事件与旧库不同：
-  **不带 `ledger_id`，`date` 唯一**，一个工作空间只有一份。打开时 `quick_check`、版本迁移
-  （升级前 `VACUUM INTO <db>.bak`）、拒绝损坏 / 陌生 / 旧版 / 更高版本库。空工作空间
-  自动创建「默认账本」并播种默认分类标签；没有股票账户时股票页创建「默认股票账户」。
-  设置里切换工作空间先打开新库，失败保留旧库。没有工作空间时内容区显示「打开工作空间」门禁，设置仍可进入。
+  `key_event_image` / 股票表 / `todo_card` / `todo_item` / `todo_progress`。**股票账户属于
+  工作空间，所有股票子表用 `account_id`，不挂 `ledger_id`**；天梯的 `stock_limit_*` 是市场
+  数据，也不挂账户。事件与旧库不同：**不带 `ledger_id`，`date` 唯一**，一个工作空间只有一份。
+  打开时 `quick_check`、版本检查（0.1.0 之前的开发版 2–7 在确认全表后备份改 v1）、拒绝损坏 /
+  陌生 / 旧版 / 更高版本库。空工作空间自动创建「默认账本」并播种默认分类标签；没有股票账户时
+  股票页创建「默认股票账户」。设置里切换工作空间先打开新库，失败保留旧库。没有工作空间时
+  内容区显示「打开工作空间」门禁，设置仍可进入。
 - 通用设置已可用，页内是「通用设置」小节自己的三组（`controls.Group`，节奏同
   日记配置）：**常规**——工作空间（目录选择器，记入最近 5 条）、外观（浅色 / 深色 /
   跟随系统，标题栏的明暗开关写同一份配置，系统换色时自动重绘）、关闭行为（直接退出 /
@@ -148,7 +149,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   已完成事项，可恢复、删除、查看并订正进度。四象限按紧急 × 重要分成 2×2 等分面板（无卡片，
   只有十字分隔线），点事项直接编辑。
   待办按 `ledger_id` 隔离，六档 -5 / -3 / -1 / 1 / 3 / 5；`todo_card` / `todo_item` /
-  `todo_progress` 是 schema v7，旧库的 11 档在导入时就近归档。
+  `todo_progress` 在 v1 里，旧库的 11 档在导入时就近归档。
 - 运行入口按模式分叉：`viva dev`（有 `VIVA_RELOAD_ADDRESS`）必须走 `app.RunCanvas`——开发
   重载 worker 只在 `RunCanvas` 里连接宿主，换成 `RunApplication` 会打开真窗口并让宿主等
   连接直到超时；发布版走 `app.RunApplication` 才能拿到窗口 / Application 句柄，建托盘、
@@ -207,7 +208,7 @@ internal/repository/     页面使用的数据契约（接口 / 查询 / 错误�
 internal/config/         应用配置：形状、默认值、读写与归一化（~/.transactions.json）
 internal/store/          SQLite 工作空间、schema / 迁移 / 仓储 / 旧库导入
   storetest/             测试用的临时工作空间与种子数据
-  schema/                schema SQL（0001_init.sql … 0007_todo.sql）
+  schema/                schema SQL（0001_init.sql，0.1.0 的唯一版本）
 cmd/tr-import/           旧工作空间导入命令
 docs/architecture.md     分层规则、旧模块到新包的映射、迁移顺序
 ```
@@ -236,7 +237,7 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
 
 1. **外壳**（已完成）：窗口、标题栏、导航、主题切换、设置页、页面骨架。
 2. **领域 + 存储**（已完成）：`internal/domain` 核心形状；`internal/store` 用
-   `modernc.org/sqlite` 打开工作空间，schema v1→v2 与迁移、账本 / 记录 / 分类标签 / 模板 /
+   `modernc.org/sqlite` 打开工作空间，单一 schema v1、账本 / 记录 / 分类标签 / 模板 /
    图表仓储。
 3. **记账**：记录 / 分析 / 标签 / 模板已接工作空间（记录：SQL 范围过滤 / 排序 + 内存分页；
    分析：图表持久化、折线 / 饼图 SQL 聚合、曲线条件与合计；标签：分类标签 CRUD / 计数 /
@@ -259,21 +260,12 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
 - 每个工作空间一个独立 SQLite 数据库；图片资产在工作空间 `data/assets` 下，引用相对路径。
 - 事件属于工作空间，不属于账本：`key_event.date` 唯一，图片在 `data/assets/key_events/<date>/`；
   记录上的 `key_event_date` 是普通日期文本，关联面板跨账本。旧库按账本存的事件在导入时按日期合并。
-- 新库 schema 版本在 `app_meta.schema_version`，从 1 连续递增；迁移升级前写
-  `transactions.db.bak`。v2 增加 `chart` 表（图表配置与排序），v3 增加 `diary_entry`
-  （最初每账本每天一篇），v4 把日记从账本上解绑：新增 `diary_book`（日记本：`book_id` / 名称 /
-  描述 / 排序），`diary_entry` 换成 `book_id`、`(book_id, date)` 唯一——v3 里每个有日记的账本
-  迁移成一本同名日记本，没有日记的工作空间得到一本「默认日记本」。v5 增加 `key_event` /
-  `key_event_image`：事件属于工作空间，`key_event.date` 唯一，两张表都不带 `ledger_id`。
-  v6 增加股票表：`stock_account`（名称 / 描述 / 本金 / 排序，名称唯一）与
-  `stock_fee_setting / stock_fund_record / stock_position / stock_trade / stock_trade_history /
-  stock_trade_round / stock_trade_tag_setting / stock_review_setting / stock_operation /
-  stock_day_review / stock_lesson / stock_ledger`，全部按 `account_id` 隔离；市场数据
-  `stock_limit_day / pool / quote` 按交易日存、不带账户。v6 同时写入 `app_meta('app_id',
-  'transactions-viva')`。v7 增加 `todo_card` / `todo_item` / `todo_progress`，三张表都按
-  `ledger_id` 隔离，状态用 `doing` / `done`，完成不搬表。旧库识别改用身份键与旧形状：有 `app_id` 或新 `stock_account`（无
-  `ledger_id`）不算旧库；只有旧形状的 `stock_account`（带 `ledger_id`）或 `todo_item` 才算。
-  旧库通过导入工具复制记账表、chart、事件、股票与待办，不直接打开。
+- 新库 schema 版本在 `app_meta.schema_version`，0.1.0 只有 **v1**：所有表、索引与
+  `app_id` / 默认日记本都在 `0001_init.sql` 一次建好，没有增量迁移。0.1.0 之前的开发版
+  使用 2–7，若库已含全部 v1 表，打开时先 `VACUUM INTO transactions.db.bak` 再改写为 v1；
+  缺表则拒绝。旧库识别用身份键与旧形状：有 `app_id` 或新 `stock_account`（无 `ledger_id`）
+  不算旧库；只有旧形状的 `stock_account`（带 `ledger_id`）或 `todo_item` 才算。旧库通过
+  导入工具复制记账表、chart、事件、股票与待办到新的 v1 工作空间，不直接打开。
 - 打开工作空间只做 `PRAGMA quick_check`；全量 `integrity_check` 只用于备份与恢复两个显式动作。
   库坏了就报告并引导从备份恢复，不自动修复、不静默建空库。
 - 恢复前先把当前数据另存为 `pre-restore-*`；恢复后在当前窗口重新打开工作空间。手动备份是

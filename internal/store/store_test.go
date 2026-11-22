@@ -488,7 +488,11 @@ func TestOpenRejectsBadWorkspaces(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := db.Exec(initSchema); err != nil {
+		legacy, err := os.ReadFile(filepath.Join("testdata", "legacy_schema.sql"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.Exec(string(legacy)); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := db.Exec("CREATE TABLE stock_account (id TEXT, ledger_id TEXT)"); err != nil {

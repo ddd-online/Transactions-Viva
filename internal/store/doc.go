@@ -5,17 +5,18 @@
 // Contract:
 //
 //   - a workspace is a directory containing transactions.db; the directory must
-//     already exist, and a missing database is created and migrated to v1;
-//   - schema versions live in app_meta.schema_version; versions are contiguous
-//     from 1 (v2 adds the saved-analysis chart table), upgrades back up the
-//     database to transactions.db.bak first, and a database written by a newer
-//     build is refused;
+//     already exist, and a missing database is created at schema v1;
+//   - the 0.1.0 release has one schema version, v1, in app_meta.schema_version.
+//     There are no incremental migrations; a pre-0.1.0 development database
+//     (version 2–7) that already carries every v1 table is adopted as v1 after
+//     a transactions.db.bak backup. A database written by a newer build is
+//     refused;
 //   - opening runs PRAGMA quick_check only; integrity_check is reserved for the
 //     explicit backup and restore actions;
 //   - the accounting tables are column-for-column compatible with the old
 //     project's schema, so internal/store/import_old.go can copy old rows
-//     without translation. The old stock/event/diary/todo tables are not created
-//     here; saved charts are copied when the old database has a chart table;
+//     without translation; the old database's chart, event, stock and todo
+//     tables are copied into the v1 tables too;
 //   - amounts are integer cents (columns ending _cents), times are Unix seconds
 //     (columns ending _at), dates are local "YYYY-MM-DD" (columns ending _date);
 //   - there are no foreign keys, as in the old schema; deletes are explicit
@@ -23,6 +24,5 @@
 //
 // The old application's database (schema version 12 and stock tables) is not
 // opened directly: it is recognized and reported, and the import tool writes a
-// new workspace instead. This keeps the new schema's version history
-// independent of the old one.
+// new v1 workspace instead.
 package store

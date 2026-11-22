@@ -91,7 +91,20 @@ func Open(directory string) (*Workspace, error) {
 		if isOldAccountingDB(db) {
 			return closeOnError(fmt.Errorf("%w（库格式版本 %d），请使用旧数据导入工具", ErrOldWorkspace, version))
 		}
-		return closeOnError(fmt.Errorf("%w：当前库格式版本 %d，本程序支持到 %d", ErrVersionTooNew, version, targetVersion()))
+		if version <= lastPreReleaseSchemaVersion {
+			// Development builds before 0.1.0 used incremental versions up to 7.
+			// Their final schema is this release's v1; keep the data and make
+			// the version honest instead of refusing the workspace.
+			if err := validateSchemaTables(db); err != nil {
+				return closeOnError(fmt.Errorf("旧版工作空间无法合并为 v1：%w", err))
+			}
+			if err := adoptPreReleaseSchema(db, databasePath); err != nil {
+				return closeOnError(err)
+			}
+			version = targetVersion()
+		} else {
+			return closeOnError(fmt.Errorf("%w：当前库格式版本 %d，本程序支持到 %d", ErrVersionTooNew, version, targetVersion()))
+		}
 	}
 	if err := applyMigrations(db, databasePath, migrations, version); err != nil {
 		return closeOnError(err)

@@ -14,12 +14,6 @@ import (
 var schemaFiles embed.FS
 
 var initSchema = mustReadSchema("schema/0001_init.sql")
-var chartSchema = mustReadSchema("schema/0002_chart.sql")
-var diarySchema = mustReadSchema("schema/0003_diary.sql")
-var diaryBookSchema = mustReadSchema("schema/0004_diary_book.sql")
-var keyEventSchema = mustReadSchema("schema/0005_key_event.sql")
-var stockSchema = mustReadSchema("schema/0006_stock.sql")
-var todoSchema = mustReadSchema("schema/0007_todo.sql")
 
 func mustReadSchema(name string) string {
 	data, err := schemaFiles.ReadFile(name)
@@ -29,8 +23,8 @@ func mustReadSchema(name string) string {
 	return string(data)
 }
 
-// migration is one schema change. Versions are contiguous from 1; append a new
-// entry for every structure change and never edit a released one.
+// migration is one schema change. Versions are contiguous from 1; this release
+// ships the complete schema as version 1 and has no incremental steps.
 type migration struct {
 	version int
 	name    string
@@ -39,18 +33,18 @@ type migration struct {
 
 var migrations = []migration{
 	{version: 1, name: "init", sql: initSchema},
-	{version: 2, name: "chart", sql: chartSchema},
-	{version: 3, name: "diary", sql: diarySchema},
-	{version: 4, name: "diary_book", sql: diaryBookSchema},
-	{version: 5, name: "key_event", sql: keyEventSchema},
-	{version: 6, name: "stock", sql: stockSchema},
-	{version: 7, name: "todo", sql: todoSchema},
 }
 
 func targetVersion() int { return migrations[len(migrations)-1].version }
 
-// validateMigrations checks the contract the old project used: versions start
-// at 1 and increase by one with no holes.
+// lastPreReleaseSchemaVersion is the last schema version used before 0.1.0
+// collapsed the history into v1. A database at that version already has every
+// table v1 needs; Open adopts it as v1 after taking a backup instead of
+// stranding data written by a development build.
+const lastPreReleaseSchemaVersion = 7
+
+// validateMigrations checks the contract: versions start at 1 and increase by
+// one with no holes.
 func validateMigrations(list []migration) error {
 	if len(list) == 0 {
 		return fmt.Errorf("store: migration list is empty")
@@ -142,6 +136,27 @@ func applyMigrations(db *sql.DB, databasePath string, list []migration, current 
 	return nil
 }
 
+// adoptPreReleaseSchema rewrites a pre-0.1.0 database version to v1 after a
+// backup. It runs only when every v1 table is already present, so it never
+// converts a partial or foreign database.
+func adoptPreReleaseSchema(db *sql.DB, databasePath string) error {
+	if err := backupDatabase(db, databasePath); err != nil {
+		return fmt.Errorf("合并版本前备份失败：%w", err)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Exec("UPDATE app_meta SET value = '1' WHERE key = 'schema_version'"); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("写入 v1 格式版本失败：%w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("提交 v1 格式版本失败：%w", err)
+	}
+	return nil
+}
+
 // backupDatabase writes a single rollback copy next to the database. VACUUM
 // INTO needs to run outside a transaction.
 func backupDatabase(db *sql.DB, databasePath string) error {
@@ -178,17 +193,18 @@ func userTableCount(db *sql.DB) (int, error) {
 }
 
 // validateSchemaTables refuses a database that claims a schema version but is
-// missing one of the accounting tables, instead of failing later in a page.
+// missing one of the 0.1.0 tables, instead of failing later in a page.
 func validateSchemaTables(db *sql.DB) error {
 	for _, table := range []string{
 		"app_meta", "ledger", "transaction_record", "transaction_record_tag",
 		"category", "tag", "transaction_template", "chart",
-		"key_event", "key_event_image",
+		"diary_book", "diary_entry", "key_event", "key_event_image",
 		"stock_account", "stock_fee_setting", "stock_fund_record",
 		"stock_position", "stock_trade", "stock_trade_history",
 		"stock_trade_round", "stock_trade_tag_setting", "stock_review_setting",
 		"stock_operation", "stock_day_review", "stock_lesson", "stock_ledger",
 		"stock_limit_day", "stock_limit_pool", "stock_limit_quote",
+		"todo_card", "todo_item", "todo_progress",
 	} {
 		exists, err := tableExists(db, table)
 		if err != nil {

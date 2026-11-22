@@ -48,7 +48,7 @@ type ImportReport struct {
 	SourceSchema  int
 }
 
-// ImportOld copies the old application's data into a new workspace. The old
+// ImportOld copies the old application's data into a new v1 workspace. The old
 // database is opened read-only; the destination must be a new directory or an
 // empty one. The accounting tables, saved charts, key events (with their image
 // files), stock tables and todo boards are copied; diary is still ignored.

@@ -2,9 +2,8 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"errors"
-	"path/filepath"
+	"os"
 	"testing"
 
 	"transactions/internal/repository"
@@ -127,7 +126,7 @@ func TestSchemaCreatesIdentityStockAndTodoTables(t *testing.T) {
 	}
 }
 
-func TestV6DatabaseIsNotMistakenForTheOldApplication(t *testing.T) {
+func TestFutureSchemaIsRejected(t *testing.T) {
 	directory := t.TempDir()
 	workspace, err := Open(directory)
 	if err != nil {
@@ -141,45 +140,36 @@ func TestV6DatabaseIsNotMistakenForTheOldApplication(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := Open(directory); !errors.Is(err, ErrVersionTooNew) {
-		t.Fatalf("v6 database with a future version = %v", err)
+		t.Fatalf("future version = %v", err)
 	}
 }
 
-func TestV5DatabaseMigratesToStockAndTodoTables(t *testing.T) {
+func TestPreReleaseSchemaIsAdoptedAsV1(t *testing.T) {
 	directory := t.TempDir()
-	path := filepath.Join(directory, "transactions.db")
-	db, err := sql.Open("sqlite", path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(initSchema); err != nil {
-		t.Fatal(err)
-	}
-	for _, sql := range []string{chartSchema, diarySchema, diaryBookSchema, keyEventSchema} {
-		if _, err := db.Exec(sql); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if _, err := db.Exec("INSERT OR REPLACE INTO app_meta(key, value) VALUES ('schema_version', '5')"); err != nil {
-		t.Fatal(err)
-	}
-	db.Close()
-
 	workspace, err := Open(directory)
 	if err != nil {
-		t.Fatalf("Open v5: %v", err)
+		t.Fatal(err)
 	}
-	defer workspace.Close()
-	version, _, _ := schemaVersion(workspace.db)
-	if version != targetVersion() {
-		t.Fatalf("migrated version = %d", version)
+	if _, err := workspace.db.Exec("UPDATE app_meta SET value = '7' WHERE key = 'schema_version'"); err != nil {
+		t.Fatal(err)
 	}
-	if !hasAppID(workspace.db) {
-		t.Fatal("app_id missing after migration")
+	if err := workspace.Close(); err != nil {
+		t.Fatal(err)
 	}
-	for _, table := range []string{"todo_card", "todo_item", "todo_progress"} {
-		if ok, err := tableExists(workspace.db, table); err != nil || !ok {
-			t.Fatalf("migrated table %s missing: %v", table, err)
-		}
+
+	adopted, err := Open(directory)
+	if err != nil {
+		t.Fatalf("Open pre-release: %v", err)
+	}
+	defer adopted.Close()
+	version, _, _ := schemaVersion(adopted.db)
+	if version != targetVersion() || version != 1 {
+		t.Fatalf("adopted version = %d, want 1", version)
+	}
+	if !hasAppID(adopted.db) {
+		t.Fatal("app_id missing after adoption")
+	}
+	if _, err := os.Stat(databasePathOf(directory) + ".bak"); err != nil {
+		t.Fatalf("adoption backup: %v", err)
 	}
 }

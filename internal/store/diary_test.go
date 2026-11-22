@@ -2,10 +2,7 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"errors"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"transactions/internal/repository"
@@ -219,92 +216,35 @@ func TestDiaryRejectsBadRequests(t *testing.T) {
 	}
 }
 
-// TestDiaryBookMigrationKeepsEachLedgersDiary upgrades a v3 workspace, where a
-// diary belonged to a ledger, and checks that every ledger's diary became its
-// own book with its entries attached.
-func TestDiaryBookMigrationKeepsEachLedgersDiary(t *testing.T) {
+// TestDiaryBookIsSeededAndIndependentOfLedgers verifies the single v1 schema:
+// a fresh workspace already has the default book, and deleting a ledger must
+// not take a diary with it.
+func TestDiaryBookIsSeededAndIndependentOfLedgers(t *testing.T) {
 	ctx := context.Background()
-	directory := t.TempDir()
-	path := databasePathOf(directory)
-
-	// Build a v3 workspace by hand: the first three migrations and nothing else.
-	db, err := sql.Open("sqlite", path)
+	workspace, err := Open(t.TempDir())
 	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
-	if err := applyPragmas(db); err != nil {
-		t.Fatalf("pragmas: %v", err)
-	}
-	if err := applyMigrations(db, path, migrations[:3], 0); err != nil {
-		t.Fatalf("apply v3: %v", err)
-	}
-	if _, err := db.Exec(
-		"INSERT INTO ledger (id, name, description, created_at, updated_at) VALUES ('l-home', '家庭账本', '', 1, 1), ('l-travel', '旅行账本', '', 1, 1)"); err != nil {
-		t.Fatalf("insert ledgers: %v", err)
-	}
-	if _, err := db.Exec(
-		"INSERT INTO diary_entry (id, date, content, word_count, mood, created_at, updated_at, ledger_id) " +
-			"VALUES ('e1', '2026-01-15', '家里的', 3, '😐', 1, 1, 'l-home'), " +
-			"('e2', '2026-01-16', '路上的', 3, '😊', 1, 1, 'l-travel')"); err != nil {
-		t.Fatalf("insert entries: %v", err)
-	}
-	if err := db.Close(); err != nil {
-		t.Fatalf("close: %v", err)
-	}
-
-	workspace, err := Open(directory)
-	if err != nil {
-		t.Fatalf("Open after v3: %v", err)
+		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = workspace.Close() })
-	if version, _, err := schemaVersion(workspace.db); err != nil || version != targetVersion() {
-		t.Fatalf("version = %d, err=%v", version, err)
-	}
 
 	books, err := workspace.DiaryBooks(ctx)
+	if err != nil || len(books) != 1 || books[0].Name != "默认日记本" {
+		t.Fatalf("fresh workspace books = %+v, err=%v", books, err)
+	}
+	bookID := books[0].ID
+
+	ledger, err := workspace.CreateLedger(ctx, "家庭账本", "")
 	if err != nil {
-		t.Fatalf("DiaryBooks: %v", err)
+		t.Fatalf("CreateLedger: %v", err)
 	}
-	if len(books) != 2 {
-		t.Fatalf("books = %+v, want one per ledger with entries", books)
+	if _, err := workspace.SaveDiary(ctx, bookID, "2026-01-15", "家里的", "😐"); err != nil {
+		t.Fatalf("SaveDiary: %v", err)
 	}
-	names := map[string]string{}
-	for _, book := range books {
-		names[book.ID] = book.Name
+	if err := workspace.DeleteLedger(ctx, ledger.ID); err != nil {
+		t.Fatalf("DeleteLedger: %v", err)
 	}
-	if names["book-l-home"] != "家庭账本" || names["book-l-travel"] != "旅行账本" {
-		t.Fatalf("book names = %v", names)
-	}
-
-	home, err := workspace.DiaryEntry(ctx, "book-l-home", "2026-01-15")
-	if err != nil || home.Content != "家里的" {
-		t.Fatalf("home entry = %+v, err=%v", home, err)
-	}
-	travel, err := workspace.DiaryEntry(ctx, "book-l-travel", "2026-01-16")
-	if err != nil || travel.Content != "路上的" || travel.Mood != "😊" {
-		t.Fatalf("travel entry = %+v, err=%v", travel, err)
-	}
-
-	// The ledger column is gone: deleting a ledger can no longer delete a diary.
-	if _, err := workspace.db.Exec("DELETE FROM ledger WHERE id = 'l-home'"); err != nil {
-		t.Fatalf("delete ledger: %v", err)
-	}
-	if _, err := workspace.DiaryEntry(ctx, "book-l-home", "2026-01-15"); err != nil {
-		t.Fatalf("the diary went with the ledger: %v", err)
-	}
-
-	// A workspace with no diaries at all gets one 默认日记本 instead.
-	emptyDir := t.TempDir()
-	empty, err := Open(emptyDir)
-	if err != nil {
-		t.Fatalf("Open empty: %v", err)
-	}
-	t.Cleanup(func() { _ = empty.Close() })
-	emptyBooks, err := empty.DiaryBooks(ctx)
-	if err != nil || len(emptyBooks) != 1 || emptyBooks[0].Name != "默认日记本" {
-		t.Fatalf("empty workspace books = %+v, err=%v", emptyBooks, err)
-	}
-	if _, err := os.Stat(filepath.Join(emptyDir, "transactions.db")); err != nil {
-		t.Fatalf("workspace database: %v", err)
+	entry, err := workspace.DiaryEntry(ctx, bookID, "2026-01-15")
+	if err != nil || entry.Content != "家里的" {
+		t.Fatalf("entry after deleting the ledger = %+v, err=%v", entry, err)
 	}
 }

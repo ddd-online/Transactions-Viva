@@ -18,13 +18,11 @@ func oldFixture(t *testing.T) string {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	if _, err := db.Exec(initSchema); err != nil {
+	legacy, err := os.ReadFile(filepath.Join("testdata", "legacy_schema.sql"))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(chartSchema); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(todoSchema); err != nil {
+	if _, err := db.Exec(string(legacy)); err != nil {
 		t.Fatal(err)
 	}
 	statements := []string{

@@ -95,31 +95,23 @@ main → desktop → pages → components
 - 工作空间是一个目录，库固定为 `transactions.db`。`store.Open` 要求目录已存在，打开后设置
   `journal_mode=WAL` / `synchronous=NORMAL` / `busy_timeout=5000` / `foreign_keys=OFF`，
   并保持单连接。已有库先跑 `PRAGMA quick_check`；新建 / 空库直接建表。打开序：目录 →
-  `quick_check` → 识别 `app_meta` / 旧库 → 迁移。损坏、陌生、旧版（含股票表的 v12）与更高
+  `quick_check` → 识别 `app_meta` / 旧库 → 版本检查。损坏、陌生、旧版（含股票表的 v12）与更高
   版本库都返回明确错误，不静默建空库。
-- schema v1 建记账需要的表：`app_meta`、`ledger`、`transaction_record`、
-  `transaction_record_tag`、`category`、`tag`、`transaction_template`；v2 增加 `chart`
-  （图表配置、类型、分组、预设标记与排序）；v3 增加 `diary_entry`（最初每账本每天一篇）；
-  v4 把日记从账本上解绑：新增 `diary_book`（`book_id` / 名称 / 描述 / 排序），`diary_entry`
-  换成 `book_id`、`(book_id, date)` 唯一，`content` 为纯文本、`mood` 存 emoji。v5 增加 `key_event`
-  与 `key_event_image`：**事件属于工作空间，不按账本隔离**，`key_event.date` 唯一，两张表都没有
-  `ledger_id`，图片路径仍是相对 `data/assets`。列名 / 类型与旧库逐列一致（金额 `_cents`、时间
-  `_at`、日期文本、无外键），便于导入工具直接复制；v6 增加股票表；v7 增加 `todo_card` /
-  `todo_item` / `todo_progress`，三张表都带 `ledger_id`，状态 `doing` / `done`，完成不搬行。
-  v4 的迁移把 v3 里每个「有日记的账本」变成一本同名日记本（`book_id = 'book-' || ledger_id`，
-  纯 SQL 就能跑），没有日记的工作空间得到一本「默认日记本」；写库时 `SaveDiary` 自己检查日记本
-  是否存在——schema 没有外键，这条规则写在仓储里。v6 增加股票账户与股票数据：
-  `stock_account`（名称唯一、描述、本金、排序）与 12 张 `account_id` 子表（费用 / 资金 / 持仓 /
-  成交 / 历史 / 轮次 / 标签 / 复盘 / 操作 / 每日复盘 / 心得 / 台账），市场数据
-  `stock_limit_day / pool / quote` 不带账户；同时写 `app_meta('app_id','transactions-viva')`。
-  v7 的待办三表按 `ledger_id` 隔离：卡片有 `sort_order`，事项存六档紧急 / 重要度与
-  `completed_at`，进度行存 `done`；完成只改 `status` / `completed_at`，不搬数据。
-  旧库识别改用身份键与旧形状：有 `app_id` 或新 `stock_account`（无 `ledger_id`）不算旧库；
-  只有旧形状的 `stock_account`（带 `ledger_id`）或 `todo_item` 才算。`diary_entry` / `key_event`
-  从 v3 / v5 起已经是本工程自己的表，不能再用它们判断「这是旧库」。
-- 版本：`app_meta.schema_version` 从 1 连续递增，迁移清单在 `internal/store/migrate.go`，
-  SQL 内嵌在 `internal/store/schema/`。升级已有库前 `VACUUM INTO <db>.bak`，失败不升级；
-  每条迁移与版本更新同事务。新增结构时只追加迁移，不改已发布的 SQL。
+- 0.1.0 只有 **schema v1**，`internal/store/schema/0001_init.sql` 一次建全：
+  `app_meta`、`ledger`、`transaction_record`、`transaction_record_tag`、`category`、`tag`、
+  `transaction_template`、`chart`（图表配置 / 类型 / 分组 / 预设 / 排序）、`diary_book` 与
+  `diary_entry`（`book_id` + `(book_id, date)` 唯一，`content` 纯文本、`mood` emoji）、
+  `key_event` / `key_event_image`（事件属于工作空间，`date` 唯一，不带 `ledger_id`）、股票账户与
+  12 张 `account_id` 子表、市场数据 `stock_limit_*`，以及 `todo_card` / `todo_item` /
+  `todo_progress`（按 `ledger_id` 隔离，状态 `doing` / `done`，完成不搬行）。列名 / 类型与旧库
+  逐列一致（金额 `_cents`、价格 `_milli`、时间 `_at`、日期文本、无外键），便于导入工具直接复制。
+  v1 同时写入 `app_meta('app_id','transactions-viva')`，并给空库插入一本「默认日记本」。
+  旧库识别用身份键与旧形状：有 `app_id` 或新 `stock_account`（无 `ledger_id`）不算旧库；
+  只有旧形状的 `stock_account`（带 `ledger_id`）或 `todo_item` 才算。
+- 版本：`app_meta.schema_version` 只有一个值 1，迁移清单也只有 `0001_init`，SQL 内嵌在
+  `internal/store/schema/`。0.1.0 之前的开发版使用 2–7；这类库若已含全部 v1 表，打开时先
+  `VACUUM INTO <db>.bak`，再把版本改写为 1，缺表则拒绝。新增结构时先提升版本并新增迁移，
+  不改已发布的 SQL。
 - `internal/repository` 是页面看到的数据契约：账本、`Labels` 快照（分类 + 标签 + 计数）、
   记录（按账本 + 本地日期范围）、模板、日记本与日记、事件与事件图片、待办，以及各自的写入 / 删除 /
   排序。待办另有一条 `TodoRepository`：卡片 / 事项 / 进度都按账本隔离，删卡片或事项时同一事务清掉
@@ -175,8 +167,8 @@ main → desktop → pages → components
   `accounting.Model`（`CreateLedger` / `UpdateLedger` / `DeleteLedger`），因为它持有四个记账页
   共享的 `ledger.Store`：写入后重读列表并重置 store，新建的账本成为当前账本（与旧工程
   `ledger_create` 一致），删除后 `Reset` 回退到第一本。设置页自己不碰 SQLite，只通过
-  `Spec` 回调外壳。数据库里 `ledger.description` 从 v1 就在；`store.UpdateLedger` 是新的，
-  删除时会连带 `chart` 表（旧工程的级联清单里有，v1 的 `DeleteLedger` 漏了）。
+  `Spec` 回调外壳。数据库里 `ledger.description` 与旧库一致；`store.UpdateLedger` 是新的，
+  删除时会连带 `chart` 表。
 - 运行入口按模式分叉：`viva dev`（`VIVA_RELOAD_ADDRESS` 存在）必须用 `app.RunCanvas`，开发
   重载 worker 在它内部连接宿主；发布版用 `app.RunApplication`，才能拿到 `*app.Window` /
   `*app.Application` 建 `StatusItem`、隐藏到托盘并处理 `OnCloseRequest`。开发宿主只在自身的
@@ -465,8 +457,8 @@ main → desktop → pages → components
 
 ## 存储设计（下一步）
 
-旧工程的 schema 与迁移在 `electron/db/schema/` 和 `electron/db/migrate.ts`，**整体移植**，不要
-只抄 `0001_init.sql`：`key_event_image` 的 `original_path` / `motion_path` 就在后续迁移里。
+旧工程的 schema 与迁移在 `electron/db/schema/` 和 `electron/db/migrate.ts`，是字段与约束的来源。
+本工程 0.1.0 已把迁移历史合并为单一 `0001_init.sql`，不再逐条移植；新增结构时再提升版本。
 
 计划：
 

@@ -1,7 +1,7 @@
 // Command tr-import copies an old Transactions workspace's accounting tables,
 // saved charts, key events and stock data (mapped to workspace stock accounts)
-// into a new workspace. The old database is opened read-only; the destination
-// must not already contain transactions.db.
+// into a new schema-v1 workspace. The old database is opened read-only; the
+// destination must not already contain transactions.db.
 //
 //	go run ./cmd/tr-import -from <old-workspace-or-transactions.db> -to <new-dir>
 package main
@@ -33,7 +33,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	fmt.Printf("已导入到 %s\n", filepath.Join(*destination, "transactions.db"))
+	fmt.Printf("已导入到 %s（schema v1）\n", filepath.Join(*destination, "transactions.db"))
 	fmt.Printf("账本 %d，分类 %d，标签 %d，记录 %d，记录标签 %d，模板 %d，图表 %d\n",
 		report.Ledgers, report.Categories, report.Tags, report.Records, report.RecordTags, report.Templates, report.Charts)
 	fmt.Printf("事件 %d，事件图片 %d，图片文件 %d\n",
