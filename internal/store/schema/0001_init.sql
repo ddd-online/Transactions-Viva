@@ -3,8 +3,10 @@
 -- The five accounting tables (and the record-tag relation) are column-for-column
 -- compatible with the old project's electron/db/schema/0001_init.sql, so the
 -- old-data importer can copy rows without translating them. The old project's
--- stock, chart, event, diary and todo tables are deliberately not created: the
--- new application only needs ledgers, records, categories, tags and templates.
+-- stock, chart, event, diary and todo tables are deliberately not created here:
+-- the new application starts with ledgers, records, categories, tags and
+-- templates. Later migrations add the chart (v2), diary (v3, v4) and event (v5)
+-- tables as each feature lands.
 --
 -- Units follow the domain contract:
 --   amounts = integer cents (columns ending _cents)

@@ -102,7 +102,7 @@ type Chart struct {
 	UpdatedAt            int64
 }
 
-// KeyEvent 是一个事件（按日期一条）。
+// KeyEvent 是一个事件（工作空间内按日期一条，与账本无关）。
 type KeyEvent struct {
 	ID        string
 	Date      string
@@ -111,13 +111,11 @@ type KeyEvent struct {
 	Color     string
 	CreatedAt int64
 	UpdatedAt int64
-	LedgerID  string
 }
 
 // KeyEventImage 是事件的一张图片。路径都相对工作空间的 data/assets。
 type KeyEventImage struct {
 	ID           string
-	LedgerID     string
 	EventDate    string
 	FilePath     string // 展示图；HEIC 导入时是转码后的 JPEG
 	ThumbPath    string

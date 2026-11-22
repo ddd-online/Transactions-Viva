@@ -17,6 +17,7 @@ var initSchema = mustReadSchema("schema/0001_init.sql")
 var chartSchema = mustReadSchema("schema/0002_chart.sql")
 var diarySchema = mustReadSchema("schema/0003_diary.sql")
 var diaryBookSchema = mustReadSchema("schema/0004_diary_book.sql")
+var keyEventSchema = mustReadSchema("schema/0005_key_event.sql")
 
 func mustReadSchema(name string) string {
 	data, err := schemaFiles.ReadFile(name)
@@ -39,6 +40,7 @@ var migrations = []migration{
 	{version: 2, name: "chart", sql: chartSchema},
 	{version: 3, name: "diary", sql: diarySchema},
 	{version: 4, name: "diary_book", sql: diaryBookSchema},
+	{version: 5, name: "key_event", sql: keyEventSchema},
 }
 
 func targetVersion() int { return migrations[len(migrations)-1].version }
@@ -177,6 +179,7 @@ func validateSchemaTables(db *sql.DB) error {
 	for _, table := range []string{
 		"app_meta", "ledger", "transaction_record", "transaction_record_tag",
 		"category", "tag", "transaction_template", "chart",
+		"key_event", "key_event_image",
 	} {
 		exists, err := tableExists(db, table)
 		if err != nil {

@@ -199,6 +199,29 @@ type Repository interface {
 	// DiaryEntries is one book's whole diary, oldest first, for an export.
 	DiaryEntries(ctx context.Context, bookID string) ([]domain.DiaryEntry, error)
 
+	// Key events belong to the workspace, not to a ledger: a workspace has one
+	// set of events and one event per local date. The 关联事件日期 a record
+	// carries is a plain date; the event page reads the records that name a day
+	// from every ledger.
+	KeyEventsByYear(ctx context.Context, year string) ([]domain.KeyEvent, error)
+	// KeyEvent reads one day; a day without an event is ErrNotFound.
+	KeyEvent(ctx context.Context, date string) (domain.KeyEvent, error)
+	// SaveKeyEvent writes one day's event and names it by the event title rule.
+	SaveKeyEvent(ctx context.Context, date, title, content, color string) (domain.KeyEvent, error)
+	// DeleteKeyEvent removes the day's event and its image rows in one
+	// transaction and returns the images, so the caller can delete their files.
+	DeleteKeyEvent(ctx context.Context, date string) ([]domain.KeyEventImage, error)
+	KeyEventImages(ctx context.Context, date string) ([]domain.KeyEventImage, error)
+	// CreateKeyEventImage appends one image to its day's list; the store assigns
+	// its id (when empty) and sort_order.
+	CreateKeyEventImage(ctx context.Context, image domain.KeyEventImage) (domain.KeyEventImage, error)
+	// DeleteKeyEventImage removes one image row and returns it for file cleanup;
+	// a missing id is not an error.
+	DeleteKeyEventImage(ctx context.Context, imageID string) (domain.KeyEventImage, error)
+	// KeyEventRecords lists the workspace's records whose 关联事件日期 is date,
+	// across all ledgers, newest transaction first.
+	KeyEventRecords(ctx context.Context, date string) ([]RecordEntry, error)
+
 	Templates(ctx context.Context, ledgerID string) ([]domain.TransactionTemplate, error)
 	CreateTemplate(ctx context.Context, template domain.TransactionTemplate) (string, error)
 	DeleteTemplate(ctx context.Context, id string) error
