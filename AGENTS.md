@@ -10,7 +10,7 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
 整体迁移到 **Viva + Go**：没有 Electron、没有 Node、没有内嵌浏览器，窗口与控件由 GPU
 直接绘制。**行为、文案、交互、数据契约一律以旧工程为准，先追平再改进。**
 
-当前阶段：**外壳、配置与通用设置、记账四页、事件与日记、股票六页（设置已移入设置页）、SQLite 数据层已落地；记账四页、事件、日记与股票读写工作空间；旧数据可导入（含股票）；待办仍是占位。**
+当前阶段：**外壳、配置与通用设置、记账四页、待办、事件与日记、股票六页（设置已移入设置页）、SQLite 数据层已落地；记账四页、待办、事件、日记与股票读写工作空间；旧数据可导入（含股票与待办）。**
 
 - 入口是根目录 `main.go`：只做 `log.Fatal(desktop.Run())`，`viva.toml` 的 `package = "."`。
   开发时 `viva dev .`，一次性运行 `go run .`。注意：`viva dev` 的 reload host 不转发原生
@@ -115,10 +115,10 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   `~/.transactions.dev.json`），逐字段归一化，写回保留未知顶层键，写入走 `.tmp` + rename。
   窗口尺寸 / 位置（关闭时保存）、工作空间、外观、关闭行为、功能开关与账本级覆盖都在里面；
   `desktop.Run` 启动时加载，设置页的改动立即写回。
-- SQLite 工作空间已落地：目录里的 `transactions.db`，schema v6 含 `app_meta` /
+- SQLite 工作空间已落地：目录里的 `transactions.db`，schema v7 含 `app_meta` /
   `ledger` / `transaction_record` / `transaction_record_tag` / `category` / `tag` /
   `transaction_template` / `chart` / `diary_book` / `diary_entry` / `key_event` /
-  `key_event_image` 以及 v6 的股票表。**股票账户属于工作空间，所有股票子表用 `account_id`，
+  `key_event_image`、v6 的股票表以及 v7 的 `todo_card` / `todo_item` / `todo_progress`。**股票账户属于工作空间，所有股票子表用 `account_id`，
   不挂 `ledger_id`**；天梯的 `stock_limit_*` 是市场数据，也不挂账户。事件与旧库不同：
   **不带 `ledger_id`，`date` 唯一**，一个工作空间只有一份。打开时 `quick_check`、版本迁移
   （升级前 `VACUUM INTO <db>.bak`）、拒绝损坏 / 陌生 / 旧版 / 更高版本库。空工作空间
@@ -141,6 +141,13 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   可以打开「查看更新内容」弹窗读 release body；下载写临时目录、按 asset 的 SHA256 校验，
   进度条用 `ui.Progress`，完成后变绿，点「开始更新」拉起安装程序并在 600ms 后优雅退出。
   检查 / 下载 / 安装的 I/O 在 `internal/update`，页面只持有状态。
+- 待办页已迁移：工具栏是共享「账本」选择器、看板 / 四象限切换、全部展开 / 收起与「新建主题」；
+  看板是横向滚动的主题列，列头可折叠、排序（主题操作菜单前移 / 后移）、删除与添加事项；
+  事项行有完成圆圈、标题、紧急度 / 重要度、截止日与进度计数，点开内联进度（勾选 / 新增 /
+  删除 / 编辑），编辑事项弹窗有开始 / 截止日期与六档紧急度 / 重要度。历史按完成时间倒序列出
+  已完成事项，可恢复、删除、查看并订正进度。四象限按紧急 × 重要分四组，点事项直接编辑。
+  待办按 `ledger_id` 隔离，六档 -5 / -3 / -1 / 1 / 3 / 5；`todo_card` / `todo_item` /
+  `todo_progress` 是 schema v7，旧库的 11 档在导入时就近归档。
 - 运行入口按模式分叉：`viva dev`（有 `VIVA_RELOAD_ADDRESS`）必须走 `app.RunCanvas`——开发
   重载 worker 只在 `RunCanvas` 里连接宿主，换成 `RunApplication` 会打开真窗口并让宿主等
   连接直到超时；发布版走 `app.RunApplication` 才能拿到窗口 / Application 句柄，建托盘、
@@ -152,8 +159,9 @@ Transactions 是一款本地优先的个人记账桌面应用：一个工作空�
   报告孤儿行（`-strict` 中止）；旧库的股票按「一个旧账本 → 一个股票账户」导入（保留旧
   `stock_account.id`、本金、成交 / 轮次 / 心得 / 台账 / 设置；找不到账本的行归入「未归属股票账户」），
   `chart` 表有则一并复制；事件与事件图片会导入：旧库按账本存的事件按日期合并（同一天保留
-  `updated_at` 最新的一条，其余写进报告），图片文件一起复制；日记、待办仍不导入。
-- 其余页面的真实内容还没迁移：待办（见下面的迁移顺序）。
+  `updated_at` 最新的一条，其余写进报告），图片文件一起复制；日记仍不导入；待办会导入
+  （保留卡片 / 事项 / 进度与时间戳，旧 11 档就近归到六档）。
+- 其余页面的真实内容都已迁移；剩下的是打包与发布流程。
 
 ## 参考对象
 
@@ -182,6 +190,7 @@ internal/pages/          各功能页：accounting、stock、todo、events、dia
   accounting/templates/  模板页（表格 / 新建与删除弹窗 / 拖拽排序）
   accounting/analysis/   分析页（图表列表 / 折线图 / 饼图 / 曲线条件 / 合计）
   diary/                 日记页（日记本 / 日期树 / 正文 / 心情 / 自动保存 / 删除）
+  todo/                  待办页（主题看板 / 四象限 / 事项 / 进度 / 历史）
 internal/diary/          日记文件的导入导出（扫描、编码回退链、写文件），只依赖 domain 与 repository
 internal/assets/         工作空间图片资产：路径校验、落盘 / 删除 / 另存、解码、EXIF 方向与缩略图
 internal/events/         事件图片的导入 / 删除编排：实况配对、逐张报告、清文件
@@ -197,7 +206,7 @@ internal/repository/     页面使用的数据契约（接口 / 查询 / 错误�
 internal/config/         应用配置：形状、默认值、读写与归一化（~/.transactions.json）
 internal/store/          SQLite 工作空间、schema / 迁移 / 仓储 / 旧库导入
   storetest/             测试用的临时工作空间与种子数据
-  schema/                schema SQL（0001_init.sql … 0006_stock.sql）
+  schema/                schema SQL（0001_init.sql … 0007_todo.sql）
 cmd/tr-import/           旧工作空间导入命令
 docs/architecture.md     分层规则、旧模块到新包的映射、迁移顺序
 ```
@@ -231,7 +240,7 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
 3. **记账**：记录 / 分析 / 标签 / 模板已接工作空间（记录：SQL 范围过滤 / 排序 + 内存分页；
    分析：图表持久化、折线 / 饼图 SQL 聚合、曲线条件与合计；标签：分类标签 CRUD / 计数 /
    排序；模板：CRUD / 排序 / 记录弹窗下拉）；记录的条件筛选（标签 / 描述）还没接入列表。
-4. **待办**：卡片、四象限、六档紧急度 / 重要度、进度记录、历史。
+4. **待办**（已完成）：卡片、四象限、六档紧急度 / 重要度、进度记录、历史、旧库导入。
 5. **事件**（已完成）：事件画廊、图片资产与关联交易；实况照片只存不播（Viva 没有视频控件）。
 6. **股票**（已完成）：工作空间级多账户、持仓、成交记录、轮次、费用算法、统计、天梯、设置；
    旧库股票数据按账本映射成账户导入。
@@ -260,9 +269,10 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
   stock_trade_round / stock_trade_tag_setting / stock_review_setting / stock_operation /
   stock_day_review / stock_lesson / stock_ledger`，全部按 `account_id` 隔离；市场数据
   `stock_limit_day / pool / quote` 按交易日存、不带账户。v6 同时写入 `app_meta('app_id',
-  'transactions-viva')`。旧库识别改用身份键与旧形状：有 `app_id` 或新 `stock_account`（无
+  'transactions-viva')`。v7 增加 `todo_card` / `todo_item` / `todo_progress`，三张表都按
+  `ledger_id` 隔离，状态用 `doing` / `done`，完成不搬表。旧库识别改用身份键与旧形状：有 `app_id` 或新 `stock_account`（无
   `ledger_id`）不算旧库；只有旧形状的 `stock_account`（带 `ledger_id`）或 `todo_item` 才算。
-  旧库通过导入工具复制记账表、chart、事件与股票，不直接打开。
+  旧库通过导入工具复制记账表、chart、事件、股票与待办，不直接打开。
 - 打开工作空间只做 `PRAGMA quick_check`；全量 `integrity_check` 只用于备份与恢复两个显式动作。
   库坏了就报告并引导从备份恢复，不自动修复、不静默建空库。
 - 恢复前先把当前数据另存为 `pre-restore-*`；恢复后在当前窗口重新打开工作空间。手动备份是

@@ -67,7 +67,7 @@ main → desktop → pages → components
 | `internal/backup` | 备份命名 / 保留裁剪、VACUUM 快照、手动 / 自动备份、恢复前副本与备份列表 | `shared/domain/backup.ts`、`electron/services/backup.ts` |
 | `internal/proxy` | 代理三态、手动地址归一化、环境变量 / Windows 系统代理探测与共享 HTTP client | `shared/domain/proxy.ts`、`electron/ipc/handlers/settings.ts` 的代理部分 |
 | `internal/update` | GitHub release 检查、安装包下载 / SHA256 校验、进度回调与拉起安装程序 | `shared/domain/update.ts`、`electron/services/updater.ts` |
-| `internal/pages/todo` | 待办 / 历史 | `src/pages/todo*` |
+| `internal/pages/todo` | 待办：共享账本选择、主题看板 / 四象限、事项与进度、历史、旧库导入 | `src/pages/todo*`、`electron/services/todo.ts` |
 | `internal/pages/events` | 事件页：年份列表、身份色、图片画廊与灯箱、跨账本关联交易（事件是工作空间级数据） | `src/pages/events*`、`event-*`、`electron/services/key-event.ts` |
 | `internal/assets` | 工作空间图片资产：路径校验、落盘 / 删除 / 另存、解码、EXIF 方向与缩略图 | `electron/services/assets.ts`、`image-import.ts`、`image-resize.ts`、`heic-decode.ts` |
 | `internal/events` | 事件图片的导入 / 删除编排：实况照片配对、逐张报告、清文件 | `electron/services/key-event.ts` 的 `addImage` / `deleteImage` |
@@ -104,13 +104,16 @@ main → desktop → pages → components
   换成 `book_id`、`(book_id, date)` 唯一，`content` 为纯文本、`mood` 存 emoji。v5 增加 `key_event`
   与 `key_event_image`：**事件属于工作空间，不按账本隔离**，`key_event.date` 唯一，两张表都没有
   `ledger_id`，图片路径仍是相对 `data/assets`。列名 / 类型与旧库逐列一致（金额 `_cents`、时间
-  `_at`、日期文本、无外键），便于导入工具直接复制；不建待办表。
+  `_at`、日期文本、无外键），便于导入工具直接复制；v6 增加股票表；v7 增加 `todo_card` /
+  `todo_item` / `todo_progress`，三张表都带 `ledger_id`，状态 `doing` / `done`，完成不搬行。
   v4 的迁移把 v3 里每个「有日记的账本」变成一本同名日记本（`book_id = 'book-' || ledger_id`，
   纯 SQL 就能跑），没有日记的工作空间得到一本「默认日记本」；写库时 `SaveDiary` 自己检查日记本
   是否存在——schema 没有外键，这条规则写在仓储里。v6 增加股票账户与股票数据：
   `stock_account`（名称唯一、描述、本金、排序）与 12 张 `account_id` 子表（费用 / 资金 / 持仓 /
   成交 / 历史 / 轮次 / 标签 / 复盘 / 操作 / 每日复盘 / 心得 / 台账），市场数据
   `stock_limit_day / pool / quote` 不带账户；同时写 `app_meta('app_id','transactions-viva')`。
+  v7 的待办三表按 `ledger_id` 隔离：卡片有 `sort_order`，事项存六档紧急 / 重要度与
+  `completed_at`，进度行存 `done`；完成只改 `status` / `completed_at`，不搬数据。
   旧库识别改用身份键与旧形状：有 `app_id` 或新 `stock_account`（无 `ledger_id`）不算旧库；
   只有旧形状的 `stock_account`（带 `ledger_id`）或 `todo_item` 才算。`diary_entry` / `key_event`
   从 v3 / v5 起已经是本工程自己的表，不能再用它们判断「这是旧库」。
@@ -118,8 +121,9 @@ main → desktop → pages → components
   SQL 内嵌在 `internal/store/schema/`。升级已有库前 `VACUUM INTO <db>.bak`，失败不升级；
   每条迁移与版本更新同事务。新增结构时只追加迁移，不改已发布的 SQL。
 - `internal/repository` 是页面看到的数据契约：账本、`Labels` 快照（分类 + 标签 + 计数）、
-  记录（按账本 + 本地日期范围）、模板、日记本与日记、事件与事件图片，以及各自的写入 / 删除 /
-  排序。事件另有一条 `KeyEventRecords(date)`：工作空间里 `key_event_date` 等于该日期的记录，
+  记录（按账本 + 本地日期范围）、模板、日记本与日记、事件与事件图片、待办，以及各自的写入 / 删除 /
+  排序。待办另有一条 `TodoRepository`：卡片 / 事项 / 进度都按账本隔离，删卡片或事项时同一事务清掉
+  子行。事件另有一条 `KeyEventRecords(date)`：工作空间里 `key_event_date` 等于该日期的记录，
   跨账本、带标签，事件页的右栏用它。页面只调用接口，不写 SQL；`internal/store` 用编译期断言
   实现该接口。记录写入与标签关联、删除与关联清理、分类删除与其标签、标签删除与记录关联、
   删事件与它的图片行都在单事务里；删账本只删账本自己的数据，不碰工作空间级的事件。
@@ -131,8 +135,9 @@ main → desktop → pages → components
 - 旧库导入：`internal/store/import_old.go` 用只读连接打开旧 `transactions.db`，校验六张表，
   `-strict` 检查孤儿行，然后在新目录创建当前 schema 并单事务复制
   `ledger / category / tag / transaction_record / transaction_record_tag /
-  transaction_template`，旧库有 `chart` 时也复制；保留 ID、时间戳、排序、JSON 标签与
-  可空字段。CLI 是 `cmd/tr-import`；旧库不直接由应用打开。
+  transaction_template`，旧库有 `chart` / `key_event` / 股票表 / `todo_card` 等表时也复制；
+  保留 ID、时间戳、排序、JSON 标签与可空字段。事件按日期合并，待办的 11 档级别就近归到六档。
+  CLI 是 `cmd/tr-import`；旧库不直接由应用打开。
 
 ## 页面约定
 
@@ -313,6 +318,15 @@ main → desktop → pages → components
   涨停池 `internal/stocklimit`（东财，8 秒）按旧策略缓存：09:30 前 `preopen`、周末 `offday`、
   盘中只渲染不落库、45 天外 `unavailable` 不写空标记、`qdate` 不符返回空。两者都在
   `ui.Effect` 里执行，不阻塞绘制；代理仍按配置文件的 `proxy` 构造 HTTP client。
+- 待办页（`internal/pages/todo`，旧工程 `src/pages/todo*` / `electron/services/todo.ts`）：
+  **属于账本**，与旧库的 `ledger_id` 一致；工具栏的「账本」是 `accounting/ledger.Store` 的同一个
+  选择，记账 / 日记 / 待办三处切换互相同步。看板是横向滚动的主题列（每列自己的事项滚动），
+  列头可折叠、通过「主题操作」菜单前移 / 后移 / 删除；事项行有完成圆圈、标题、六档紧急 /
+  重要度、截止日（逾期 / 今天高亮）与进度计数，点开内联进度，弹窗编辑事项（日期与两档）。
+  历史按 `completed_at` 倒序列出，可恢复、删除、查看并订正进度；四象限按紧急 × 重要分组，
+  点事项直接编辑。六档与「就近取档」在 `internal/domain`，页面只依赖
+  `repository.TodoRepository`；`store.TodoCards` / `TodoHistory` 一次取卡片、事项与进度再分组，
+  删卡片 / 事项在同一事务里清子行。
 - 设置 ·「日记配置」（`internal/pages/settings` 的 `diaryConfig`）分两张卡：**日记本**（照账本管理
   的行：名称 + 描述、当前那本的「当前」、行尾编辑 / 删除图标、底部「新建日记本」；最后一本不可删，
   增删改都走 `diary.Model`，与账本走 `accounting.Model` 对称）与 **导入导出**。导入按目录递归扫
