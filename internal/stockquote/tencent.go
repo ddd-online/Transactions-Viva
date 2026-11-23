@@ -142,7 +142,7 @@ func (f *TencentFetcher) fetch(ctx context.Context, target string) (string, erro
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("腾讯行情 HTTP %d", response.StatusCode)
+		return "", fmt.Errorf("腾讯行情返回 HTTP %d", response.StatusCode)
 	}
 	body, err := io.ReadAll(response.Body)
 	if err != nil {

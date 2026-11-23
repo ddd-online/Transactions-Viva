@@ -195,7 +195,7 @@ func (m *Model) stage(c ui.C) {
 				PadSides(2, 8, 2, 8).Radius(999).
 				Background(theme.Card).Border(1, theme.Border).
 				HitWith(ui.ID(c), "实况", gfx.HitOptions{SkipFocus: true}).
-				Tooltip("实况照片的动态部分已保存；此版本不播放视频").Children(func() {
+				Tooltip("实况照片已保存，动态部分暂未支持播放").Children(func() {
 				typography.Caption(c, "实况")
 			})
 		}

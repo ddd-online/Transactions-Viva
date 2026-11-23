@@ -58,10 +58,10 @@ func TestEventsAddEditColorAndDelete(t *testing.T) {
 
 	today := time.Now().Format("2006-01-02")
 	click(t, driver, "新增事件")
-	if !inDialog(driver, "新增") {
+	if !inDialog(driver, "创建") {
 		t.Fatal("新增事件 did not open its dialog")
 	}
-	clickLast(t, driver, "新增")
+	clickLast(t, driver, "创建")
 	if !hasControl(driver, today) {
 		t.Fatalf("the new event (%s) is not in the list", today)
 	}
@@ -134,7 +134,7 @@ func TestEventLinkedPanelSpansLedgers(t *testing.T) {
 
 	click(t, driver, "事件")
 	click(t, driver, "新增事件")
-	clickLast(t, driver, "新增")
+	clickLast(t, driver, "创建")
 
 	for _, want := range []string{"午餐 · 公司楼下", "去程机票", "家庭账本", "旅行账本", "-¥32.00"} {
 		if !shows(driver, want) {
@@ -162,7 +162,7 @@ func TestEventImagesAddOpenSaveAndDelete(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "事件")
 	click(t, driver, "新增事件")
-	clickLast(t, driver, "新增")
+	clickLast(t, driver, "创建")
 	today := time.Now().Format("2006-01-02")
 
 	source := testImage(t)
@@ -243,7 +243,7 @@ func TestEventDeleteImageSelectsTheNextPicture(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "事件")
 	click(t, driver, "新增事件")
-	clickLast(t, driver, "新增")
+	clickLast(t, driver, "创建")
 
 	directory := t.TempDir()
 	var sources []string
@@ -299,7 +299,7 @@ func TestEventImageProblemsAreReported(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "事件")
 	click(t, driver, "新增事件")
-	clickLast(t, driver, "新增")
+	clickLast(t, driver, "创建")
 
 	picked := t.TempDir()
 	movie := filepath.Join(picked, "IMG_0001.MOV")
@@ -319,7 +319,7 @@ func TestEventYearMovesTheList(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "事件")
 	click(t, driver, "新增事件")
-	clickLast(t, driver, "新增")
+	clickLast(t, driver, "创建")
 	if !hasControl(driver, time.Now().Format("2006-01-02")) {
 		t.Fatal("the new event is not in this year")
 	}
@@ -371,7 +371,7 @@ func TestEventLinksToggleFailureKeepsTheRail(t *testing.T) {
 	driver, _ := openModel(t, model)
 	click(t, driver, "事件")
 	click(t, driver, "收起关联交易")
-	if !shows(driver, "保存关联交易展开状态失败") {
+	if !shows(driver, "记住展开状态失败") {
 		t.Fatal("a failed configuration write was silent")
 	}
 	if !shows(driver, "选择事件查看关联交易") {
@@ -383,7 +383,7 @@ func TestEventImageImportsHEIC(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "事件")
 	click(t, driver, "新增事件")
-	clickLast(t, driver, "新增")
+	clickLast(t, driver, "创建")
 	today := time.Now().Format("2006-01-02")
 
 	picture := image.NewRGBA(image.Rect(0, 0, 32, 20))

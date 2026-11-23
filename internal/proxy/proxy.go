@@ -38,7 +38,7 @@ func Validate(mode config.ProxyMode, raw string) (config.ProxySetting, error) {
 		}
 		return config.ProxySetting{Mode: config.ProxyManual, URL: normalized}, nil
 	}
-	return config.ProxySetting{}, fmt.Errorf("无效的代理模式：%s", mode)
+	return config.ProxySetting{}, fmt.Errorf("代理模式无法识别：%s", mode)
 }
 
 // NormalizeHTTP accepts host:port and http://[user:pass@]host:port and returns
@@ -67,7 +67,7 @@ func NormalizeHTTP(raw string) (string, error) {
 		return "", fmt.Errorf("代理地址缺少主机名")
 	}
 	if strings.ContainsAny(authority, " \t\r\n") {
-		return "", fmt.Errorf("代理地址含空格，请检查")
+		return "", fmt.Errorf("代理地址含空格，请去掉空格再试")
 	}
 	colon := strings.LastIndex(authority, ":")
 	if colon < 0 {

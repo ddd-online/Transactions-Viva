@@ -82,7 +82,7 @@ var FeatureKeys = [...]FeatureKey{
 }
 
 // ErrFeatureKey is returned when a feature key is not one of FeatureKeys.
-var ErrFeatureKey = errors.New("无效的功能开关")
+var ErrFeatureKey = errors.New("无法识别的功能开关")
 
 // Valid reports whether the key is a known feature.
 func (k FeatureKey) Valid() bool {

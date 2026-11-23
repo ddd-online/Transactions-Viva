@@ -85,7 +85,7 @@ func (s *Service) Ladder(ctx context.Context, date string, refresh bool) (domain
 	now := s.now()
 	day, ok := parseDay(date)
 	if !ok {
-		return domain.StockLimitLadder{}, fmt.Errorf("日期格式无效")
+		return domain.StockLimitLadder{}, fmt.Errorf("日期要写成 YYYY-MM-DD")
 	}
 	today := now.Format("2006-01-02")
 	if date > today {

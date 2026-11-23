@@ -883,7 +883,7 @@ func (m *Model) stockAccountDeleteDialog(c ui.C, spec Spec) {
 
 func workspaceNote(workspace string) string {
 	if workspace == "" {
-		return "尚未选择工作空间"
+		return "还没有选择工作空间"
 	}
 	return workspace
 }

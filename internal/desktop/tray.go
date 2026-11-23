@@ -56,7 +56,7 @@ func (m *Model) addTray(application *app.Application) bool {
 			return []app.MenuItem{
 				{Title: "显示主窗口", OnSelect: m.showWindow},
 				{Separator: true},
-				{Title: "关闭程序", OnSelect: func() {
+				{Title: "退出应用", OnSelect: func() {
 					m.saveWindowBounds()
 					application.Quit()
 				}},

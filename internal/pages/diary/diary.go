@@ -355,7 +355,7 @@ func (m *Model) rail(c ui.C) {
 		case m.bookID == "":
 			emptystate.Notice(c, "请先在设置里创建日记本")
 		case len(m.dates) == 0:
-			emptystate.Notice(c, "还没有日记")
+			emptystate.Notice(c, "暂无日记")
 		default:
 			ui.Tree(c, &m.tree, len(m.rows), m.tree.Label, func(i int) {
 				m.rowContent(c, i)
@@ -536,13 +536,13 @@ func (m *Model) deleteDialog(c ui.C) {
 	if !m.deleteOpen {
 		return
 	}
-	ui.ModalWith(c, &m.deleteOpen, "删除这篇日记？", ui.ModalSpec{
-		Width: 400, Description: domain.DiaryDateCn(m.deleting) + " 的正文会一起删除，无法恢复。",
+	ui.ModalWith(c, &m.deleteOpen, "删除日记「"+domain.DiaryDateCn(m.deleting)+"」？", ui.ModalSpec{
+		Width: 400, Description: "这一天的正文会一起删除，无法恢复。",
 	}, nil, func() {
 		if ui.Button(c, "取消").Outline().Clicked() {
 			m.deleteOpen = false
 		}
-		if ui.Button(c, "确认删除").Destructive().Clicked() {
+		if ui.Button(c, "删除").Destructive().Clicked() {
 			m.deleteDate(m.deleting)
 			m.deleteOpen = false
 		}

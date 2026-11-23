@@ -15,7 +15,7 @@ import (
 
 var (
 	// ErrInvalidMoney 表示输入不是金额文本。
-	ErrInvalidMoney = errors.New("无效的金额格式")
+	ErrInvalidMoney = errors.New("金额格式不正确")
 	// ErrMoneyOverflow 表示金额超出 int64 的可表示范围。
 	ErrMoneyOverflow = errors.New("金额超出范围")
 )

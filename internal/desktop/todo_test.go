@@ -17,7 +17,7 @@ func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
 	driver.Type("本周")
 	click(t, driver, "事项")
 	driver.Type("写周报")
-	click(t, driver, "保存")
+	click(t, driver, "创建")
 	if !shows(driver, "写周报") || !shows(driver, "本周") {
 		t.Fatal("the new item or its theme is not in the table")
 	}
@@ -28,7 +28,7 @@ func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
 	click(t, driver, "本周")
 	click(t, driver, "事项")
 	driver.Type("写日报")
-	click(t, driver, "保存")
+	click(t, driver, "创建")
 	if !shows(driver, "写日报") {
 		t.Fatal("the second item is not in the table")
 	}

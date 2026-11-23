@@ -158,7 +158,7 @@ func (w *Workspace) Close() error {
 // dbHandle is the connection; methods call it after an Open check.
 func (w *Workspace) dbHandle() (*sql.DB, error) {
 	if w == nil || w.db == nil {
-		return nil, errors.New("工作空间尚未打开")
+		return nil, errors.New("还没有打开工作空间")
 	}
 	return w.db, nil
 }

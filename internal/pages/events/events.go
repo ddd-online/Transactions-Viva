@@ -746,7 +746,7 @@ func (m *Model) toggleLinks() {
 	next := !m.linksOpen
 	if m.cmds.SetLinksOpen != nil {
 		if err := m.cmds.SetLinksOpen(next); err != nil {
-			m.errorMessage = "保存关联交易展开状态失败：" + err.Error()
+			m.errorMessage = "记住展开状态失败：" + err.Error()
 			return
 		}
 	}

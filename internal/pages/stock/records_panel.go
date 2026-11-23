@@ -605,7 +605,7 @@ func (p *recordsPanel) detailHead(c ui.C, detail *domain.StockHistoryDetail) {
 			// The win/loss count is the first thing to go when the header is
 			// tight; the compact form leaves room for the money above.
 			if c.Bounds().Width >= 1100 {
-				typography.Caption(c, fmt.Sprintf("%d胜%d负·%d轮",
+				typography.Caption(c, fmt.Sprintf("%d 胜 %d 负 · %d 轮",
 					detail.WinCount, detail.LossCount, len(detail.Rounds)))
 			}
 		})
@@ -949,7 +949,7 @@ func (p *recordsPanel) openRead(title, text string) {
 
 func (p *recordsPanel) saveRoundReview() {
 	if p.repo == nil {
-		p.reviewError = "工作空间尚未打开"
+		p.reviewError = "还没有打开工作空间"
 		return
 	}
 	if err := p.repo.UpdateStockRoundReview(context.Background(), p.active(),
@@ -985,7 +985,7 @@ func (p *recordsPanel) openTradeEdit(trade domain.StockTrade) {
 
 func (p *recordsPanel) saveTradeEdit() {
 	if p.repo == nil {
-		p.editError = "工作空间尚未打开"
+		p.editError = "还没有打开工作空间"
 		return
 	}
 	price, err := strconv.ParseFloat(strings.TrimSpace(p.editPrice), 64)

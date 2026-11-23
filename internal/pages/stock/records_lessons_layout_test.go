@@ -359,7 +359,7 @@ func TestLessonsPanelComposerFromRound(t *testing.T) {
 	var save, stockLocked, roundLocked bool
 	for _, hit := range snapshot.Hits {
 		switch hit.Label {
-		case "保存":
+		case "创建":
 			save = true
 		case "股票":
 			stockLocked = hit.Disabled
@@ -370,7 +370,7 @@ func TestLessonsPanelComposerFromRound(t *testing.T) {
 	if !save || !stockLocked || !roundLocked {
 		t.Fatalf("save=%v stockLocked=%v roundLocked=%v", save, stockLocked, roundLocked)
 	}
-	if !clickLabel(driver, "保存") {
+	if !clickLabel(driver, "创建") {
 		t.Fatal("no 保存 button")
 	}
 	var emptyError bool

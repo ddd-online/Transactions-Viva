@@ -164,7 +164,7 @@ func (w *Workspace) TodoHistory(ctx context.Context) ([]domain.TodoHistory, erro
 
 // CreateTodoCard appends a theme at the end of the workspace's board.
 func (w *Workspace) CreateTodoCard(ctx context.Context, title string) (domain.TodoCard, error) {
-	title, err := todoText(title, domain.TodoCardTitleMax, "请输入卡片主题")
+	title, err := todoText(title, domain.TodoCardTitleMax, "请填写主题")
 	if err != nil {
 		return domain.TodoCard{}, err
 	}
@@ -369,7 +369,7 @@ func (w *Workspace) DeleteTodoItem(ctx context.Context, itemID string) error {
 
 // AddTodoProgress appends one log line under an existing item.
 func (w *Workspace) AddTodoProgress(ctx context.Context, itemID, content string) (domain.TodoProgress, error) {
-	content, err := todoText(content, domain.TodoProgressMax, "请输入进度")
+	content, err := todoText(content, domain.TodoProgressMax, "请填写进度")
 	if err != nil {
 		return domain.TodoProgress{}, err
 	}
@@ -391,7 +391,7 @@ func (w *Workspace) AddTodoProgress(ctx context.Context, itemID, content string)
 // UpdateTodoProgress corrects a progress line's words without touching its
 // time or checked state.
 func (w *Workspace) UpdateTodoProgress(ctx context.Context, progressID, content string) (domain.TodoProgress, error) {
-	content, err := todoText(content, domain.TodoProgressMax, "请输入进度")
+	content, err := todoText(content, domain.TodoProgressMax, "请填写进度")
 	if err != nil {
 		return domain.TodoProgress{}, err
 	}
@@ -477,7 +477,7 @@ func todoProgress(ctx context.Context, db *sql.DB, progressID string) (domain.To
 }
 
 func normalizeTodoItem(item domain.TodoItem) (domain.TodoItem, error) {
-	title, err := todoText(item.Title, domain.TodoItemTitleMax, "请输入事项")
+	title, err := todoText(item.Title, domain.TodoItemTitleMax, "请填写事项")
 	if err != nil {
 		return domain.TodoItem{}, err
 	}

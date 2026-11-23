@@ -39,7 +39,7 @@ func (m *Model) addDialog(c ui.C) {
 			if ui.Button(c, "取消").Secondary().Clicked() {
 				m.add.open = false
 			}
-			if ui.Button(c, "新增").Disabled(m.add.date == "").Clicked() {
+			if ui.Button(c, "创建").Disabled(m.add.date == "").Clicked() {
 				m.submitAdd()
 			}
 		})

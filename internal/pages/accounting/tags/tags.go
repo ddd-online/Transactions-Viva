@@ -603,7 +603,7 @@ func (m *Model) confirmCategory() {
 		}
 	}
 	if m.repo == nil {
-		m.categoryError = "工作空间尚未打开"
+		m.categoryError = "还没有打开工作空间"
 		return
 	}
 	if err := m.repo.CreateCategory(context.Background(), m.ledgerID, name, m.kind.value()); err != nil {
@@ -627,7 +627,7 @@ func (m *Model) confirmCategory() {
 	m.tagList.Select(-1)
 	m.tagList.ScrollTo(0, ui.ListStart)
 	m.closeCategoryModal()
-	m.toaster.Show("分类已添加", "", ui.ToastSuccess)
+	m.toaster.Show("分类已创建", "", ui.ToastSuccess)
 }
 
 // confirmTag adds the typed tag under the chosen category.
@@ -643,7 +643,7 @@ func (m *Model) confirmTag() {
 		}
 	}
 	if m.repo == nil {
-		m.tagError = "工作空间尚未打开"
+		m.tagError = "还没有打开工作空间"
 		return
 	}
 	key := m.selected + ":" + m.kind.value()
@@ -660,7 +660,7 @@ func (m *Model) confirmTag() {
 		m.tagList.ScrollIntoView(len(m.currentTags()) - 1)
 	}
 	m.closeTagModal()
-	m.toaster.Show("标签已添加", "", ui.ToastSuccess)
+	m.toaster.Show("标签已创建", "", ui.ToastSuccess)
 }
 
 // askDeleteCategory and askDeleteTag open the delete confirmation.
@@ -676,7 +676,7 @@ func (m *Model) askDeleteTag(name string) {
 func (m *Model) confirmDelete() {
 	if m.repo == nil {
 		m.deleteOpen = false
-		m.toaster.Show("工作空间尚未打开", "", ui.ToastError)
+		m.toaster.Show("还没有打开工作空间", "", ui.ToastError)
 		return
 	}
 	if m.deleteTag {
@@ -727,7 +727,7 @@ func (m *Model) categoryModal(c ui.C) {
 			if ui.Button(c, "取消").Secondary().Clicked() {
 				m.closeCategoryModal()
 			}
-			confirm := ui.Button(c, "添加").
+			confirm := ui.Button(c, "创建").
 				Disabled(strings.TrimSpace(m.categoryName) == "")
 			if confirm.Clicked() {
 				m.confirmCategory()
@@ -756,7 +756,7 @@ func (m *Model) tagModal(c ui.C) {
 			if ui.Button(c, "取消").Secondary().Clicked() {
 				m.closeTagModal()
 			}
-			confirm := ui.Button(c, "添加").Disabled(strings.TrimSpace(m.tagName) == "")
+			confirm := ui.Button(c, "创建").Disabled(strings.TrimSpace(m.tagName) == "")
 			if confirm.Clicked() {
 				m.confirmTag()
 			}

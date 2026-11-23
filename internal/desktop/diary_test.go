@@ -32,7 +32,7 @@ func advance(t *testing.T, driver *app.Driver) {
 func TestDiaryPageWritesTheDay(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "日记")
-	if !shows(driver, "还没有日记") {
+	if !shows(driver, "暂无日记") {
 		t.Fatal("an empty book should say it has no diary")
 	}
 	today := domain.DiaryToday()
@@ -81,17 +81,17 @@ func TestDiaryPageWritesTheDay(t *testing.T) {
 	}
 
 	click(t, driver, "删除日记")
-	if !shows(driver, "删除这篇日记？") {
+	if !shows(driver, "删除日记「") {
 		t.Fatal("the delete confirmation did not open")
 	}
-	click(t, driver, "确认删除")
+	click(t, driver, "删除")
 	if _, err := model.workspace.DiaryEntry(context.Background(), bookID, today); err == nil {
 		t.Fatal("the diary survived the confirmation")
 	}
 	if shows(driver, "4 字") {
 		t.Fatal("the editor still shows the deleted text")
 	}
-	if !shows(driver, "还没有日记") {
+	if !shows(driver, "暂无日记") {
 		t.Fatal("the empty notice did not come back")
 	}
 }
@@ -149,7 +149,7 @@ func TestDiaryBooksHoldTheirOwnDays(t *testing.T) {
 
 	// The new book starts empty, and writing into it leaves the first alone.
 	click(t, driver, "日记")
-	if !shows(driver, "还没有日记") {
+	if !shows(driver, "暂无日记") {
 		t.Fatal("the new book should start empty")
 	}
 	if shows(driver, "第一本的日记") {

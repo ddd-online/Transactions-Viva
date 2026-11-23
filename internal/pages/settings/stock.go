@@ -426,7 +426,7 @@ func (m *Model) saveStockFee(spec Spec) {
 func parseStockFeeNumber(value string) (float64, error) {
 	number, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
 	if err != nil || math.IsNaN(number) || math.IsInf(number, 0) {
-		return 0, fmt.Errorf("无效的费率")
+		return 0, fmt.Errorf("费率请填数字")
 	}
 	return number, nil
 }
@@ -437,7 +437,7 @@ func (m *Model) stockOperationsDialog(c ui.C, spec Spec) {
 	}
 	ui.ModalWith(c, &m.stock.operationsOpen, "操作记录", ui.ModalSpec{Width: 640}, func() {
 		if len(spec.Stock.Operations) == 0 {
-			typography.Caption(c, "还没有可回滚的操作").PadY(8)
+			typography.Caption(c, "暂无可回滚的操作").PadY(8)
 			return
 		}
 		ui.Column(c).FillWidth().Children(func() {
@@ -552,8 +552,7 @@ func trimNumber(value float64) string {
 }
 
 func stockConfigError(err error) string {
-	message := err.Error()
-	return strings.TrimPrefix(message, "无效的数据：")
+	return err.Error()
 }
 
 // stockCloseIcon is the chip's ×. The shared icon set has no close glyph.

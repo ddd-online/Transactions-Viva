@@ -234,7 +234,7 @@ func TestNavigationSwitchesSections(t *testing.T) {
 	}
 
 	click(t, driver, "日记")
-	if !shows(driver, "还没有日记") || !shows(driver, "今天") {
+	if !shows(driver, "暂无日记") || !shows(driver, "今天") {
 		t.Fatal("日记 did not show the diary screen")
 	}
 }
@@ -283,7 +283,7 @@ func TestTagsPage(t *testing.T) {
 	if err := driver.Type("宠物"); err != nil {
 		t.Fatal(err)
 	}
-	click(t, driver, "添加")
+	click(t, driver, "创建")
 	if !hasControl(driver, "宠物") {
 		t.Fatal("the new category is not in the list")
 	}
@@ -296,7 +296,7 @@ func TestTagsPage(t *testing.T) {
 	if err := driver.Type("洗澡"); err != nil {
 		t.Fatal(err)
 	}
-	click(t, driver, "添加")
+	click(t, driver, "创建")
 	if !hasControl(driver, "洗澡") {
 		t.Fatal("the new tag is not in the list")
 	}
@@ -307,7 +307,7 @@ func TestTagsPage(t *testing.T) {
 	if err := driver.Type("宠物"); err != nil {
 		t.Fatal(err)
 	}
-	click(t, driver, "添加")
+	click(t, driver, "创建")
 	if !shows(driver, "该分类已存在") {
 		t.Fatal("the duplicate category was accepted")
 	}
@@ -343,7 +343,7 @@ func TestTemplatesPage(t *testing.T) {
 	}
 
 	click(t, driver, "新建模板")
-	click(t, driver, "保存")
+	click(t, driver, "创建")
 	if !shows(driver, "模板名称不能为空") {
 		t.Fatal("an empty name was accepted")
 	}
@@ -351,7 +351,7 @@ func TestTemplatesPage(t *testing.T) {
 	if err := driver.Type("咖啡外带"); err != nil {
 		t.Fatal(err)
 	}
-	click(t, driver, "保存")
+	click(t, driver, "创建")
 	if !shows(driver, "分类不能为空") {
 		t.Fatal("a missing category was accepted")
 	}
@@ -371,7 +371,7 @@ func TestTemplatesPage(t *testing.T) {
 	if err := driver.Type("外带咖啡"); err != nil {
 		t.Fatal(err)
 	}
-	click(t, driver, "保存")
+	click(t, driver, "创建")
 	if !hasControl(driver, "删除模板 咖啡外带") {
 		t.Fatal("the new template is not in the table")
 	}
@@ -421,7 +421,7 @@ func TestRecordsPage(t *testing.T) {
 		}
 		click(t, driver, "分类")
 		click(t, driver, "娱乐休闲")
-		click(t, driver, "保存")
+		click(t, driver, "创建")
 		if !shows(driver, "-88.50") {
 			t.Fatal("the composer did not add its row")
 		}
@@ -1342,7 +1342,7 @@ func TestSettingsWorkspacePicker(t *testing.T) {
 	driver, _ := openModel(t, model)
 
 	click(t, driver, "设置")
-	if !shows(driver, "尚未选择工作空间") {
+	if !shows(driver, "还没有选择工作空间") {
 		t.Fatal("the empty workspace is not reported")
 	}
 	click(t, driver, "切换")
@@ -1399,7 +1399,7 @@ func TestClosePromptAsksBeforeClosing(t *testing.T) {
 	model.requestClose(func() { closed = true })
 	driver, _ := openModel(t, model)
 
-	if !shows(driver, "关闭选项") {
+	if !shows(driver, "关闭窗口") {
 		t.Fatal("the close prompt did not appear")
 	}
 	click(t, driver, "取消")
@@ -1409,10 +1409,10 @@ func TestClosePromptAsksBeforeClosing(t *testing.T) {
 
 	model.requestClose(func() { closed = true })
 	settle(t, driver)
-	if !shows(driver, "关闭选项") {
+	if !shows(driver, "关闭窗口") {
 		t.Fatal("the close prompt did not appear the second time")
 	}
-	click(t, driver, "关闭应用")
+	click(t, driver, "退出应用")
 	if !closed || model.closeAsk {
 		t.Fatal("关闭应用 did not close the window")
 	}

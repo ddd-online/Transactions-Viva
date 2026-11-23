@@ -103,7 +103,7 @@ func (m *Model) templateList() []tpl.Template { return m.templates.List(m.ledger
 // The error it returns is what the dialog shows under its fields.
 func (m *Model) saveDraft(draft composer.Draft) error {
 	if m.repo == nil {
-		return errDraft("工作空间尚未打开")
+		return errDraft("还没有打开工作空间")
 	}
 	category := strings.TrimSpace(draft.Category)
 	if category == "" {
@@ -118,12 +118,12 @@ func (m *Model) saveDraft(draft composer.Draft) error {
 	}
 	day, err := time.ParseInLocation(dateLayout, strings.TrimSpace(draft.Date), time.Local)
 	if err != nil {
-		return errDraft("日期格式应为 YYYY-MM-DD")
+		return errDraft("日期要写成 YYYY-MM-DD")
 	}
 	eventDate := strings.TrimSpace(draft.EventDate)
 	if eventDate != "" {
 		if _, err := time.ParseInLocation(dateLayout, eventDate, time.Local); err != nil {
-			return errDraft("关联事件日期格式应为 YYYY-MM-DD")
+			return errDraft("关联事件日期要写成 YYYY-MM-DD")
 		}
 	}
 	at := time.Date(day.Year(), day.Month(), day.Day(), 12, 0, 0, 0, time.Local)
@@ -145,7 +145,7 @@ func (m *Model) saveDraft(draft composer.Draft) error {
 		KeyEventDate:    eventDate,
 		TransactionAt:   at.Unix(),
 	}
-	notice := "记录已保存"
+	notice := "记录已创建"
 	if draft.EditingID != "" {
 		err = m.repo.UpdateRecord(context.Background(), one, draft.Tags)
 		notice = "记录已更新"
@@ -164,7 +164,7 @@ func (m *Model) saveDraft(draft composer.Draft) error {
 // ledger and returns it with the id the dialog selects.
 func (m *Model) saveTemplate(one tpl.Template) (tpl.Template, error) {
 	if m.repo == nil {
-		return one, fmt.Errorf("工作空间尚未打开")
+		return one, fmt.Errorf("还没有打开工作空间")
 	}
 	one.LedgerID = m.ledgerID
 	stored := tpl.ToDomain(one)

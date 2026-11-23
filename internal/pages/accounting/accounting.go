@@ -7,6 +7,7 @@ package accounting
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/vivaui/viva/gfx"
@@ -168,7 +169,7 @@ func (m *Model) DeleteLedger(id string) error {
 		return errNoWorkspace
 	}
 	if len(m.ledgers.List()) <= 1 {
-		return fmt.Errorf("%w：至少保留一个账本", repository.ErrInvalid)
+		return errors.New("至少保留一个账本")
 	}
 	if err := m.repo.DeleteLedger(context.Background(), id); err != nil {
 		return err
@@ -195,7 +196,7 @@ func (m *Model) reloadLedgers() error {
 }
 
 // errNoWorkspace is what a ledger command reports when no workspace is open.
-var errNoWorkspace = fmt.Errorf("%w：工作空间尚未打开", repository.ErrInvalid)
+var errNoWorkspace = errors.New("还没有打开工作空间")
 
 // ledgerChanged reloads every accounting page after the shared 账本 Selector
 // chose another ledger.

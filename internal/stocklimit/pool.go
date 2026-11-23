@@ -51,7 +51,7 @@ func NewEastmoneySource() *EastmoneySource { return &EastmoneySource{} }
 func (s *EastmoneySource) FetchDay(ctx context.Context, date string) ([]domain.StockLimitEntry, error) {
 	queryDate := strings.ReplaceAll(date, "-", "")
 	if !strictDate(date) {
-		return nil, fmt.Errorf("日期格式无效")
+		return nil, fmt.Errorf("日期要写成 YYYY-MM-DD")
 	}
 	params := url.Values{}
 	params.Set("ut", eastmoneyToken)
@@ -82,7 +82,7 @@ func (s *EastmoneySource) FetchDay(ctx context.Context, date string) ([]domain.S
 	}
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("读取涨停池响应失败：%w", err)
+		return nil, fmt.Errorf("读取涨停池数据失败：%w", err)
 	}
 	payload, err := parseLimitPoolPayload(string(body))
 	if err != nil {
@@ -220,13 +220,13 @@ func poolTradeDate(value flexNumber) string {
 func parseLimitPoolPayload(text string) (*limitPoolPayload, error) {
 	var raw rawLimitPayload
 	if err := json.Unmarshal([]byte(text), &raw); err != nil {
-		return nil, fmt.Errorf("涨停池接口返回异常")
+		return nil, fmt.Errorf("涨停池返回的数据无法识别")
 	}
 	if raw.RC == nil || integerValue(*raw.RC) != 0 {
-		return nil, fmt.Errorf("涨停池接口返回异常")
+		return nil, fmt.Errorf("涨停池返回的数据无法识别")
 	}
 	if raw.Data == nil || raw.Data.Pool == nil {
-		return nil, fmt.Errorf("涨停池接口返回异常")
+		return nil, fmt.Errorf("涨停池返回的数据无法识别")
 	}
 	payload := &limitPoolPayload{tradeDate: poolTradeDate(raw.Data.QDate)}
 	seen := make(map[string]bool, len(*raw.Data.Pool))

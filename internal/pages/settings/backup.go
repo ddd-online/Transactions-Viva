@@ -159,7 +159,7 @@ func (m *Model) backupRestoreGroup(c ui.C, spec Spec) {
 						backupBadge(c, "含图片")
 					}
 				})
-				meta := fmt.Sprintf("%s · %s · 库 v%d",
+				meta := fmt.Sprintf("%s · %s · 数据格式 v%d",
 					time.Unix(entry.CreatedAt, 0).Format("2006-01-02 15:04"),
 					backupBytes(entry.SizeBytes), entry.SchemaVersion)
 				typography.Caption(c, meta).Mono().Ellipsis()

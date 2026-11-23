@@ -115,7 +115,7 @@ func (m *Model) workspaceGate(c ui.C) {
 			Background(theme.Card).
 			Shadow(gfx.ShadowMD).Children(func() {
 			typography.Title(c, "打开工作空间")
-			typography.BodyParagraph(c, "账本、记录、分类标签与模板都保存在本地工作空间的 transactions.db 里。选择一个目录开始使用。", 3).Muted()
+			typography.BodyParagraph(c, "账本、记录、分类标签与模板都保存在你选择的本地目录里。选择一个目录开始使用。", 3).Muted()
 			if m.workspaceErr != "" {
 				// A backend message can be a sentence or three; let it wrap
 				// instead of running off the card.

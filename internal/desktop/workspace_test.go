@@ -35,7 +35,7 @@ func TestEmptyWorkspaceCreatesDefaultLedgerAndPersists(t *testing.T) {
 	}
 	click(t, driver, "分类")
 	click(t, driver, "娱乐休闲")
-	click(t, driver, "保存")
+	click(t, driver, "创建")
 	if !shows(driver, "-88.50") {
 		t.Fatal("the composer did not save its record")
 	}

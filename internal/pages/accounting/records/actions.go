@@ -41,7 +41,7 @@ func (m *Model) deleteView(c ui.C) {
 func (m *Model) deleteRecord(id string) {
 	m.deletingID, m.deleteConfirm = "", false
 	if m.repo == nil {
-		m.notice = "工作空间尚未打开"
+		m.notice = "还没有打开工作空间"
 		return
 	}
 	if err := m.repo.DeleteRecord(context.Background(), id); err != nil {
@@ -55,7 +55,7 @@ func (m *Model) deleteRecord(id string) {
 // syncTo copies the row to another ledger through the repository.
 func (m *Model) syncTo(id, targetID string) {
 	if m.repo == nil {
-		m.notice = "工作空间尚未打开"
+		m.notice = "还没有打开工作空间"
 		return
 	}
 	if err := m.repo.SyncRecord(context.Background(), id, targetID); err != nil {

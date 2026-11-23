@@ -1026,7 +1026,7 @@ func (p *positionsPanel) tradeDialog(c ui.C) {
 						typography.Section(c, "成交明细")
 						ui.Spacer(c)
 						if !fixedLots {
-							if ui.Button(c, "+ 添加一笔成交").Ghost().Small().Clicked() {
+							if ui.Button(c, "添加一笔成交").Ghost().Small().Clicked() {
 								p.tradeFills = append(p.tradeFills, positionsTradeFill{})
 							}
 						}
@@ -1413,7 +1413,7 @@ func (p *positionsPanel) saveDaily() {
 		date = p.dailyEditDate
 	}
 	if _, ok := domain.ParseDiaryDate(date); !ok {
-		p.dailyError = "日期格式应为 YYYY-MM-DD"
+		p.dailyError = "日期要写成 YYYY-MM-DD"
 		return
 	}
 	if date > domain.DiaryToday() {
@@ -1887,18 +1887,12 @@ func positionsContains(values []string, want string) bool {
 	return false
 }
 
+// positionsErrorText is the message a panel shows for a failed call. The store
+// writes it as a sentence already (see store.invalidf), so there is nothing to
+// trim.
 func positionsErrorText(err error) string {
 	if err == nil {
 		return ""
 	}
-	text := err.Error()
-	for _, prefix := range []string{
-		repository.ErrInvalid.Error() + "：",
-		repository.ErrNotFound.Error() + "：",
-	} {
-		if strings.HasPrefix(text, prefix) {
-			return strings.TrimPrefix(text, prefix)
-		}
-	}
-	return text
+	return err.Error()
 }

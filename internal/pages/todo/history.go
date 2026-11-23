@@ -96,7 +96,7 @@ func (m *Model) historyView(c ui.C) {
 	if len(m.history) == 0 {
 		ui.Column(c).Fill().Center().Gap(8).Children(func() {
 			ui.Icon(c, icons.CircleCheck).Size(28, 28).Color(theme.MutedForeground)
-			typography.Body(c, "还没有完成的事项").Muted()
+			typography.Body(c, "暂无已完成的事项").Muted()
 			typography.Caption(c, "在待办里勾选完成，它会出现在这里。").Muted()
 		})
 		return

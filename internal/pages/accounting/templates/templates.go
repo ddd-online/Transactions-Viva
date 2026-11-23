@@ -468,7 +468,7 @@ func (m *Model) save() {
 		return
 	}
 	if m.repo == nil {
-		m.form.err = "工作空间尚未打开"
+		m.form.err = "还没有打开工作空间"
 		return
 	}
 	one := tpl.ToDomain(tpl.Template{
@@ -487,7 +487,7 @@ func (m *Model) save() {
 	m.Reload()
 	m.list.ScrollIntoView(len(m.items()) - 1)
 	m.closeForm()
-	m.toaster.Show("模板已保存", "", ui.ToastSuccess)
+	m.toaster.Show("模板已创建", "", ui.ToastSuccess)
 }
 
 func (m *Model) askDelete(one tpl.Template) {
@@ -497,7 +497,7 @@ func (m *Model) askDelete(one tpl.Template) {
 func (m *Model) confirmDelete() {
 	if m.repo == nil {
 		m.deleteOpen = false
-		m.toaster.Show("工作空间尚未打开", "", ui.ToastError)
+		m.toaster.Show("还没有打开工作空间", "", ui.ToastError)
 		return
 	}
 	if err := m.repo.DeleteTemplate(context.Background(), m.deleteID); err != nil {
@@ -551,7 +551,7 @@ func (m *Model) formModal(c ui.C) {
 		if ui.Button(c, "取消").Secondary().Clicked() {
 			m.closeForm()
 		}
-		if ui.Button(c, "保存").Clicked() {
+		if ui.Button(c, "创建").Clicked() {
 			m.save()
 		}
 	})

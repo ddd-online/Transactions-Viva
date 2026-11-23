@@ -194,7 +194,11 @@ func (state *State) View(c ui.C, spec Spec) {
 		if ui.Button(c, "取消").Outline().Clicked() {
 			state.open = false
 		}
-		if ui.Button(c, "保存").Clicked() {
+		action := "创建"
+		if state.draft.EditingID != "" {
+			action = "保存"
+		}
+		if ui.Button(c, action).Clicked() {
 			state.save(spec)
 		}
 	})

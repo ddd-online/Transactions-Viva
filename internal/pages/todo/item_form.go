@@ -111,7 +111,11 @@ func (m *Model) itemFormView(c ui.C) {
 		if ui.Button(c, "取消").Outline().Clicked() {
 			form.open = false
 		}
-		if ui.Button(c, "保存").Clicked() {
+		action := "创建"
+		if form.id != "" {
+			action = "保存"
+		}
+		if ui.Button(c, action).Clicked() {
 			m.saveItem()
 		}
 	})
@@ -254,7 +258,7 @@ func (m *Model) saveItem() {
 	}
 	title := strings.TrimSpace(form.title)
 	if title == "" {
-		form.err = "请输入事项"
+		form.err = "请填写事项"
 		return
 	}
 	themeName := strings.TrimSpace(form.cardTitle)

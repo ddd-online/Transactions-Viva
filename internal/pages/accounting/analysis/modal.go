@@ -99,7 +99,7 @@ func (m *Model) openLine(chart *domain.Chart, index int) {
 
 func (m *Model) createChart() {
 	if m.repo == nil {
-		m.form.err = "工作空间尚未打开"
+		m.form.err = "还没有打开工作空间"
 		return
 	}
 	title := strings.TrimSpace(m.form.title)

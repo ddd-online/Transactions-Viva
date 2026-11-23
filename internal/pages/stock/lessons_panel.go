@@ -325,7 +325,7 @@ func (p *lessonsPanel) OpenForRound(code, roundID string) {
 
 func (p *lessonsPanel) saveForm() {
 	if p.repo == nil || p.active() == "" {
-		p.formError = "工作空间尚未打开"
+		p.formError = "还没有打开工作空间"
 		return
 	}
 	text := strings.TrimSpace(p.text)
@@ -353,7 +353,11 @@ func (p *lessonsPanel) saveForm() {
 		return
 	}
 	p.formOpen = false
-	p.notify("心得已保存", ui.ToastSuccess)
+	if p.editingID == "" {
+		p.notify("心得已创建", ui.ToastSuccess)
+	} else {
+		p.notify("心得已保存", ui.ToastSuccess)
+	}
 	p.Reload()
 	p.changed()
 }
@@ -498,7 +502,11 @@ func (p *lessonsPanel) formModal(c ui.C) {
 		if ui.Button(c, "取消").Outline().Clicked() {
 			p.formOpen = false
 		}
-		if ui.Button(c, "保存").Clicked() {
+		action := "创建"
+		if p.editingID != "" {
+			action = "保存"
+		}
+		if ui.Button(c, action).Clicked() {
 			p.saveForm()
 		}
 	})

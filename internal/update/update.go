@@ -73,15 +73,15 @@ func CheckAt(ctx context.Context, client *http.Client, endpoint, currentVersion 
 	request.Header.Set("User-Agent", "Transactions-App")
 	response, err := client.Do(request)
 	if err != nil {
-		return Result{}, fmt.Errorf("请求 GitHub API 失败：%w", err)
+		return Result{}, fmt.Errorf("连接 GitHub 失败：%w", err)
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return Result{}, fmt.Errorf("请求 GitHub API 失败：HTTP %d", response.StatusCode)
+		return Result{}, fmt.Errorf("连接 GitHub 失败：HTTP %d", response.StatusCode)
 	}
 	var payload release
 	if err := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&payload); err != nil {
-		return Result{}, fmt.Errorf("解析 GitHub 发布信息失败：%w", err)
+		return Result{}, fmt.Errorf("读不懂 GitHub 的发布信息：%w", err)
 	}
 	version := strings.TrimSpace(strings.TrimPrefix(payload.TagName, "v"))
 	if payload.Prerelease || version == "" || !IsNewer(version, currentVersion) {
@@ -180,7 +180,7 @@ func AllowedDownloadHost(raw string, allowLocal bool) bool {
 // the partial file.
 func Download(ctx context.Context, client *http.Client, rawURL, digest, tempDir string, allowLocal bool, progress func(Progress)) (string, error) {
 	if !AllowedDownloadHost(rawURL, allowLocal) {
-		return "", fmt.Errorf("下载地址不在白名单内")
+		return "", fmt.Errorf("这个下载地址不属于本次发布")
 	}
 	parsed, err := url.Parse(rawURL)
 	if err != nil {

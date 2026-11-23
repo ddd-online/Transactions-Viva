@@ -118,7 +118,7 @@ func (m *Model) update(c ui.C, spec Spec) {
 			})
 		case updateAvailable:
 			m.updateResultRow(c, false, "发现新版本 v"+m.updateRelease.Version,
-				"下载完成后可以直接启动安装程序。", func() {
+				"下载后直接安装，工作空间里的数据不受影响。", func() {
 					if ui.Button(c, "查看更新内容").Outline().Clicked() {
 						m.updateNotesOpen = true
 					}
@@ -137,7 +137,6 @@ func (m *Model) update(c ui.C, spec Spec) {
 					}
 				})
 				ui.Progress(c, float32(percent)/100).FillWidth().Height(6)
-				typography.Caption(c, "下载完成后可以开始更新。")
 			})
 		case updateDownloaded:
 			ui.Column(c).FillWidth().Gap(8).Children(func() {
@@ -161,7 +160,7 @@ func (m *Model) update(c ui.C, spec Spec) {
 			ui.Row(c).FillWidth().Items(ui.Center).Gap(metrics.GapItem).Children(func() {
 				ui.Column(c).Grow(1).Gap(4).Children(func() {
 					typography.Body(c, "检查更新")
-					typography.Caption(c, "从 GitHub Releases 获取最新版本。")
+					typography.Caption(c, "从 GitHub 的发布页获取最新版本。")
 				})
 				if ui.Button(c, "检查更新").Secondary().Clicked() {
 					m.startUpdateCheck()

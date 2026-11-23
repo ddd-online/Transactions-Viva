@@ -100,7 +100,7 @@ func (m *Model) proxy(c ui.C, spec Spec) {
 				}
 			})
 		default:
-			typography.Caption(c, "所有联网请求直连，不读取环境变量代理。").Muted()
+			typography.Caption(c, "所有联网都直连，不读取环境变量里的代理设置。").Muted()
 		}
 	})
 }

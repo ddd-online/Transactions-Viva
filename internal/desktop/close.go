@@ -73,34 +73,21 @@ func (m *Model) closeModal(c ui.C) {
 	if !m.closeAsk {
 		return
 	}
-	ui.ModalWith(c, &m.closeAsk, "关闭选项", ui.ModalSpec{Width: 440}, func() {
-		// The dialog's three lines, kept apart: a single Text does not wrap,
-		// so the tail of the second line was clipped by the modal's edge. Each
-		// line wraps on its own, and the long ones are allowed the lines they
-		// need instead of an ellipsis.
-		ui.Column(c).Gap(6).Children(func() {
-			typography.BodyParagraph(c, "请选择关闭行为：", 1)
-			// One option per line. On one line the sentence wrapped mid-phrase
-			// and left 「行。」 alone; the semicolon is a list, so it becomes one.
-			ui.Column(c).Gap(2).Children(func() {
-				typography.BodyParagraph(c, "「关闭应用」= 直接退出。", 1)
-				typography.BodyParagraph(c, "「缩小到托盘」= 隐藏窗口继续运行。", 1)
-			})
-			if m.trayOK {
-				typography.CaptionParagraph(c, "可在「设置 → 通用设置 → 关闭行为」中固定该选择。", 2)
-			} else {
-				typography.CaptionParagraph(c, "当前系统没有可用的托盘，关闭会直接退出。可在「设置 → 通用设置 → 关闭行为」中固定该选择。", 3)
-			}
-		})
+	ui.ModalWith(c, &m.closeAsk, "关闭窗口", ui.ModalSpec{Width: 440}, func() {
+		if m.trayOK {
+			typography.CaptionParagraph(c, "可在「设置 → 通用设置 → 关闭行为」里固定这个选择。", 2)
+		} else {
+			typography.CaptionParagraph(c, "当前系统没有托盘，关闭会直接退出。可在「设置 → 通用设置 → 关闭行为」里固定这个选择。", 3)
+		}
 	}, func() {
 		if ui.Button(c, "取消").Secondary().Clicked() {
 			m.closeAsk, m.closeAllow = false, nil
 		}
-		if m.trayOK && ui.Button(c, "缩小到托盘").Secondary().Clicked() {
+		if m.trayOK && ui.Button(c, "最小化到托盘").Secondary().Clicked() {
 			m.closeAsk, m.closeAllow = false, nil
 			m.hideToTray()
 		}
-		if ui.Button(c, "关闭应用").Destructive().Clicked() {
+		if ui.Button(c, "退出应用").Destructive().Clicked() {
 			if allow := m.closeAllow; allow != nil {
 				m.closeAsk, m.closeAllow = false, nil
 				allow()

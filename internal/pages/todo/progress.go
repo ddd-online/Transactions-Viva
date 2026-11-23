@@ -132,7 +132,7 @@ func (m *Model) progressView(c ui.C) {
 
 func (m *Model) saveProgressEdit(panel *progressPanel, line *domain.TodoProgress) {
 	if strings.TrimSpace(panel.editText) == "" {
-		panel.err = "请输入进度"
+		panel.err = "请填写进度"
 		return
 	}
 	saved, err := m.todos.UpdateTodoProgress(m.context(), line.ID, panel.editText)
