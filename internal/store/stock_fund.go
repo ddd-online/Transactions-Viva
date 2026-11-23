@@ -199,11 +199,22 @@ func (w *Workspace) writePrincipalChange(
 			return err
 		}
 		return createStockOperation(ctx, tx, accountID, domain.StockOperationFund,
-			eventText, "¥"+domain.CentsToYuan(amount), recordID)
+			eventText, fundAmountText(amount), recordID)
 	})
 }
 
 // recalculateStockCashChain rebuilds the derived balances of one account.
+// fundAmountText is the amount the operation log records: the symbol, with a
+// withdrawal's minus in front of it (-¥500.00), so the log reads like every
+// money cell in the application.
+func fundAmountText(cents int64) string {
+	text := domain.CentsToYuan(cents)
+	if strings.HasPrefix(text, "-") {
+		return "-¥" + text[1:]
+	}
+	return "¥" + text
+}
+
 func recalculateStockCashChain(ctx context.Context, tx *sql.Tx, accountID string, principal int64) error {
 	var added int64
 	if err := tx.QueryRowContext(ctx,

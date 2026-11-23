@@ -134,3 +134,28 @@ func TestStockOperationsKeepLatestTen(t *testing.T) {
 		t.Fatalf("newest operation = %+v", operations[0])
 	}
 }
+
+// TestStockWithdrawOperationPutsTheSignInFrontOfTheSymbol keeps the log's
+// amount in the application's one money format: a withdrawal is -¥200.00, not
+// ¥-200.00.
+func TestStockWithdrawOperationPutsTheSignInFrontOfTheSymbol(t *testing.T) {
+	workspace := testWorkspace(t)
+	ctx := context.Background()
+	account := stockTestAccount(t, workspace)
+	if err := workspace.AddStockPrincipal(ctx, account.ID, 100_000, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := workspace.WithdrawStock(ctx, account.ID, 20_000, ""); err != nil {
+		t.Fatal(err)
+	}
+	operations, err := workspace.StockOperations(ctx, account.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(operations) == 0 || operations[0].Action != "支取" {
+		t.Fatalf("newest operation = %+v", operations)
+	}
+	if operations[0].Detail != "-¥200.00" {
+		t.Fatalf("withdraw detail = %q", operations[0].Detail)
+	}
+}

@@ -449,13 +449,25 @@ func (p *accountPanel) submitAmount() {
 	}
 }
 
-func money(cents int64) string { return "¥" + domain.CentsToYuan(cents) }
+// money is the one money format: the symbol first, the sign in front of it, so
+// a negative reading is -¥1.00 everywhere it appears, the same way the chart
+// tip and the account's own fund rows write it. A "¥-1.00" reads as a symbol
+// with a minus inside the number rather than a negative amount.
+func money(cents int64) string {
+	text := domain.CentsToYuan(cents)
+	if strings.HasPrefix(text, "-") {
+		return "-¥" + text[1:]
+	}
+	return "¥" + text
+}
 
+// signedMoney is money with an explicit direction: the changes and deltas that
+// name a movement (+¥1.00) instead of just stating an amount.
 func signedMoney(cents int64) string {
 	if cents < 0 {
-		return "-¥" + domain.CentsToYuan(-cents)
+		return money(cents)
 	}
-	return "+¥" + domain.CentsToYuan(cents)
+	return "+" + money(cents)
 }
 
 func pnlColor(theme gfx.Theme, value int64) gfx.Color {
