@@ -404,7 +404,8 @@ func (m *Model) editor(c ui.C) {
 }
 
 // moodRow is one choice of the picker: what it stores, the emoji it paints and
-// the Chinese name that names it for assistive technology.
+// the Chinese name that names it for assistive technology and explains the face
+// in its tooltip.
 type moodRow struct {
 	value string
 	emoji string
@@ -412,8 +413,9 @@ type moodRow struct {
 }
 
 // moodRows are the picker's six choices in the picker's order: 清除 first,
-// then the five moods. The names are the accessible labels — ui.Choice would
-// name each segment by its emoji alone, and a screen reader would read a face.
+// then the five moods. The names are the accessible labels and the tooltips —
+// ui.Choice would name each segment by its emoji alone, and both a screen reader
+// and a pointer would get a face with no word for it.
 var moodRows = [...]moodRow{
 	{value: "", emoji: "—", name: "清除心情"},
 	{value: "😤", emoji: "😤", name: "烦躁"},
@@ -461,7 +463,8 @@ func (m *Model) moodPicker(c ui.C) {
 				Radius(metrics.RadiusItem()).
 				Hover(ui.Look{}.Background(theme.Hover)).
 				Pressed(ui.Look{}.Background(state.Pressed(*theme))).
-				Focus(ui.Look{}.Ring(2, theme.Ring))
+				Focus(ui.Look{}.Ring(2, theme.Ring)).
+				Tooltip(option.name)
 			if chosen {
 				button = button.Background(pill)
 			}
