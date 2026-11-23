@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/typography"
@@ -61,7 +62,13 @@ func (m *Model) proxy(c ui.C, spec Spec) {
 				if m.proxyState == "fail" {
 					color, tip = theme.Danger, "上次检测：失败"
 				}
-				ui.Row(c).Size(8, 8).Radius(4).Background(color).Tooltip(tip)
+				// The dot is a status, not a control: it carries an identity so
+				// its tooltip has something to hang on and a screen reader can
+				// read the result, but it stays out of the Tab order — it says
+				// what happened, it does not act.
+				ui.Row(c).Size(8, 8).Radius(4).Background(color).
+					HitWith(ui.ID(c), tip, gfx.HitOptions{Role: gfx.RoleStatus, SkipFocus: true}).
+					Tooltip(tip)
 			}
 			ui.Spacer(c)
 			if ui.Choice(c, &mode, proxyModes[:], proxyModeLabel).Changed() {
