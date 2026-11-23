@@ -218,7 +218,7 @@ func (m *Model) deleteTheme(cardID string) {
 // The Select's last two entries are commands, not themes: one switches the
 // field to a text field for a new theme, the other opens the theme manager.
 const (
-	newThemeChoice    = "＋ 新建主题…"
+	newThemeChoice    = "新建主题…"
 	manageThemeChoice = "管理主题…"
 )
 

@@ -72,7 +72,7 @@ func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
 	rightClickText(t, driver, "写周报")
 	click(t, driver, "编辑事项")
 	click(t, driver, "主题")
-	click(t, driver, "＋ 新建主题…")
+	click(t, driver, "新建主题…")
 	driver.Type("下周")
 	click(t, driver, "保存")
 	if !shows(driver, "下周") {
