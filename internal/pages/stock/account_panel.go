@@ -265,9 +265,9 @@ func (p *accountPanel) fundSection(c ui.C) {
 // remark rather than stretched, so the amounts sit beside it instead of around
 // a wide empty column.
 const (
-	fundDateWidth   = float32(92)
-	fundAmountWidth = float32(104)
-	fundRemarkWidth = float32(180)
+	fundDateWidth   = float32(100)
+	fundAmountWidth = float32(110)
+	fundRemarkWidth = float32(200)
 	fundEventMin    = float32(140)
 )
 
