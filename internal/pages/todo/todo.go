@@ -102,7 +102,7 @@ func (m *Model) SetRepository(repo repository.Repository, todos repository.TodoR
 
 // CloseOverlays dismisses every dialog when the workspace changes.
 func (m *Model) CloseOverlays() {
-	m.itemForm.open = false
+	m.itemForm = itemForm{}
 	m.deleteCard.open = false
 	m.deleteItem.open = false
 	m.progress.close()

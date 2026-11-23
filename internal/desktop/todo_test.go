@@ -86,6 +86,22 @@ func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
 	if shows(driver, "下周") || shows(driver, "写周报") {
 		t.Fatal("deleted theme is still shown")
 	}
+
+	// 本周 is now empty and has no row in the table; the theme manager is
+	// where it can still be deleted.
+	clickLast(t, driver, "新建事项")
+	click(t, driver, "主题")
+	click(t, driver, "管理主题…")
+	click(t, driver, "删除")
+	click(t, driver, "删除")
+	if !shows(driver, "还没有主题") {
+		t.Fatal("the deleted theme is still in the theme manager")
+	}
+	click(t, driver, "返回")
+	click(t, driver, "取消")
+	if !shows(driver, "把下一件事放到板上") {
+		t.Fatal("the board is not empty after deleting every theme")
+	}
 	if !shows(driver, "把下一件事放到板上") {
 		t.Fatal("the empty board is not shown after the table empties")
 	}
