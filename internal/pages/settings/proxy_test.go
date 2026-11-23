@@ -2,8 +2,10 @@ package settings
 
 import (
 	"testing"
+	"time"
 
 	"github.com/vivaui/viva/app"
+	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/config"
@@ -36,4 +38,25 @@ func TestProxyTestResultPaintsItsStatusDot(t *testing.T) {
 	if tested != 1 {
 		t.Fatalf("proxy was tested %d times, want 1", tested)
 	}
+
+	// The dot explains itself on hover: the tooltip is the only place the
+	// result is written, so it has to open.
+	var dot gfx.Rect
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == "上次检测：连通" {
+			dot = hit.Bounds
+		}
+	}
+	if err := driver.Move(dot.X+dot.Width/2, dot.Y+dot.Height/2); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Advance(time.Second); err != nil {
+		t.Fatal(err)
+	}
+	for _, label := range driver.Snapshot().Labels {
+		if label.Value == "上次检测：连通" {
+			return
+		}
+	}
+	t.Fatal("the status dot opened no tooltip")
 }
