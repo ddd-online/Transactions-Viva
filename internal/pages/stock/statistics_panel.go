@@ -13,6 +13,7 @@ import (
 
 	"transactions/internal/components/chartanim"
 	"transactions/internal/components/datepicker"
+	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/pagination"
 	"transactions/internal/components/selectbox"
@@ -356,13 +357,7 @@ func (p *statisticsPanel) applyRecent() {
 // empty is the one empty state both panes share; it fills the room below the
 // toolbar so the icon and sentence are centered in the page.
 func (p *statisticsPanel) empty(c ui.C) {
-	ui.Slot(c).Grow(1).FillWidth().Draw(func(d *ui.DrawContext) {
-		viva.Empty(d.Canvas, *d.Theme, d.Rect, viva.EmptyData{
-			Media: viva.EmptyMediaIcon,
-			Icon:  icons.ChartCandlestick,
-			Title: "暂无已结算的轮次",
-		})
-	})
+	emptystate.Page(c, &icons.ChartCandlestick, "暂无已结算的轮次", "", nil)
 }
 
 // summary is the cards and the curve, in a page that scrolls when the window

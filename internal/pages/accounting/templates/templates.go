@@ -13,6 +13,7 @@ import (
 	"github.com/vivaui/viva/text"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/selectbox"
 	"transactions/internal/components/semantic"
@@ -307,13 +308,7 @@ func headerCenter(c ui.C, text string, width float32) {
 
 // empty is the table body while the ledger has no templates.
 func (m *Model) empty(c ui.C) {
-	ui.Slot(c).Grow(1).FillWidth().Draw(func(d *ui.DrawContext) {
-		viva.Empty(d.Canvas, *d.Theme, d.Rect, viva.EmptyData{
-			Media:       viva.EmptyMediaDefault,
-			Title:       "暂无模板",
-			Description: "把常记的一笔存成模板，记一笔时可以直接选。",
-		})
-	})
+	emptystate.Page(c, nil, "暂无模板", "把常记的一笔存成模板，记一笔时可以直接选。", nil)
 }
 
 // row declares one template: drag handle, name, type chip, category, tags,

@@ -210,7 +210,7 @@ Transactions 是本地优先的个人财务桌面工作台。窗口是一张安�
 
 **The Mono Money Rule.** 每一笔金额、每一个价格都用等宽面（`ui.Text(...).Mono()`；画布上是 `gfx.TextStyle{Mono: true}`），右对齐，列与列对齐。正文里出现的钱也必须换面——数字不是散文；表单里的金额输入框同样等宽，免得录入时字宽跳动。一行里既有中文又有金额时（「费用合计 ¥5.03」「从高点回落 ¥2511.35」），用 `typography.CaptionMoney` 或给整行 `.Mono()`：中文回落到正文字形，数字落在等宽面上。
 
-**The Five Steps Rule.** 12 → 14 → 16 → 20 → 24 是全部档位，相邻两档至少差 2px：1px 在屏幕上是读不出层级的，所以参考工程的 12 / 13 / 14 三档在这里收成两档。只在一页需要的数字，先问那页的层级是不是错了。文本尺寸不许写成数字——`internal/components/typography/typography_test.go` 扫描 `internal/`，多写一个 `FontSize(13)` 就构建失败。框架自己画的字号不在五档里，也不许搬进页面排版：控件标签 14、对话框标题 16、`viva.Empty` 的页面级空态标题 19 Medium（= 14 + 5）、说明 14。
+**The Five Steps Rule.** 12 → 14 → 16 → 20 → 24 是全部档位，相邻两档至少差 2px：1px 在屏幕上是读不出层级的，所以参考工程的 12 / 13 / 14 三档在这里收成两档。只在一页需要的数字，先问那页的层级是不是错了。文本尺寸不许写成数字——`internal/components/typography/typography_test.go` 扫描 `internal/`，多写一个 `FontSize(13)` 就构建失败。框架自己画的字号不在五档里，也不许搬进页面排版：控件标签 14、对话框标题 16。页面级空态因此不用框架的 `viva.Empty`（它把标题画成 19 Medium），用 `emptystate.Page`：Title 20 + Body 14 + 真按钮。
 
 **The Grid Reads Even Rule.** 一个指标网格里的数字同大（Figure）；只有独立成块的唯一大数字才配 Metric。统计页那九格全是 Figure，账户页的「总资产」单独一块，才是 Metric。
 
@@ -326,7 +326,7 @@ Transactions 是本地优先的个人财务桌面工作台。窗口是一张安�
 ### Navigation
 
 - **Style:** 204px 灰列，行 32px（子项 28px）、5.5px 圆角、8px 左右内边距，图标 16px 与文字相距 8px。
-- **States:** 悬停与选中用同一块 Highlight 底；选中行字重 500、字色加深。没有蓝色选中条——强调色在这条列里不出现。
+- **States:** 悬停与选中用同一块 Highlight 底；选中行换成主色底 + 对比前景色，字重不变——中文没有 500，加深只能靠颜色。没有蓝色选中条——强调色在这条列里不出现。
 - **Two levels:** 一级项展开自己的子功能，同时收起其他一级项；没有子功能的分区（事件、日记）就是一行。
 
 ### Settings rows
@@ -350,8 +350,13 @@ Transactions 是本地优先的个人财务桌面工作台。窗口是一张安�
 - **Character:** 一张表就是这一页的内容，不是嵌在卡片里的卡片。
 - **Header:** Caption（12px）次要灰，行高 34px，底部一条发丝线。
 - **Rows:** 48px，底部发丝线；悬停用 `theme.Hover`（几乎察觉不到的一档）。
-- **Cells:** 日期 13px、类型 12px 500 且带语义色、分类与标签 12px、描述 13px 吃剩余宽度、金额 13px 500 等宽右对齐。
+- **Cells:** 每一格都是 Body（14px）——日期、类型、分类、标签、描述；金额 Body 14 等宽、右对齐；类型字带语义色，权重不抬。胶囊与星标留在 Caption（12px）。列宽固定，描述吃剩余宽度并省略。
 - **Marks:** 离群值是一枚 11px 语义色胶囊（12% 底），关联事件日期是一枚琥珀星。
+
+### Empty states
+
+- **Page:** `emptystate.Page`——28px 图标（可省）、Title 20、Body 14 一句、动作行，整块最宽 384px 居中；动作就是真的按钮，最后一个才是主按钮。不用框架的 `viva.Empty`：它把标题画成 19 Medium，不在五档里。
+- **Section:** `emptystate.Notice`——一行 Body 14 次要灰，居中在空出来的区域里。面板里的「暂无 X」都走这两个，不各写一套。
 
 ### Chips / Marks
 

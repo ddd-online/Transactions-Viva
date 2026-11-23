@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	viva "github.com/vivaui/viva/components"
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/datepicker"
+	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/pagination"
 	"transactions/internal/components/semantic"
@@ -493,69 +493,20 @@ func (m *Model) row(r ui.ListRow) {
 	})
 }
 
-// emptyActions are the buttons the empty state offers, in order.
-const emptyActionCount = 3
-
-// emptyActions are their labels: the last one is the primary action.
-var emptyActions = [emptyActionCount]string{"上月", "今年", "记一笔"}
-
 // empty is what the content area says when the time range matches nothing: the
-// theme's empty state, with the actions the page offered underneath it.
+// page's empty state, with the actions the page offers underneath it.
 func (m *Model) empty(c ui.C) {
-	theme := c.Theme()
-	var ids [emptyActionCount]gfx.ID
-	for index := range ids {
-		ids[index] = ui.ID(c)
-	}
-	row := viva.BeginButton(nil, *theme, gfx.ID{}, gfx.Rect{}).BoundsHeight()
-	ui.Slot(c).Grow(1).FillWidth().Draw(func(d *ui.DrawContext) {
-		content := viva.Empty(d.Canvas, *d.Theme, d.Rect, viva.EmptyData{
-			Media:         viva.EmptyMediaIcon,
-			Icon:          icons.Wallet,
-			Title:         "这个时间范围里没有记录",
-			Description:   "换个时间范围，或直接记一笔。",
-			ContentHeight: row,
-		})
-		m.paintEmptyActions(d, ids, content)
-	})
-}
-
-// paintEmptyActions paints the empty state's buttons into the row the native
-// empty state reserved, and applies a press on them after the paint.
-func (m *Model) paintEmptyActions(d *ui.DrawContext, ids [emptyActionCount]gfx.ID, content gfx.Rect) {
-	if content.Width <= 0 || content.Height <= 0 {
-		return
-	}
-	theme := *d.Theme
-	metrics := theme.Metrics
-	var widths [emptyActionCount]float32
-	total := float32(0)
-	for index, label := range emptyActions {
-		widths[index] = viva.BeginButton(d.Canvas, theme, ids[index], content).
-			SizeToFit(label).BoundsWidth()
-		total += widths[index]
-	}
-	total += float32(emptyActionCount-1) * metrics.GapItem
-	x := content.X + max((content.Width-total)/2, 0)
-	for index, label := range emptyActions {
-		button := viva.BeginButton(d.Canvas, theme, ids[index], gfx.Rect{
-			X: x, Y: content.Y, Width: widths[index], Height: content.Height,
-		})
-		if index == emptyActionCount-1 {
-			button.Default(label)
-		} else {
-			button.Secondary(label)
+	emptystate.Page(c, &icons.Wallet, "这个时间范围里没有记录", "换个时间范围，或直接记一笔。", func() {
+		if ui.Button(c, "上月").Secondary().Clicked() {
+			m.lastMonth()
 		}
-		x += widths[index] + metrics.GapItem
-	}
-	switch {
-	case d.Canvas.Clicked(ids[0]):
-		d.Canvas.AfterPaint(m.lastMonth)
-	case d.Canvas.Clicked(ids[1]):
-		d.Canvas.AfterPaint(m.thisYear)
-	case d.Canvas.Clicked(ids[2]):
-		d.Canvas.AfterPaint(m.openComposer)
-	}
+		if ui.Button(c, "今年").Secondary().Clicked() {
+			m.thisYear()
+		}
+		if ui.Button(c, "记一笔").Clicked() {
+			m.openComposer()
+		}
+	})
 }
 
 // CloseOverlays closes the panels this page floats over itself: the range picker
