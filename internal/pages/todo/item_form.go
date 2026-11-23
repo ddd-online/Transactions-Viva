@@ -10,17 +10,17 @@ import (
 	"transactions/internal/components/selectbox"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
+	"transactions/internal/icons"
 )
 
-type cardForm struct {
-	open  bool
-	title string
-	err   string
-}
-
 type itemForm struct {
-	open       bool
+	open bool
+	// cardID is the theme the item is saved into; cardTitle is the name the
+	// form shows, which may be a theme that does not exist yet.
 	cardID     string
+	cardTitle  string
+	themes     []string
+	themesOpen bool
 	id         string
 	title      string
 	start      string
@@ -44,60 +44,23 @@ type deleteItem struct {
 	title string
 }
 
-func (m *Model) openCardForm() {
-	m.cardForm = cardForm{open: true}
-}
-
+// openItemForm starts a new item (cardID empty) or edits one. The theme choices
+// are the cards the board has now; a name the user types is created on save.
 func (m *Model) openItemForm(cardID string, item *domain.TodoItem) {
-	if item == nil {
-		m.itemForm = itemForm{
-			open: true, cardID: cardID, urgency: domain.DefaultTodoLevel, importance: domain.DefaultTodoLevel,
-		}
-		return
+	form := itemForm{
+		open: true, cardID: cardID,
+		urgency: domain.DefaultTodoLevel, importance: domain.DefaultTodoLevel,
+		themes: m.cardTitles(),
 	}
-	m.itemForm = itemForm{
-		open: true, cardID: item.CardID, id: item.ID, title: item.Title,
-		start: item.StartDate, due: item.DueDate,
-		urgency: item.Urgency, importance: item.Importance,
+	if item != nil {
+		form.id = item.ID
+		form.title = item.Title
+		form.cardID = item.CardID
+		form.cardTitle = m.cardTitle(item.CardID)
+		form.start, form.due = item.StartDate, item.DueDate
+		form.urgency, form.importance = item.Urgency, item.Importance
 	}
-}
-
-func (m *Model) cardFormView(c ui.C) {
-	if !m.cardForm.open {
-		return
-	}
-	ui.ModalWith(c, &m.cardForm.open, "新建主题", ui.ModalSpec{Width: 420}, func() {
-		ui.Column(c).FillWidth().Gap(12).Children(func() {
-			typography.Caption(c, "主题")
-			ui.TextField(c, &m.cardForm.title, "主题", "例如：本周").AutoFocus()
-			if m.cardForm.err != "" {
-				typography.Caption(c, m.cardForm.err).Color(c.Theme().Danger)
-			}
-		})
-	}, func() {
-		if ui.Button(c, "取消").Outline().Clicked() {
-			m.cardForm.open = false
-		}
-		if ui.Button(c, "创建").Clicked() {
-			m.saveCard()
-		}
-	})
-}
-
-func (m *Model) saveCard() {
-	if strings.TrimSpace(m.cardForm.title) == "" {
-		m.cardForm.err = "请输入卡片主题"
-		return
-	}
-	if m.todos == nil {
-		return
-	}
-	if _, err := m.todos.CreateTodoCard(m.context(), m.cardForm.title); err != nil {
-		m.cardForm.err = err.Error()
-		return
-	}
-	m.cardForm = cardForm{}
-	m.reload()
+	m.itemForm = form
 }
 
 func (m *Model) itemFormView(c ui.C) {
@@ -105,15 +68,38 @@ func (m *Model) itemFormView(c ui.C) {
 		return
 	}
 	form := &m.itemForm
-	title := "添加事项"
+	title := "新建事项"
 	if form.id != "" {
 		title = "编辑事项"
 	}
 	ui.ModalWith(c, &form.open, title, ui.ModalSpec{Width: 560}, func() {
 		ui.Column(c).FillWidth().Gap(12).Children(func() {
 			ui.Column(c).Gap(5).Children(func() {
+				typography.Caption(c, "主题")
+				ui.Row(c).FillWidth().Gap(6).Children(func() {
+					ui.TextField(c, &form.cardTitle, "主题", "选择已有主题，或输入新的名字").
+						Grow(1).AutoFocus()
+					picker := ui.Button(c, "选择主题").Ghost().Icon(icons.ChevronDown).IconOnly().
+						Tooltip("选择已有主题")
+					if picker.Clicked() {
+						form.themesOpen = true
+					}
+					ui.Menu(c, picker, &form.themesOpen, func(menu *ui.MenuItems) {
+						if len(form.themes) == 0 {
+							menu.Item("还没有主题").Disabled(true)
+							return
+						}
+						for _, title := range form.themes {
+							if menu.Item(title).Clicked() {
+								form.cardTitle = title
+							}
+						}
+					})
+				})
+			})
+			ui.Column(c).Gap(5).Children(func() {
 				typography.Caption(c, "事项")
-				ui.TextField(c, &form.title, "事项", "例如：写周报").AutoFocus()
+				ui.TextField(c, &form.title, "事项", "例如：写周报")
 			})
 			ui.Row(c).FillWidth().Gap(12).Children(func() {
 				ui.Column(c).Grow(1).Gap(5).Children(func() {
@@ -161,17 +147,40 @@ func (m *Model) itemFormView(c ui.C) {
 
 func (m *Model) saveItem() {
 	form := &m.itemForm
+	if m.todos == nil {
+		return
+	}
 	title := strings.TrimSpace(form.title)
 	if title == "" {
 		form.err = "请输入事项"
+		return
+	}
+	themeName := strings.TrimSpace(form.cardTitle)
+	if themeName == "" {
+		form.err = "请选择或输入主题"
 		return
 	}
 	if form.start != "" && form.due != "" && form.start > form.due {
 		form.err = "截止日期不能早于开始日期"
 		return
 	}
+	// A theme the user typed but the board does not have yet is created here,
+	// so one form both picks an existing theme and starts a new one.
+	cardID := form.cardID
+	if cardID == "" || m.cardTitle(cardID) != themeName {
+		if card, ok := m.cardByTitle(themeName); ok {
+			cardID = card.ID
+		} else {
+			card, err := m.todos.CreateTodoCard(m.context(), themeName)
+			if err != nil {
+				form.err = err.Error()
+				return
+			}
+			cardID = card.ID
+		}
+	}
 	item := domain.TodoItem{
-		ID: form.id, CardID: form.cardID, Title: title,
+		ID: form.id, CardID: cardID, Title: title,
 		StartDate: form.start, DueDate: form.due,
 		Urgency: form.urgency, Importance: form.importance,
 	}

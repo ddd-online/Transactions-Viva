@@ -75,7 +75,9 @@ func todoItemsByStatus(ctx context.Context, db *sql.DB, status string) ([]domain
 	if status == domain.TodoStatusDone {
 		query += "ORDER BY completed_at DESC, created_at DESC, id ASC"
 	} else {
-		query += "ORDER BY created_at ASC, id ASC"
+		// Newest first, and rowid breaks a same-second tie by insertion order,
+		// so items made in one second still read as the order they were made.
+		query += "ORDER BY created_at DESC, rowid DESC"
 	}
 	rows, err := db.QueryContext(ctx, query, status)
 	if err != nil {
@@ -284,14 +286,28 @@ func (w *Workspace) UpdateTodoItem(ctx context.Context, item domain.TodoItem) (d
 	if err != nil {
 		return domain.TodoItem{}, err
 	}
-	item.CardID = existing.CardID
+	// The form lets an edit move the item to another theme; an empty CardID
+	// keeps the one it already had.
+	cardID := existing.CardID
+	if item.CardID != "" && item.CardID != existing.CardID {
+		var exists int
+		if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM todo_card WHERE id = ?",
+			item.CardID).Scan(&exists); err != nil {
+			return domain.TodoItem{}, err
+		}
+		if exists == 0 {
+			return domain.TodoItem{}, fmt.Errorf("%w：卡片不存在", repository.ErrNotFound)
+		}
+		cardID = item.CardID
+	}
+	item.CardID = cardID
 	item.Status = existing.Status
 	item.CompletedAt = existing.CompletedAt
 	item.CreatedAt = existing.CreatedAt
 	item.UpdatedAt = nowUnix()
-	if _, err := db.ExecContext(ctx, "UPDATE todo_item SET title = ?, start_date = ?, due_date = ?, urgency = ?, "+
+	if _, err := db.ExecContext(ctx, "UPDATE todo_item SET card_id = ?, title = ?, start_date = ?, due_date = ?, urgency = ?, "+
 		"importance = ?, updated_at = ? WHERE id = ?",
-		item.Title, item.StartDate, item.DueDate, item.Urgency, item.Importance, item.UpdatedAt,
+		item.CardID, item.Title, item.StartDate, item.DueDate, item.Urgency, item.Importance, item.UpdatedAt,
 		item.ID); err != nil {
 		return domain.TodoItem{}, fmt.Errorf("保存待办事项失败：%w", err)
 	}

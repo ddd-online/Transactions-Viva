@@ -1,24 +1,40 @@
 package desktop
 
-import "testing"
+import (
+	"testing"
 
-func TestTodoBoardCardItemProgressAndHistory(t *testing.T) {
+	"github.com/vivaui/viva/app"
+	"github.com/vivaui/viva/gfx"
+)
+
+func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "待办")
-	click(t, driver, "新建主题")
+
+	// The board is empty: the empty state's own 新建事项 button paints after the
+	// toolbar's, so clickLast takes it.
+	clickLast(t, driver, "新建事项")
 	click(t, driver, "主题")
 	driver.Type("本周")
-	click(t, driver, "创建")
-	if !shows(driver, "本周") {
-		t.Fatal("new card is not shown")
-	}
-
-	click(t, driver, "添加第一件事项")
 	click(t, driver, "事项")
 	driver.Type("写周报")
 	click(t, driver, "保存")
-	if !shows(driver, "写周报") {
-		t.Fatal("new item is not shown")
+	if !shows(driver, "写周报") || !shows(driver, "本周") {
+		t.Fatal("the new item or its theme is not in the table")
+	}
+
+	// A second item under the existing theme: the table is newest first.
+	click(t, driver, "新建事项")
+	click(t, driver, "选择主题")
+	click(t, driver, "本周")
+	click(t, driver, "事项")
+	driver.Type("写日报")
+	click(t, driver, "保存")
+	if !shows(driver, "写日报") {
+		t.Fatal("the second item is not in the table")
+	}
+	if !paintedAbove(t, driver, "写日报", "写周报") {
+		t.Fatal("the table is not newest first")
 	}
 
 	click(t, driver, "展开进度 写周报")
@@ -45,14 +61,57 @@ func TestTodoBoardCardItemProgressAndHistory(t *testing.T) {
 		t.Fatal("restored item is not back on the board")
 	}
 
+	// The row's commands are its context menu: delete the item first.
+	rightClickText(t, driver, "写日报")
 	click(t, driver, "删除事项")
 	clickLast(t, driver, "删除事项")
-	if shows(driver, "写周报") {
+	if shows(driver, "写日报") {
 		t.Fatal("deleted item is still shown")
 	}
-	click(t, driver, "删除主题")
-	clickLast(t, driver, "删除主题")
-	if shows(driver, "本周") {
-		t.Fatal("deleted card is still shown")
+
+	// Editing can move the item to a theme that does not exist yet.
+	rightClickText(t, driver, "写周报")
+	click(t, driver, "编辑事项")
+	click(t, driver, "主题")
+	if err := driver.Key(gfx.KeyBackspace, 0); err != nil {
+		t.Fatal(err)
 	}
+	if err := driver.Key(gfx.KeyBackspace, 0); err != nil {
+		t.Fatal(err)
+	}
+	driver.Type("下周")
+	click(t, driver, "保存")
+	if !shows(driver, "下周") {
+		t.Fatal("the edited item did not move to the new theme")
+	}
+
+	// The same menu deletes the theme and whatever it still holds.
+	rightClickText(t, driver, "写周报")
+	click(t, driver, "删除主题「下周」")
+	clickLast(t, driver, "删除主题")
+	if shows(driver, "下周") || shows(driver, "写周报") {
+		t.Fatal("deleted theme is still shown")
+	}
+	if !shows(driver, "把下一件事放到板上") {
+		t.Fatal("the empty board is not shown after the table empties")
+	}
+}
+
+// paintedAbove reports whether the first exact text paints above the second.
+func paintedAbove(t *testing.T, driver *app.Driver, first, second string) bool {
+	t.Helper()
+	y := map[string]float32{}
+	for _, label := range driver.Snapshot().Labels {
+		if label.Value == first || label.Value == second {
+			if _, ok := y[label.Value]; !ok {
+				y[label.Value] = label.Bounds.Y
+			}
+		}
+	}
+	a, hasA := y[first]
+	b, hasB := y[second]
+	if !hasA || !hasB {
+		t.Fatalf("texts %q / %q are not both painted", first, second)
+	}
+	return a < b
 }

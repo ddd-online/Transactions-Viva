@@ -6,6 +6,7 @@ package todo
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
@@ -43,27 +44,24 @@ type Model struct {
 	todos repository.TodoRepository
 
 	cards   []domain.TodoCard
+	rows    []todoRow
 	history []domain.TodoHistory
 	loaded  bool
 	err     string
 
 	view view
 
-	// collapsed / expanded keep the board's local disclosure state. Card
-	// themes start open; an item starts closed and shows its progress when open.
-	collapsed map[string]bool
-	expanded  map[string]bool
+	// expanded keeps the board's local disclosure state: an item starts closed
+	// and shows its progress when open.
+	expanded map[string]bool
 
 	// progressDraft is the inline "add progress" text per item.
 	progressDraft map[string]string
 
-	cardForm   cardForm
 	itemForm   itemForm
 	deleteCard deleteCard
 	deleteItem deleteItem
 	progress   progressPanel
-	cardMenu   bool
-	cardMenuID string
 
 	bounds  gfx.Rect
 	toaster ui.Toaster
@@ -72,7 +70,6 @@ type Model struct {
 // New returns the empty section; the workspace is connected by SetRepository.
 func New() *Model {
 	return &Model{
-		collapsed:     map[string]bool{},
 		expanded:      map[string]bool{},
 		progressDraft: map[string]string{},
 	}
@@ -95,24 +92,20 @@ func (m *Model) SelectTab(index int) {
 func (m *Model) SetRepository(repo repository.Repository, todos repository.TodoRepository) error {
 	m.CloseOverlays()
 	m.repo, m.todos = repo, todos
-	m.cards, m.history = nil, nil
+	m.cards, m.rows, m.history = nil, nil, nil
 	m.loaded = false
 	m.err = ""
 	m.progressDraft = map[string]string{}
 	m.expanded = map[string]bool{}
-	m.collapsed = map[string]bool{}
 	return nil
 }
 
 // CloseOverlays dismisses every dialog when the workspace changes.
 func (m *Model) CloseOverlays() {
-	m.cardForm.open = false
 	m.itemForm.open = false
 	m.deleteCard.open = false
 	m.deleteItem.open = false
 	m.progress.close()
-	m.cardMenu = false
-	m.cardMenuID = ""
 }
 
 func (m *Model) sync() {
@@ -125,7 +118,7 @@ func (m *Model) sync() {
 
 func (m *Model) reload() {
 	if m.todos == nil {
-		m.cards, m.history = nil, nil
+		m.cards, m.rows, m.history = nil, nil, nil
 		m.loaded = true
 		return
 	}
@@ -133,20 +126,69 @@ func (m *Model) reload() {
 	cards, err := m.todos.TodoCards(ctx)
 	if err != nil {
 		m.err = err.Error()
-		m.cards, m.history = nil, nil
+		m.cards, m.rows, m.history = nil, nil, nil
 		m.loaded = true
 		return
 	}
 	history, err := m.todos.TodoHistory(ctx)
 	if err != nil {
 		m.err = err.Error()
-		m.cards, m.history = nil, nil
+		m.cards, m.rows, m.history = nil, nil, nil
 		m.loaded = true
 		return
 	}
 	m.cards, m.history = cards, history
+	m.rebuildRows()
 	m.loaded = true
 	m.err = ""
+}
+
+// rebuildRows flattens the doing items of every theme into the one table the
+// board paints: newest first, the way a catch-up list reads. Rows point into
+// m.cards, so they are rebuilt after every reload.
+func (m *Model) rebuildRows() {
+	m.rows = m.rows[:0]
+	for cardIndex := range m.cards {
+		card := &m.cards[cardIndex]
+		for itemIndex := range card.Items {
+			m.rows = append(m.rows, todoRow{
+				CardID: card.ID, CardTitle: card.Title, Item: &card.Items[itemIndex],
+			})
+		}
+	}
+	sort.SliceStable(m.rows, func(i, j int) bool {
+		return m.rows[i].Item.CreatedAt > m.rows[j].Item.CreatedAt
+	})
+}
+
+// cardTitles is the themes the item form offers, in board order.
+func (m *Model) cardTitles() []string {
+	titles := make([]string, 0, len(m.cards))
+	for _, card := range m.cards {
+		titles = append(titles, card.Title)
+	}
+	return titles
+}
+
+// cardTitle is the title of the card with this id, or "" when it is gone.
+func (m *Model) cardTitle(cardID string) string {
+	for _, card := range m.cards {
+		if card.ID == cardID {
+			return card.Title
+		}
+	}
+	return ""
+}
+
+// cardByTitle finds a theme by the name typed in the item form; trimming is the
+// form's, so the match is exact.
+func (m *Model) cardByTitle(title string) (domain.TodoCard, bool) {
+	for _, card := range m.cards {
+		if card.Title == title {
+			return card, true
+		}
+	}
+	return domain.TodoCard{}, false
 }
 
 func (m *Model) context() context.Context { return context.Background() }
@@ -178,7 +220,6 @@ func (m *Model) View(c ui.C) {
 	layout.Page(c, m.toolbar, func(c ui.C) {
 		m.body(c)
 	})
-	m.cardFormView(c)
 	m.itemFormView(c)
 	m.deleteCardView(c)
 	m.deleteItemView(c)
@@ -200,27 +241,9 @@ func (m *Model) toolbar(c ui.C) {
 					m.view = viewBoard
 				}
 			}
-			if m.view == viewBoard && len(m.cards) > 0 {
-				allCollapsed := true
-				for _, card := range m.cards {
-					if !m.collapsed[card.ID] {
-						allCollapsed = false
-						break
-					}
-				}
-				label := "全部收起"
-				if allCollapsed {
-					label = "全部展开"
-				}
-				if ui.Button(c, label).Ghost().Small().Clicked() {
-					for _, card := range m.cards {
-						m.collapsed[card.ID] = !allCollapsed
-					}
-				}
-			}
 			ui.Spacer(c)
-			if ui.Button(c, "新建主题").Icon(icons.Plus).Clicked() {
-				m.openCardForm()
+			if ui.Button(c, "新建事项").Icon(icons.Plus).Clicked() {
+				m.openItemForm("", nil)
 			}
 		} else {
 			ui.Spacer(c)

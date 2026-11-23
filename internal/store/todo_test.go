@@ -176,3 +176,52 @@ func TestTodoProgressNotFoundIsNotFound(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 }
+
+func TestTodoItemMovesBetweenCards(t *testing.T) {
+	fixture := storetest.Open(t)
+	ctx := context.Background()
+	workspace := fixture.Workspace
+	first, err := workspace.CreateTodoCard(ctx, "本周")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := workspace.CreateTodoCard(ctx, "下周")
+	if err != nil {
+		t.Fatal(err)
+	}
+	item, err := workspace.CreateTodoItem(ctx, domain.TodoItem{
+		CardID: first.ID, Title: "写周报",
+		Urgency: domain.TodoDefaultLevel, Importance: domain.TodoDefaultLevel,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	moved, err := workspace.UpdateTodoItem(ctx, domain.TodoItem{
+		ID: item.ID, CardID: second.ID, Title: "写周报",
+		Urgency: domain.TodoDefaultLevel, Importance: domain.TodoDefaultLevel,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if moved.CardID != second.ID {
+		t.Fatalf("moved item stays in card %q, want %q", moved.CardID, second.ID)
+	}
+	cards, err := workspace.TodoCards(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, card := range cards {
+		if card.ID == first.ID && len(card.Items) != 0 {
+			t.Fatalf("old card still holds %d items", len(card.Items))
+		}
+		if card.ID == second.ID && (len(card.Items) != 1 || card.Items[0].ID != item.ID) {
+			t.Fatalf("new card holds %+v", card.Items)
+		}
+	}
+	if _, err := workspace.UpdateTodoItem(ctx, domain.TodoItem{
+		ID: item.ID, CardID: "missing", Title: "写周报",
+		Urgency: domain.TodoDefaultLevel, Importance: domain.TodoDefaultLevel,
+	}); err == nil {
+		t.Fatal("moving to a card that does not exist was accepted")
+	}
+}
