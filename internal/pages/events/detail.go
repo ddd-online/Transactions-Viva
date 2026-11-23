@@ -306,12 +306,12 @@ func (m *Model) actions(c ui.C) {
 			}
 			return
 		}
+		ui.Spacer(c)
 		if len(m.images) > 0 {
 			if ui.Button(c, "添加图片").Secondary().Icon(icons.Plus).Clicked() {
 				c.After(func() { m.addImages() })
 			}
 		}
-		ui.Spacer(c)
 		if ui.Button(c, "编辑描述").Secondary().Icon(icons.Pencil).Clicked() {
 			m.startEdit()
 		}
