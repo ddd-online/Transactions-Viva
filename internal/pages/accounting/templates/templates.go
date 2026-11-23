@@ -389,7 +389,8 @@ func chip(c ui.C, text string, color gfx.Color) {
 		PadX(8).PadY(2).Radius(theme.Metrics.RadiusItem())
 }
 
-// dash is the table's empty cell: a muted hyphen.
+// dash is the table's empty cell: the muted em dash every table uses for a
+// missing value.
 func dash(c ui.C) ui.Box {
 	theme := c.Theme()
 	return ui.Text(c, "—").FontSize(typography.SizeBody).Color(theme.MutedForeground)
