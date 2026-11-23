@@ -51,11 +51,11 @@ func (m *Model) board(c ui.C) {
 		return
 	}
 	ui.Column(c).Fill().Children(func() {
-		ui.Row(c).FillWidth().PadSides(layout.Inset, layout.Inset, 12, layout.Inset).Children(func() {
+		ui.Row(c).FillWidth().PadSides(0, layout.Inset, 0, layout.Inset).Children(func() {
 			m.boardHeader(c)
 		})
 		ui.Scroll(c).Grow(1).Children(func() {
-			ui.Column(c).FillWidth().PadSides(layout.Inset, layout.Inset, 4, layout.Inset).Children(func() {
+			ui.Column(c).FillWidth().PadSides(0, layout.Inset, layout.Inset, layout.Inset).Children(func() {
 				for index := range m.rows {
 					m.itemRow(c, &m.rows[index])
 				}
@@ -101,7 +101,7 @@ func (m *Model) itemRow(c ui.C, row *todoRow) {
 		if expanded {
 			label = "收起进度 " + item.Title
 		}
-		line := ui.Row(c).MinHeight(40).FillWidth().PadSides(10, 10, 5, 10).Gap(10).
+		line := ui.Row(c).MinHeight(40).FillWidth().PadSides(5, 10, 5, 10).Gap(10).
 			Items(ui.Center).Radius(theme.Metrics.RadiusItem()).
 			Hit(ui.ID(c), label).
 			Hover(ui.Look{}.Background(state.Hover(*theme)))
