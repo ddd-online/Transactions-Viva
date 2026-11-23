@@ -315,7 +315,7 @@ func (m *Model) toolbar(c ui.C) {
 
 // rail is the year's events: a header with the count, then one card per day.
 func (m *Model) rail(c ui.C, width float32) {
-	ui.Column(c).Width(width).FillHeight().Children(func() {
+	layout.Rail(c, width, func(c ui.C) {
 		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, "事件")
 			layout.SectionCount(c, strconv.Itoa(len(m.events)))

@@ -108,6 +108,16 @@ func Page(c ui.C, toolbar, body func(ui.C)) {
 	})
 }
 
+// Rail is a page's own section column: one fixed width, the page's full
+// height, never squeezed by the content beside it. The analysis chart list,
+// the tags categories, the stock positions and history, the event list, the
+// diary tree and the settings sections all use it; the shell's navigation is
+// a different, narrower column and does not.
+func Rail(c ui.C, width float32, body func(ui.C)) {
+	ui.Column(c).Width(width).MinWidth(width).Shrink(0).FillHeight().
+		Children(func() { body(c) })
+}
+
 // SectionHeader is the 44px band that names a column of content: its title,
 // the count beside it and the action that changes it, inset by padX and
 // spaced by Gap, every part on the band's center line. The rails, the detail

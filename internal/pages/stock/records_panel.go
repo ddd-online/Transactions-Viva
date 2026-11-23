@@ -446,8 +446,7 @@ func (p *recordsPanel) toolbar(c ui.C) {
 func (p *recordsPanel) historyRail(c ui.C) {
 	p.rebuildHistoryView(p.historyFind.Text())
 	p.syncHistorySelection()
-	ui.Column(c).Width(layout.RailWidth).MinWidth(layout.RailWidth).Shrink(0).
-		FillHeight().Children(func() {
+	layout.Rail(c, layout.RailWidth, func(c ui.C) {
 		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, "已清仓")
 			layout.SectionCount(c, strconv.Itoa(len(p.histories))+" 只")

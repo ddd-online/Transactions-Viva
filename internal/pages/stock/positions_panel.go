@@ -383,8 +383,7 @@ func (p *positionsPanel) toolbar(c ui.C) {
 // ------------------------------------------------------------------ 左栏
 
 func (p *positionsPanel) rail(c ui.C) {
-	ui.Column(c).Width(layout.RailWidth).MinWidth(layout.RailWidth).Shrink(0).
-		FillHeight().Children(func() {
+	layout.Rail(c, layout.RailWidth, func(c ui.C) {
 		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, "持仓")
 			layout.SectionCount(c, strconv.Itoa(len(p.positions))+" 只")

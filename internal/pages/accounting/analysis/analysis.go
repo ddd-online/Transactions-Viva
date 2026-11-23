@@ -323,7 +323,7 @@ func (m *Model) toolbar(c ui.C) {
 }
 
 func (m *Model) chartRail(c ui.C) {
-	ui.Column(c).Width(layout.RailWidth).FillHeight().Children(func() {
+	layout.Rail(c, layout.RailWidth, func(c ui.C) {
 		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, "图表")
 			ui.Spacer(c)

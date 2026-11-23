@@ -335,7 +335,7 @@ func (m *Model) selectKind(k kind) {
 // categoryColumn is the left column: the category list and its header.
 func (m *Model) categoryColumn(c ui.C) {
 	categories := m.categories[m.kind]
-	ui.Column(c).Width(categoryColumnWidth).FillHeight().Children(func() {
+	layout.Rail(c, categoryColumnWidth, func(c ui.C) {
 		add := m.columnHeader(c, "分类", len(categories), "新增分类", false)
 		if add.Clicked() {
 			m.openCategoryModal()

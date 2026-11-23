@@ -447,7 +447,7 @@ func (m *Model) View(c ui.C, spec Spec) {
 // chosen row filled and the others quiet.
 func (m *Model) nav(c ui.C) {
 	theme := c.Theme()
-	ui.Column(c).Width(navWidth).FillHeight().Children(func() {
+	layout.Rail(c, navWidth, func(c ui.C) {
 		// The rail's own name starts on the same line as the section title in
 		// the reading column, so the two 20px titles read as one header row.
 		typography.Title(c, "设置").

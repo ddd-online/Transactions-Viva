@@ -342,7 +342,7 @@ func (m *Model) saveState(c ui.C) {
 
 // rail is the date tree column: its own header with the count, then the tree.
 func (m *Model) rail(c ui.C) {
-	ui.Column(c).Width(layout.RailWidth).FillHeight().Children(func() {
+	layout.Rail(c, layout.RailWidth, func(c ui.C) {
 		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, "日记")
 			layout.SectionCount(c, strconv.Itoa(len(m.dates)))

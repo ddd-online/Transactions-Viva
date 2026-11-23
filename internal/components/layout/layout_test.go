@@ -175,3 +175,32 @@ func TestStackedToolbarPutsTheActionOnItsOwnRow(t *testing.T) {
 		t.Fatalf("content starts at %.1f, above the action row", body.Y)
 	}
 }
+
+func TestRailKeepsItsWidthWhenTheContentNeedsRoom(t *testing.T) {
+	page := ui.NewPage(ui.PageConfig{View: func(c ui.C) {
+		ui.Row(c).Fill().Children(func() {
+			Rail(c, RailWidth, func(c ui.C) {
+				ui.Row(c).FillWidth().Height(20).Hit(ui.ID(c), "rail")
+			})
+			ui.Divider(c)
+			ui.Row(c).Grow(1).Height(20).Hit(ui.ID(c), "detail")
+		})
+	}})
+	driver, err := app.NewDriver(ui.Configure(page, app.Config{Width: 600, Height: 400}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(driver.Close)
+
+	hits := map[string]gfx.Rect{}
+	for _, hit := range driver.Snapshot().Hits {
+		hits[hit.Label] = hit.Bounds
+	}
+	rail, detail := hits["rail"], hits["detail"]
+	if rail.Width != RailWidth {
+		t.Fatalf("rail is %.1f wide, want %.1f", rail.Width, RailWidth)
+	}
+	if detail.Width == 0 || detail.X != rail.X+rail.Width+1 {
+		t.Fatalf("detail starts at %.1f, want %.1f", detail.X, rail.X+rail.Width+1)
+	}
+}
