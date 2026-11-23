@@ -37,14 +37,14 @@ func Chip(c ui.C, label string) ui.Box {
 // List draws as many capsules as fit in width on one line. Tags that do not fit
 // become a single "+N" capsule, so a narrow column still says how many the
 // record carries; the editor shows their names. With no tags it draws the
-// table's dash.
+// table's empty dash, the same em dash every table uses for a missing value.
 func List(c ui.C, labels []string, width float32) {
 	theme := c.Theme()
 	if len(labels) == 0 {
 		// The dash keeps the column's width. A cell that shrinks to its glyph
 		// would pull the next column left, and one row without tags would break
 		// the table's grid.
-		ui.Text(c, "-").Width(width).FontSize(typography.SizeBody).Color(theme.MutedForeground)
+		ui.Text(c, "—").Width(width).FontSize(typography.SizeBody).Color(theme.MutedForeground)
 		return
 	}
 	style := gfx.TextStyle{Size: typography.SizeCaption}
