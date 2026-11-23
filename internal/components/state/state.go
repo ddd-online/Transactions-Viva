@@ -9,8 +9,9 @@
 // over Hover — so a held row never falls back to a surface color.
 //
 // The accent hue's chosen/held steps live here too, for the controls that are
-// tinted rather than washed: the selected card in 持仓 and the active sort key.
-// DESIGN.md records the three opacities; a page never writes one.
+// tinted rather than washed: the active sort key. Lists and rails use the
+// wash, so a chosen row reads the same on every page. DESIGN.md records the
+// three opacities; a page never writes one.
 package state
 
 import "github.com/vivaui/viva/gfx"
