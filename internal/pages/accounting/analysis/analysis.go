@@ -324,8 +324,7 @@ func (m *Model) toolbar(c ui.C) {
 
 func (m *Model) chartRail(c ui.C) {
 	ui.Column(c).Width(layout.RailWidth).FillHeight().Children(func() {
-		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
-			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, "图表")
 			ui.Spacer(c)
 		})
@@ -383,7 +382,6 @@ func (m *Model) chartRow(row ui.ListRow) {
 // band at the bottom carries the range's totals. The rail and this column end
 // on the same line.
 func (m *Model) detail(c ui.C) {
-	theme := c.Theme()
 	ui.Column(c).Grow(1).FillHeight().Children(func() {
 		chart := m.selectedChart()
 		if chart == nil {
@@ -392,7 +390,7 @@ func (m *Model) detail(c ui.C) {
 		}
 		m.header(c, chart)
 		if m.loadErr != "" {
-			typography.Caption(c, m.loadErr).Color(theme.Danger).PadX(18).PadY(6)
+			layout.ErrorBanner(c, m.loadErr)
 		}
 		ui.Column(c).Grow(1).FillWidth().Pad(layout.Inset).Gap(layout.BlockGap).
 			Children(func() {
@@ -408,8 +406,7 @@ func (m *Model) detail(c ui.C) {
 // height as the rail's header, so the two rules under them run across the page
 // on one line.
 func (m *Model) header(c ui.C, chart *domain.Chart) {
-	ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
-		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+	layout.SectionHeader(c, layout.Inset).Children(func() {
 		typography.Title(c, chart.Title).Shrink(1).Ellipsis()
 		meta := chartTypeLabel(chart.ChartType)
 		if chart.IsPreset {

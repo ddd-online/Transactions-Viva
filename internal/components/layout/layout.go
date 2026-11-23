@@ -13,7 +13,12 @@
 // the width of a rail). A page never invents a third number.
 package layout
 
-import "github.com/vivaui/viva/ui"
+import (
+	"github.com/vivaui/viva/gfx"
+	"github.com/vivaui/viva/ui"
+
+	"transactions/internal/components/typography"
+)
 
 const (
 	// Inset is the page's horizontal inset: the padding of a toolbar, a table
@@ -91,6 +96,38 @@ func Page(c ui.C, toolbar, body func(ui.C)) {
 	})
 }
 
+// SectionHeader is the 44px band that names a column of content: its title,
+// the count beside it and the action that changes it, inset by padX and
+// spaced by Gap, every part on the band's center line. The rails, the detail
+// headers and a table's own sub-head all draw this band, so their hairlines
+// meet on one line when the columns sit side by side.
+//
+// The caller declares the title and the actions inside it and appends the
+// clipping or shrinking its own column needs; a band nested inside content
+// that is already inset passes zero.
+func SectionHeader(c ui.C, padX float32) ui.Box {
+	return ui.Row(c).Height(SectionHeaderHeight).FillWidth().
+		PadX(padX).Gap(Gap).Items(ui.Center)
+}
+
+// SectionCount is the number that follows a section title, or the "3 只" that
+// says how much of it there is: a Caption on the mono grid, so the counts line
+// up down every rail. It carries no pill: the band's title already names the
+// group, and a counted pill reads as a tag.
+func SectionCount(c ui.C, text string) ui.Box {
+	return typography.Caption(c, text).Mono()
+}
+
+// ErrorBanner is a page's read error: one danger caption under the toolbar, at
+// the page's inset, wrapping rather than clipping. Every page that reads shows
+// the same band, so a failed read never moves content by a page-specific
+// amount.
+func ErrorBanner(c ui.C, message string) {
+	ui.Column(c).FillWidth().PadX(Inset).PadY(6).Children(func() {
+		typography.CaptionParagraph(c, message, 2).Color(c.Theme().Danger)
+	})
+}
+
 // TableHeaderSpec is one table's header geometry. A zero Height uses the
 // standard table-header height; a zero Width fills the available width.
 type TableHeaderSpec struct {
@@ -126,4 +163,56 @@ func TableHeader(c ui.C, spec TableHeaderSpec, body func(ui.C)) {
 			}
 			d.Canvas.Rounded(band, d.Theme.Metrics.RadiusItem(), d.Theme.Muted)
 		}).Children(func() { body(c) })
+}
+
+// Footer is the 40px band under a table that carries its totals: the page's
+// inset, GroupGap between the readings, one line, no surface of its own. A
+// band whose readings summarize the whole page rather than trail one table
+// spreads them across the width (spread); the rest run together at the
+// leading edge like a sentence.
+func Footer(c ui.C, spread bool, body func()) {
+	row := ui.Row(c).Height(FooterHeight).FillWidth().
+		PadX(Inset).Gap(GroupGap).Items(ui.Center)
+	if spread {
+		row = row.Justify(ui.Between)
+	}
+	row.Children(body)
+}
+
+// Reading is one label and its figure in a footer: the name as a Caption, the
+// number on the mono grid in the same step, and an optional note after it. A
+// footer is chrome, so it keeps the caption size every footer uses; the number
+// that matters is already large in the table above.
+func Reading(c ui.C, label, value, note string, color gfx.Color) {
+	ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
+		typography.Caption(c, label)
+		ui.Text(c, value).FontSize(typography.SizeCaption).Mono().
+			Weight(gfx.WeightMedium).Color(color)
+		if note != "" {
+			typography.Caption(c, note).Ellipsis()
+		}
+	})
+}
+
+// MetricGrid lays readings in rows of perRow, every cell an equal share of the
+// width and the steps between cells the shared ColumnGap and BlockGap. A short
+// last row keeps the cells it has at the same width, so a grid of six readings
+// leaves the same column lines as a full row.
+func MetricGrid(c ui.C, total, perRow int, cell func(ui.C, int)) {
+	if perRow <= 0 {
+		perRow = 4
+	}
+	ui.Column(c).FillWidth().Gap(BlockGap).Children(func() {
+		for start := 0; start < total; start += perRow {
+			ui.Row(c).FillWidth().Gap(ColumnGap).Items(ui.Start).Children(func() {
+				for index := start; index < start+perRow; index++ {
+					if index >= total {
+						ui.Spacer(c).Grow(1).Basis(0)
+						continue
+					}
+					cell(c, index)
+				}
+			})
+		}
+	})
 }

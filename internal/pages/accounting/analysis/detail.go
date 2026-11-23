@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/layout"
@@ -94,10 +93,9 @@ func (m *Model) chartTableHead(c ui.C, chart *domain.Chart) {
 	if chart.ChartType == chartPie {
 		label, count = "分组", len(m.pieSlices)
 	}
-	ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().Items(ui.Center).
-		Gap(layout.Gap).Children(func() {
+	layout.SectionHeader(c, 0).Children(func() {
 		typography.Section(c, label)
-		countBadge(c, count)
+		layout.SectionCount(c, strconv.Itoa(count))
 		ui.Spacer(c)
 		if chart.ChartType == chartLine && !chart.IsPreset {
 			if ui.Button(c, "添加曲线").Small().Ghost().Icon(icons.Plus).Clicked() {
@@ -234,10 +232,9 @@ func (m *Model) pieTable(c ui.C, chart *domain.Chart) {
 // records page carries at its own bottom.
 func (m *Model) footer(c ui.C, chart *domain.Chart) {
 	theme := c.Theme()
-	ui.Row(c).Height(layout.FooterHeight).FillWidth().
-		PadX(layout.Inset).Gap(layout.GroupGap).Items(ui.Center).Children(func() {
+	layout.Footer(c, false, func() {
 		if chart.ChartType == chartPie {
-			footerStat(c, "合计", m.pie.Total, theme.Foreground)
+			layout.Reading(c, "合计", domain.CentsToYuan(m.pie.Total), "", theme.Foreground)
 			if len(m.pieSlices) > 0 {
 				typography.Caption(c, fmt.Sprintf("共 %d 组", len(m.pieSlices)))
 			}
@@ -247,19 +244,10 @@ func (m *Model) footer(c ui.C, chart *domain.Chart) {
 			}
 			return
 		}
-		footerStat(c, "收入", m.stats.Income, theme.Success)
-		footerStat(c, "支出", m.stats.Expense, theme.Danger)
-		footerStat(c, "转账", m.stats.Transfer, semantic.Kind(*theme, "transfer"))
-	})
-}
-
-// footerStat is one total of the footer: its name, then its figure on the mono
-// grid, colored like the series it sums.
-func footerStat(c ui.C, label string, cents int64, color gfx.Color) {
-	ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
-		typography.Caption(c, label)
-		ui.Text(c, domain.CentsToYuan(cents)).FontSize(typography.SizeCaption).
-			Mono().Weight(gfx.WeightMedium).Color(color)
+		layout.Reading(c, "收入", domain.CentsToYuan(m.stats.Income), "", theme.Success)
+		layout.Reading(c, "支出", domain.CentsToYuan(m.stats.Expense), "", theme.Danger)
+		layout.Reading(c, "转账", domain.CentsToYuan(m.stats.Transfer), "",
+			semantic.Kind(*theme, "transfer"))
 	})
 }
 
@@ -287,14 +275,6 @@ func kindChip(c ui.C, label string) {
 	ui.Text(c, label).FontSize(typography.SizeCaption).Color(theme.MutedForeground).
 		Background(theme.Muted).Radius(theme.Metrics.RadiusItem()).
 		PadX(6).PadY(1)
-}
-
-// countBadge is a count in a capsule: the same badge the rail's header uses.
-func countBadge(c ui.C, count int) {
-	theme := c.Theme()
-	ui.Text(c, strconv.Itoa(count)).FontSize(typography.SizeCaption).
-		Color(theme.MutedForeground).Background(theme.Background).
-		Radius(theme.Metrics.RadiusItem() + 2).PadX(6).PadY(1)
 }
 
 func (m *Model) moveChart(rows []int, to int) {

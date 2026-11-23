@@ -15,6 +15,7 @@ import (
 	"transactions/internal/components/layout"
 	"transactions/internal/components/selectbox"
 	"transactions/internal/components/semantic"
+	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
@@ -403,11 +404,9 @@ func (p *recordsPanel) View(c ui.C) {
 		return
 	}
 	p.ensureQuotes(c)
-	theme := c.Theme()
 	layout.Page(c, p.toolbar, func(c ui.C) {
 		if p.errorMessage != "" {
-			typography.Caption(c, p.errorMessage).Color(theme.Danger).
-				PadX(layout.Inset).PadY(6)
+			layout.ErrorBanner(c, p.errorMessage)
 		}
 		ui.Row(c).Grow(1).FillWidth().Children(func() {
 			p.historyRail(c)
@@ -443,15 +442,15 @@ func (p *recordsPanel) toolbar(c ui.C) {
 
 // historyRail is the 280 px list of closed stocks. Its cards carry the current
 // price and accumulated profit, then the round count, last close and rate.
+// The search sits under the header, above the list it filters.
 func (p *recordsPanel) historyRail(c ui.C) {
 	p.rebuildHistoryView(p.historyFind.Text())
 	p.syncHistorySelection()
 	ui.Column(c).Width(layout.RailWidth).MinWidth(layout.RailWidth).Shrink(0).
 		FillHeight().Children(func() {
-		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
-			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, "已清仓")
-			typography.Caption(c, strconv.Itoa(len(p.histories))+" 只")
+			layout.SectionCount(c, strconv.Itoa(len(p.histories))+" 只")
 			ui.Spacer(c)
 		})
 		if len(p.histories) == 0 {
@@ -462,26 +461,19 @@ func (p *recordsPanel) historyRail(c ui.C) {
 			}
 			return
 		}
+		ui.Column(c).FillWidth().PadX(layout.Inset).PadY(8).Children(func() {
+			ui.TextFieldID(c, ui.ID(c), &p.historyFind, "搜索股票", "股票名称或代码").
+				FillWidth()
+		})
 		if len(p.historyView) == 0 {
-			typography.Body(c, "没有匹配的股票").Muted().PadX(12).PadY(8).
-				Color(c.Theme().MutedForeground)
-		} else {
-			// Keep the same Text node in both states: removing it would shift
-			// the search field's identity and could drop its focus.
-			ui.Text(c, "").Height(0)
+			typography.Body(c, "没有匹配的股票").Muted().PadX(layout.Inset).PadY(8)
+			return
 		}
-		// Keep the list in the tree even when the filter matches nothing: its
-		// removal would shift the search field's identity and drop its focus.
 		ui.List(c, &p.historyList, len(p.historyView), p.historyRow).
 			Label("已清仓股票").Grow(1)
 		if p.historyList.Changed() {
 			p.chooseHistory(p.historyList.Selected())
 		}
-		ui.Divider(c)
-		ui.Column(c).FillWidth().PadX(layout.Inset).PadY(8).Children(func() {
-			ui.TextFieldID(c, ui.ID(c), &p.historyFind, "搜索股票", "股票名称或代码").
-				FillWidth()
-		})
 	})
 }
 
@@ -497,20 +489,18 @@ func (p *recordsPanel) historyRow(row ui.ListRow) {
 	if name == "" || name == history.StockCode {
 		name = history.StockCode
 	}
-	background := theme.Card
-	if active {
-		background = theme.Accent
-	}
 	labelColor := theme.MutedForeground
 	if active {
 		labelColor = theme.Foreground
 	}
-	row.Element.MinHeight(78).FillWidth().PadX(12).PadY(8).Gap(4).
-		MarginSides(4, 8, 0, 8).
-		Radius(theme.Metrics.RadiusControl).Background(background).
-		Border(1, theme.Border).
-		Hover(ui.Look{}.Background(theme.Hover)).
+	row.Element.MinHeight(78).FillWidth().Pad(layout.BlockGap).Gap(4).
+		MarginSides(4, 8, 4, 4).
+		Radius(theme.Metrics.RadiusControl).
+		Hover(ui.Look{}.Background(state.Hover(*theme))).
 		Focus(ui.Look{}.Ring(2, theme.Ring))
+	if active {
+		row.Element.Background(state.Selected(*theme))
+	}
 	ui.Column(row.C).Grow(1).Gap(2).Children(func() {
 		ui.Row(row.C).FillWidth().Gap(6).Items(ui.Center).Children(func() {
 			typography.BodyStrong(row.C, name).Grow(1).Ellipsis()
@@ -590,8 +580,7 @@ func (p *recordsPanel) detailHead(c ui.C, detail *domain.StockHistoryDetail) {
 	if name == "" || name == detail.History.StockCode {
 		name = detail.History.StockCode
 	}
-	ui.Row(c).FillWidth().Height(layout.SectionHeaderHeight).Clip().
-		PadX(layout.Inset).Gap(8).Items(ui.Center).Children(func() {
+	layout.SectionHeader(c, layout.Inset).Clip().Children(func() {
 		typography.Section(c, name).Ellipsis()
 		typography.Caption(c, detail.History.StockCode).Mono()
 		ui.Spacer(c)
@@ -640,7 +629,7 @@ func (p *recordsPanel) roundHeader(c ui.C, round domain.StockRoundDetail) {
 	if expanded {
 		action = "收起"
 	}
-	head := ui.Column(c).FillWidth().PadX(12).PadY(8).Gap(4).
+	head := ui.Column(c).FillWidth().PadX(layout.Inset).PadY(8).Gap(4).
 		Background(theme.Muted).
 		HitWith(ui.ID(c), fmt.Sprintf("%s第 %d 轮", action, round.Round.RoundNo),
 			gfx.HitOptions{Role: gfx.RoleButton, Selected: expanded}).
@@ -784,14 +773,14 @@ func (p *recordsPanel) roundBody(c ui.C, round domain.StockRoundDetail) {
 // header, an optional action, and the content under it. The four sections of a
 // round share this head so their name size, header height and gap match.
 func (p *recordsPanel) recordSection(c ui.C, name string, action func(), body func()) {
-	stockSection(c, name, 12, action, body)
+	stockSection(c, name, layout.Inset, action, body)
 }
 
 // tradeTable is the read-only trade table of one round. Editing and deleting
 // are the optional actions; a close fill cannot be edited, as in the page.
 func (p *recordsPanel) tradeTable(c ui.C, round domain.StockRoundDetail) {
 	ui.Column(c).FillWidth().Children(func() {
-		layout.TableHeader(c, layout.TableHeaderSpec{Height: 30, PadX: 12, Gap: 4}, func(c ui.C) {
+		layout.TableHeader(c, layout.TableHeaderSpec{PadX: layout.Gap, Gap: layout.Gap}, func(c ui.C) {
 			typography.Caption(c, "时间").Width(tradeTimeWidth).TextCenter()
 			typography.Caption(c, "类型").Width(tradeTypeWidth).TextCenter()
 			typography.Caption(c, "成交价").Grow(1).Basis(tradePriceMin).
@@ -808,7 +797,7 @@ func (p *recordsPanel) tradeTable(c ui.C, round domain.StockRoundDetail) {
 			p.tradeRow(c, trade)
 		}
 		if len(round.Trades) == 0 {
-			typography.Body(c, "本轮暂无成交").Muted().PadX(12).PadY(8)
+			typography.Body(c, "本轮暂无成交").Muted().PadX(layout.Inset).PadY(8)
 		}
 	})
 }
@@ -816,7 +805,7 @@ func (p *recordsPanel) tradeTable(c ui.C, round domain.StockRoundDetail) {
 func (p *recordsPanel) tradeRow(c ui.C, trade domain.StockTrade) {
 	theme := c.Theme()
 	c.Key(trade.ID)
-	ui.Row(c).Height(36).FillWidth().PadX(12).Gap(4).Items(ui.Center).
+	ui.Row(c).Height(layout.RowHeight).FillWidth().PadX(layout.Gap).Gap(layout.Gap).Items(ui.Center).
 		Children(func() {
 			ui.Text(c, historyShortDateTime(trade.TradeTime)).
 				FontSize(typography.SizeBody).Mono().
@@ -865,7 +854,7 @@ func (p *recordsPanel) ledgerSection(c ui.C, round domain.StockRoundDetail) {
 			open()
 		}
 	}, func() {
-		ui.Column(c).FillWidth().PadX(12).Children(func() {
+		ui.Column(c).FillWidth().PadX(layout.Inset).Children(func() {
 			ledgerSectionBody(c, sheet, "", open)
 		})
 	})
@@ -882,7 +871,7 @@ func (p *recordsPanel) openLedger(round domain.StockRoundDetail) {
 func (p *recordsPanel) dailyReviews(c ui.C, round domain.StockRoundDetail) {
 	theme := c.Theme()
 	p.recordSection(c, "每日复盘", nil, func() {
-		ui.Column(c).FillWidth().PadX(12).Gap(4).Children(func() {
+		ui.Column(c).FillWidth().PadX(layout.Inset).Gap(4).Children(func() {
 			if len(round.DayReviews) == 0 {
 				typography.Body(c, "本轮暂无每日复盘").Muted()
 				return
@@ -921,7 +910,7 @@ func (p *recordsPanel) roundReview(c ui.C, round domain.StockRoundDetail) {
 			p.openReviewEditor(round.Round)
 		}
 	}, func() {
-		ui.Column(c).FillWidth().PadX(12).Children(func() {
+		ui.Column(c).FillWidth().PadX(layout.Inset).Children(func() {
 			if filled {
 				ui.Paragraph(c, review, 3).FontSize(typography.SizeBody).
 					Color(theme.Foreground)
@@ -1130,22 +1119,16 @@ func (p *recordsPanel) deleteModal(c ui.C) {
 // round count and the total number of rounds.
 func (p *recordsPanel) footer(c ui.C) {
 	theme := c.Theme()
-	ui.Row(c).Height(layout.FooterHeight).FillWidth().PadX(layout.Inset).
-		Gap(layout.GroupGap).Items(ui.Center).Justify(ui.Between).Children(func() {
-		historyFooterMetric(c, "已实现盈亏", money(p.summary.TotalPnl),
+	layout.Footer(c, true, func() {
+		layout.Reading(c, "已实现盈亏", money(p.summary.TotalPnl), "",
 			pnlColor(*theme, p.summary.TotalPnl))
-		historyFooterMetric(c, "累计盈亏率", historyPercent(p.summary.TotalPnlRate),
+		layout.Reading(c, "累计盈亏率", historyPercent(p.summary.TotalPnlRate), "",
 			historyRateColor(*theme, p.summary.TotalPnlRate))
-		historyFooterMetric(c, "胜负轮次",
-			fmt.Sprintf("%d 胜 %d 负", p.summary.WinCount, p.summary.LossCount), theme.Foreground)
-		historyFooterMetric(c, "总轮次", strconv.Itoa(p.summary.RoundCount)+" 轮", theme.Foreground)
-	})
-}
-
-func historyFooterMetric(c ui.C, label, value string, color gfx.Color) {
-	ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
-		typography.Caption(c, label)
-		ui.Text(c, value).FontSize(typography.SizeBody).Mono().Color(color)
+		layout.Reading(c, "胜负轮次",
+			fmt.Sprintf("%d 胜 %d 负", p.summary.WinCount, p.summary.LossCount), "",
+			theme.Foreground)
+		layout.Reading(c, "总轮次", strconv.Itoa(p.summary.RoundCount)+" 轮", "",
+			theme.Foreground)
 	})
 }
 

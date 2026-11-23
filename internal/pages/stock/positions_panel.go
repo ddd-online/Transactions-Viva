@@ -353,7 +353,7 @@ func (p *positionsPanel) View(c ui.C) {
 
 	layout.Page(c, p.toolbar, func(c ui.C) {
 		if p.errorMessage != "" {
-			typography.Caption(c, p.errorMessage).Color(c.Theme().Danger).PadX(layout.Inset).PadY(6)
+			layout.ErrorBanner(c, p.errorMessage)
 		}
 		ui.Row(c).Grow(1).Children(func() {
 			p.rail(c)
@@ -385,10 +385,9 @@ func (p *positionsPanel) toolbar(c ui.C) {
 func (p *positionsPanel) rail(c ui.C) {
 	ui.Column(c).Width(layout.RailWidth).MinWidth(layout.RailWidth).Shrink(0).
 		FillHeight().Children(func() {
-		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
-			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, "持仓")
-			typography.Caption(c, strconv.Itoa(len(p.positions))+" 只")
+			layout.SectionCount(c, strconv.Itoa(len(p.positions))+" 只")
 			ui.Spacer(c)
 		})
 		if len(p.positions) == 0 {
@@ -396,7 +395,7 @@ func (p *positionsPanel) rail(c ui.C) {
 			return
 		}
 		ui.Scroll(c).Grow(1).Children(func() {
-			ui.Column(c).Gap(4).PadSides(4, 8, 4, 8).Children(func() {
+			ui.Column(c).Gap(4).PadSides(4, 8, 4, 4).Children(func() {
 				for i := range p.positions {
 					position := &p.positions[i]
 					p.positionCard(c, position)
@@ -439,7 +438,13 @@ func (p *positionsPanel) positionCard(c ui.C, position *domain.StockPosition) {
 		}).
 		Hover(ui.Look{}.Background(state.Hover(*theme)))
 	if selected {
-		card = card.Background(state.PrimaryTint(*theme))
+		card = card.Background(state.Selected(*theme))
+	}
+	// MutedForeground on the selected wash is 4.24:1, so the card's own small
+	// text lifts to the foreground while the row is chosen.
+	label := theme.MutedForeground
+	if selected {
+		label = theme.Foreground
 	}
 	card.Children(func() {
 		ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
@@ -449,11 +454,11 @@ func (p *positionsPanel) positionCard(c ui.C, position *domain.StockPosition) {
 			}
 			typography.BodyStrong(c, name).Grow(1).Ellipsis()
 			ui.Text(c, position.StockCode).FontSize(typography.SizeCaption).
-				Mono().Color(theme.MutedForeground)
+				Mono().Color(label)
 		})
 		ui.Row(c).Gap(layout.Gap).Items(ui.Start).Children(func() {
 			ui.Column(c).Grow(1).Gap(1).Children(func() {
-				typography.Caption(c, "现价")
+				ui.Text(c, "现价").FontSize(typography.SizeCaption).Color(label)
 				ui.Row(c).Gap(4).Items(ui.Baseline).Children(func() {
 					ui.Text(c, priceText).FontSize(typography.SizeBody).Mono()
 					ui.Text(c, changeText).FontSize(typography.SizeCaption).
@@ -461,7 +466,8 @@ func (p *positionsPanel) positionCard(c ui.C, position *domain.StockPosition) {
 				})
 			})
 			ui.Column(c).Grow(1).Gap(1).Children(func() {
-				typography.Caption(c, "浮动盈亏").TextEnd()
+				ui.Text(c, "浮动盈亏").FontSize(typography.SizeCaption).
+					Color(label).TextEnd()
 				pnlText := ui.Text(c, money(pnl)).FontSize(typography.SizeBody).
 					Mono().TextEnd()
 				if pnl != 0 {
@@ -470,9 +476,10 @@ func (p *positionsPanel) positionCard(c ui.C, position *domain.StockPosition) {
 			})
 		})
 		ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
-			typography.Body(c, positionsLotsText(position.Quantity)).Muted()
+			ui.Text(c, positionsLotsText(position.Quantity)).
+				FontSize(typography.SizeBody).Color(label)
 			ui.Spacer(c)
-			typography.Caption(c, "浮盈率")
+			ui.Text(c, "浮盈率").FontSize(typography.SizeCaption).Color(label)
 			rateText := ui.Text(c, percentOrDash(rate)).FontSize(typography.SizeBody).Mono()
 			if pnl != 0 {
 				rateText.Color(pnlColor(*theme, pnl))
@@ -542,8 +549,7 @@ func (p *positionsPanel) detailHeader(c ui.C, position *domain.StockPosition) {
 	if strings.TrimSpace(name) == "" {
 		name = position.StockCode
 	}
-	ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
-		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+	layout.SectionHeader(c, layout.Inset).Children(func() {
 		typography.Section(c, name).Ellipsis()
 		ui.Text(c, position.StockCode).FontSize(typography.SizeCaption).
 			Mono().Color(theme.MutedForeground).Shrink(0)
@@ -592,7 +598,7 @@ func (p *positionsPanel) detailMetrics(c ui.C, position *domain.StockPosition) {
 		changeText, changeValue = positionsQuoteChange(quote)
 	}
 
-	ui.Row(c).FillWidth().Gap(layout.Gap).Children(func() {
+	ui.Row(c).FillWidth().Gap(layout.ColumnGap).Children(func() {
 		positionsMetric(c, "现价", priceText, theme.Foreground)
 		changeColor := theme.Foreground
 		if knownQuote && changeValue != 0 {
@@ -600,21 +606,21 @@ func (p *positionsPanel) detailMetrics(c ui.C, position *domain.StockPosition) {
 		}
 		positionsMetric(c, "当日涨跌", changeText, changeColor)
 		positionsMetric(c, "持仓市值", money(marketValue), theme.Foreground)
-		ui.Column(c).Grow(1).Basis(0).Gap(2).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).Gap(4).Children(func() {
 			typography.Caption(c, "浮动盈亏")
 			tone := pnlColor(*theme, pnl)
-			ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
-				ui.Text(c, money(pnl)).FontSize(typography.SizeBody).Mono().Color(tone)
-				ui.Text(c, percentOrDash(rate)).FontSize(typography.SizeCaption).Mono().Color(tone)
+			ui.Row(c).Gap(6).Items(ui.Baseline).Children(func() {
+				typography.Figure(c, money(pnl)).Color(tone)
+				typography.Caption(c, percentOrDash(rate)).Mono().Color(tone)
 			})
 		})
 	})
 }
 
 func positionsMetric(c ui.C, label, value string, color gfx.Color) {
-	ui.Column(c).Grow(1).Basis(0).Gap(2).Children(func() {
+	ui.Column(c).Grow(1).Basis(0).Gap(4).Children(func() {
 		typography.Caption(c, label)
-		ui.Text(c, value).FontSize(typography.SizeBody).Mono().Color(color)
+		typography.Figure(c, value).Color(color)
 	})
 }
 

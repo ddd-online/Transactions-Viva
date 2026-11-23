@@ -469,25 +469,12 @@ func (p *ladderPanel) footer(c ui.C) {
 			broken = strconv.Itoa(*metrics.BrokenCount)
 		}
 	}
-	ui.Row(c).Height(layout.FooterHeight).FillWidth().PadX(layout.Inset).
-		Gap(layout.ColumnGap).Items(ui.Center).Children(func() {
-		footerMetric(c, "涨停", limit, previous)
-		ui.Divider(c).Height(20)
-		footerMetric(c, "空间板", maxLevel, topName)
-		ui.Divider(c).Height(20)
-		footerMetric(c, "晋级率", rate, promoted)
-		ui.Divider(c).Height(20)
-		footerMetric(c, "断板", broken, "")
-	})
-}
-
-func footerMetric(c ui.C, label, value, note string) {
-	ui.Row(c).Grow(1).MinWidth(0).Items(ui.Baseline).Gap(6).Children(func() {
-		typography.Caption(c, label)
-		ui.Text(c, value).FontSize(typography.SizeBody).Mono()
-		if note != "" {
-			typography.Caption(c, note).Ellipsis()
-		}
+	theme := c.Theme()
+	layout.Footer(c, true, func() {
+		layout.Reading(c, "涨停", limit, previous, theme.Foreground)
+		layout.Reading(c, "空间板", maxLevel, topName, theme.Foreground)
+		layout.Reading(c, "晋级率", rate, promoted, theme.Foreground)
+		layout.Reading(c, "断板", broken, "", theme.Foreground)
 	})
 }
 

@@ -2,6 +2,7 @@ package todo
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/vivaui/viva/ui"
@@ -57,9 +58,9 @@ type quadrantItem struct {
 func (m *Model) quadrantPane(c ui.C, title string, items []quadrantItem) {
 	theme := c.Theme()
 	ui.Column(c).Grow(1).Basis(0).FillHeight().Children(func() {
-		ui.Row(c).Height(44).FillWidth().PadSides(18, 8, 18, 8).Items(ui.Center).Gap(8).Children(func() {
-			typography.BodyStrong(c, title)
-			typography.Caption(c, fmt.Sprintf("%d", len(items))).Mono()
+		layout.SectionHeader(c, layout.Inset).Children(func() {
+			typography.Section(c, title)
+			layout.SectionCount(c, strconv.Itoa(len(items)))
 			ui.Spacer(c)
 		})
 		if len(items) == 0 {

@@ -258,12 +258,9 @@ func (m *Model) CloseOverlays() {
 // View paints the toolbar and the three panes.
 func (m *Model) View(c ui.C) {
 	m.bounds = c.Bounds()
-	theme := c.Theme()
 	layout.Page(c, m.toolbar, func(c ui.C) {
 		if m.errorMessage != "" {
-			ui.Column(c).FillWidth().PadX(layout.Inset).PadY(4).Children(func() {
-				typography.CaptionParagraph(c, m.errorMessage, 3).Color(theme.Danger)
-			})
+			layout.ErrorBanner(c, m.errorMessage)
 		}
 		ui.Row(c).Grow(1).FillWidth().Children(func() {
 			width := c.Bounds().Width
@@ -318,13 +315,10 @@ func (m *Model) toolbar(c ui.C) {
 
 // rail is the year's events: a header with the count, then one card per day.
 func (m *Model) rail(c ui.C, width float32) {
-	theme := c.Theme()
 	ui.Column(c).Width(width).FillHeight().Children(func() {
-		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
-			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, "事件")
-			typography.Caption(c, strconv.Itoa(len(m.events))).
-				Background(theme.Muted).Radius(theme.Metrics.RadiusItem()).PadX(6).PadY(1)
+			layout.SectionCount(c, strconv.Itoa(len(m.events)))
 			ui.Spacer(c)
 		})
 		ui.Divider(c)

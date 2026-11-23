@@ -17,14 +17,11 @@ import (
 // the selected day. Events are workspace-wide, so the pane shows every ledger's
 // records and names each row's ledger.
 func (m *Model) linksPanel(c ui.C, width float32) {
-	theme := c.Theme()
 	ui.Column(c).Width(width).FillHeight().Children(func() {
-		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
-			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, "关联交易")
 			if m.date != "" {
-				typography.Caption(c, strconv.Itoa(len(m.linked))).
-					Background(theme.Muted).Radius(theme.Metrics.RadiusItem()).PadX(6).PadY(1)
+				layout.SectionCount(c, strconv.Itoa(len(m.linked)))
 			}
 			ui.Spacer(c)
 		})

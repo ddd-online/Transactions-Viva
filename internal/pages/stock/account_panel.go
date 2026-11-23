@@ -153,7 +153,7 @@ func (p *accountPanel) View(c ui.C) {
 	overview := p.overview()
 	layout.Page(c, p.toolbar, func(c ui.C) {
 		if p.errorMessage != "" {
-			typography.Caption(c, p.errorMessage).Color(c.Theme().Danger).PadX(layout.Inset).PadY(6)
+			layout.ErrorBanner(c, p.errorMessage)
 		}
 		// The page fills its card: the summary keeps its height, the fund table
 		// takes the rest and its pager sits on the bottom edge, so a tall window
@@ -210,35 +210,27 @@ func (p *accountPanel) metrics(c ui.C, overview domain.StockOverview) {
 		{"可用现金", money(overview.AvailableCash), nil},
 		{"仓位", percentOrDash(overview.PositionRatio), nil},
 	}
-	const perRow = 4
 	ui.Column(c).FillWidth().PadX(layout.Inset).
-		PadTop(layout.BlockGap).PadBottom(layout.Inset).
-		Gap(layout.BlockGap).Children(func() {
-		for start := 0; start < len(metrics); start += perRow {
-			ui.Row(c).FillWidth().Gap(layout.ColumnGap).Children(func() {
-				for index := start; index < start+perRow; index++ {
-					if index >= len(metrics) {
-						ui.Spacer(c).Grow(1).Basis(0)
-						continue
-					}
-					metric := metrics[index]
-					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4).Children(func() {
-						typography.Caption(c, metric.label)
-						value := typography.Figure(c, metric.value).Ellipsis()
-						if metric.pnl != nil {
-							value.Color(pnlColor(*c.Theme(), *metric.pnl))
-						}
-					})
+		PadTop(layout.BlockGap).PadBottom(layout.Inset).Children(func() {
+		layout.MetricGrid(c, len(metrics), 4, func(c ui.C, index int) {
+			metric := metrics[index]
+			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4).Children(func() {
+				typography.Caption(c, metric.label)
+				value := typography.Figure(c, metric.value).Ellipsis()
+				if metric.pnl != nil {
+					value.Color(pnlColor(*c.Theme(), *metric.pnl))
 				}
 			})
-		}
+		})
 	})
 }
 
 func (p *accountPanel) fundSection(c ui.C) {
 	ui.Column(c).Grow(1).MinHeight(0).Children(func() {
-		typography.Section(c, "资金变化记录").
-			PadSides(layout.BlockGap, layout.Inset, layout.Gap, layout.Inset)
+		layout.SectionHeader(c, layout.Inset).Children(func() {
+			typography.Section(c, "资金变化记录")
+			ui.Spacer(c)
+		})
 		if p.fund.Total == 0 {
 			ui.Column(c).Grow(1).MinHeight(0).Center().Children(func() {
 				typography.Body(c, "暂无资金记录").Muted()
@@ -267,13 +259,12 @@ func (p *accountPanel) fundSection(c ui.C) {
 }
 
 func fundHeader(c ui.C) {
-	theme := c.Theme()
 	layout.TableHeader(c, layout.TableHeaderSpec{PadX: layout.Inset, Gap: layout.ColumnGap}, func(c ui.C) {
-		ui.Text(c, "日期").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(92).TextCenter()
-		ui.Text(c, "事件").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(240)
-		ui.Text(c, "金额变化").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(104).TextEnd()
-		ui.Text(c, "现金余额").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Width(104).TextEnd()
-		ui.Text(c, "备注").FontSize(typography.SizeCaption).Color(theme.MutedForeground).Grow(1).MinWidth(0).TextEnd()
+		typography.Caption(c, "日期").Width(92).TextCenter()
+		typography.Caption(c, "事件").Width(240)
+		typography.Caption(c, "金额变化").Width(104).TextEnd()
+		typography.Caption(c, "现金余额").Width(104).TextEnd()
+		typography.Caption(c, "备注").Grow(1).MinWidth(0).TextEnd()
 	})
 }
 
@@ -281,13 +272,13 @@ func fundRow(c ui.C, record domain.StockFundRecord) {
 	theme := c.Theme()
 	ui.Row(c).MinHeight(layout.RowHeight).FillWidth().PadX(layout.Inset).
 		Gap(layout.ColumnGap).Items(ui.Center).Children(func() {
-		ui.Text(c, record.RecordDate).FontSize(typography.SizeBody).Mono().Width(92).TextCenter()
-		ui.Text(c, record.EventText).FontSize(typography.SizeBody).Width(240).MaxLines(2)
-		ui.Text(c, signedMoney(record.AmountChangeCents)).FontSize(typography.SizeBody).Mono().
+		typography.Body(c, record.RecordDate).Mono().Width(92).TextCenter()
+		typography.Body(c, record.EventText).Width(240).MaxLines(2)
+		typography.Body(c, signedMoney(record.AmountChangeCents)).Mono().
 			Width(104).TextEnd().Color(pnlColor(*theme, record.AmountChangeCents))
-		ui.Text(c, money(record.CashBalanceCents)).FontSize(typography.SizeBody).Mono().
+		typography.Body(c, money(record.CashBalanceCents)).Mono().
 			Width(104).TextEnd()
-		ui.Text(c, record.Remark).FontSize(typography.SizeBody).Muted().
+		typography.Body(c, record.Remark).Muted().
 			Grow(1).MinWidth(0).TextEnd().Ellipsis()
 	})
 }

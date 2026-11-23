@@ -534,23 +534,17 @@ func (m *Model) thisYear() {
 // footer is the records' 收入 / 支出 / 转账 summary and the visible row count.
 func (m *Model) footer(c ui.C) {
 	theme := c.Theme()
-	ui.Row(c).Height(layout.FooterHeight).FillWidth().
-		PadX(layout.Inset).Gap(layout.GroupGap).Items(ui.Center).Children(func() {
-		m.stat(c, "收入", m.stats[0], kindColor(*theme, kindIncome))
-		m.stat(c, "支出", m.stats[1], kindColor(*theme, kindExpense))
-		m.stat(c, "转账", m.stats[2], kindColor(*theme, kindTransfer))
+	layout.Footer(c, false, func() {
+		layout.Reading(c, "收入", domain.CentsToYuan(m.stats[0]), "",
+			kindColor(*theme, kindIncome))
+		layout.Reading(c, "支出", domain.CentsToYuan(m.stats[1]), "",
+			kindColor(*theme, kindExpense))
+		layout.Reading(c, "转账", domain.CentsToYuan(m.stats[2]), "",
+			kindColor(*theme, kindTransfer))
 		ui.Spacer(c)
 		if m.notice != "" {
 			typography.Caption(c, m.notice).MaxWidth(560).Ellipsis()
 		}
-	})
-}
-
-func (m *Model) stat(c ui.C, label string, cents int64, color gfx.Color) {
-	ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
-		typography.Caption(c, label)
-		ui.Text(c, domain.CentsToYuan(cents)).FontSize(typography.SizeCaption).Mono().
-			Weight(gfx.WeightMedium).Color(color)
 	})
 }
 

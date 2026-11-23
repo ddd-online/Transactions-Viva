@@ -81,7 +81,6 @@ type tag struct {
 
 const (
 	categoryColumnWidth = layout.RailWidth
-	columnHeaderHeight  = layout.SectionHeaderHeight
 	listRowHeight       = layout.RowHeight
 )
 
@@ -376,10 +375,9 @@ func (m *Model) tagColumn(c ui.C) {
 // caller reads Clicked from the returned button.
 func (m *Model) columnHeader(c ui.C, title string, count int, addLabel string, disabled bool) ui.Box {
 	var add ui.Box
-	ui.Row(c).Height(columnHeaderHeight).FillWidth().
-		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+	layout.SectionHeader(c, layout.Inset).Children(func() {
 		typography.Section(c, title).Shrink(1).Ellipsis()
-		countPill(c, count)
+		layout.SectionCount(c, strconv.Itoa(count))
 		ui.Spacer(c)
 		add = ui.Button(c, addLabel).Small().Secondary().Icon(icons.Plus).Disabled(disabled)
 	})

@@ -241,8 +241,7 @@ func (p *statisticsPanel) View(c ui.C) {
 	}
 	layout.Page(c, p.toolbar, func(c ui.C) {
 		if p.errorMessage != "" {
-			typography.CaptionParagraph(c, p.errorMessage, 2).Color(c.Theme().Danger).
-				PadX(layout.Inset).PadY(6)
+			layout.ErrorBanner(c, p.errorMessage)
 		}
 		if len(p.stats.Points) == 0 {
 			p.empty(c)
@@ -441,7 +440,7 @@ func (p *statisticsPanel) cards(c ui.C) {
 			statPercent(latest.MaxDrawdownPct), "从高点回落 " + money(latest.MaxDrawdown),
 			true, nil},
 	}
-	metricRows(c, len(cards), func(c ui.C, index int) {
+	layout.MetricGrid(c, len(cards), 4, func(c ui.C, index int) {
 		card := cards[index]
 		p.card(c, card.label, card.hint, card.value, card.caption, card.amount, card.color)
 	})

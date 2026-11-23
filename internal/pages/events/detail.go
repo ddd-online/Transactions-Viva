@@ -68,8 +68,7 @@ func detailSplit(hasPictures, hasBody bool) (pictures, body float32) {
 // had no identity of its own; with a long title the left card is the only place
 // that could say which day is being read.
 func (m *Model) detailHeader(c ui.C) {
-	ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().Shrink(1).MinWidth(0).
-		PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+	layout.SectionHeader(c, layout.Inset).Shrink(1).MinWidth(0).Children(func() {
 		typography.Section(c, displayTitle(m.event)).Grow(1).Shrink(1).MinWidth(0).Ellipsis()
 		if strings.TrimSpace(m.event.Title) != "" {
 			typography.Caption(c, domain.DiaryDateCn(m.event.Date)).Muted().Shrink(0)

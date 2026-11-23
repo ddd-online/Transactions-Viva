@@ -154,11 +154,9 @@ func (p *lessonsPanel) View(c ui.C) {
 		emptyAccountPage(c, "还没有股票账户", "工作空间里至少会有一个股票账户。")
 		return
 	}
-	theme := c.Theme()
 	layout.Page(c, p.toolbar, func(c ui.C) {
 		if p.errorMessage != "" {
-			typography.Caption(c, p.errorMessage).Color(theme.Danger).
-				PadX(layout.Inset).PadY(6)
+			layout.ErrorBanner(c, p.errorMessage)
 		}
 		if len(p.lessons) == 0 {
 			if p.errorMessage == "" {

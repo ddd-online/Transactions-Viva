@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -341,13 +342,10 @@ func (m *Model) saveState(c ui.C) {
 
 // rail is the date tree column: its own header with the count, then the tree.
 func (m *Model) rail(c ui.C) {
-	theme := c.Theme()
 	ui.Column(c).Width(layout.RailWidth).FillHeight().Children(func() {
-		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
-			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, "日记")
-			typography.Caption(c, fmt.Sprintf("%d", len(m.dates))).
-				Background(theme.Muted).Radius(theme.Metrics.RadiusItem()).PadX(6).PadY(1)
+			layout.SectionCount(c, strconv.Itoa(len(m.dates)))
 			ui.Spacer(c)
 		})
 		ui.Divider(c)
@@ -382,8 +380,7 @@ func (m *Model) treeDone() {
 func (m *Model) editor(c ui.C) {
 	theme := c.Theme()
 	ui.Column(c).Grow(1).FillHeight().Children(func() {
-		ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().
-			PadX(layout.Inset).Gap(layout.Gap).Items(ui.Center).Children(func() {
+		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, domain.DiaryDateCn(m.selected))
 			typography.Caption(c, domain.DiaryWeekdayCn(m.selected))
 			ui.Spacer(c)

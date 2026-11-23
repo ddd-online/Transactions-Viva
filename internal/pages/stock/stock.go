@@ -9,7 +9,6 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
-	"transactions/internal/components/layout"
 	"transactions/internal/domain"
 	"transactions/internal/repository"
 	"transactions/internal/stocklimit"
@@ -416,22 +415,4 @@ func (m *Model) View(c ui.C) {
 		m.ladder.View(c)
 	}
 	ui.Toasts(c, &m.toaster)
-}
-
-// metricRows lays readings out four to a row at every supported window size.
-// The Grid fell back to two columns at 960 and pushed the chart or the cash
-// table below the fold; four columns keeps the page's primary content visible.
-func metricRows(c ui.C, total int, item func(ui.C, int)) {
-	const perRow = 4
-	for start := 0; start < total; start += perRow {
-		ui.Row(c).FillWidth().Gap(layout.Gap).Items(ui.Start).Children(func() {
-			for index := start; index < start+perRow; index++ {
-				if index >= total {
-					ui.Spacer(c).Grow(1).Basis(0)
-					continue
-				}
-				item(c, index)
-			}
-		})
-	}
 }
