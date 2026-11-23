@@ -394,7 +394,13 @@ func (m *Model) editor(c ui.C) {
 			if m.errorMessage != "" {
 				typography.Caption(c, m.errorMessage).Color(theme.Danger)
 			}
-			ui.TextArea(c, &m.body, "日记正文", "写下今天的日记……").
+			// The placeholder names the day the editor is showing: a past entry
+			// is not "today's" diary.
+			placeholder := "写下今天的日记……"
+			if m.selected != domain.DiaryToday() {
+				placeholder = "写下这天的日记……"
+			}
+			ui.TextArea(c, &m.body, "日记正文", placeholder).
 				FillWidth().Grow(1)
 		})
 	})
