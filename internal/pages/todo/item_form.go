@@ -10,7 +10,6 @@ import (
 	"transactions/internal/components/selectbox"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
-	"transactions/internal/icons"
 )
 
 type itemForm struct {
@@ -20,7 +19,8 @@ type itemForm struct {
 	cardID     string
 	cardTitle  string
 	themes     []string
-	themesOpen bool
+	choices    []string
+	newTheme   bool
 	id         string
 	title      string
 	start      string
@@ -52,6 +52,10 @@ func (m *Model) openItemForm(cardID string, item *domain.TodoItem) {
 		urgency: domain.DefaultTodoLevel, importance: domain.DefaultTodoLevel,
 		themes: m.cardTitles(),
 	}
+	form.choices = append(form.choices, form.themes...)
+	if len(form.themes) > 0 {
+		form.choices = append(form.choices, newThemeChoice)
+	}
 	if item != nil {
 		form.id = item.ID
 		form.title = item.Title
@@ -76,26 +80,7 @@ func (m *Model) itemFormView(c ui.C) {
 		ui.Column(c).FillWidth().Gap(12).Children(func() {
 			ui.Column(c).Gap(5).Children(func() {
 				typography.Caption(c, "主题")
-				ui.Row(c).FillWidth().Gap(6).Children(func() {
-					ui.TextField(c, &form.cardTitle, "主题", "选择已有主题，或输入新的名字").
-						Grow(1).AutoFocus()
-					picker := ui.Button(c, "选择主题").Ghost().Icon(icons.ChevronDown).IconOnly().
-						Tooltip("选择已有主题")
-					if picker.Clicked() {
-						form.themesOpen = true
-					}
-					ui.Menu(c, picker, &form.themesOpen, func(menu *ui.MenuItems) {
-						if len(form.themes) == 0 {
-							menu.Item("还没有主题").Disabled(true)
-							return
-						}
-						for _, title := range form.themes {
-							if menu.Item(title).Clicked() {
-								form.cardTitle = title
-							}
-						}
-					})
-				})
+				m.themeField(c, form)
 			})
 			ui.Column(c).Gap(5).Children(func() {
 				typography.Caption(c, "事项")
@@ -143,6 +128,34 @@ func (m *Model) itemFormView(c ui.C) {
 			m.saveItem()
 		}
 	})
+}
+
+// newThemeChoice is the Select entry that switches the theme field to a text
+// field, for a theme the board does not have yet.
+const newThemeChoice = "＋ 新建主题…"
+
+// themeField is the theme row: a Select over the themes the board has, or a
+// text field when the user is naming a new theme (and always when the board has
+// none yet, where a Select would show an empty list).
+func (m *Model) themeField(c ui.C, form *itemForm) {
+	if form.newTheme || len(form.themes) == 0 {
+		ui.Row(c).FillWidth().Gap(6).Children(func() {
+			ui.TextField(c, &form.cardTitle, "主题", "输入新的主题名").Grow(1).AutoFocus()
+			if len(form.themes) > 0 && ui.Button(c, "选择已有").Link().Clicked() {
+				form.newTheme, form.cardTitle = false, ""
+			}
+		})
+		return
+	}
+	choice := form.cardTitle
+	selectbox.Select(c, &choice, form.choices, nil).Label("主题").Placeholder("选择主题")
+	if choice == newThemeChoice {
+		form.newTheme, form.cardTitle = true, ""
+		return
+	}
+	if choice != form.cardTitle {
+		form.cardTitle = choice
+	}
 }
 
 func (m *Model) saveItem() {

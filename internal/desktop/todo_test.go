@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/vivaui/viva/app"
-	"github.com/vivaui/viva/gfx"
 )
 
 func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
@@ -25,7 +24,7 @@ func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
 
 	// A second item under the existing theme: the table is newest first.
 	click(t, driver, "新建事项")
-	click(t, driver, "选择主题")
+	click(t, driver, "主题")
 	click(t, driver, "本周")
 	click(t, driver, "事项")
 	driver.Type("写日报")
@@ -73,12 +72,7 @@ func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
 	rightClickText(t, driver, "写周报")
 	click(t, driver, "编辑事项")
 	click(t, driver, "主题")
-	if err := driver.Key(gfx.KeyBackspace, 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := driver.Key(gfx.KeyBackspace, 0); err != nil {
-		t.Fatal(err)
-	}
+	click(t, driver, "＋ 新建主题…")
 	driver.Type("下周")
 	click(t, driver, "保存")
 	if !shows(driver, "下周") {
