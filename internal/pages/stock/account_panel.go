@@ -260,13 +260,24 @@ func (p *accountPanel) fundSection(c ui.C) {
 	})
 }
 
+// The fund table's columns: the date, the event (the one flexible column, as
+// on every table here), the two amounts, and the remark — sized to the longest
+// remark rather than stretched, so the amounts sit beside it instead of around
+// a wide empty column.
+const (
+	fundDateWidth   = float32(92)
+	fundAmountWidth = float32(104)
+	fundRemarkWidth = float32(180)
+	fundEventMin    = float32(140)
+)
+
 func fundHeader(c ui.C) {
 	layout.TableHeader(c, layout.TableHeaderSpec{PadX: layout.Inset, Gap: layout.ColumnGap}, func(c ui.C) {
-		typography.Caption(c, "日期").Width(92).TextCenter()
-		typography.Caption(c, "事件").Width(240)
-		typography.Caption(c, "金额变化").Width(104).TextEnd()
-		typography.Caption(c, "现金余额").Width(104).TextEnd()
-		typography.Caption(c, "备注").Grow(1).MinWidth(0).TextEnd()
+		typography.Caption(c, "日期").Width(fundDateWidth).TextCenter()
+		typography.Caption(c, "事件").Grow(1).MinWidth(fundEventMin)
+		typography.Caption(c, "金额变化").Width(fundAmountWidth).TextEnd()
+		typography.Caption(c, "现金余额").Width(fundAmountWidth).TextEnd()
+		typography.Caption(c, "备注").Width(fundRemarkWidth).TextEnd()
 	})
 }
 
@@ -274,14 +285,14 @@ func fundRow(c ui.C, record domain.StockFundRecord) {
 	theme := c.Theme()
 	ui.Row(c).MinHeight(layout.RowHeight).FillWidth().PadX(layout.Inset).
 		Gap(layout.ColumnGap).Items(ui.Center).Children(func() {
-		typography.Body(c, record.RecordDate).Mono().Width(92).TextCenter()
-		typography.Body(c, record.EventText).Width(240).MaxLines(2)
+		typography.Body(c, record.RecordDate).Mono().Width(fundDateWidth).TextCenter()
+		typography.Body(c, record.EventText).Grow(1).MinWidth(fundEventMin).MaxLines(2)
 		typography.Body(c, signedMoney(record.AmountChangeCents)).Mono().
-			Width(104).TextEnd().Color(pnlColor(*theme, record.AmountChangeCents))
+			Width(fundAmountWidth).TextEnd().Color(pnlColor(*theme, record.AmountChangeCents))
 		typography.Body(c, money(record.CashBalanceCents)).Mono().
-			Width(104).TextEnd()
+			Width(fundAmountWidth).TextEnd()
 		typography.Body(c, record.Remark).Muted().
-			Grow(1).MinWidth(0).TextEnd().Ellipsis()
+			Width(fundRemarkWidth).TextEnd().Ellipsis()
 	})
 }
 
