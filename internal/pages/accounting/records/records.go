@@ -284,7 +284,7 @@ func (m *Model) View(c ui.C) {
 // toolbar is the page's actions, laid out like the page's filter bar: the
 // time range on the left, and the sort beside the primary action on the right.
 func (m *Model) toolbar(c ui.C) {
-	layout.Toolbar(c, func() {
+	filters := func() {
 		if ledger.Picker(c, m.ledgers) && m.onLedgerChanged != nil {
 			m.onLedgerChanged()
 		}
@@ -304,13 +304,31 @@ func (m *Model) toolbar(c ui.C) {
 				m.rangeStart, m.rangeEnd, m.rangeStale = start, end, true
 			},
 		})
-
-		ui.Spacer(c)
+	}
+	actions := func() {
 		if ui.Button(c, "记一笔").Icon(icons.Plus).Clicked() {
 			m.openComposer()
 		}
+	}
+	// The range picker carries its own grain strip, its two period arrows and
+	// the widest date range any grain can hold, so this toolbar is the widest
+	// in the application: at the minimum window the primary action moves to a
+	// second row instead of sliding under the next-period arrow.
+	if c.Bounds().Width < recordsToolbarSingleRowWidth {
+		layout.StackedToolbar(c, filters, actions)
+		return
+	}
+	layout.Toolbar(c, func() {
+		filters()
+		ui.Spacer(c)
+		actions()
 	})
 }
+
+// recordsToolbarSingleRowWidth is the window width under which the records
+// toolbar stacks: the time range plus its grain strip needs about 800 px of
+// content, which is a 1020 px window once the shell is taken off.
+const recordsToolbarSingleRowWidth float32 = 1020
 
 // sortHeader is a column title with a square sort button beside it. The
 // button cycles the column: none, descending, ascending. Columns sort in the

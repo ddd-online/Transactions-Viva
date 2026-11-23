@@ -138,3 +138,40 @@ func TestMetricGridKeepsOneColumnWidthInEveryRow(t *testing.T) {
 		t.Fatalf("short row starts at %.1f, first row at %.1f", second.X, first.X)
 	}
 }
+
+func TestStackedToolbarPutsTheActionOnItsOwnRow(t *testing.T) {
+	page := ui.NewPage(ui.PageConfig{View: func(c ui.C) {
+		Page(c, func(c ui.C) {
+			StackedToolbar(c, func() {
+				ui.Button(c, "filter").Outline()
+			}, func() {
+				ui.Button(c, "action")
+			})
+		}, func(c ui.C) {
+			ui.Row(c).Height(20).FillWidth().Hit(ui.ID(c), "body")
+		})
+	}})
+	driver, err := app.NewDriver(ui.Configure(page, app.Config{Width: 600, Height: 400}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(driver.Close)
+
+	hits := map[string]gfx.Rect{}
+	for _, hit := range driver.Snapshot().Hits {
+		hits[hit.Label] = hit.Bounds
+	}
+	filter, action, body := hits["filter"], hits["action"], hits["body"]
+	if filter.Width == 0 || action.Width == 0 {
+		t.Fatalf("missing hits: %+v", hits)
+	}
+	if action.Y <= filter.Y+filter.Height {
+		t.Fatalf("action at %.1f is not on the row below the filter at %.1f", action.Y, filter.Y)
+	}
+	if action.X+action.Width != 600-Inset {
+		t.Fatalf("action ends at %.1f, want the toolbar inset %.1f", action.X+action.Width, 600-Inset)
+	}
+	if body.Y < action.Y+action.Height {
+		t.Fatalf("content starts at %.1f, above the action row", body.Y)
+	}
+}

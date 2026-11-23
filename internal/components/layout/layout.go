@@ -83,6 +83,18 @@ func FlowToolbar(c ui.C, contents func()) {
 		Gap(Gap).LineGap(Gap).Items(ui.Center).Children(contents)
 }
 
+// StackedToolbar is the two-row toolbar for a page whose filters do not fit
+// one line at the window's minimum width: the filters wrap on the first row
+// and the page's primary action keeps the trailing edge on the second. Use it
+// only below the width where Toolbar stops fitting; the extra row costs one
+// control height of content.
+func StackedToolbar(c ui.C, filters, actions func()) {
+	ui.Column(c).FillWidth().PadX(Inset).PadY(6).Gap(Gap).Children(func() {
+		ui.Flow(c).FillWidth().Gap(Gap).LineGap(Gap).Items(ui.Center).Children(filters)
+		ui.Row(c).FillWidth().Justify(ui.End).Items(ui.Center).Children(actions)
+	})
+}
+
 // Page is the common page shell: the toolbar at the top, a hairline, then the
 // main content taking the rest of the height. A page supplies its own toolbar
 // and body; dialogs stay after the shell and are declared by the page.
