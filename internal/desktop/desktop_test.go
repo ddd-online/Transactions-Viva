@@ -1010,6 +1010,40 @@ func TestWindowControlsFollowTheTheme(t *testing.T) {
 	}
 }
 
+// TestWindowControlsHoverReadsOnTheChrome guards the pointer feedback of the
+// window buttons: they sit on the 36px title bar, whose tone is Muted. The
+// surface palette's Hover and Secondary are that very tone in the light
+// appearance, so an opaque fill left the buttons looking dead under the
+// pointer until the close button (Danger, red) was reached.
+func TestWindowControlsHoverReadsOnTheChrome(t *testing.T) {
+	model := New()
+	config := newConfig(model)
+	distance := func(a, b gfx.Color) float32 {
+		channel := func(x, y float32) float32 {
+			if x < y {
+				x, y = y, x
+			}
+			return x - y
+		}
+		return max(channel(a.Red, b.Red), max(channel(a.Green, b.Green), channel(a.Blue, b.Blue)))
+	}
+	for _, dark := range []bool{false, true} {
+		if model.dark != dark {
+			model.toggleTheme()
+		}
+		style := config.WindowControls()
+		chrome := model.theme.Muted
+		hover := over(style.Hover, chrome)
+		pressed := over(style.Pressed, chrome)
+		if got := distance(hover, chrome); got < 0.02 {
+			t.Errorf("hover %v is %.3f from the chrome %v: the button gives no feedback", hover, got, chrome)
+		}
+		if got, want := distance(pressed, chrome), distance(hover, chrome); got <= want {
+			t.Errorf("pressed %v is %.3f from the chrome, hover %.3f: pressed is not stronger", pressed, got, want)
+		}
+	}
+}
+
 func TestSettingsPageAndThemeToggle(t *testing.T) {
 	driver, model := open(t)
 

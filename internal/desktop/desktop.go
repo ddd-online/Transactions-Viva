@@ -354,10 +354,18 @@ func windowColor(color gfx.Color) app.Color {
 // appearance toggle as the rest of the window does.
 func (m *Model) windowControls() app.WindowControlsStyle {
 	theme := m.theme
+	// The buttons sit on the title bar, and the bar's tone is Muted. The surface
+	// palette's Hover and Secondary are the same #f4f4f5 as that chrome in the
+	// light appearance, so an opaque fill left the buttons looking dead under
+	// the pointer. A faint wash of the ink reads on either chrome: it darkens
+	// the light bar and lifts the dark one, the same way Viva's default does.
+	hover, pressed := theme.Foreground, theme.Foreground
+	hover.Alpha = 0.10
+	pressed.Alpha = 0.18
 	return app.WindowControlsStyle{
 		Foreground:      theme.Foreground,
-		Hover:           theme.Hover,
-		Pressed:         theme.Secondary,
+		Hover:           hover,
+		Pressed:         pressed,
 		Close:           theme.Danger,
 		CloseForeground: theme.DangerForeground,
 		Minimize:        "最小化",
