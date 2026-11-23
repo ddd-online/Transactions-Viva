@@ -23,6 +23,21 @@ import (
 	"transactions/internal/stocklimit"
 )
 
+// The rung cards' minimums: a card narrower than rungMinWidth starts a new
+// column, and a card shorter than rungMinHeight makes the grid scroll as one
+// column instead of squeezing its header and its stocks into nothing.
+const (
+	rungMinWidth  float32 = 280
+	rungMinHeight float32 = 140
+
+	// ladderWindowChrome is what the shell and the page padding take off the
+	// window before the rungs see their width: the 204px navigation rail, the
+	// 7px card margin and the 32px page inset. Page layout decisions elsewhere
+	// use the window width too (the records toolbar wraps below 1020px); a
+	// column count needs the content width, so the fixed parts come off here.
+	ladderWindowChrome float32 = 243
+)
+
 // ladderRequest names one load of the ladder: the date, whether the user forced
 // a refresh, and a serial that makes a Reload restart even on the same date.
 type ladderRequest struct {
@@ -121,9 +136,7 @@ func (p *ladderPanel) View(c ui.C) {
 			typography.Caption(c, p.actionNote).
 				PadX(layout.Inset).PadBottom(4).Ellipsis()
 		}
-		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-			p.body(c)
-		})
+		p.body(c)
 		p.footer(c)
 	})
 }
@@ -267,7 +280,7 @@ func (p *ladderPanel) body(c ui.C) {
 		return
 	}
 
-	ui.Column(c).FillWidth().Pad(layout.Inset).Gap(layout.BlockGap).Children(func() {
+	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Pad(layout.Inset).Gap(layout.BlockGap).Children(func() {
 		p.boards(c)
 		if p.ladder.PreviousDate == "" {
 			typography.Caption(c, "缺少前一交易日的数据，断板与晋级率暂不计入。")
@@ -295,21 +308,50 @@ func (p *ladderPanel) boards(c ui.C) {
 }
 
 func (p *ladderPanel) rungs(c ui.C) {
-	// Grid decides the number of rungs per row from the content width, so a
-	// narrow window gets two columns instead of four clipped ones.
-	ui.Grid(c, 280).FillWidth().Gap(layout.Gap).Children(func() {
-		for _, rung := range p.ladder.Rungs {
-			rung := rung
-			c.Key("rung-" + strconv.Itoa(rung.Level))
-			p.rung(c, rung)
-		}
+	rungs := p.ladder.Rungs
+	if len(rungs) == 0 {
+		return
+	}
+	cols := ladderColumns(c.Bounds().Width - ladderWindowChrome)
+	// The rows share the height the page leaves: each card takes its row's
+	// height and scrolls its own stocks. The grid only scrolls as a whole when
+	// the window is too short to keep a row readable at rungMinHeight.
+	ui.Scroll(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
+		ui.Column(c).FillWidth().Grow(1).Gap(layout.Gap).Children(func() {
+			for start := 0; start < len(rungs); start += cols {
+				ui.Row(c).FillWidth().Grow(1).Gap(layout.Gap).Children(func() {
+					for index := start; index < start+cols; index++ {
+						if index >= len(rungs) {
+							ui.Spacer(c).Grow(1).Basis(0)
+							continue
+						}
+						rung := rungs[index]
+						c.Key("rung-" + strconv.Itoa(rung.Level))
+						p.rung(c, rung)
+					}
+				})
+			}
+		})
 	})
+}
+
+// ladderColumns is how many rung cards fit side by side: one per 280px of
+// content with the shared gap between them, the rule the Grid used to apply.
+func ladderColumns(width float32) int {
+	if width <= 0 {
+		return 1
+	}
+	return max(1, int((width+layout.Gap)/(rungMinWidth+layout.Gap)))
 }
 
 func (p *ladderPanel) rung(c ui.C, rung domain.StockLimitRung) {
 	theme := c.Theme()
-	column := ui.Column(c).FillWidth().Background(theme.Card).Border(1, theme.Border).Radius(8).Pad(8).Gap(4)
 	isTop := p.ladder.Metrics.MaxLevel != nil && *p.ladder.Metrics.MaxLevel == rung.Level
+	// The card fills its row; the level and its rate stay put while the stocks
+	// below scroll. rungMinHeight is what keeps that header readable when the
+	// window cannot give every row a full share.
+	column := ui.Column(c).Grow(1).Basis(0).FillHeight().MinHeight(rungMinHeight).
+		Background(theme.Card).Border(1, theme.Border).Radius(8).Pad(8).Gap(4)
 	column.Children(func() {
 		ui.Row(c).FillWidth().Items(ui.Baseline).Gap(4).Children(func() {
 			// The level is the ladder's height: the top rung is the page's one
@@ -335,16 +377,20 @@ func (p *ladderPanel) rung(c ui.C, rung domain.StockLimitRung) {
 		typography.Caption(c, rate)
 		ui.Divider(c)
 		rows := domain.LadderRows(rung)
-		for _, row := range rows {
-			row := row
-			prefix := "limit-"
-			if row.Broken != nil {
-				prefix = "broken-"
+		ui.Scroll(c).Grow(1).MinHeight(0).FillWidth().Children(func() {
+			for index := range rows {
+				row := rows[index]
+				if index > 0 {
+					ui.Divider(c)
+				}
+				prefix := "limit-"
+				if row.Broken != nil {
+					prefix = "broken-"
+				}
+				c.Key(prefix + row.Entry.StockCode)
+				p.row(c, row)
 			}
-			c.Key(prefix + row.Entry.StockCode)
-			ui.Divider(c)
-			p.row(c, row)
-		}
+		})
 	})
 }
 
