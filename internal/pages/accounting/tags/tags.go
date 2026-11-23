@@ -295,14 +295,18 @@ func (m *Model) typeCard(c ui.C, k kind) {
 		border = theme.Border.Mix(color, 0.35)
 	}
 	c.KeyInt(int(k))
-	card := ui.Row(c).Height(36).PadX(14).Items(ui.Center).
+	// A toolbar control, so it keeps the control height and padding of the
+	// ledger picker beside it; the chosen type is a tint and its own border,
+	// not a raised card (pages add no shadow to a surface at rest).
+	card := ui.Row(c).Height(theme.Metrics.ControlHeight).
+		PadX(theme.Metrics.PadControlX).Items(ui.Center).
 		Radius(theme.Metrics.RadiusControl).Border(1, border).
 		HitWith(ui.ID(c), k.label(), gfx.HitOptions{
 			Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
 		}).
 		Focus(ui.Look{}.Ring(2, theme.Ring))
 	if active {
-		card = card.Background(theme.Background.Mix(color, 0.08)).Shadow(gfx.ShadowSM)
+		card = card.Background(theme.Background.Mix(color, 0.08))
 	} else {
 		card = card.Hover(ui.Look{}.Background(theme.Hover))
 	}
