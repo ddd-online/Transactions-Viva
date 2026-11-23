@@ -37,8 +37,9 @@ func (m *Model) sidebar(c ui.C) {
 				m.navList(c)
 			})
 		})
+		current := m.section == SectionSettings
 		settings := m.navRow(c, len(navSections), SectionSettings.Label(),
-			icons.Settings, m.section == SectionSettings)
+			icons.Settings, current, current)
 		if settings.Clicked() {
 			m.openSection(SectionSettings)
 		}
@@ -54,7 +55,13 @@ func (m *Model) navList(c ui.C) {
 		if !m.sectionEnabled(entry.section) {
 			continue
 		}
-		row := m.navRow(c, int(entry.section), entry.label, entry.icon, m.section == entry.section)
+		// A section that has sub-functions is a group heading while its children
+		// are showing: the filled row is the selected child, so the heading keeps
+		// no wash of its own. Only a section without children (事件 / 日记) is
+		// filled as the page it opens.
+		current := m.section == entry.section
+		filled := current && len(m.pageTabs(entry.section)) == 0
+		row := m.navRow(c, int(entry.section), entry.label, entry.icon, current, filled)
 		if row.Clicked() {
 			m.openSection(entry.section)
 		}
@@ -85,10 +92,12 @@ func (m *Model) navList(c ui.C) {
 }
 
 // navRow is one section row: its icon and label, the highlighted background
-// while it is the current section, and the hover, press and focus looks the
-// rest of the application's rows use. The caller reads Clicked from the row it
+// while it is the page the column shows (filled), and the hover, press and
+// focus looks the rest of the application's rows use. active marks the row as
+// the current section even when a selected child carries the fill, which is
+// what a screen reader hears. The caller reads Clicked from the row it
 // declared, so the paint itself changes no state.
-func (m *Model) navRow(c ui.C, key int, label string, icon gfx.Icon, active bool) ui.Box {
+func (m *Model) navRow(c ui.C, key int, label string, icon gfx.Icon, active, filled bool) ui.Box {
 	theme := c.Theme()
 	metrics := theme.Metrics
 	c.KeyInt(key)
@@ -99,7 +108,7 @@ func (m *Model) navRow(c ui.C, key int, label string, icon gfx.Icon, active bool
 		Hover(ui.Look{}.Background(state.Hover(*theme))).
 		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
 		Focus(ui.Look{}.Ring(3, theme.Ring))
-	if active {
+	if filled {
 		row = row.Background(theme.Accent)
 	}
 	foreground := theme.Foreground
