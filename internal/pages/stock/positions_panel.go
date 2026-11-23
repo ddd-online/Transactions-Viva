@@ -590,36 +590,40 @@ func (p *positionsPanel) detailMetrics(c ui.C, position *domain.StockPosition) {
 	rate := domain.FloatingPnlRate(pnl, flow.CashFlow)
 
 	priceText := "—"
-	changeText := "—"
+	changeText, changeNote := "—", ""
 	var changeValue int64
 	if knownQuote {
 		priceText = domain.MilliToYuan(quote.LatestPrice)
-		changeText, changeValue = positionsQuoteChange(quote)
+		changeText, changeNote, changeValue = positionsQuoteChange(quote)
 	}
 
 	ui.Row(c).FillWidth().Gap(layout.ColumnGap).Children(func() {
-		positionsMetric(c, "现价", priceText, theme.Foreground)
+		positionsMetric(c, "现价", priceText, "", theme.Foreground)
 		changeColor := theme.Foreground
 		if knownQuote && changeValue != 0 {
 			changeColor = pnlColor(*theme, changeValue)
 		}
-		positionsMetric(c, "当日涨跌", changeText, changeColor)
-		positionsMetric(c, "持仓市值", money(marketValue), theme.Foreground)
-		ui.Column(c).Grow(1).Basis(0).Gap(4).Children(func() {
-			typography.Caption(c, "浮动盈亏")
-			tone := pnlColor(*theme, pnl)
-			ui.Row(c).Gap(6).Items(ui.Baseline).Children(func() {
-				typography.Figure(c, money(pnl)).Color(tone)
-				typography.Caption(c, percentOrDash(rate)).Mono().Color(tone)
-			})
-		})
+		positionsMetric(c, "当日涨跌", changeText, changeNote, changeColor)
+		positionsMetric(c, "持仓市值", money(marketValue), "", theme.Foreground)
+		positionsMetric(c, "浮动盈亏", money(pnl), percentOrDash(rate),
+			pnlColor(*theme, pnl))
 	})
 }
 
-func positionsMetric(c ui.C, label, value string, color gfx.Color) {
+// positionsMetric is one reading of the detail header: the Caption label, the
+// Figure and, when the reading has a percentage beside it, that percentage as a
+// Caption on the same baseline. The note stays a Caption in every cell that has
+// one (day change, floating profit), so the two percentages read as the same
+// kind of number and the row keeps one type scale.
+func positionsMetric(c ui.C, label, value, note string, color gfx.Color) {
 	ui.Column(c).Grow(1).Basis(0).Gap(4).Children(func() {
 		typography.Caption(c, label)
-		typography.Figure(c, value).Color(color)
+		ui.Row(c).Gap(6).Items(ui.Baseline).Children(func() {
+			typography.Figure(c, value).Color(color)
+			if note != "" {
+				typography.Caption(c, note).Mono().Color(color)
+			}
+		})
 	})
 }
 
@@ -1764,20 +1768,22 @@ func (p *positionsPanel) tradeAmounts() (amounts []int64, lots int, total int64)
 
 // ------------------------------------------------------------------ 数字辅助
 
-func positionsQuoteChange(quote domain.StockQuote) (string, int64) {
+// positionsQuoteChange is the day's move as two readings: the price change and,
+// when it can be computed, the percentage beside it.
+func positionsQuoteChange(quote domain.StockQuote) (change, percent string, diff int64) {
 	if quote.LatestPrice <= 0 || quote.PrevClose <= 0 {
-		return "—", 0
+		return "—", "", 0
 	}
-	diff := quote.LatestPrice - quote.PrevClose
-	change := domain.MilliToYuan(diff)
+	diff = quote.LatestPrice - quote.PrevClose
+	change = domain.MilliToYuan(diff)
 	if diff >= 0 {
 		change = "+" + change
 	}
-	percent := domain.QuoteChangePercent(quote.LatestPrice, quote.PrevClose)
-	if percent == nil {
-		return change, diff
+	rate := domain.QuoteChangePercent(quote.LatestPrice, quote.PrevClose)
+	if rate == nil {
+		return change, "", diff
 	}
-	return change + " " + positionsSignedPercent(percent), diff
+	return change, positionsSignedPercent(rate), diff
 }
 
 func positionsSignedPercent(value *float64) string {
