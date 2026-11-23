@@ -392,7 +392,7 @@ func chip(c ui.C, text string, color gfx.Color) {
 // dash is the table's empty cell: a muted hyphen.
 func dash(c ui.C) ui.Box {
 	theme := c.Theme()
-	return ui.Text(c, "-").FontSize(typography.SizeBody).Color(theme.MutedForeground)
+	return ui.Text(c, "—").FontSize(typography.SizeBody).Color(theme.MutedForeground)
 }
 
 // kindColor and outlierColor come from the same semantic package the records

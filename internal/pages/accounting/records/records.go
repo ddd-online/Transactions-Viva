@@ -471,7 +471,7 @@ func (m *Model) row(r ui.ListRow) {
 
 	description := rec.description
 	if description == "" {
-		description = "-"
+		description = "—"
 	}
 	typography.Body(r.C, description).Grow(1).Ellipsis()
 	ui.Row(r.C).Width(recordMarksWidth).Items(ui.Center).Justify(ui.Center).Gap(6).
