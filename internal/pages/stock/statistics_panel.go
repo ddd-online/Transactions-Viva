@@ -360,7 +360,7 @@ func (p *statisticsPanel) empty(c ui.C) {
 		viva.Empty(d.Canvas, *d.Theme, d.Rect, viva.EmptyData{
 			Media: viva.EmptyMediaIcon,
 			Icon:  icons.ChartCandlestick,
-			Title: "还没有已结算的轮次",
+			Title: "暂无已结算的轮次",
 		})
 	})
 }

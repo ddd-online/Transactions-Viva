@@ -476,7 +476,7 @@ func (m *Model) row(r ui.ListRow) {
 		if menu.Item("编辑记录").Clicked() {
 			m.openEdit(id)
 		}
-		menu.Sub("同步到其他账本", func(sub *ui.MenuItems) {
+		menu.Sub("复制到其他账本", func(sub *ui.MenuItems) {
 			for _, target := range m.ledgers.List() {
 				if target.ID == m.ledgerID {
 					continue

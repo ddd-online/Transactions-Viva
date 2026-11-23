@@ -52,15 +52,17 @@ func (m *Model) deleteRecord(id string) {
 	m.notice = "记录已删除"
 }
 
-// syncTo copies the row to another ledger through the repository.
+// syncTo copies the row to another ledger through the repository. The
+// interface calls it 复制: the source row stays, so 同步 would promise a link
+// that does not exist.
 func (m *Model) syncTo(id, targetID string) {
 	if m.repo == nil {
 		m.notice = "还没有打开工作空间"
 		return
 	}
 	if err := m.repo.SyncRecord(context.Background(), id, targetID); err != nil {
-		m.notice = "同步失败：" + err.Error()
+		m.notice = "复制失败：" + err.Error()
 		return
 	}
-	m.notice = "已同步到「" + m.ledgers.Name(targetID) + "」"
+	m.notice = "已复制到「" + m.ledgers.Name(targetID) + "」"
 }

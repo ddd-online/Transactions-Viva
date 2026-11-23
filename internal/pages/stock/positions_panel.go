@@ -392,7 +392,7 @@ func (p *positionsPanel) rail(c ui.C) {
 			ui.Spacer(c)
 		})
 		if len(p.positions) == 0 {
-			emptystate.Notice(c, "当前没有持仓")
+			emptystate.Notice(c, "暂无持仓")
 			return
 		}
 		ui.Scroll(c).Grow(1).Children(func() {
@@ -509,7 +509,7 @@ func (p *positionsPanel) detailColumn(c ui.C) {
 			ui.Scroll(c).Grow(1).Children(func() {
 				ui.Column(c).Pad(layout.Inset).Gap(layout.BlockGap).Children(func() {
 					if len(p.positions) == 0 {
-						typography.Section(c, "当前没有持仓")
+						typography.Section(c, "暂无持仓")
 						typography.Body(c, "点顶部「建仓」记录第一笔买入。").Muted()
 					}
 				})

@@ -162,7 +162,7 @@ func (p *lessonsPanel) View(c ui.C) {
 		}
 		if len(p.lessons) == 0 {
 			if p.errorMessage == "" {
-				emptystate.Notice(c, "还没有心得")
+				emptystate.Notice(c, "暂无心得")
 			} else {
 				ui.Spacer(c).Grow(1)
 			}
@@ -426,7 +426,7 @@ func (p *lessonsPanel) roundChoices() ([]string, map[string]string) {
 
 func (p *lessonsPanel) stockPlaceholder() string {
 	if len(p.options) == 0 {
-		return "还没有已完成的交易轮次"
+		return "暂无已完成的交易轮次"
 	}
 	return "先选择股票"
 }

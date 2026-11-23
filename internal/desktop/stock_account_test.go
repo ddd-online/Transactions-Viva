@@ -38,7 +38,7 @@ func TestStockAccountSwitchChangesEveryTab(t *testing.T) {
 	if shows(driver, "浦发银行") {
 		t.Fatal("second account shows the first account's position")
 	}
-	if !shows(driver, "当前没有持仓") {
+	if !shows(driver, "暂无持仓") {
 		t.Fatal("second account has no empty state")
 	}
 

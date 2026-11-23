@@ -430,7 +430,7 @@ func (p *accountPanel) amountModal(c ui.C) {
 func (p *accountPanel) submitAmount() {
 	cents, err := domain.YuanToCents(p.amount)
 	if err != nil || cents <= 0 {
-		p.amountError = "请输入大于 0 的金额"
+		p.amountError = "请填写大于 0 的金额"
 		return
 	}
 	ctx := context.Background()

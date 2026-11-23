@@ -197,7 +197,7 @@ func (w *Workspace) SyncRecord(ctx context.Context, id, targetLedgerID string) e
 		return err
 	}
 	if source.Record.LedgerID == targetLedgerID {
-		return invalidf("记录不能同步到同一个账本")
+		return invalidf("这条记录已经在目标账本里")
 	}
 	db, err := w.dbHandle()
 	if err != nil {

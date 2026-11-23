@@ -192,8 +192,8 @@ func TestStatisticsTagFallsBackWhenTheAccountChanges(t *testing.T) {
 
 func TestStatisticsEmptyState(t *testing.T) {
 	p := newStatisticsTestPanel(t, &statisticsTestRepo{})
-	if !hasSnapshotText(newStatisticsDriver(t, p), "还没有已结算的轮次") {
-		t.Fatal("the empty state did not say 还没有已结算的轮次")
+	if !hasSnapshotText(newStatisticsDriver(t, p), "暂无已结算的轮次") {
+		t.Fatal("the empty state did not say 暂无已结算的轮次")
 	}
 }
 

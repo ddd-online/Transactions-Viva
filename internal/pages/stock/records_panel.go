@@ -456,7 +456,7 @@ func (p *recordsPanel) historyRail(c ui.C) {
 		})
 		if len(p.histories) == 0 {
 			if p.errorMessage == "" {
-				emptystate.Notice(c, "还没有已清仓的交易历史")
+				emptystate.Notice(c, "暂无已清仓的交易历史")
 			} else {
 				ui.Spacer(c).Grow(1)
 			}
@@ -990,12 +990,12 @@ func (p *recordsPanel) saveTradeEdit() {
 	}
 	price, err := strconv.ParseFloat(strings.TrimSpace(p.editPrice), 64)
 	if err != nil || price <= 0 {
-		p.editError = "请输入有效的成交价"
+		p.editError = "请填写大于 0 的成交价"
 		return
 	}
 	lots, err := strconv.Atoi(strings.TrimSpace(p.editLots))
 	if err != nil || lots <= 0 {
-		p.editError = "请输入有效的手数"
+		p.editError = "请填写大于 0 的手数"
 		return
 	}
 	request := repository.StockTradeUpdate{

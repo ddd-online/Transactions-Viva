@@ -698,7 +698,7 @@ func TestTimeRangePicker(t *testing.T) {
 func TestRecordsRowContextMenu(t *testing.T) {
 	driver, _ := open(t)
 	rightClickText(t, driver, "早餐 · 豆浆油条")
-	for _, item := range []string{"编辑记录", "同步到其他账本", "删除记录"} {
+	for _, item := range []string{"编辑记录", "复制到其他账本", "删除记录"} {
 		if !hasControl(driver, item) {
 			t.Fatalf("the row menu has no %q", item)
 		}
@@ -1532,9 +1532,9 @@ func TestTitlebarThemeButtonHoverChangesFill(t *testing.T) {
 func TestRecordsSyncSubmenuHover(t *testing.T) {
 	driver, model := open(t)
 	rightClickText(t, driver, "早餐 · 豆浆油条")
-	parent, ok := controlBounds(driver, "同步到其他账本")
+	parent, ok := controlBounds(driver, "复制到其他账本")
 	if !ok {
-		t.Fatal("the row menu has no 同步到其他账本")
+		t.Fatal("the row menu has no 复制到其他账本")
 	}
 	if err := driver.Move(parent.X+parent.Width/2, parent.Y+parent.Height/2); err != nil {
 		t.Fatal(err)
