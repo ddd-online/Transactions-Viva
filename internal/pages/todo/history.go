@@ -7,6 +7,7 @@ import (
 
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
@@ -88,24 +89,18 @@ func (m *Model) quadrantPane(c ui.C, title string, items []quadrantItem) {
 	})
 }
 
-// historyView is the completed items list, one card with hairlines so the
-// completion date and card title line up across rows.
 // historyView is the completed items list. It is a flat table: one header row
 // and hairlines between rows, so it reads as a history, not as a card stack.
 func (m *Model) historyView(c ui.C) {
-	theme := c.Theme()
 	if len(m.history) == 0 {
-		ui.Column(c).Fill().Center().Gap(8).Children(func() {
-			ui.Icon(c, icons.CircleCheck).Size(28, 28).Color(theme.MutedForeground)
-			typography.Section(c, "暂无已完成的事项").TextCenter()
-			typography.Body(c, "在待办里勾选完成，它会出现在这里。").Muted()
-		})
+		emptystate.Page(c, &icons.CircleCheck, "暂无已完成的事项",
+			"在待办里勾选完成，它会出现在这里。", nil)
 		return
 	}
 	area := ui.Scroll(c).Grow(1).Sideways().Scrollbars()
 	area.Children(func() {
 		ui.Column(c).FillWidth().MinWidth(historyTableMinWidth).
-			PadSides(layout.Inset, layout.Inset, 20, layout.Inset).Children(func() {
+			PadBottom(layout.Inset).Children(func() {
 			m.historyHeader(c)
 			for index := range m.history {
 				m.historyRow(c, &m.history[index])
@@ -120,14 +115,17 @@ const (
 	historyItemMinWidth  = float32(180)
 	historyProgressWidth = float32(72)
 	historyActionWidth   = float32(116)
-	historyGap           = float32(10)
+	historyCheckWidth    = float32(13)
 	historyTableMinWidth = historyTimeWidth + historyCardWidth + historyItemMinWidth +
-		historyProgressWidth + historyActionWidth + 4*historyGap + 2*14
+		historyProgressWidth + historyActionWidth + 4*layout.ColumnGap + 2*layout.Inset
 )
 
 func (m *Model) historyHeader(c ui.C) {
-	layout.TableHeader(c, layout.TableHeaderSpec{Height: 34, PadX: 14, Gap: historyGap}, func(c ui.C) {
-		ui.Row(c).Width(historyTimeWidth).Children(func() {
+	layout.TableHeader(c, layout.TableHeaderSpec{PadX: layout.Inset, Gap: layout.ColumnGap}, func(c ui.C) {
+		// The row leads with its completion check, so the label is pushed past
+		// the icon to sit over the timestamps it names.
+		ui.Row(c).Width(historyTimeWidth).Gap(6).Children(func() {
+			ui.Row(c).Width(historyCheckWidth)
 			typography.Caption(c, "完成时间")
 		})
 		ui.Row(c).Width(historyCardWidth).Children(func() {
@@ -149,9 +147,11 @@ func (m *Model) historyRow(c ui.C, entry *domain.TodoHistory) {
 	theme := c.Theme()
 	item := entry.Item
 	c.Key("todo-history-" + item.ID)
-	ui.Row(c).FillWidth().PadSides(14, 10, 10, 14).Gap(historyGap).Items(ui.Center).Children(func() {
+	ui.Row(c).MinHeight(layout.RowHeight).FillWidth().PadX(layout.Inset).
+		Gap(layout.ColumnGap).Items(ui.Center).Children(func() {
 		ui.Row(c).Width(historyTimeWidth).Gap(6).Items(ui.Center).Children(func() {
-			ui.Icon(c, icons.CircleCheck).Size(13, 13).Shrink(0).Color(theme.Success)
+			ui.Icon(c, icons.CircleCheck).Size(historyCheckWidth, historyCheckWidth).
+				Shrink(0).Color(theme.Success)
 			typography.Caption(c, time.Unix(item.CompletedAt, 0).Format("01-02 15:04")).Mono()
 		})
 		ui.Row(c).Width(historyCardWidth).Children(func() {

@@ -14,6 +14,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/datepicker"
+	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/semantic"
 	"transactions/internal/components/typography"
@@ -522,16 +523,11 @@ func (p *ladderPanel) errorState(c ui.C) {
 }
 
 func (p *ladderPanel) noticeState(c ui.C, text string) {
-	ui.Column(c).Grow(1).FillWidth().Center().Children(func() {
-		typography.Body(c, text).Muted().TextCenter()
-	})
+	emptystate.Notice(c, text)
 }
 
 func (p *ladderPanel) emptyState(c ui.C, title, description string) {
-	ui.Column(c).Grow(1).FillWidth().Pad(layout.Inset).Center().Gap(layout.Gap).Children(func() {
-		typography.Section(c, title).TextCenter()
-		typography.BodyParagraph(c, description, 3).Muted().TextCenter()
-	})
+	emptystate.Page(c, &icons.ChartCandlestick, title, description, nil)
 }
 
 func (p *ladderPanel) today() string { return todayYMD() }

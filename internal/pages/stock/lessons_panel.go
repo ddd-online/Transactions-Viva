@@ -151,7 +151,7 @@ func (p *lessonsPanel) CloseOverlays() {
 // View declares the screen: toolbar, table and dialogs.
 func (p *lessonsPanel) View(c ui.C) {
 	if p.repo == nil || p.active() == "" {
-		emptyAccountPage(c, "还没有股票账户", "工作空间里至少会有一个股票账户。")
+		emptyAccountPage(c)
 		return
 	}
 	layout.Page(c, p.toolbar, func(c ui.C) {
@@ -160,7 +160,8 @@ func (p *lessonsPanel) View(c ui.C) {
 		}
 		if len(p.lessons) == 0 {
 			if p.errorMessage == "" {
-				emptystate.Notice(c, "暂无心得")
+				emptystate.Page(c, &icons.Pencil, "暂无心得",
+					"点右上角「新建心得」，记下这一轮的判断与教训。", nil)
 			} else {
 				ui.Spacer(c).Grow(1)
 			}

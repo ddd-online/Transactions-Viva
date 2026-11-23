@@ -11,6 +11,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
@@ -254,7 +255,8 @@ func (m *Model) toolbar(c ui.C) {
 
 func (m *Model) body(c ui.C) {
 	if m.repo == nil || m.todos == nil {
-		m.emptyPage(c, "还没有打开工作空间", "打开工作空间后，这里的待办会保存在工作空间里。")
+		emptystate.Page(c, &icons.Todo, "还没有打开工作空间",
+			"打开工作空间后，这里的待办会保存在工作空间里。", nil)
 		return
 	}
 	if m.err != "" {
@@ -270,11 +272,4 @@ func (m *Model) body(c ui.C) {
 	default:
 		m.board(c)
 	}
-}
-
-func (m *Model) emptyPage(c ui.C, title, note string) {
-	ui.Column(c).Fill().Center().Gap(8).Children(func() {
-		typography.Title(c, title)
-		typography.Body(c, note).Muted().TextCenter()
-	})
 }

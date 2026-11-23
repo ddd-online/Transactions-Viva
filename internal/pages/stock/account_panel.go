@@ -9,11 +9,13 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/pagination"
 	"transactions/internal/components/semantic"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
+	"transactions/internal/icons"
 	"transactions/internal/repository"
 	"transactions/internal/stockquote"
 )
@@ -146,7 +148,7 @@ func (p *accountPanel) CloseOverlays() { p.amountOpen = false }
 
 func (p *accountPanel) View(c ui.C) {
 	if p.repo == nil || p.active() == "" {
-		emptyAccountPage(c, "还没有股票账户", "工作空间里至少会有一个股票账户。")
+		emptyAccountPage(c)
 		return
 	}
 	p.ensureQuotes(c)
@@ -462,9 +464,6 @@ func percentOrDash(value *float64) string {
 	return strconv.FormatFloat(*value, 'f', 2, 64) + "%"
 }
 
-func emptyAccountPage(c ui.C, title, note string) {
-	ui.Column(c).Fill().Pad(layout.Inset).Gap(layout.Gap).Children(func() {
-		typography.Title(c, title)
-		typography.Body(c, note).Muted()
-	})
+func emptyAccountPage(c ui.C) {
+	emptystate.Page(c, &icons.ChartCandlestick, "还没有股票账户", "工作空间里至少会有一个股票账户。", nil)
 }

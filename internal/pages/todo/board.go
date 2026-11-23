@@ -7,6 +7,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
@@ -19,6 +20,7 @@ import (
 // item's commands live on the row's context menu, so there is no action column.
 const (
 	boardThemeWidth     = float32(132)
+	boardCheckWidth     = float32(16)
 	boardUrgencyWidth   = float32(64)
 	boardImportantWidth = float32(64)
 	boardDueWidth       = float32(104)
@@ -38,22 +40,16 @@ type todoRow struct {
 // not a group the page folds.
 func (m *Model) board(c ui.C) {
 	if len(m.rows) == 0 {
-		theme := c.Theme()
-		ui.Column(c).Fill().Center().Gap(10).Children(func() {
-			ui.Icon(c, icons.Todo).Size(30, 30).Color(theme.MutedForeground)
-			typography.Title(c, "把下一件事放到板上")
-			typography.Body(c, "新建事项时选一个主题；输入一个还没有的主题名，就会把它建出来。").
-				Muted().TextCenter()
-			if ui.Button(c, "新建事项").Icon(icons.Plus).Clicked() {
-				m.openItemForm("", nil)
-			}
-		})
+		emptystate.Page(c, &icons.Todo, "把下一件事放到板上",
+			"新建事项时选一个主题；输入一个还没有的主题名，就会把它建出来。", func() {
+				if ui.Button(c, "新建事项").Icon(icons.Plus).Clicked() {
+					m.openItemForm("", nil)
+				}
+			})
 		return
 	}
 	ui.Column(c).Fill().Children(func() {
-		ui.Row(c).FillWidth().PadSides(0, layout.Inset, 0, layout.Inset).Children(func() {
-			m.boardHeader(c)
-		})
+		m.boardHeader(c)
 		ui.Scroll(c).Grow(1).Children(func() {
 			ui.Column(c).FillWidth().PadSides(0, layout.Inset, layout.Inset, layout.Inset).Children(func() {
 				for index := range m.rows {
@@ -65,9 +61,12 @@ func (m *Model) board(c ui.C) {
 }
 
 func (m *Model) boardHeader(c ui.C) {
-	layout.TableHeader(c, layout.TableHeaderSpec{Height: 34, PadX: 10, Gap: 10}, func(c ui.C) {
+	layout.TableHeader(c, layout.TableHeaderSpec{PadX: layout.Inset, Gap: layout.ColumnGap}, func(c ui.C) {
 		m.headerCell(c, "主题", boardThemeWidth, false)
-		ui.Row(c).Grow(1).Children(func() {
+		// The item column starts above the completion circle, so its label is
+		// pushed past the circle to sit over the titles it names.
+		ui.Row(c).Grow(1).Gap(layout.ColumnGap).Children(func() {
+			ui.Row(c).Width(boardCheckWidth)
 			typography.Caption(c, "事项")
 		})
 		m.headerCell(c, "紧急", boardUrgencyWidth, true)
@@ -101,7 +100,7 @@ func (m *Model) itemRow(c ui.C, row *todoRow) {
 		if expanded {
 			label = "收起进度 " + item.Title
 		}
-		line := ui.Row(c).MinHeight(40).FillWidth().PadSides(5, 10, 5, 10).Gap(10).
+		line := ui.Row(c).MinHeight(layout.RowHeight).FillWidth().Gap(layout.ColumnGap).
 			Items(ui.Center).Radius(theme.Metrics.RadiusItem()).
 			Hit(ui.ID(c), label).
 			Hover(ui.Look{}.Background(state.Hover(*theme)))
@@ -124,7 +123,7 @@ func (m *Model) itemRow(c ui.C, row *todoRow) {
 			ui.Row(c).Width(boardThemeWidth).Children(func() {
 				typography.Body(c, row.CardTitle).MaxLines(1).Ellipsis()
 			})
-			check := ui.Row(c).Size(16, 16).Shrink(0).Radius(8).
+			check := ui.Row(c).Size(boardCheckWidth, boardCheckWidth).Shrink(0).Radius(8).
 				Border(1, theme.Border).Center().
 				HitWith(ui.ID(c), "标记完成："+item.Title, gfx.HitOptions{
 					Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,

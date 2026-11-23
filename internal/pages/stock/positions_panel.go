@@ -345,7 +345,7 @@ func (p *positionsPanel) loadLedger() {
 // View declares the 持仓 screen.
 func (p *positionsPanel) View(c ui.C) {
 	if p.repo == nil || p.active() == "" {
-		emptyAccountPage(c, "还没有股票账户", "工作空间里至少会有一个股票账户。")
+		emptyAccountPage(c)
 		return
 	}
 	p.ensureQuotes(c)
