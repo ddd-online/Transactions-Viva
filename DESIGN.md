@@ -192,6 +192,8 @@ Transactions 是本地优先的个人财务桌面工作台。窗口是一张安�
 
 **Character:** 一套字，靠字号、字重与留白分层，不靠字体家族的变化。中文只有 400 与 700 两档真实字重，所以「强调」永远是 Bold；500 只给拉丁字母、数字与等宽面（页脚的合计就是这么写的），落在中文上等于没写——不要用 `Weight(WeightMedium)` 假装强调一段中文。
 
+**Leading is the face's.** 行高由 Viva 按字号给（12 → 19px、14 → 21px、16 → 23px、20 → 27px），页面不逐处调：行高随字号收紧，小字更松、大字更紧，正是排版的正常方向。段落用 `ui.Paragraph` / `ui.Wrap` 的折行，宽度由栏宽（或 `MaxWidth`）控制，正文一行落在 45–75 个汉字之间。
+
 **Controls are the framework's.** 按钮、输入框、下拉、分段与表单字段的标签由 Viva 的 recipe 画，字号取 `theme.Metrics`（`FontSizeM` 14 = Body）。所以对话框里的字段标题是 14 Medium，而页面自绘的字段标签是 Caption 12：两套来源，页面不要为了「和对话框一致」把标签提到 14——那会让标签和它下面的值同大。页面的文字用 `typography` 的角色，控件交给框架——两边不要互相抄数字。
 
 ### Hierarchy
