@@ -189,14 +189,14 @@ func TableHeader(c ui.C, spec TableHeaderSpec, body func(ui.C)) {
 
 // Footer is the 40px band under a table that carries its totals: the page's
 // inset, GroupGap between the readings, one line, no surface of its own. A
-// band whose readings summarize the whole page rather than trail one table
-// spreads them across the width (spread); the rest run together at the
-// leading edge like a sentence.
-func Footer(c ui.C, spread bool, body func()) {
+// band whose readings summarize the whole page (the stock records and the
+// ladder) passes right and sits them against the trailing edge; the rest run
+// together at the leading edge like a sentence.
+func Footer(c ui.C, right bool, body func()) {
 	row := ui.Row(c).Height(FooterHeight).FillWidth().
 		PadX(Inset).Gap(GroupGap).Items(ui.Center)
-	if spread {
-		row = row.Justify(ui.Between)
+	if right {
+		row = row.Justify(ui.End)
 	}
 	row.Children(body)
 }

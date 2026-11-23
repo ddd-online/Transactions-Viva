@@ -30,6 +30,11 @@ const (
 	rungMinWidth  float32 = 280
 	rungMinHeight float32 = 140
 
+	// rungHeaderHeight is one card's level row. It is tall enough for the top
+	// rung's 24px figure, so every card's rate line and stock list start on the
+	// same line even though only the top rung leads with a Metric.
+	rungHeaderHeight float32 = 32
+
 	// ladderWindowChrome is what the shell and the page padding take off the
 	// window before the rungs see their width: the 204px navigation rail, the
 	// 7px card margin and the 32px page inset. Page layout decisions elsewhere
@@ -353,20 +358,21 @@ func (p *ladderPanel) rung(c ui.C, rung domain.StockLimitRung) {
 	column := ui.Column(c).Grow(1).Basis(0).FillHeight().MinHeight(rungMinHeight).
 		Background(theme.Card).Border(1, theme.Border).Radius(8).Pad(8).Gap(4)
 	column.Children(func() {
-		ui.Row(c).FillWidth().Items(ui.Baseline).Gap(4).Children(func() {
-			// The level is the ladder's height: the top rung is the page's one
-			// large figure, every other rung reads at the grid's figure size.
-			if isTop {
-				typography.Metric(c, strconv.Itoa(rung.Level))
-			} else {
-				typography.Figure(c, strconv.Itoa(rung.Level))
-			}
-			ui.Text(c, "板").FontSize(typography.SizeCaption).Muted()
-			if len(rung.Entries) > 0 {
-				ui.Text(c, strconv.Itoa(len(rung.Entries))).
-					FontSize(typography.SizeCaption).Muted().Mono()
-			}
-		})
+		ui.Row(c).Height(rungHeaderHeight).FillWidth().Items(ui.Baseline).Gap(4).
+			Children(func() {
+				// The level is the ladder's height: the top rung is the page's one
+				// large figure, every other rung reads at the grid's figure size.
+				if isTop {
+					typography.Metric(c, strconv.Itoa(rung.Level))
+				} else {
+					typography.Figure(c, strconv.Itoa(rung.Level))
+				}
+				ui.Text(c, "板").FontSize(typography.SizeCaption).Muted()
+				if len(rung.Entries) > 0 {
+					ui.Text(c, strconv.Itoa(len(rung.Entries))).
+						FontSize(typography.SizeCaption).Muted().Mono()
+				}
+			})
 		rate := "首板"
 		if rung.Level > 1 {
 			rate = "—"

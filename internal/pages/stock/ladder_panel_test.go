@@ -28,8 +28,15 @@ func ladderTestEntries(prefix string, count int) []domain.StockLimitEntry {
 // effect fetches anything and the card layout is the thing under test.
 func ladderTestDriver(t *testing.T, rungs []domain.StockLimitRung, width, height int) *app.Driver {
 	t.Helper()
+	maxLevel := 0
+	for _, rung := range rungs {
+		maxLevel = max(maxLevel, rung.Level)
+	}
 	panel := &ladderPanel{}
-	panel.ladder = domain.StockLimitLadder{Rungs: rungs}
+	panel.ladder = domain.StockLimitLadder{
+		Metrics: domain.StockLimitMetrics{MaxLevel: &maxLevel},
+		Rungs:   rungs,
+	}
 	theme := ui.LightTheme()
 	page := ui.NewPage(ui.PageConfig{View: func(c ui.C) {
 		ui.Column(c).Fill().Children(func() { panel.rungs(c) })
@@ -80,6 +87,9 @@ func TestLadderCardsFillTheirRowAndScrollTheirStocks(t *testing.T) {
 
 	if err := driver.Scroll(gfx.ScrollEvent{X: 100, Y: 500, DeltaY: 200}); err != nil {
 		t.Fatal(err)
+	}
+	if first != other {
+		t.Fatalf("the two cards' first stocks start at %.1f and %.1f; their headers differ in height", first, other)
 	}
 	if after, _ := ladderTestLabelY(t, driver, "1"); after != header {
 		t.Fatalf("the rung header moved from %.1f to %.1f with its stocks", header, after)
