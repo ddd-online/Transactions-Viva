@@ -4,6 +4,12 @@
 // so the same job looks the same on every screen. A page picks a role; it does
 // not pick a number.
 //
+// Seven roles share five steps, so a role is never only a size: Caption 12,
+// Body 14, BodyStrong 14 bold, Section 16 bold, Figure 16 bold mono, Title 20
+// bold, Metric 24 bold mono. Two roles may share a step — a heading and a
+// figure do, because the money face already tells them apart — but no role has
+// a step of its own, and nothing is written at 13, 15 or 19.
+//
 // The steps are the reference application's tokens (its 11/12/13/14/16/18/20/24
 // ladder, see D:\github\Transactions\src\styles\tokens.css), cut down to the five
 // this application uses: the reference's 12/13/14 sat one pixel apart, so caption
@@ -41,14 +47,36 @@ func Caption(c ui.C, value string) ui.Box {
 	return ui.Text(c, value).FontSize(SizeCaption).Color(c.Theme().MutedForeground)
 }
 
+// CaptionMoney is a label that carries an amount, such as a section's 费用合计
+// or a note's 从高点回落. Mono, so the figure sits in the same face as the
+// column it summarizes even though the line also holds Chinese.
+func CaptionMoney(c ui.C, value string) ui.Box {
+	return ui.Text(c, value).FontSize(SizeCaption).Mono().
+		Color(c.Theme().MutedForeground)
+}
+
 // Body is the reading size.
 func Body(c ui.C, value string) ui.Box {
 	return ui.Text(c, value).FontSize(SizeBody)
 }
 
+// BodyStrong is the one strong line inside a block: a card's title, a group's
+// name, a total at the end of a form. Same size as Body, one weight up — the
+// hierarchy below Section, which names the block itself.
+func BodyStrong(c ui.C, value string) ui.Box {
+	return ui.Text(c, value).FontSize(SizeBody).Bold()
+}
+
 // Section names a region inside a page.
 func Section(c ui.C, value string) ui.Box {
 	return ui.Text(c, value).FontSize(SizeSection).Bold()
+}
+
+// Figure is a number a panel reads out: one cell of a metric grid, a ladder
+// rung's level. The same step as Section, in the money face — a figure is data,
+// never a heading, and the two never trade places.
+func Figure(c ui.C, value string) ui.Box {
+	return ui.Text(c, value).FontSize(SizeSection).Bold().Mono()
 }
 
 // Title names the page itself.

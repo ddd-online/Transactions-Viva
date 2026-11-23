@@ -361,7 +361,7 @@ func (m *Model) card(c ui.C, event *domain.KeyEvent) {
 	row.Children(func() {
 		ui.Row(c).Width(3).FillHeight().Background(tone)
 		ui.Column(c).Grow(1).MinWidth(0).PadSides(12, 36, 12, 12).Gap(2).Children(func() {
-			name := typography.Body(c, title).Weight(gfx.WeightMedium).Ellipsis()
+			name := typography.BodyStrong(c, title).Ellipsis()
 			if selected {
 				name.Color(theme.Primary)
 			}

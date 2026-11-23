@@ -425,30 +425,30 @@ func (p *statisticsPanel) cards(c ui.C) {
 	avgLossColor := semantic.Income(*theme)
 	cards := []struct {
 		label, hint, value, caption string
-		size                        float32
+		amount                      bool
 		color                       *gfx.Color
 	}{
 		{pnlLabel, "", money(latest.TotalPnl), statScope(p.strategy, latest.Span),
-			typography.SizeTitle, statColor(*theme, latest.TotalPnl)},
+			false, statColor(*theme, latest.TotalPnl)},
 		{"凯利值", "按胜率与盈亏比算出的下注比例", kellyText(kelly), kellyCaption(kelly),
-			typography.SizeSection, nil},
+			false, nil},
 		{"平均盈利", domain.MetricHint(domain.MetricAvgWin), money(latest.AvgWin),
-			strconv.Itoa(latest.WinCount) + " 笔盈利", typography.SizeSection, &avgWinColor},
+			strconv.Itoa(latest.WinCount) + " 笔盈利", false, &avgWinColor},
 		{"平均亏损", domain.MetricHint(domain.MetricAvgLoss), money(latest.AvgLoss),
-			strconv.Itoa(latest.LossCount) + " 笔亏损", typography.SizeSection, &avgLossColor},
+			strconv.Itoa(latest.LossCount) + " 笔亏损", false, &avgLossColor},
 		{"胜率", domain.MetricHint(domain.MetricWinRate), statPercent(latest.WinRate),
-			winLossCaption(latest), typography.SizeSection, nil},
+			winLossCaption(latest), false, nil},
 		{"盈亏比", domain.MetricHint(domain.MetricPnlRatio), ratioText(latest.PnlRatio),
-			"", typography.SizeSection, nil},
+			"", false, nil},
 		{"期望值", domain.MetricHint(domain.MetricExpectancy), money(latest.Expectancy),
-			"", typography.SizeSection, statColor(*theme, latest.Expectancy)},
+			"", false, statColor(*theme, latest.Expectancy)},
 		{"最大回撤", domain.MetricHint(domain.MetricMaxDrawdown),
 			statPercent(latest.MaxDrawdownPct), "从高点回落 " + money(latest.MaxDrawdown),
-			typography.SizeSection, nil},
+			true, nil},
 	}
 	metricRows(c, len(cards), func(c ui.C, index int) {
 		card := cards[index]
-		p.card(c, card.label, card.hint, card.value, card.caption, card.size, card.color)
+		p.card(c, card.label, card.hint, card.value, card.caption, card.amount, card.color)
 	})
 }
 
@@ -456,8 +456,7 @@ func (p *statisticsPanel) cards(c ui.C) {
 // optional caption. The width is fixed so the Flow can fit four in a row. The
 // hint hangs on the card's own pointer region (not on the label): a hint that
 // needs no click must not add eight tab stops to the page.
-func (p *statisticsPanel) card(c ui.C, label, hint, value, caption string, size float32, color *gfx.Color) {
-	theme := c.Theme()
+func (p *statisticsPanel) card(c ui.C, label, hint, value, caption string, amount bool, color *gfx.Color) {
 	var id gfx.ID
 	if hint != "" {
 		id = ui.ID(c)
@@ -469,13 +468,18 @@ func (p *statisticsPanel) card(c ui.C, label, hint, value, caption string, size 
 	}
 	column.Children(func() {
 		typography.Caption(c, label)
-		figure := ui.Text(c, value).FontSize(size).Bold().Mono().Ellipsis()
+		figure := typography.Figure(c, value).Ellipsis()
 		if color != nil {
 			figure.Color(*color)
 		}
 		if caption != "" {
-			ui.Text(c, caption).FontSize(typography.SizeCaption).
-				Color(theme.MutedForeground).MaxLines(2)
+			// A note that carries an amount keeps the money face, so the
+			// figure sits in the same face as the card above it.
+			if amount {
+				typography.CaptionMoney(c, caption).MaxLines(2)
+			} else {
+				typography.Caption(c, caption).MaxLines(2)
+			}
 		}
 	})
 }

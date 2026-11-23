@@ -463,7 +463,7 @@ func (p *recordsPanel) historyRail(c ui.C) {
 			return
 		}
 		if len(p.historyView) == 0 {
-			typography.Caption(c, "没有匹配的股票").PadX(12).PadY(8).
+			typography.Body(c, "没有匹配的股票").Muted().PadX(12).PadY(8).
 				Color(c.Theme().MutedForeground)
 		} else {
 			// Keep the same Text node in both states: removing it would shift
@@ -513,20 +513,20 @@ func (p *recordsPanel) historyRow(row ui.ListRow) {
 		Focus(ui.Look{}.Ring(2, theme.Ring))
 	ui.Column(row.C).Grow(1).Gap(2).Children(func() {
 		ui.Row(row.C).FillWidth().Gap(6).Items(ui.Center).Children(func() {
-			typography.Body(row.C, name).Grow(1).Ellipsis()
+			typography.BodyStrong(row.C, name).Grow(1).Ellipsis()
 			typography.Caption(row.C, history.StockCode).Mono().Ellipsis()
 		})
-		ui.Row(row.C).FillWidth().Gap(6).Items(ui.Center).Children(func() {
+		ui.Row(row.C).FillWidth().Gap(6).Items(ui.Baseline).Children(func() {
 			typography.Caption(row.C, "现价").Color(labelColor)
 			ui.Text(row.C, p.latestPrice(history.StockCode)).
-				FontSize(typography.SizeCaption).Mono().Color(labelColor)
+				FontSize(typography.SizeBody).Mono().Color(labelColor)
 			ui.Spacer(row.C)
 			label := "盈"
 			if item.TotalPnl < 0 {
 				label = "亏"
 			}
 			ui.Text(row.C, label+" "+money(historyAbsInt64(item.TotalPnl))).
-				FontSize(typography.SizeCaption).Mono().
+				FontSize(typography.SizeBody).Mono().
 				Color(pnlColor(*theme, item.TotalPnl))
 		})
 		ui.Row(row.C).FillWidth().Gap(6).Items(ui.Center).Children(func() {
@@ -534,7 +534,7 @@ func (p *recordsPanel) historyRow(row ui.ListRow) {
 				strconv.Itoa(item.RoundCount)+" 轮 · 最近 "+historyDate(item.LastClosedAt)).
 				Color(labelColor).Grow(1).Ellipsis()
 			ui.Text(row.C, historyPercent(item.TotalPnlRate)).
-				FontSize(typography.SizeCaption).Mono().
+				FontSize(typography.SizeBody).Mono().
 				Color(historyRateColor(*theme, item.TotalPnlRate))
 		})
 	})
@@ -686,8 +686,7 @@ func recordRoundTitle(c ui.C, round domain.StockRoundDetail, expanded bool, them
 			glyph = icons.ChevronDown
 		}
 		ui.Icon(c, glyph).Size(13, 13).Color(theme.MutedForeground)
-		ui.Text(c, "第 "+strconv.Itoa(round.Round.RoundNo)+" 轮").
-			FontSize(typography.SizeBody).Weight(gfx.WeightMedium)
+		typography.BodyStrong(c, "第 "+strconv.Itoa(round.Round.RoundNo)+" 轮")
 		typography.Caption(c, recordRoundRange(round.Round))
 	})
 }
@@ -809,7 +808,7 @@ func (p *recordsPanel) tradeTable(c ui.C, round domain.StockRoundDetail) {
 			p.tradeRow(c, trade)
 		}
 		if len(round.Trades) == 0 {
-			typography.Caption(c, "本轮暂无成交").PadX(12).PadY(8)
+			typography.Body(c, "本轮暂无成交").Muted().PadX(12).PadY(8)
 		}
 	})
 }
@@ -885,7 +884,7 @@ func (p *recordsPanel) dailyReviews(c ui.C, round domain.StockRoundDetail) {
 	p.recordSection(c, "每日复盘", nil, func() {
 		ui.Column(c).FillWidth().PadX(12).Gap(4).Children(func() {
 			if len(round.DayReviews) == 0 {
-				typography.Caption(c, "本轮暂无每日复盘")
+				typography.Body(c, "本轮暂无每日复盘").Muted()
 				return
 			}
 			for _, day := range round.DayReviews {
@@ -927,7 +926,8 @@ func (p *recordsPanel) roundReview(c ui.C, round domain.StockRoundDetail) {
 				ui.Paragraph(c, review, 3).FontSize(typography.SizeBody).
 					Color(theme.Foreground)
 			} else {
-				typography.Caption(c, "还没有写本轮复盘，点「编辑」记录买入与卖出的理由。")
+				typography.Body(c, "还没有写本轮复盘，点「编辑」记录买入与卖出的理由。").
+					Muted()
 			}
 		})
 	})

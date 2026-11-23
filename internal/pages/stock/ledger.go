@@ -145,8 +145,7 @@ func ledgerEmpty(c ui.C, theme *ui.Theme, onEdit func()) {
 		Hover(ui.Look{}.Background(theme.Hover)).
 		Radius(theme.Metrics.RadiusControl)
 	row.Children(func() {
-		typography.Caption(c, "还没有填写台账，记下买入理由、止损与止盈。").
-			Color(theme.MutedForeground)
+		typography.Body(c, "还没有填写台账，记下买入理由、止损与止盈。").Muted()
 	})
 	if row.Clicked() && onEdit != nil {
 		onEdit()
@@ -201,7 +200,7 @@ func ledgerSheetView(c ui.C, sheet ledgerSheet) {
 
 func ledgerGroup(c ui.C, label string, body func()) {
 	ui.Column(c).FillWidth().Gap(layout.Gap).Children(func() {
-		ui.Text(c, label).FontSize(typography.SizeBody).Bold()
+		typography.BodyStrong(c, label)
 		body()
 	})
 }

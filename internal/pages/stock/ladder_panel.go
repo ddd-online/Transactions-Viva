@@ -311,9 +311,12 @@ func (p *ladderPanel) rung(c ui.C, rung domain.StockLimitRung) {
 	isTop := p.ladder.Metrics.MaxLevel != nil && *p.ladder.Metrics.MaxLevel == rung.Level
 	column.Children(func() {
 		ui.Row(c).FillWidth().Items(ui.Baseline).Gap(4).Children(func() {
-			level := ui.Text(c, strconv.Itoa(rung.Level)).FontSize(typography.SizeTitle).Bold().Mono()
+			// The level is the ladder's height: the top rung is the page's one
+			// large figure, every other rung reads at the grid's figure size.
 			if isTop {
-				level.FontSize(typography.SizeMetric)
+				typography.Metric(c, strconv.Itoa(rung.Level))
+			} else {
+				typography.Figure(c, strconv.Itoa(rung.Level))
 			}
 			ui.Text(c, "板").FontSize(typography.SizeCaption).Muted()
 			if len(rung.Entries) > 0 {

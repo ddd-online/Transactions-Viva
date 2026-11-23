@@ -280,7 +280,7 @@ func (m *Model) updateNotesModal(c ui.C) {
 			ui.Scroll(c).Height(380).FillWidth().Gap(8).Children(func() {
 				for _, block := range blocks {
 					if block.heading {
-						typography.Body(c, block.text).Bold()
+						typography.BodyStrong(c, block.text)
 					} else {
 						ui.Wrap(c, block.text)
 					}

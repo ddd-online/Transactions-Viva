@@ -224,8 +224,7 @@ func (p *accountPanel) metrics(c ui.C, overview domain.StockOverview) {
 					metric := metrics[index]
 					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4).Children(func() {
 						typography.Caption(c, metric.label)
-						value := ui.Text(c, metric.value).FontSize(typography.SizeSection).
-							Bold().Mono().Ellipsis()
+						value := typography.Figure(c, metric.value).Ellipsis()
 						if metric.pnl != nil {
 							value.Color(pnlColor(*c.Theme(), *metric.pnl))
 						}
@@ -242,8 +241,7 @@ func (p *accountPanel) fundSection(c ui.C) {
 			PadSides(layout.BlockGap, layout.Inset, layout.Gap, layout.Inset)
 		if p.fund.Total == 0 {
 			ui.Column(c).Grow(1).MinHeight(0).Center().Children(func() {
-				typography.Caption(c, "暂无资金记录").
-					Color(c.Theme().MutedForeground)
+				typography.Body(c, "暂无资金记录").Muted()
 			})
 			return
 		}

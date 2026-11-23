@@ -437,7 +437,7 @@ func (m *Model) stockOperationsDialog(c ui.C, spec Spec) {
 	}
 	ui.ModalWith(c, &m.stock.operationsOpen, "操作记录", ui.ModalSpec{Width: 640}, func() {
 		if len(spec.Stock.Operations) == 0 {
-			typography.Caption(c, "暂无可回滚的操作").PadY(8)
+			typography.Body(c, "暂无可回滚的操作").Muted().PadY(8)
 			return
 		}
 		ui.Column(c).FillWidth().Children(func() {

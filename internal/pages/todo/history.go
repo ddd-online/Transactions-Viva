@@ -58,7 +58,7 @@ func (m *Model) quadrantPane(c ui.C, title string, items []quadrantItem) {
 	theme := c.Theme()
 	ui.Column(c).Grow(1).Basis(0).FillHeight().Children(func() {
 		ui.Row(c).Height(44).FillWidth().PadSides(18, 8, 18, 8).Items(ui.Center).Gap(8).Children(func() {
-			typography.Body(c, title).Bold()
+			typography.BodyStrong(c, title)
 			typography.Caption(c, fmt.Sprintf("%d", len(items))).Mono()
 			ui.Spacer(c)
 		})
@@ -96,8 +96,8 @@ func (m *Model) historyView(c ui.C) {
 	if len(m.history) == 0 {
 		ui.Column(c).Fill().Center().Gap(8).Children(func() {
 			ui.Icon(c, icons.CircleCheck).Size(28, 28).Color(theme.MutedForeground)
-			typography.Body(c, "暂无已完成的事项").Muted()
-			typography.Caption(c, "在待办里勾选完成，它会出现在这里。").Muted()
+			typography.Section(c, "暂无已完成的事项").TextCenter()
+			typography.Body(c, "在待办里勾选完成，它会出现在这里。").Muted()
 		})
 		return
 	}

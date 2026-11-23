@@ -54,7 +54,7 @@ func (m *Model) linkedRow(c ui.C, entry *repository.RecordEntry) {
 	record := entry.Record
 	ui.Column(c).FillWidth().Pad(layout.BlockGap).Gap(4).Children(func() {
 		ui.Row(c).FillWidth().Gap(layout.Gap).Items(ui.Center).Children(func() {
-			typography.Body(c, linkedTitle(record)).Weight(gfx.WeightMedium).
+			typography.BodyStrong(c, linkedTitle(record)).
 				Grow(1).Shrink(1).MinWidth(0).Ellipsis()
 			typography.Body(c, linkedAmount(record)).Mono().Weight(gfx.WeightMedium).
 				Color(semantic.Kind(*theme, record.TransactionType)).TextEnd().
