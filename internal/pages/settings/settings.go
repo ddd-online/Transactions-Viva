@@ -448,8 +448,10 @@ func (m *Model) View(c ui.C, spec Spec) {
 func (m *Model) nav(c ui.C) {
 	theme := c.Theme()
 	ui.Column(c).Width(navWidth).FillHeight().Children(func() {
+		// The rail's own name starts on the same line as the section title in
+		// the reading column, so the two 20px titles read as one header row.
 		typography.Title(c, "设置").
-			MarginSides(layout.BlockGap+layout.Gap, layout.Gap, layout.BlockGap, layout.GroupGap)
+			MarginSides(layout.GroupGap+layout.Gap, layout.Gap, layout.BlockGap, layout.GroupGap)
 		ui.Scroll(c).Grow(1).Children(func() {
 			ui.Column(c).Gap(navEntrySpace).MarginBottom(8).Children(func() {
 				for index := range sections {
