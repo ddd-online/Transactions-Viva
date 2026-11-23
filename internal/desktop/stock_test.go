@@ -19,7 +19,7 @@ func TestStockAccountPageAddsPrincipal(t *testing.T) {
 	}
 	clickLast(t, driver, "金额（元）")
 	driver.Type("1000")
-	click(t, driver, "追加")
+	clickLast(t, driver, "追加本金")
 	if !shows(driver, "追加本金已记录") {
 		t.Fatal("principal toast missing")
 	}

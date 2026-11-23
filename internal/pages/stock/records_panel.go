@@ -809,7 +809,7 @@ func (p *recordsPanel) tradeTable(c ui.C, round domain.StockRoundDetail) {
 			p.tradeRow(c, trade)
 		}
 		if len(round.Trades) == 0 {
-			typography.Caption(c, "本轮没有成交").PadX(12).PadY(8)
+			typography.Caption(c, "本轮暂无成交").PadX(12).PadY(8)
 		}
 	})
 }
@@ -885,7 +885,7 @@ func (p *recordsPanel) dailyReviews(c ui.C, round domain.StockRoundDetail) {
 	p.recordSection(c, "每日复盘", nil, func() {
 		ui.Column(c).FillWidth().PadX(12).Gap(4).Children(func() {
 			if len(round.DayReviews) == 0 {
-				typography.Caption(c, "本轮没有每日复盘")
+				typography.Caption(c, "本轮暂无每日复盘")
 				return
 			}
 			for _, day := range round.DayReviews {

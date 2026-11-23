@@ -18,7 +18,7 @@ func (m *Model) addDialog(c ui.C) {
 			ui.Column(c).FillWidth().Gap(4).Children(func() {
 				typography.Caption(c, "日期")
 				datepicker.Picker(c, &m.add.pick, datepicker.Spec{
-					Label:       "事件日期",
+					Label:       "日期",
 					Start:       m.add.date,
 					Grain:       datepicker.ByDay,
 					CloseOnPick: true,
@@ -31,7 +31,7 @@ func (m *Model) addDialog(c ui.C) {
 			})
 			ui.Column(c).FillWidth().Gap(4).Children(func() {
 				typography.Caption(c, "标题")
-				ui.TextField(c, &m.add.title, "标题", "事件标题").AutoFocus()
+				ui.TextField(c, &m.add.title, "标题", "例如：公司年会").AutoFocus()
 			})
 		})
 	}, func() {

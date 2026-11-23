@@ -346,7 +346,7 @@ func (p *statisticsPanel) applyRecent() {
 	}
 	recent, err := strconv.Atoi(text)
 	if err != nil || recent <= 0 {
-		p.errorMessage = "最近 N 笔需要正整数"
+		p.errorMessage = "最近 N 笔请填正整数"
 		return
 	}
 	p.recent = recent

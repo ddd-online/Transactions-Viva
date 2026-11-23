@@ -257,9 +257,9 @@ var featureRows = [...]struct {
 }{
 	{config.FeatureAccounting, "记账"},
 	{config.FeatureStock, "股票"},
+	{config.FeatureTodo, "待办"},
 	{config.FeatureKeyEvent, "事件"},
 	{config.FeatureDiary, "日记"},
-	{config.FeatureTodo, "待办"},
 }
 
 // Model is the settings page's state: the chosen section, kept while the shell

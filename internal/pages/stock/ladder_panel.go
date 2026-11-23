@@ -493,7 +493,7 @@ func (p *ladderPanel) statusText() string {
 		return "涨停池数据源未配置"
 	}
 	if p.errorMessage != "" {
-		return "读取失败"
+		return "读取涨停池失败"
 	}
 	if p.pending {
 		if p.have {

@@ -408,7 +408,7 @@ func (e *ledgerEditor) dialog(c ui.C, repo repository.StockRepository, accountID
 				ledgerGroup(c, "执行复盘", func() {
 					ledgerRadioGroup(c, "是否按系统执行", &e.draft.followedSystem)
 					ledgerInput(c, "一句话", func() {
-						ui.TextField(c, &e.draft.summary, "一句话", "一句话总结这一轮").Grow(1)
+						ui.TextField(c, &e.draft.summary, "一句话", "例如：按计划执行").Grow(1)
 					}, "", theme.MutedForeground)
 				})
 				if e.err != "" {

@@ -760,7 +760,7 @@ func (p *positionsPanel) tradesSection(c ui.C, position *domain.StockPosition) {
 	stockSection(c, "成交记录", layout.Inset, action, func() {
 		ui.Column(c).FillWidth().PadX(layout.Inset).Children(func() {
 			if len(trades) == 0 {
-				typography.Caption(c, "本轮还没有成交").PadY(layout.BlockGap)
+				typography.Caption(c, "本轮暂无成交").PadY(layout.BlockGap)
 				return
 			}
 			// The table is wider than the detail column and wider than it is
@@ -1035,7 +1035,7 @@ func (p *positionsPanel) tradeDialog(c ui.C) {
 						index := index
 						fill := &p.tradeFills[index]
 						ui.Row(c.KeyInt(index)).Gap(layout.Gap).Items(ui.Center).Children(func() {
-							ui.TextField(c, &fill.price, "成交价（元）", "成交价（元/股）").
+							ui.TextField(c, &fill.price, "成交价（元）", "0.00").
 								Mono().Grow(1)
 							ui.TextField(c, &fill.lots, "手数", p.lotsPlaceholder()).
 								Mono().Grow(1).Disabled(fixedLots)
@@ -1176,7 +1176,7 @@ func (p *positionsPanel) tradeEditDialog(c ui.C) {
 	ui.ModalWith(c, &p.editOpen, "编辑成交", ui.ModalSpec{Width: 420}, func() {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 			positionsFormField(c, "价格（元）", func() {
-				ui.TextField(c, &p.editPrice, "价格（元）", "0.000").Mono()
+				ui.TextField(c, &p.editPrice, "价格（元）", "0.00").Mono()
 			})
 			positionsFormField(c, "手数", func() {
 				ui.TextField(c, &p.editLots, "手数", "1").Mono()

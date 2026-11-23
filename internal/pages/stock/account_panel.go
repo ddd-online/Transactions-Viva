@@ -242,7 +242,7 @@ func (p *accountPanel) fundSection(c ui.C) {
 			PadSides(layout.BlockGap, layout.Inset, layout.Gap, layout.Inset)
 		if p.fund.Total == 0 {
 			ui.Column(c).Grow(1).MinHeight(0).Center().Children(func() {
-				typography.Caption(c, "还没有资金记录").
+				typography.Caption(c, "暂无资金记录").
 					Color(c.Theme().MutedForeground)
 			})
 			return
@@ -395,16 +395,6 @@ func (p *accountPanel) amountTitle() string {
 	return "追加本金"
 }
 
-func (p *accountPanel) amountButton() string {
-	switch p.amountKind {
-	case actionWithdraw:
-		return "支取"
-	case actionInterest:
-		return "归本"
-	}
-	return "追加"
-}
-
 func (p *accountPanel) amountModal(c ui.C) {
 	if !p.amountOpen {
 		return
@@ -421,7 +411,7 @@ func (p *accountPanel) amountModal(c ui.C) {
 		if ui.Button(c, "取消").Outline().Clicked() {
 			p.amountOpen = false
 		}
-		if ui.Button(c, p.amountButton()).Clicked() {
+		if ui.Button(c, p.amountTitle()).Clicked() {
 			p.submitAmount()
 		}
 	})

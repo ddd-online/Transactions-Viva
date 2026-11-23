@@ -63,7 +63,7 @@ func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
 	// The row's commands are its context menu: delete the item first.
 	rightClickText(t, driver, "写日报")
 	click(t, driver, "删除事项")
-	clickLast(t, driver, "删除事项")
+	clickLast(t, driver, "删除")
 	if shows(driver, "写日报") {
 		t.Fatal("deleted item is still shown")
 	}
@@ -82,7 +82,7 @@ func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
 	// The same menu deletes the theme and whatever it still holds.
 	rightClickText(t, driver, "写周报")
 	click(t, driver, "删除主题「下周」")
-	clickLast(t, driver, "删除主题")
+	clickLast(t, driver, "删除")
 	if shows(driver, "下周") || shows(driver, "写周报") {
 		t.Fatal("deleted theme is still shown")
 	}

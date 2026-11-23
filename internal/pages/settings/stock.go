@@ -191,7 +191,7 @@ func (m *Model) stockTagsRow(c ui.C, spec Spec, stock *StockConfig) {
 			})
 		}
 		ui.Row(c).FillWidth().Items(ui.Center).Gap(metrics.GapItem).Children(func() {
-			field := ui.TextField(c, &m.stock.newTag, "新增交易标签", "如：低吸").
+			field := ui.TextField(c, &m.stock.newTag, "新增交易标签", "例如：低吸").
 				Grow(1).MaxWidth(360).Disabled(atLimit)
 			if field.Submitted() {
 				m.addStockTag(spec, stock)
@@ -466,7 +466,7 @@ func (m *Model) rollbackStock(spec Spec) {
 		return
 	}
 	if outcome.Skipped {
-		m.toaster.Show("目标已不存在，已移除："+outcome.Action, "", ui.ToastSuccess)
+		m.toaster.Show("这笔操作已经不存在，已从记录里移除："+outcome.Action, "", ui.ToastSuccess)
 	} else {
 		m.toaster.Show("已回滚："+outcome.Action, "", ui.ToastSuccess)
 	}

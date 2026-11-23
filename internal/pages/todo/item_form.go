@@ -232,7 +232,7 @@ const (
 func (m *Model) themeField(c ui.C, form *itemForm) {
 	if form.newTheme || len(form.themes) == 0 {
 		ui.Row(c).FillWidth().Gap(6).Children(func() {
-			ui.TextField(c, &form.cardTitle, "主题", "输入新的主题名").Grow(1).AutoFocus()
+			ui.TextField(c, &form.cardTitle, "主题", "例如：本周").Grow(1).AutoFocus()
 			if len(form.themes) > 0 && ui.Button(c, "选择已有").Link().Clicked() {
 				form.newTheme, form.cardTitle = false, ""
 			}
@@ -308,13 +308,13 @@ func (m *Model) deleteCardView(c ui.C) {
 	if !m.deleteCard.open {
 		return
 	}
-	ui.ModalWith(c, &m.deleteCard.open, "删除主题？", ui.ModalSpec{Width: 420}, func() {
-		typography.Body(c, fmt.Sprintf("「%s」下面的所有事项和进度都会一起删除。", m.deleteCard.title))
+	ui.ModalWith(c, &m.deleteCard.open, "删除主题「"+m.deleteCard.title+"」？", ui.ModalSpec{Width: 420}, func() {
+		typography.Body(c, "下面的所有事项和进度都会一起删除。")
 	}, func() {
 		if ui.Button(c, "取消").Outline().Clicked() {
 			m.deleteCard.open = false
 		}
-		if ui.Button(c, "删除主题").Destructive().Clicked() {
+		if ui.Button(c, "删除").Destructive().Clicked() {
 			if err := m.todos.DeleteTodoCard(m.context(), m.deleteCard.id); err != nil {
 				m.fail(err)
 				return
@@ -329,13 +329,13 @@ func (m *Model) deleteItemView(c ui.C) {
 	if !m.deleteItem.open {
 		return
 	}
-	ui.ModalWith(c, &m.deleteItem.open, "删除事项？", ui.ModalSpec{Width: 420}, func() {
-		typography.Body(c, fmt.Sprintf("「%s」的进度记录也会一起删除。", m.deleteItem.title))
+	ui.ModalWith(c, &m.deleteItem.open, "删除事项「"+m.deleteItem.title+"」？", ui.ModalSpec{Width: 420}, func() {
+		typography.Body(c, "进度记录也会一起删除。")
 	}, func() {
 		if ui.Button(c, "取消").Outline().Clicked() {
 			m.deleteItem.open = false
 		}
-		if ui.Button(c, "删除事项").Destructive().Clicked() {
+		if ui.Button(c, "删除").Destructive().Clicked() {
 			if err := m.todos.DeleteTodoItem(m.context(), m.deleteItem.id); err != nil {
 				m.fail(err)
 				return

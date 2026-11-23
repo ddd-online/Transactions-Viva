@@ -456,7 +456,7 @@ func (p *lessonsPanel) formModal(c ui.C) {
 			ui.Column(c).Gap(4).Children(func() {
 				typography.Caption(c, "心得")
 				ui.TextField(c, &p.text, "心得",
-					"一句话写清楚这次做对了什么，或做错了什么。").AutoFocus()
+					"例如：按计划止损，没有追高").AutoFocus()
 				count := utf8.RuneCountInString(p.text)
 				color := theme.MutedForeground
 				if count > lessonTextLimit {
