@@ -150,8 +150,11 @@ func (m *Model) backupRestoreGroup(c ui.C, spec Spec) {
 			Shrink(0).PadX(metrics.PadSurface).Gap(metrics.GapItem * 2).
 			Items(ui.Center).Children(func() {
 			ui.Column(c).Grow(1).Gap(2).Children(func() {
-				ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
-					typography.Body(c, entry.Name).Ellipsis()
+				ui.Row(c).FillWidth().Gap(6).Items(ui.Center).Children(func() {
+					// The badges keep their width: a long file name ellipsizes
+					// instead, so "手动" and "含图片" are never cut in half on the
+					// 960 px window.
+					typography.Body(c, entry.Name).Grow(1).MinWidth(0).Ellipsis()
 					if label := backupKindLabel(entry.Kind); label != "" {
 						backupBadge(c, label)
 					}
@@ -162,7 +165,11 @@ func (m *Model) backupRestoreGroup(c ui.C, spec Spec) {
 				meta := fmt.Sprintf("%s · %s · 数据格式 v%d",
 					time.Unix(entry.CreatedAt, 0).Format("2006-01-02 15:04"),
 					backupBytes(entry.SizeBytes), entry.SchemaVersion)
-				typography.Caption(c, meta).Mono().Ellipsis()
+				// Two lines rather than an ellipsis: at the 960 px window the
+				// reading column is 469 px, and the schema version at the end of
+				// the line is the part a reader checks before restoring.
+				ui.Text(c, meta).FontSize(typography.SizeCaption).Mono().
+					Color(theme.MutedForeground).MaxLines(2)
 				if !entry.Restorable && entry.Problem != "" {
 					typography.Caption(c, entry.Problem).Color(theme.Danger)
 				}
@@ -327,7 +334,7 @@ func backupKindLabel(kind string) string {
 func backupBadge(c ui.C, label string) {
 	theme := c.Theme()
 	ui.Text(c, label).FontSize(typography.SizeCaption).PadX(6).PadY(1).Radius(5.5).
-		Background(theme.Muted).Color(theme.MutedForeground)
+		Shrink(0).Background(theme.Muted).Color(theme.MutedForeground)
 }
 
 func backupBytes(size int64) string {
