@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/vivaui/viva/gfx"
+
+	"transactions/internal/components/state"
 )
 
 // relativeLuminance is WCAG 2.x relative luminance for an opaque color.
@@ -116,5 +118,50 @@ func TestAppearancesAreDistinct(t *testing.T) {
 	}
 	if relativeLuminance(light.Background) <= relativeLuminance(dark.Background) {
 		t.Fatal("the light paper is not lighter than the dark ink")
+	}
+}
+
+// TestInteractionStatesReadOnBothSurfaces guards the state washes: a row can
+// sit on the paper card or on the shell, and one opaque grey cannot step away
+// from both — the old tokens vanished into the light chrome and reversed
+// direction on the dark one. Hover, selected and pressed are washes of the ink,
+// so each one must move away from the surface it lands on, in that order.
+func TestInteractionStatesReadOnBothSurfaces(t *testing.T) {
+	distance := func(a, b gfx.Color) float32 {
+		channel := func(x, y float32) float32 {
+			if x < y {
+				x, y = y, x
+			}
+			return x - y
+		}
+		return max(channel(a.Red, b.Red), max(channel(a.Green, b.Green), channel(a.Blue, b.Blue)))
+	}
+	for _, appearance := range []struct {
+		name  string
+		theme gfx.Theme
+	}{
+		{"light", newTheme(false)},
+		{"dark", newTheme(true)},
+	} {
+		for _, surface := range []struct {
+			name string
+			bg   gfx.Color
+		}{
+			{"paper", appearance.theme.Card},
+			{"shell", appearance.theme.Muted},
+		} {
+			hover := over(state.Hover(appearance.theme), surface.bg)
+			selected := over(state.Selected(appearance.theme), surface.bg)
+			pressed := over(state.Pressed(appearance.theme), surface.bg)
+			if step := distance(hover, surface.bg); step < 0.02 {
+				t.Errorf("%s on %s: hover is %.3f from the surface", appearance.name, surface.name, step)
+			}
+			if step := distance(selected, hover); step < 0.02 {
+				t.Errorf("%s on %s: selected is %.3f from hover", appearance.name, surface.name, step)
+			}
+			if step := distance(pressed, selected); step < 0.02 {
+				t.Errorf("%s on %s: pressed is %.3f from selected", appearance.name, surface.name, step)
+			}
+		}
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/icons"
 )
@@ -95,8 +96,8 @@ func (m *Model) navRow(c ui.C, key int, label string, icon gfx.Icon, active bool
 		PadX(metrics.GapItem).Gap(metrics.GapItem).Items(ui.Center).
 		Radius(metrics.RadiusItem()).
 		HitWith(ui.ID(c), label, gfx.HitOptions{Role: gfx.RoleMenuItem, Selected: active}).
-		Hover(ui.Look{}.Background(theme.Accent)).
-		Pressed(ui.Look{}.Background(theme.Accent)).
+		Hover(ui.Look{}.Background(state.Hover(*theme))).
+		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
 		Focus(ui.Look{}.Ring(3, theme.Ring))
 	if active {
 		row = row.Background(theme.Accent)
@@ -124,8 +125,8 @@ func (m *Model) navSubRow(c ui.C, key int, label string, active bool) ui.Box {
 		PadX(metrics.GapItem).Items(ui.Center).
 		Radius(metrics.RadiusItem()).
 		HitWith(ui.ID(c), label, gfx.HitOptions{Role: gfx.RoleMenuItem, Selected: active}).
-		Hover(ui.Look{}.Background(theme.Accent)).
-		Pressed(ui.Look{}.Background(theme.Accent)).
+		Hover(ui.Look{}.Background(state.Hover(*theme))).
+		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
 		Focus(ui.Look{}.Ring(3, theme.Ring))
 	if active {
 		row = row.Background(theme.Accent)

@@ -349,7 +349,7 @@ func (p *ladderPanel) row(c ui.C, row domain.LadderRow) {
 	broken := row.Broken != nil
 	column := ui.Column(c).FillWidth().PadSides(8, 8, 6, 6).Gap(2)
 	if !broken {
-		column = column.Background(semantic.Expense(*theme).WithAlpha(0.06)).Radius(4)
+		column = column.Background(semantic.Wash(semantic.Expense(*theme))).Radius(4)
 	}
 	column.Children(func() {
 		ui.Row(c).FillWidth().Items(ui.Center).Gap(6).Children(func() {
@@ -394,11 +394,11 @@ func (p *ladderPanel) rowTags(c ui.C, row domain.LadderRow) {
 			typography.Caption(c, board)
 		}
 		if oneWord {
-			ladderTag(c, "一字", semantic.Expense(*theme), semantic.Expense(*theme).WithAlpha(0.12), false)
+			ladderTag(c, "一字", semantic.Expense(*theme), semantic.Tint(semantic.Expense(*theme)), false)
 		}
 		if !broken && row.Entry.BrokenCount > 0 {
 			ladderTag(c, "炸 "+strconv.Itoa(row.Entry.BrokenCount),
-				semantic.Outlier(*theme), semantic.Outlier(*theme).WithAlpha(0.12), false)
+				semantic.Outlier(*theme), semantic.Tint(semantic.Outlier(*theme)), false)
 		}
 		if broken {
 			ladderTag(c, "断", theme.MutedForeground, theme.Muted, false)
@@ -429,7 +429,7 @@ func pctTag(c ui.C, text string, value float64) {
 	case value < 0:
 		color = semantic.Income(*theme)
 	}
-	ladderTag(c, text, color, color.WithAlpha(0.12), true)
+	ladderTag(c, text, color, semantic.Tint(color), true)
 }
 
 func (p *ladderPanel) footer(c ui.C) {

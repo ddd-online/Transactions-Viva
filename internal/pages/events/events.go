@@ -24,6 +24,7 @@ import (
 	"transactions/internal/components/datepicker"
 	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
+	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
@@ -349,13 +350,13 @@ func (m *Model) card(c ui.C, event *domain.KeyEvent) {
 	title := displayTitle(*event)
 	background := gfx.Color{}
 	if selected {
-		background = theme.Hover
+		background = state.Selected(*theme)
 	}
 	c.Key(event.Date)
 	row := ui.Row(c).MinHeight(cardMinHeight).FillWidth().
 		Background(background).
 		HitWith(ui.ID(c), title, gfx.HitOptions{Role: gfx.RoleButton, Selected: selected}).
-		Hover(ui.Look{}.Background(theme.Hover)).
+		Hover(ui.Look{}.Background(state.Hover(*theme))).
 		Focus(ui.Look{}.Ring(2, theme.Ring))
 	row.Children(func() {
 		ui.Row(c).Width(3).FillHeight().Background(tone)
@@ -371,7 +372,7 @@ func (m *Model) card(c ui.C, event *domain.KeyEvent) {
 			typography.Caption(c, summary(event.Content)).Ellipsis()
 		})
 		remove := ui.ButtonBase(c, "删除事件「"+title+"」").Size(24, 24).Radius(6).
-			Hover(ui.Look{}.Background(theme.Border)).
+			Hover(ui.Look{}.Background(state.Hover(*theme))).
 			Focus(ui.Look{}.Ring(2, theme.Ring)).
 			Tooltip("删除事件").
 			Absolute().Top(6).Right(6)

@@ -23,6 +23,7 @@ import (
 	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/selectbox"
+	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
@@ -459,7 +460,7 @@ func (m *Model) moodPicker(c ui.C) {
 			button := ui.ButtonBase(c, option.name).Size(30, 26).
 				Radius(metrics.RadiusItem()).
 				Hover(ui.Look{}.Background(theme.Hover)).
-				Pressed(ui.Look{}.Background(theme.Border)).
+				Pressed(ui.Look{}.Background(state.Pressed(*theme))).
 				Focus(ui.Look{}.Ring(2, theme.Ring))
 			if chosen {
 				button = button.Background(pill)

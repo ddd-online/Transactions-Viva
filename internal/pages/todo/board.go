@@ -8,6 +8,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/layout"
+	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
@@ -82,8 +83,8 @@ func (m *Model) group(c ui.C, index int, card *domain.TodoCard) {
 		}
 		more := ui.Button(c, "主题操作").Ghost().Icon(icons.GripVertical).IconOnly().
 			Tooltip("调整主题顺序").
-			Hover(ui.Look{}.Background(theme.Accent)).
-			Pressed(ui.Look{}.Background(theme.Muted))
+			Hover(ui.Look{}.Background(state.Hover(*theme))).
+			Pressed(ui.Look{}.Background(state.Pressed(*theme)))
 		if more.Clicked() {
 			m.cardMenu = true
 			m.cardMenuID = card.ID
@@ -104,14 +105,14 @@ func (m *Model) group(c ui.C, index int, card *domain.TodoCard) {
 		}
 		if ui.Button(c, "删除主题").Ghost().Icon(icons.Trash2).IconOnly().
 			Tooltip("删除主题").
-			Hover(ui.Look{}.Background(theme.Accent)).
-			Pressed(ui.Look{}.Background(theme.Muted)).Clicked() {
+			Hover(ui.Look{}.Background(state.Hover(*theme))).
+			Pressed(ui.Look{}.Background(state.Pressed(*theme))).Clicked() {
 			m.deleteCard = deleteCard{open: true, id: card.ID, title: card.Title}
 		}
 		if ui.Button(c, "添加事项").Ghost().Icon(icons.Plus).IconOnly().
 			Tooltip("添加事项").
-			Hover(ui.Look{}.Background(theme.Accent)).
-			Pressed(ui.Look{}.Background(theme.Muted)).Clicked() {
+			Hover(ui.Look{}.Background(state.Hover(*theme))).
+			Pressed(ui.Look{}.Background(state.Pressed(*theme))).Clicked() {
 			m.collapsed[card.ID] = false
 			m.openItemForm(card.ID, nil)
 		}
@@ -146,7 +147,7 @@ func (m *Model) itemRow(c ui.C, item *domain.TodoItem) {
 					Border(1, theme.Border).Center().
 					HitWith(ui.ID(c), "标记完成："+item.Title, gfx.HitOptions{
 						Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
-					}).Hover(ui.Look{}.Background(theme.Accent)).Focus(ui.Look{}.Ring(2, theme.Ring))
+					}).Hover(ui.Look{}.Background(state.Hover(*theme))).Focus(ui.Look{}.Ring(2, theme.Ring))
 				if check.Clicked() {
 					m.setStatus(item.ID, domain.TodoStatusDone)
 				}
@@ -267,7 +268,7 @@ func (m *Model) progressRow(c ui.C, progress *domain.TodoProgress) {
 		check := ui.Row(c).Size(14, 14).Shrink(0).Radius(7).Border(1, theme.Border).Center().
 			HitWith(ui.ID(c), "勾选进度", gfx.HitOptions{
 				Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
-			}).Hover(ui.Look{}.Background(theme.Accent))
+			}).Hover(ui.Look{}.Background(state.Hover(*theme)))
 		check.Children(func() {
 			if progress.Done {
 				ui.Icon(c, icons.CircleCheck).Size(12, 12).Color(theme.Success)

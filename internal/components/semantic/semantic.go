@@ -48,3 +48,18 @@ func Kind(theme gfx.Theme, kind string) gfx.Color {
 	}
 	return theme.MutedForeground
 }
+
+// The opacities a data hue is used at. A chip puts its hue behind its own label
+// at TintAlpha (the rule DESIGN.md records: every pair still clears 4.5:1 on the
+// tint); WashAlpha is the wider background a whole column or group takes, where
+// the hue marks the region rather than a word.
+const (
+	TintAlpha = 0.12
+	WashAlpha = 0.06
+)
+
+// Tint is color as a chip background behind its own label.
+func Tint(color gfx.Color) gfx.Color { return color.WithAlpha(TintAlpha) }
+
+// Wash is color as a wide background that marks a region.
+func Wash(color gfx.Color) gfx.Color { return color.WithAlpha(WashAlpha) }

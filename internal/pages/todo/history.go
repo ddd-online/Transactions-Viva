@@ -7,6 +7,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/layout"
+	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
@@ -72,7 +73,7 @@ func (m *Model) quadrantPane(c ui.C, title string, items []quadrantItem) {
 				for index := range items {
 					row := items[index]
 					action := ui.Column(c).FillWidth().PadSides(10, 10, 8, 10).Gap(2).
-						Radius(theme.Metrics.RadiusItem()).Hover(ui.Look{}.Background(theme.Accent)).
+						Radius(theme.Metrics.RadiusItem()).Hover(ui.Look{}.Background(state.Hover(*theme))).
 						Hit(ui.ID(c), "编辑 "+row.Item.Title).Children(func() {
 						typography.Body(c, row.Item.Title).MaxLines(1).Ellipsis()
 						typography.Caption(c, row.Card)

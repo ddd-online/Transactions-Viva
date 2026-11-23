@@ -43,25 +43,29 @@ func newTheme(dark bool) gfx.Theme {
 // graphite text and a single precise blue.
 func coolGraphite() gfx.Theme {
 	return gfx.Theme{
-		Background:          gfx.RGB24(0xffffff), // the card: white paper
-		Foreground:          gfx.RGB24(0x18181b), // graphite
-		Card:                gfx.RGB24(0xffffff),
-		CardForeground:      gfx.RGB24(0x18181b),
-		CardElevated:        gfx.RGB24(0xf4f4f5), // segmented track, above the card
-		Popover:             gfx.RGB24(0xffffff),
-		PopoverForeground:   gfx.RGB24(0x18181b),
-		Muted:               gfx.RGB24(0xf4f4f5), // the one chrome tone: title bar, rail, chips
-		MutedForeground:     gfx.RGB24(0x646b76), // secondary text, table headers
-		Border:              gfx.RGB24(0xe4e4e7), // every hairline
-		Hover:               gfx.RGB24(0xf4f4f5), // row hover
-		Input:               gfx.RGB24(0xd4d4d8), // field and control strokes
-		Primary:             gfx.RGB24(0x1d4ed8), // Signal Blue
+		Background:        gfx.RGB24(0xffffff), // the card: white paper
+		Foreground:        gfx.RGB24(0x18181b), // graphite
+		Card:              gfx.RGB24(0xffffff),
+		CardForeground:    gfx.RGB24(0x18181b),
+		CardElevated:      gfx.RGB24(0xf4f4f5), // segmented track, above the card
+		Popover:           gfx.RGB24(0xffffff),
+		PopoverForeground: gfx.RGB24(0x18181b),
+		Muted:             gfx.RGB24(0xf4f4f5), // the one chrome tone: title bar, rail, chips
+		MutedForeground:   gfx.RGB24(0x646b76), // secondary text, table headers
+		Border:            gfx.RGB24(0xe4e4e7), // every hairline
+		// Hover and Accent are washes of the ink, not surface fills: the same
+		// row can sit on the white card or on the shell, and one opaque grey
+		// cannot step away from both. These read as one step (hover) and two
+		// steps (selected) over either surface; pressed is Selected over Hover.
+		Hover:               gfx.RGBA(24, 24, 27, 0.05), // under the pointer
+		Input:               gfx.RGB24(0xd4d4d8),        // field and control strokes
+		Primary:             gfx.RGB24(0x1d4ed8),        // Signal Blue
 		PrimaryForeground:   gfx.RGB24(0xffffff),
 		Selection:           gfx.RGB24(0xc7d7fe),
 		SelectionForeground: gfx.RGB24(0x111827),
 		Secondary:           gfx.RGB24(0xf4f4f5),
 		SecondaryForeground: gfx.RGB24(0x18181b),
-		Accent:              gfx.RGB24(0xe4e4e7), // navigation hover and active row
+		Accent:              gfx.RGBA(24, 24, 27, 0.10), // the chosen row or page
 		AccentForeground:    gfx.RGB24(0x18181b),
 		Ring:                gfx.RGB24(0x52525b), // focus, 7.7:1 on the paper
 		Success:             gfx.RGB24(0x0f6b34), // income
@@ -94,7 +98,7 @@ func coolInk() gfx.Theme {
 		Muted:               gfx.RGB24(0x27272a), // the one chrome tone: title bar, rail, chips
 		MutedForeground:     gfx.RGB24(0xa1a1aa),
 		Border:              gfx.RGBA(250, 250, 250, 0.10),
-		Hover:               gfx.RGB24(0x232326),
+		Hover:               gfx.RGBA(250, 250, 250, 0.06), // under the pointer
 		Input:               gfx.RGBA(250, 250, 250, 0.14),
 		Primary:             gfx.RGB24(0x2f5ce0),
 		PrimaryForeground:   gfx.RGB24(0xfafafa),
@@ -102,9 +106,10 @@ func coolInk() gfx.Theme {
 		SelectionForeground: gfx.RGB24(0xeef2ff),
 		Secondary:           gfx.RGB24(0x27272a),
 		SecondaryForeground: gfx.RGB24(0xfafafa),
-		// One step of contrast over whatever surface the row sits on, the same
-		// value as the hairline: on the chrome it lifts to #3c3c3f, on a popover
-		// to #2f2f32. An opaque grey here disappeared into the rail.
+		// Accent is the same wash as Hover, one step stronger: on the chrome it
+		// lifts to #3c3c3f, on a popover to #2f2f32, and pressed is Accent over
+		// Hover (see internal/components/state). An opaque grey here
+		// disappeared into the rail.
 		Accent:           gfx.RGBA(250, 250, 250, 0.10),
 		AccentForeground: gfx.RGB24(0xfafafa),
 		Ring:             gfx.RGB24(0xa1a1aa),

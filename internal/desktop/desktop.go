@@ -13,6 +13,7 @@ import (
 
 	"transactions/internal/appicon"
 	"transactions/internal/backup"
+	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/config"
 	"transactions/internal/icons"
@@ -354,18 +355,13 @@ func windowColor(color gfx.Color) app.Color {
 // appearance toggle as the rest of the window does.
 func (m *Model) windowControls() app.WindowControlsStyle {
 	theme := m.theme
-	// The buttons sit on the title bar, and the bar's tone is Muted. The surface
-	// palette's Hover and Secondary are the same #f4f4f5 as that chrome in the
-	// light appearance, so an opaque fill left the buttons looking dead under
-	// the pointer. A faint wash of the ink reads on either chrome: it darkens
-	// the light bar and lifts the dark one, the same way Viva's default does.
-	hover, pressed := theme.Foreground, theme.Foreground
-	hover.Alpha = 0.10
-	pressed.Alpha = 0.18
+	// The buttons sit on the title bar, so their feedback has to read on the
+	// chrome's tone: the same ink washes the page rows use, one step stronger
+	// than a row's hover because these targets are small.
 	return app.WindowControlsStyle{
 		Foreground:      theme.Foreground,
-		Hover:           hover,
-		Pressed:         pressed,
+		Hover:           state.Selected(theme),
+		Pressed:         state.Pressed(theme),
 		Close:           theme.Danger,
 		CloseForeground: theme.DangerForeground,
 		Minimize:        "最小化",
@@ -420,8 +416,8 @@ func (m *Model) titlebar(c ui.C, leading, trailing float32) {
 		}
 		button := ui.ButtonBase(c, tip).Size(32, 32).
 			Radius(theme.Metrics.RadiusControl).
-			Hover(ui.Look{}.Background(theme.Border)).
-			Pressed(ui.Look{}.Background(theme.Muted.Mix(theme.Foreground, 0.12))).
+			Hover(ui.Look{}.Background(state.Hover(*theme))).
+			Pressed(ui.Look{}.Background(state.Pressed(*theme))).
 			Focus(ui.Look{}.Ring(2, theme.Ring)).
 			Tooltip(tip)
 		button.Children(func() {

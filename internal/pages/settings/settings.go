@@ -19,6 +19,7 @@ import (
 
 	"transactions/internal/components/datepicker"
 	"transactions/internal/components/layout"
+	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/config"
 	"transactions/internal/domain"
@@ -463,7 +464,7 @@ func (m *Model) nav(c ui.C) {
 					}
 					row = row.HitWith(ui.ID(c), entry.title,
 						gfx.HitOptions{Role: gfx.RoleMenuItem, Selected: active}).
-						Hover(ui.Look{}.Background(theme.Accent)).
+						Hover(ui.Look{}.Background(state.Hover(*theme))).
 						Focus(ui.Look{}.Ring(2, theme.Ring))
 					foreground := theme.MutedForeground
 					if active {

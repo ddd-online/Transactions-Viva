@@ -7,6 +7,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
@@ -70,7 +71,7 @@ func (m *Model) progressView(c ui.C) {
 								Border(1, c.Theme().Border).Center().
 								HitWith(ui.ID(c), "勾选进度", gfx.HitOptions{
 									Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
-								}).Hover(ui.Look{}.Background(c.Theme().Accent))
+								}).Hover(ui.Look{}.Background(state.Hover(*c.Theme())))
 							check.Children(func() {
 								if line.Done {
 									ui.Icon(c, icons.CircleCheck).Size(14, 14).Color(c.Theme().Success)

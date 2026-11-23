@@ -21,6 +21,7 @@ import (
 	"transactions/internal/components/layout"
 	"transactions/internal/components/pagination"
 	"transactions/internal/components/semantic"
+	"transactions/internal/components/state"
 	"transactions/internal/components/tag"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
@@ -352,14 +353,12 @@ func (m *Model) sortButton(c ui.C, label string, field sortField) {
 		}).
 		Focus(ui.Look{}.Ring(2, theme.Ring))
 	if rank == 0 {
-		button = button.Hover(ui.Look{}.Background(theme.Accent)).
-			Pressed(ui.Look{}.Background(theme.Border))
+		button = button.Hover(ui.Look{}.Background(state.Hover(*theme))).
+			Pressed(ui.Look{}.Background(state.Pressed(*theme)))
 	} else {
-		tint, hover, pressed := theme.Primary, theme.Primary, theme.Primary
-		tint.Alpha, hover.Alpha, pressed.Alpha = 0.14, 0.22, 0.3
-		button = button.Background(tint).
-			Hover(ui.Look{}.Background(hover)).
-			Pressed(ui.Look{}.Background(pressed))
+		button = button.Background(state.PrimaryTint(*theme)).
+			Hover(ui.Look{}.Background(state.PrimaryHover(*theme))).
+			Pressed(ui.Look{}.Background(state.PrimaryPressed(*theme)))
 	}
 	button.Children(func() {
 		ui.Icon(c, glyph).Size(14, 14).Color(color)
@@ -441,7 +440,7 @@ func (m *Model) row(r ui.ListRow) {
 	r.Element.Height(layout.RowHeight).PadX(layout.Inset).Gap(layout.ColumnGap).Items(ui.Center).
 		Hover(ui.Look{}.Background(theme.Hover))
 	if r.Selected() {
-		r.Element.Background(theme.Hover)
+		r.Element.Background(theme.Accent)
 	}
 
 	typography.Body(r.C, rec.at.Format("01-02")).Width(recordDateWidth).Ellipsis()
@@ -462,7 +461,7 @@ func (m *Model) row(r ui.ListRow) {
 			if rec.outlier {
 				mark := outlierColor(*theme)
 				typography.Caption(r.C, "离群值").Color(mark).
-					Background(mark.WithAlpha(0.12)).PadSides(1, 6, 1, 6).Radius(4)
+					Background(semantic.Tint(mark)).PadSides(1, 6, 1, 6).Radius(4)
 			}
 			if rec.keyEventDate != "" {
 				ui.Text(r.C, "★").FontSize(typography.SizeCaption).Color(outlierColor(*theme))

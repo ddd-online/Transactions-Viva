@@ -16,6 +16,7 @@ import (
 	"transactions/internal/components/layout"
 	"transactions/internal/components/selectbox"
 	"transactions/internal/components/semantic"
+	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
@@ -436,9 +437,9 @@ func (p *positionsPanel) positionCard(c ui.C, position *domain.StockPosition) {
 		HitWith(ui.ID(c), position.StockName+" "+position.StockCode, gfx.HitOptions{
 			Cursor: gfx.PointerCursorHand, Selected: selected,
 		}).
-		Hover(ui.Look{}.Background(theme.Hover))
+		Hover(ui.Look{}.Background(state.Hover(*theme)))
 	if selected {
-		card = card.Background(theme.Primary.WithAlpha(0.14))
+		card = card.Background(state.PrimaryTint(*theme))
 	}
 	card.Children(func() {
 		ui.Row(c).Gap(6).Items(ui.Center).Children(func() {
