@@ -237,16 +237,16 @@ func (s *Service) entryOf(directory, name string, info os.FileInfo) (Entry, bool
 
 func judge(probe store.DBProbe, supported int) (bool, string) {
 	if !probe.Opened {
-		return false, "无法打开这个数据库"
+		return false, "打不开这个数据库，文件可能损坏或不是数据库"
 	}
 	if !probe.HasAppMeta {
 		return false, "不是本应用的数据库"
 	}
 	if probe.QuickCheck != "ok" {
-		return false, "数据库检查未通过"
+		return false, "数据库检查没通过，文件可能已损坏"
 	}
 	if probe.SchemaVersion > supported {
-		return false, fmt.Sprintf("库版本 v%d 高于当前应用支持的 v%d", probe.SchemaVersion, supported)
+		return false, fmt.Sprintf("数据格式 v%d 高于本程序支持的 v%d，先更新程序再恢复", probe.SchemaVersion, supported)
 	}
 	return true, ""
 }

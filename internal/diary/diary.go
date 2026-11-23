@@ -95,13 +95,13 @@ func Import(ctx context.Context, repo repository.Repository, ledgerID, directory
 // the same import.
 func ImportFiles(ctx context.Context, repo repository.Repository, ledgerID string, files []File) (ImportResult, error) {
 	if strings.TrimSpace(ledgerID) == "" {
-		return ImportResult{}, fmt.Errorf("导入日记失败：没有账本")
+		return ImportResult{}, fmt.Errorf("导入日记失败：没有日记本")
 	}
 	result := ImportResult{Total: len(files)}
 	for _, file := range files {
 		raw, err := os.ReadFile(file.Path)
 		if err != nil {
-			result.Failures = append(result.Failures, FileError{Date: file.Date, Message: "读取文件失败 " + err.Error()})
+			result.Failures = append(result.Failures, FileError{Date: file.Date, Message: "读取文件失败：" + err.Error()})
 			continue
 		}
 		// An imported file carries no mood: the import left the day's mood
@@ -121,7 +121,7 @@ func ImportFiles(ctx context.Context, repo repository.Repository, ledgerID strin
 // still go out.
 func Export(ctx context.Context, repo repository.Repository, ledgerID, directory string, query domain.DiaryExportQuery) (ExportResult, error) {
 	if strings.TrimSpace(ledgerID) == "" {
-		return ExportResult{}, fmt.Errorf("导出日记失败：没有账本")
+		return ExportResult{}, fmt.Errorf("导出日记失败：没有日记本")
 	}
 	directory = strings.TrimSpace(directory)
 	if directory == "" {
