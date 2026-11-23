@@ -67,7 +67,7 @@ type Model struct {
 	// pickWorkspace chooses the workspace directory; tests replace it.
 	pickWorkspace func() (string, error)
 
-	// closeAsk is the 关闭选项 dialog, raised by the close button when the
+	// closeAsk is the 关闭窗口 dialog, raised by the close button when the
 	// configuration asks every time. closeAllow is the pending close.
 	closeAsk   bool
 	closeAllow func()
