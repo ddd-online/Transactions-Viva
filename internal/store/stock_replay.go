@@ -31,13 +31,13 @@ type replayOrder struct {
 // the account. TradeTime <= 0 keeps the stored time.
 func (w *Workspace) UpdateStockTrade(ctx context.Context, request repository.StockTradeUpdate) error {
 	if request.TradeID == "" {
-		return fmt.Errorf("%w：交易记录不存在", repository.ErrInvalid)
+		return invalidf("交易记录不存在")
 	}
 	if request.PriceMilli <= 0 {
-		return fmt.Errorf("%w：成交价必须大于 0", repository.ErrInvalid)
+		return invalidf("成交价必须大于 0")
 	}
 	if request.Lots <= 0 {
-		return fmt.Errorf("%w：手数必须大于 0", repository.ErrInvalid)
+		return invalidf("手数必须大于 0")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -49,7 +49,7 @@ func (w *Workspace) UpdateStockTrade(ctx context.Context, request repository.Sto
 			return err
 		}
 		if trade.AccountID != request.AccountID {
-			return fmt.Errorf("%w：交易记录不存在", repository.ErrNotFound)
+			return notFoundf("交易记录不存在")
 		}
 		orderTrades, err := loadStockOrderTradesTx(ctx, tx, request.AccountID, stockOrderKey(trade))
 		if err != nil {
@@ -100,7 +100,7 @@ func (w *Workspace) UpdateStockTrade(ctx context.Context, request repository.Sto
 // DeleteStockOrder removes every fill of one order and replays the account.
 func (w *Workspace) DeleteStockOrder(ctx context.Context, accountID, orderID string) error {
 	if orderID == "" {
-		return fmt.Errorf("%w：交易记录不存在", repository.ErrInvalid)
+		return invalidf("交易记录不存在")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -127,7 +127,7 @@ func (w *Workspace) RollbackStockOperation(ctx context.Context, accountID string
 			Scan(&operation.ID, &operation.AccountID, &operation.Kind, &operation.Action,
 				&operation.Detail, &operation.TargetID, &operation.CreatedAt)
 		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("%w：没有可回滚的操作", repository.ErrInvalid)
+			return invalidf("没有可回滚的操作")
 		}
 		if err != nil {
 			return fmt.Errorf("读取操作记录失败：%w", err)
@@ -208,7 +208,7 @@ func deleteStockOrderTx(ctx context.Context, tx *sql.Tx, accountID, orderID stri
 			return err
 		}
 		if trade.AccountID != accountID {
-			return fmt.Errorf("%w：交易记录不存在", repository.ErrNotFound)
+			return notFoundf("交易记录不存在")
 		}
 		trades = []domain.StockTrade{trade}
 	}
@@ -237,7 +237,7 @@ func getStockTradeTx(ctx context.Context, tx *sql.Tx, id string) (domain.StockTr
 		if err := rows.Err(); err != nil {
 			return domain.StockTrade{}, err
 		}
-		return domain.StockTrade{}, fmt.Errorf("%w：交易记录不存在", repository.ErrNotFound)
+		return domain.StockTrade{}, notFoundf("交易记录不存在")
 	}
 	return scanStockTrade(rows)
 }
@@ -483,7 +483,7 @@ func rebuildStockTrades(ctx context.Context, tx *sql.Tx, accountID string) error
 			cycleOpenedAt[trade.StockCode] = trade.TradeTime
 		}
 		if trade.Shares > position.Quantity {
-			return fmt.Errorf("%w：卖出数量超过持仓（当前 %d 股）", repository.ErrInvalid, position.Quantity)
+			return invalidf("卖出数量超过持仓（当前 %d 股）", position.Quantity)
 		}
 		costBasis := domain.CostBasisOf(position.TotalCostCents, trade.Shares, position.Quantity)
 		realized := trade.AmountCents - trade.FeeCents - costBasis

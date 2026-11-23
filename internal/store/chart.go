@@ -4,11 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"transactions/internal/domain"
-	"transactions/internal/repository"
 )
 
 const chartColumns = "chart_id, ledger_id, title, granularity, chart_lines, chart_type, group_field, " +
@@ -18,7 +16,7 @@ const chartColumns = "chart_id, ledger_id, title, granularity, chart_lines, char
 // ledger, once. app_meta keeps a marker so a deleted preset stays deleted.
 func (w *Workspace) EnsureChartPresets(ctx context.Context, ledgerID string) error {
 	if strings.TrimSpace(ledgerID) == "" {
-		return fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定账本")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -76,7 +74,7 @@ func (w *Workspace) EnsureChartPresets(ctx context.Context, ledgerID string) err
 // Charts lists one ledger's saved charts in display order.
 func (w *Workspace) Charts(ctx context.Context, ledgerID string) ([]domain.Chart, error) {
 	if strings.TrimSpace(ledgerID) == "" {
-		return nil, fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
+		return nil, invalidf("没有指定账本")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -131,7 +129,7 @@ func (w *Workspace) CreateChart(ctx context.Context, chart domain.Chart) (string
 // content; only its sort order (through ReorderCharts) is mutable.
 func (w *Workspace) UpdateChart(ctx context.Context, chart domain.Chart) error {
 	if strings.TrimSpace(chart.ChartID) == "" {
-		return fmt.Errorf("%w：图表 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定图表")
 	}
 	if err := validateChart(chart); err != nil {
 		return err
@@ -146,7 +144,7 @@ func (w *Workspace) UpdateChart(ctx context.Context, chart domain.Chart) error {
 			return err
 		}
 		if existing == nil {
-			return fmt.Errorf("%w：找不到该图表", repository.ErrNotFound)
+			return notFoundf("找不到该图表")
 		}
 		if existing.IsPreset && (existing.Title != chart.Title ||
 			existing.Granularity != chart.Granularity ||
@@ -155,7 +153,7 @@ func (w *Workspace) UpdateChart(ctx context.Context, chart domain.Chart) error {
 			existing.GroupField != chart.GroupField ||
 			existing.GroupTransactionType != chart.GroupTransactionType ||
 			existing.GroupCategory != chart.GroupCategory) {
-			return fmt.Errorf("%w：预设图表只能删除或排序", repository.ErrInvalid)
+			return invalidf("预设图表只能删除或排序")
 		}
 		chart.IsPreset = existing.IsPreset
 		chart.CreatedAt = existing.CreatedAt
@@ -174,7 +172,7 @@ func (w *Workspace) UpdateChart(ctx context.Context, chart domain.Chart) error {
 // DeleteChart removes one chart; a missing row is fine.
 func (w *Workspace) DeleteChart(ctx context.Context, chartID string) error {
 	if strings.TrimSpace(chartID) == "" {
-		return fmt.Errorf("%w：图表 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定图表")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -187,7 +185,7 @@ func (w *Workspace) DeleteChart(ctx context.Context, chartID string) error {
 // ReorderCharts writes sort_order 0..n-1 for the given charts.
 func (w *Workspace) ReorderCharts(ctx context.Context, ledgerID string, ids []string) error {
 	if strings.TrimSpace(ledgerID) == "" {
-		return fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定账本")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -207,13 +205,13 @@ func (w *Workspace) ReorderCharts(ctx context.Context, ledgerID string, ids []st
 
 func validateChart(chart domain.Chart) error {
 	if strings.TrimSpace(chart.LedgerID) == "" {
-		return fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定账本")
 	}
 	if strings.TrimSpace(chart.Title) == "" {
-		return fmt.Errorf("%w：图表名称不能为空", repository.ErrInvalid)
+		return invalidf("图表名称不能为空")
 	}
 	if chart.ChartType != "line" && chart.ChartType != "pie" {
-		return fmt.Errorf("%w：图表类型「%s」无法识别", repository.ErrInvalid, chart.ChartType)
+		return invalidf("图表类型「%s」无法识别", chart.ChartType)
 	}
 	return nil
 }

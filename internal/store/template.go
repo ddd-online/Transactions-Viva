@@ -3,11 +3,9 @@ package store
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 
 	"transactions/internal/domain"
-	"transactions/internal/repository"
 )
 
 const templateColumns = "template_id, ledger_id, template_name, transaction_type, category, tags, flags, " +
@@ -16,7 +14,7 @@ const templateColumns = "template_id, ledger_id, template_name, transaction_type
 // Templates lists one ledger's templates in display order.
 func (w *Workspace) Templates(ctx context.Context, ledgerID string) ([]domain.TransactionTemplate, error) {
 	if strings.TrimSpace(ledgerID) == "" {
-		return nil, fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
+		return nil, invalidf("没有指定账本")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -90,7 +88,7 @@ func (w *Workspace) CreateTemplate(ctx context.Context, template domain.Transact
 // DeleteTemplate removes one template; a missing row is fine.
 func (w *Workspace) DeleteTemplate(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
-		return fmt.Errorf("%w：模板 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定模板")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -103,7 +101,7 @@ func (w *Workspace) DeleteTemplate(ctx context.Context, id string) error {
 // ReorderTemplates writes sort_order 0..n-1 for the given ids in one ledger.
 func (w *Workspace) ReorderTemplates(ctx context.Context, ledgerID string, ids []string) error {
 	if strings.TrimSpace(ledgerID) == "" {
-		return fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定账本")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -123,16 +121,16 @@ func (w *Workspace) ReorderTemplates(ctx context.Context, ledgerID string, ids [
 
 func validateTemplate(template domain.TransactionTemplate) error {
 	if strings.TrimSpace(template.LedgerID) == "" {
-		return fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定账本")
 	}
 	if strings.TrimSpace(template.TemplateName) == "" {
-		return fmt.Errorf("%w：模板名称不能为空", repository.ErrInvalid)
+		return invalidf("模板名称不能为空")
 	}
 	if !validTransactionType(template.TransactionType) {
-		return fmt.Errorf("%w：交易类型「%s」无法识别", repository.ErrInvalid, template.TransactionType)
+		return invalidf("交易类型「%s」无法识别", template.TransactionType)
 	}
 	if strings.TrimSpace(template.Category) == "" {
-		return fmt.Errorf("%w：分类不能为空", repository.ErrInvalid)
+		return invalidf("分类不能为空")
 	}
 	return nil
 }

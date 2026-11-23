@@ -3,13 +3,11 @@ package store
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"sort"
 	"strings"
 	"time"
 
 	"transactions/internal/domain"
-	"transactions/internal/repository"
 )
 
 // StockStatistics computes the application's settlements statistics:
@@ -95,40 +93,40 @@ func (w *Workspace) StockStatistics(ctx context.Context, query domain.StockStati
 
 func validateStockStatisticsQuery(query *domain.StockStatisticsQuery) error {
 	if query.AccountID == "" {
-		return fmt.Errorf("%w：股票账户 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定股票账户")
 	}
 	switch query.Strategy {
 	case "":
 		query.Strategy = domain.StockStatisticsCumulative
 	case domain.StockStatisticsCumulative, domain.StockStatisticsGrouped:
 	default:
-		return fmt.Errorf("%w：统计口径无效", repository.ErrInvalid)
+		return invalidf("统计口径无法识别")
 	}
 	if query.Strategy == domain.StockStatisticsGrouped {
 		if query.GroupSize < 2 || query.GroupSize > 1000 {
-			return fmt.Errorf("%w：分组大小必须在 2–1000 之间", repository.ErrInvalid)
+			return invalidf("分组大小必须在 2–1000 之间")
 		}
 	}
 	hasStart, hasEnd := strings.TrimSpace(query.StartMonth) != "", strings.TrimSpace(query.EndMonth) != ""
 	if hasStart != hasEnd {
-		return fmt.Errorf("%w：统计时间范围必须同时给出起止月份", repository.ErrInvalid)
+		return invalidf("统计时间范围必须同时给出起止月份")
 	}
 	if hasStart {
 		start, err := time.Parse("2006-01", query.StartMonth)
 		if err != nil {
-			return fmt.Errorf("%w：统计月份格式应为 YYYY-MM", repository.ErrInvalid)
+			return invalidf("统计月份格式应为 YYYY-MM")
 		}
 		end, err := time.Parse("2006-01", query.EndMonth)
 		if err != nil || end.Before(start) {
-			return fmt.Errorf("%w：统计月份格式应为 YYYY-MM", repository.ErrInvalid)
+			return invalidf("统计月份格式应为 YYYY-MM")
 		}
 	}
 	if query.Recent != nil {
 		if *query.Recent <= 0 {
-			return fmt.Errorf("%w：最近笔数必须为正整数", repository.ErrInvalid)
+			return invalidf("最近笔数必须为正整数")
 		}
 		if hasStart {
-			return fmt.Errorf("%w：按时间与最近 N 笔不能同时使用", repository.ErrInvalid)
+			return invalidf("按时间与最近 N 笔不能同时使用")
 		}
 	}
 	return nil

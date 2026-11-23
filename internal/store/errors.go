@@ -1,6 +1,11 @@
 package store
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+
+	"transactions/internal/repository"
+)
 
 // Opening a workspace can fail for reasons the UI must tell apart. The errors
 // below are wrapped with the concrete detail, so callers use errors.Is.
@@ -17,3 +22,32 @@ var (
 	// never recreates it silently: that would turn "missing" into "empty".
 	ErrWorkspaceMissing = errors.New("工作空间目录不存在")
 )
+
+// userError is the detail the interface shows: its message has no prefix, while
+// Unwrap keeps the repository sentinel in the chain, so errors.Is still tells
+// the four failure kinds apart. Formatting a sentinel into the message would
+// print its internal wording ("无效的数据：…") in front of every validation
+// error.
+type userError struct {
+	sentinel error
+	message  string
+}
+
+func (e userError) Error() string { return e.message }
+
+func (e userError) Unwrap() error { return e.sentinel }
+
+// invalidf reports a request the store refuses (missing id, unknown enum).
+func invalidf(format string, args ...any) error {
+	return userError{sentinel: repository.ErrInvalid, message: fmt.Sprintf(format, args...)}
+}
+
+// duplicatef reports a name that is already taken.
+func duplicatef(format string, args ...any) error {
+	return userError{sentinel: repository.ErrDuplicate, message: fmt.Sprintf(format, args...)}
+}
+
+// notFoundf reports a row the caller expected but which no longer exists.
+func notFoundf(format string, args ...any) error {
+	return userError{sentinel: repository.ErrNotFound, message: fmt.Sprintf(format, args...)}
+}

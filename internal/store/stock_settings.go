@@ -10,7 +10,6 @@ import (
 	"unicode/utf8"
 
 	"transactions/internal/domain"
-	"transactions/internal/repository"
 )
 
 // StockFeeSetting returns the account's four fee rates, creating the default
@@ -32,7 +31,7 @@ func (w *Workspace) StockFeeSetting(ctx context.Context, accountID string) (doma
 // SaveStockFeeSetting validates and writes the four rates.
 func (w *Workspace) SaveStockFeeSetting(ctx context.Context, accountID string, fee domain.RoundFee) (domain.StockFeeSetting, error) {
 	if err := domain.ValidateRoundFee(fee); err != nil {
-		return domain.StockFeeSetting{}, fmt.Errorf("%w：%s", repository.ErrInvalid, err.Error())
+		return domain.StockFeeSetting{}, invalidf("%s", err.Error())
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -86,23 +85,23 @@ func (w *Workspace) SaveStockTradeTags(ctx context.Context, accountID string, ta
 			continue
 		}
 		if utf8.RuneCountInString(tag) > 8 {
-			return nil, fmt.Errorf("%w：单个标签不能超过 8 个字", repository.ErrInvalid)
+			return nil, invalidf("单个标签不能超过 8 个字")
 		}
 		for _, existing := range normalized {
 			if existing == tag {
-				return nil, fmt.Errorf("%w：标签不能重复", repository.ErrInvalid)
+				return nil, invalidf("标签不能重复")
 			}
 		}
 		if len(normalized) >= 20 {
-			return nil, fmt.Errorf("%w：标签数量不能超过 20 个", repository.ErrInvalid)
+			return nil, invalidf("最多 20 个标签")
 		}
 		normalized = append(normalized, tag)
 	}
 	if len(normalized) == 0 {
-		return nil, fmt.Errorf("%w：至少保留一个标签", repository.ErrInvalid)
+		return nil, invalidf("至少保留一个标签")
 	}
 	if !containsString(normalized, domain.DefaultStockTradeTag) {
-		return nil, fmt.Errorf("%w：默认标签「分析」不可删除", repository.ErrInvalid)
+		return nil, invalidf("默认标签「分析」不可删除")
 	}
 	encoded, _ := json.Marshal(normalized)
 	db, err := w.dbHandle()
@@ -148,10 +147,10 @@ func (w *Workspace) StockReviewTemplates(ctx context.Context, accountID string) 
 // SaveStockReviewTemplate stores one or both templates; nil daily keeps it.
 func (w *Workspace) SaveStockReviewTemplate(ctx context.Context, accountID, template string, daily *string) (domain.StockReviewSetting, error) {
 	if utf8.RuneCountInString(template) > domain.StockReviewTemplateMaxChars {
-		return domain.StockReviewSetting{}, fmt.Errorf("%w：复盘模板不能超过 %d 字", repository.ErrInvalid, domain.StockReviewTemplateMaxChars)
+		return domain.StockReviewSetting{}, invalidf("本轮复盘模板最多 %d 个字", domain.StockReviewTemplateMaxChars)
 	}
 	if daily != nil && utf8.RuneCountInString(*daily) > domain.StockReviewTemplateMaxChars {
-		return domain.StockReviewSetting{}, fmt.Errorf("%w：每日复盘模板不能超过 %d 字", repository.ErrInvalid, domain.StockReviewTemplateMaxChars)
+		return domain.StockReviewSetting{}, invalidf("每日本轮复盘模板最多 %d 个字", domain.StockReviewTemplateMaxChars)
 	}
 	stored := ""
 	if strings.TrimSpace(template) != "" {

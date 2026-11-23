@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 
 	"transactions/internal/domain"
@@ -18,7 +17,7 @@ func (w *Workspace) Labels(ctx context.Context, ledgerID string) (repository.Lab
 		TagCounts:      map[string]int{},
 	}
 	if strings.TrimSpace(ledgerID) == "" {
-		return snapshot, fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
+		return snapshot, invalidf("没有指定账本")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -99,7 +98,7 @@ func loadCounts(ctx context.Context, db *sql.DB, query, ledgerID string, into ma
 func (w *Workspace) CreateCategory(ctx context.Context, ledgerID, name, transactionType string) error {
 	name = strings.TrimSpace(name)
 	if strings.TrimSpace(ledgerID) == "" || name == "" || !validTransactionType(transactionType) {
-		return fmt.Errorf("%w：分类名称或交易类型无效", repository.ErrInvalid)
+		return invalidf("分类或交易类型无法识别")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -113,7 +112,7 @@ func (w *Workspace) CreateCategory(ctx context.Context, ledgerID, name, transact
 			return err
 		}
 		if exists {
-			return fmt.Errorf("%w：分类「%s」", repository.ErrDuplicate, name)
+			return duplicatef("分类「%s」", name)
 		}
 		var sortOrder int
 		if err := tx.QueryRowContext(ctx,
@@ -132,7 +131,7 @@ func (w *Workspace) CreateCategory(ctx context.Context, ledgerID, name, transact
 // deliberately left alone.
 func (w *Workspace) DeleteCategory(ctx context.Context, ledgerID, name, transactionType string) error {
 	if strings.TrimSpace(ledgerID) == "" || strings.TrimSpace(name) == "" || !validTransactionType(transactionType) {
-		return fmt.Errorf("%w：分类名称或交易类型无效", repository.ErrInvalid)
+		return invalidf("分类或交易类型无法识别")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -154,7 +153,7 @@ func (w *Workspace) DeleteCategory(ctx context.Context, ledgerID, name, transact
 // ReorderCategories writes the new display order into sort_order.
 func (w *Workspace) ReorderCategories(ctx context.Context, ledgerID, transactionType string, names []string) error {
 	if strings.TrimSpace(ledgerID) == "" || !validTransactionType(transactionType) {
-		return fmt.Errorf("%w：交易类型无效", repository.ErrInvalid)
+		return invalidf("交易类型无法识别")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -176,7 +175,7 @@ func (w *Workspace) ReorderCategories(ctx context.Context, ledgerID, transaction
 func (w *Workspace) CreateTag(ctx context.Context, ledgerID, name, categoryTransactionType string) error {
 	name = strings.TrimSpace(name)
 	if strings.TrimSpace(ledgerID) == "" || name == "" || !validCategoryTransactionType(categoryTransactionType) {
-		return fmt.Errorf("%w：标签名称或分类无效", repository.ErrInvalid)
+		return invalidf("标签或分类无法识别")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -190,7 +189,7 @@ func (w *Workspace) CreateTag(ctx context.Context, ledgerID, name, categoryTrans
 			return err
 		}
 		if exists {
-			return fmt.Errorf("%w：标签「%s」", repository.ErrDuplicate, name)
+			return duplicatef("标签「%s」", name)
 		}
 		var sortOrder int
 		if err := tx.QueryRowContext(ctx,
@@ -209,7 +208,7 @@ func (w *Workspace) CreateTag(ctx context.Context, ledgerID, name, categoryTrans
 func (w *Workspace) DeleteTag(ctx context.Context, ledgerID, name, categoryTransactionType string) error {
 	name = strings.TrimSpace(name)
 	if strings.TrimSpace(ledgerID) == "" || name == "" || !validCategoryTransactionType(categoryTransactionType) {
-		return fmt.Errorf("%w：标签名称或分类无效", repository.ErrInvalid)
+		return invalidf("标签或分类无法识别")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -230,7 +229,7 @@ func (w *Workspace) DeleteTag(ctx context.Context, ledgerID, name, categoryTrans
 // ReorderTags writes the new display order into sort_order.
 func (w *Workspace) ReorderTags(ctx context.Context, ledgerID, categoryTransactionType string, names []string) error {
 	if strings.TrimSpace(ledgerID) == "" || !validCategoryTransactionType(categoryTransactionType) {
-		return fmt.Errorf("%w：分类无效", repository.ErrInvalid)
+		return invalidf("分类无法识别")
 	}
 	db, err := w.dbHandle()
 	if err != nil {

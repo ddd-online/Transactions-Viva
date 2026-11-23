@@ -33,18 +33,18 @@ func (w *Workspace) CreateStockOrder(ctx context.Context, request repository.Sto
 	fills := normalizeStockFills(request.Fills)
 	buy, sell := domain.IsBuy(request.TradeType), domain.IsSell(request.TradeType)
 	if !buy && !sell {
-		return nil, fmt.Errorf("%w：无效的交易类型", repository.ErrInvalid)
+		return nil, invalidf("交易类型无法识别")
 	}
 	archiveOnly := len(fills) == 0 && request.TradeType == domain.TradeClose
 	if len(fills) == 0 && !archiveOnly {
-		return nil, fmt.Errorf("%w：成交明细不能为空", repository.ErrInvalid)
+		return nil, invalidf("成交明细不能为空")
 	}
 	for _, fill := range fills {
 		if fill.PriceMilli <= 0 {
-			return nil, fmt.Errorf("%w：成交价必须大于 0", repository.ErrInvalid)
+			return nil, invalidf("成交价必须大于 0")
 		}
 		if fill.Lots <= 0 {
-			return nil, fmt.Errorf("%w：手数必须大于 0", repository.ErrInvalid)
+			return nil, invalidf("手数必须大于 0")
 		}
 	}
 	tradeTime := request.TradeTime
@@ -86,7 +86,7 @@ func (w *Workspace) CreateStockOrder(ctx context.Context, request repository.Sto
 			return err
 		}
 		if request.Tag != "" && !containsString(tags, request.Tag) {
-			return fmt.Errorf("%w：无效的交易标签", repository.ErrInvalid)
+			return invalidf("交易标签无法识别")
 		}
 		position, err := getOrCreateStockPositionTx(ctx, tx, request.AccountID, request.StockCode, request.StockName)
 		if err != nil {
@@ -125,14 +125,14 @@ func (w *Workspace) CreateStockOrder(ctx context.Context, request repository.Sto
 				soldShares += trade.Shares
 			}
 			if soldShares > position.Quantity {
-				return fmt.Errorf("%w：卖出数量超过持仓（当前 %d 股）", repository.ErrInvalid, position.Quantity)
+				return invalidf("卖出数量超过持仓（当前 %d 股）", position.Quantity)
 			}
 			if request.TradeType == domain.TradeClose && !archiveOnly && soldShares != position.Quantity {
-				return fmt.Errorf("%w：清仓必须全部卖出（当前 %d 股）", repository.ErrInvalid, position.Quantity)
+				return invalidf("清仓必须全部卖出（当前 %d 股）", position.Quantity)
 			}
 		}
 		if archiveOnly && position.Quantity != 0 {
-			return fmt.Errorf("%w：清仓请填写成交明细（当前 %d 股）", repository.ErrInvalid, position.Quantity)
+			return invalidf("清仓请填写成交明细（当前 %d 股）", position.Quantity)
 		}
 
 		var realizedTotal int64
@@ -340,7 +340,7 @@ func resolveRoundFeeTx(
 	if opening {
 		if requested != nil {
 			if err := domain.ValidateRoundFee(*requested); err != nil {
-				return domain.StockFeeSetting{}, domain.RoundFee{}, fmt.Errorf("%w：%s", repository.ErrInvalid, err.Error())
+				return domain.StockFeeSetting{}, domain.RoundFee{}, invalidf("%s", err.Error())
 			}
 			return domain.SettingOfRoundFee(*requested), *requested, nil
 		}
@@ -351,7 +351,7 @@ func resolveRoundFeeTx(
 		return setting, domain.RoundFeeOfSetting(setting), nil
 	}
 	if requested != nil {
-		return domain.StockFeeSetting{}, domain.RoundFee{}, fmt.Errorf("%w：本轮的费用设置在建仓时确定，不可更改", repository.ErrInvalid)
+		return domain.StockFeeSetting{}, domain.RoundFee{}, invalidf("本轮的费用设置在建仓时确定，不可更改")
 	}
 	setting, err := getOrCreateStockFeeSettingTx(ctx, tx, accountID)
 	if err != nil {

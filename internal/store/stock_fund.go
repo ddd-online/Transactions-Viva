@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"transactions/internal/domain"
-	"transactions/internal/repository"
 )
 
 const stockFundColumns = "id, account_id, record_date, event_type, event_text, amount_change_cents, " +
@@ -109,7 +108,7 @@ func (w *Workspace) StockFundRecords(ctx context.Context, accountID string, page
 // AddStockPrincipal raises the principal and writes one fund record.
 func (w *Workspace) AddStockPrincipal(ctx context.Context, accountID string, amountCents int64, date string) error {
 	if amountCents <= 0 {
-		return fmt.Errorf("%w：追加金额必须大于 0", repository.ErrInvalid)
+		return invalidf("追加金额必须大于 0")
 	}
 	recordDate, err := normalizeStockRecordDate(date)
 	if err != nil {
@@ -124,7 +123,7 @@ func (w *Workspace) AddStockPrincipal(ctx context.Context, accountID string, amo
 // WithdrawStock takes money out; the principal does not change.
 func (w *Workspace) WithdrawStock(ctx context.Context, accountID string, amountCents int64, date string) error {
 	if amountCents <= 0 {
-		return fmt.Errorf("%w：支取金额必须大于 0", repository.ErrInvalid)
+		return invalidf("支取金额必须大于 0")
 	}
 	recordDate, err := normalizeStockRecordDate(date)
 	if err != nil {
@@ -138,7 +137,7 @@ func (w *Workspace) WithdrawStock(ctx context.Context, accountID string, amountC
 // AddStockInterest adds interest; the principal does not change.
 func (w *Workspace) AddStockInterest(ctx context.Context, accountID string, amountCents int64, date string) error {
 	if amountCents <= 0 {
-		return fmt.Errorf("%w：利息金额必须大于 0", repository.ErrInvalid)
+		return invalidf("利息金额必须大于 0")
 	}
 	recordDate, err := normalizeStockRecordDate(date)
 	if err != nil {
@@ -175,7 +174,7 @@ func (w *Workspace) writePrincipalChange(
 				return err
 			}
 			if balance < -amount {
-				return fmt.Errorf("%w：支取金额不能超过可用现金（%s 元）", repository.ErrInvalid, domain.CentsToYuan(balance))
+				return invalidf("支取金额不能超过可用现金（%s 元）", domain.CentsToYuan(balance))
 			}
 		}
 		nextPrincipal, remark := principalAfter(account)
@@ -291,7 +290,7 @@ func normalizeStockRecordDate(date string) (string, error) {
 	}
 	parsed, ok := domain.ParseDiaryDate(date)
 	if !ok {
-		return "", fmt.Errorf("%w：日期格式应为 YYYY-MM-DD", repository.ErrInvalid)
+		return "", invalidf("日期要写成 YYYY-MM-DD")
 	}
 	return parsed.Format(domain.DiaryDateLayout), nil
 }
@@ -299,12 +298,12 @@ func normalizeStockRecordDate(date string) (string, error) {
 func stockAccountByID(ctx context.Context, db *sql.DB, id string) (domain.StockAccount, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
-		return domain.StockAccount{}, fmt.Errorf("%w：股票账户 id 不能为空", repository.ErrInvalid)
+		return domain.StockAccount{}, invalidf("没有指定股票账户")
 	}
 	row := db.QueryRowContext(ctx, "SELECT "+stockAccountColumns+" FROM stock_account WHERE id = ?", id)
 	account, err := scanStockAccount(row)
 	if errors.Is(err, sql.ErrNoRows) {
-		return domain.StockAccount{}, fmt.Errorf("%w：股票账户不存在", repository.ErrNotFound)
+		return domain.StockAccount{}, notFoundf("股票账户不存在")
 	}
 	return account, err
 }
@@ -312,12 +311,12 @@ func stockAccountByID(ctx context.Context, db *sql.DB, id string) (domain.StockA
 func stockAccountByIDTx(ctx context.Context, tx *sql.Tx, id string) (domain.StockAccount, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
-		return domain.StockAccount{}, fmt.Errorf("%w：股票账户 id 不能为空", repository.ErrInvalid)
+		return domain.StockAccount{}, invalidf("没有指定股票账户")
 	}
 	row := tx.QueryRowContext(ctx, "SELECT "+stockAccountColumns+" FROM stock_account WHERE id = ?", id)
 	account, err := scanStockAccount(row)
 	if errors.Is(err, sql.ErrNoRows) {
-		return domain.StockAccount{}, fmt.Errorf("%w：股票账户不存在", repository.ErrNotFound)
+		return domain.StockAccount{}, notFoundf("股票账户不存在")
 	}
 	return account, err
 }

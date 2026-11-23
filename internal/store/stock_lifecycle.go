@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"transactions/internal/domain"
-	"transactions/internal/repository"
 )
 
 // ResetStockAccount clears the named account's stock data and principal. The
@@ -40,7 +39,7 @@ func (w *Workspace) ResetStockAccount(ctx context.Context, accountID string) err
 func (w *Workspace) ArchiveStockAccount(ctx context.Context, accountID, name string) (domain.StockAccount, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return domain.StockAccount{}, fmt.Errorf("%w：股票账户名称不能为空", repository.ErrInvalid)
+		return domain.StockAccount{}, invalidf("股票账户名称不能为空")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -57,14 +56,14 @@ func (w *Workspace) ArchiveStockAccount(ctx context.Context, accountID, name str
 			return err
 		}
 		if taken {
-			return fmt.Errorf("%w：股票账户名称已存在", repository.ErrDuplicate)
+			return duplicatef("股票账户名称已存在")
 		}
 		open, err := stockAccountOpenRounds(ctx, tx, accountID)
 		if err != nil {
 			return err
 		}
 		if len(open) > 0 {
-			return fmt.Errorf("%w：仍有未清仓的轮次（%s），请先清仓归档后再归档账户", repository.ErrInvalid, strings.Join(open, "、"))
+			return invalidf("仍有未清仓的轮次（%s），请先清仓归档后再归档账户", strings.Join(open, "、"))
 		}
 		next, err := nextStockAccountOrderTx(ctx, tx)
 		if err != nil {

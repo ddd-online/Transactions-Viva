@@ -9,7 +9,6 @@ import (
 	"unicode/utf8"
 
 	"transactions/internal/domain"
-	"transactions/internal/repository"
 )
 
 // StockLessons returns the account's lessons, newest first, with SourceAvailable
@@ -112,7 +111,7 @@ func loadStockRoundSnapshot(ctx context.Context, db *sql.DB, accountID, roundID 
 		Scan(&snapshot.RoundID, &snapshot.StockCode, &snapshot.StockName,
 			&snapshot.RoundNo, &snapshot.OpenedAt, &snapshot.ClosedAt)
 	if errors.Is(err, sql.ErrNoRows) {
-		return snapshot, fmt.Errorf("%w：交易轮次不存在", repository.ErrNotFound)
+		return snapshot, notFoundf("交易轮次不存在")
 	}
 	if err != nil {
 		return snapshot, fmt.Errorf("读取轮次失败：%w", err)
@@ -141,10 +140,10 @@ func loadStockRoundSnapshot(ctx context.Context, db *sql.DB, accountID, roundID 
 func (w *Workspace) CreateStockLesson(ctx context.Context, accountID, text, roundID string) (domain.StockLesson, error) {
 	text = strings.TrimSpace(text)
 	if text == "" {
-		return domain.StockLesson{}, fmt.Errorf("%w：写一句心得再保存", repository.ErrInvalid)
+		return domain.StockLesson{}, invalidf("写一句心得再保存")
 	}
 	if utf8.RuneCountInString(text) > 80 {
-		return domain.StockLesson{}, fmt.Errorf("%w：心得不能超过 80 字", repository.ErrInvalid)
+		return domain.StockLesson{}, invalidf("心得最多 80 个字")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -188,10 +187,10 @@ func (w *Workspace) CreateStockLesson(ctx context.Context, accountID, text, roun
 func (w *Workspace) UpdateStockLesson(ctx context.Context, accountID, lessonID, text, roundID string) (domain.StockLesson, error) {
 	text = strings.TrimSpace(text)
 	if text == "" {
-		return domain.StockLesson{}, fmt.Errorf("%w：写一句心得再保存", repository.ErrInvalid)
+		return domain.StockLesson{}, invalidf("写一句心得再保存")
 	}
 	if utf8.RuneCountInString(text) > 80 {
-		return domain.StockLesson{}, fmt.Errorf("%w：心得不能超过 80 字", repository.ErrInvalid)
+		return domain.StockLesson{}, invalidf("心得最多 80 个字")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -207,7 +206,7 @@ func (w *Workspace) UpdateStockLesson(ctx context.Context, accountID, lessonID, 
 			&existing.ClosedAt, &existing.PnlCents, &existing.PnlRate, &existing.CreatedAt,
 			&existing.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
-		return domain.StockLesson{}, fmt.Errorf("%w：心得不存在", repository.ErrNotFound)
+		return domain.StockLesson{}, notFoundf("心得不存在")
 	}
 	if err != nil {
 		return domain.StockLesson{}, fmt.Errorf("读取心得失败：%w", err)
@@ -252,7 +251,7 @@ func (w *Workspace) DeleteStockLesson(ctx context.Context, accountID, lessonID s
 	}
 	changed, _ := result.RowsAffected()
 	if changed == 0 {
-		return fmt.Errorf("%w：心得不存在", repository.ErrNotFound)
+		return notFoundf("心得不存在")
 	}
 	return nil
 }
@@ -329,11 +328,11 @@ func (w *Workspace) SaveStockLedger(ctx context.Context, entry domain.StockLedge
 			nonEmpty = true
 		}
 		if utf8.RuneCountInString(field) > 2000 {
-			return domain.StockLedgerEntry{}, fmt.Errorf("%w：台账每项不能超过 2000 字", repository.ErrInvalid)
+			return domain.StockLedgerEntry{}, invalidf("台账每一项最多 2000 个字")
 		}
 	}
 	if !nonEmpty {
-		return domain.StockLedgerEntry{}, fmt.Errorf("%w：台账至少填写一项", repository.ErrInvalid)
+		return domain.StockLedgerEntry{}, invalidf("台账至少填写一项")
 	}
 	db, err := w.dbHandle()
 	if err != nil {

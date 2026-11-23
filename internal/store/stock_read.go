@@ -9,7 +9,6 @@ import (
 	"unicode/utf8"
 
 	"transactions/internal/domain"
-	"transactions/internal/repository"
 )
 
 // StockPositions returns the account's position rows (quantity may be zero for
@@ -192,7 +191,7 @@ func (w *Workspace) StockDayReviews(ctx context.Context, accountID string) ([]do
 func (w *Workspace) UpdateStockPositionReview(ctx context.Context, accountID, stockCode, review string) error {
 	review = strings.TrimSpace(review)
 	if utf8.RuneCountInString(review) > 500 {
-		return fmt.Errorf("%w：交易复盘不能超过 500 字", repository.ErrInvalid)
+		return invalidf("复盘最多 500 个字")
 	}
 	return w.updateStockPositionField(ctx, accountID, stockCode, "review", review)
 }
@@ -209,7 +208,7 @@ func (w *Workspace) UpdateStockPositionTag(ctx context.Context, accountID, stock
 		return err
 	}
 	if !containsString(tags, tag) {
-		return fmt.Errorf("%w：无效的交易标签", repository.ErrInvalid)
+		return invalidf("交易标签无法识别")
 	}
 	return w.updateStockPositionField(ctx, accountID, stockCode, "tag", tag)
 }
@@ -227,7 +226,7 @@ func (w *Workspace) updateStockPositionField(ctx context.Context, accountID, sto
 		return err
 	}
 	if !open {
-		return fmt.Errorf("%w：该股票已清仓，请在「交易历史」中编辑本轮复盘", repository.ErrNotFound)
+		return notFoundf("该股票已清仓，请在「交易历史」中编辑本轮复盘")
 	}
 	result, err := db.ExecContext(ctx,
 		"UPDATE stock_position SET "+column+" = ?, updated_at = ? WHERE account_id = ? AND stock_code = ?",
@@ -237,7 +236,7 @@ func (w *Workspace) updateStockPositionField(ctx context.Context, accountID, sto
 	}
 	changed, _ := result.RowsAffected()
 	if changed == 0 {
-		return fmt.Errorf("%w：持仓不存在", repository.ErrNotFound)
+		return notFoundf("持仓不存在")
 	}
 	return nil
 }
@@ -267,15 +266,15 @@ func stockHasOpenRoundDB(ctx context.Context, db *sql.DB, accountID, stockCode s
 // UpdateStockDayReview writes or clears one current-round day review.
 func (w *Workspace) UpdateStockDayReview(ctx context.Context, accountID, stockCode, date, review string) ([]domain.StockDayReview, error) {
 	if _, ok := domain.ParseDiaryDate(date); !ok {
-		return nil, fmt.Errorf("%w：日期格式应为 YYYY-MM-DD", repository.ErrInvalid)
+		return nil, invalidf("日期要写成 YYYY-MM-DD")
 	}
 	today := todayStockDate()
 	if date > today {
-		return nil, fmt.Errorf("%w：不能写未来日期的复盘", repository.ErrInvalid)
+		return nil, invalidf("每日复盘只能写到当天")
 	}
 	review = strings.TrimSpace(review)
 	if utf8.RuneCountInString(review) > 500 {
-		return nil, fmt.Errorf("%w：每日复盘不能超过 500 字", repository.ErrInvalid)
+		return nil, invalidf("每日复盘最多 500 个字")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -289,14 +288,14 @@ func (w *Workspace) UpdateStockDayReview(ctx context.Context, accountID, stockCo
 		return nil, err
 	}
 	if !open {
-		return nil, fmt.Errorf("%w：该股票已清仓，请在「交易历史」中查看本轮复盘", repository.ErrNotFound)
+		return nil, notFoundf("该股票已清仓，请在「交易历史」中查看本轮复盘")
 	}
 	opened, err := currentRoundOpenedDate(ctx, db, accountID, stockCode)
 	if err != nil {
 		return nil, err
 	}
 	if opened != "" && date < opened {
-		return nil, fmt.Errorf("%w：不能早于本轮建仓日", repository.ErrInvalid)
+		return nil, invalidf("每日复盘不能早于本轮建仓日")
 	}
 	if review == "" {
 		_, err = db.ExecContext(ctx,
@@ -364,7 +363,7 @@ func stockCurrentDayReviews(ctx context.Context, db *sql.DB, accountID, stockCod
 func (w *Workspace) UpdateStockRoundReview(ctx context.Context, accountID, roundID, review string) error {
 	review = strings.TrimSpace(review)
 	if utf8.RuneCountInString(review) > 500 {
-		return fmt.Errorf("%w：交易复盘不能超过 500 字", repository.ErrInvalid)
+		return invalidf("复盘最多 500 个字")
 	}
 	return w.updateStockRoundField(ctx, accountID, roundID, "review", review)
 }
@@ -380,7 +379,7 @@ func (w *Workspace) UpdateStockRoundTag(ctx context.Context, accountID, roundID,
 		return err
 	}
 	if !containsString(tags, tag) {
-		return fmt.Errorf("%w：无效的交易标签", repository.ErrInvalid)
+		return invalidf("交易标签无法识别")
 	}
 	return w.updateStockRoundField(ctx, accountID, roundID, "tag", tag)
 }
@@ -398,7 +397,7 @@ func (w *Workspace) updateStockRoundField(ctx context.Context, accountID, roundI
 	}
 	changed, _ := result.RowsAffected()
 	if changed == 0 {
-		return fmt.Errorf("%w：轮次不存在", repository.ErrNotFound)
+		return notFoundf("轮次不存在")
 	}
 	return nil
 }

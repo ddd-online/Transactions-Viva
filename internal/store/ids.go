@@ -3,12 +3,10 @@ package store
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 	"time"
 
 	"transactions/internal/ids"
-	"transactions/internal/repository"
 )
 
 // newID is the id shape the store writes: the UUID the application used.
@@ -44,7 +42,7 @@ func duplicateError(err error) error {
 		return nil
 	}
 	if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "constraint failed") {
-		return fmt.Errorf("%w：%v", repository.ErrDuplicate, err)
+		return duplicatef("%v", err)
 	}
 	return err
 }

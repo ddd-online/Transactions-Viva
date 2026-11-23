@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-
-	"transactions/internal/repository"
 )
 
 // RefreshStockName updates every display copy of a stock name for one account.
@@ -15,7 +13,7 @@ import (
 func (w *Workspace) RefreshStockName(ctx context.Context, accountID, stockCode, stockName string) error {
 	stockCode, stockName = strings.TrimSpace(stockCode), strings.TrimSpace(stockName)
 	if stockCode == "" || stockName == "" {
-		return fmt.Errorf("%w：股票代码与名称不能为空", repository.ErrInvalid)
+		return invalidf("股票代码与名称不能为空")
 	}
 	db, err := w.dbHandle()
 	if err != nil {

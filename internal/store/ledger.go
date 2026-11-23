@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"transactions/internal/domain"
-	"transactions/internal/repository"
 )
 
 // Ledgers lists the workspace's ledgers in creation order.
@@ -38,7 +37,7 @@ func (w *Workspace) Ledgers(ctx context.Context) ([]domain.Ledger, error) {
 func (w *Workspace) CreateLedger(ctx context.Context, name, description string) (domain.Ledger, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return domain.Ledger{}, fmt.Errorf("%w：账本名称不能为空", repository.ErrInvalid)
+		return domain.Ledger{}, invalidf("账本名称不能为空")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -72,10 +71,10 @@ func (w *Workspace) UpdateLedger(ctx context.Context, id, name, description stri
 	id = strings.TrimSpace(id)
 	name = strings.TrimSpace(name)
 	if id == "" {
-		return fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定账本")
 	}
 	if name == "" {
-		return fmt.Errorf("%w：账本名称不能为空", repository.ErrInvalid)
+		return invalidf("账本名称不能为空")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -92,7 +91,7 @@ func (w *Workspace) UpdateLedger(ctx context.Context, id, name, description stri
 		return err
 	}
 	if changed == 0 {
-		return fmt.Errorf("%w：找不到该账本", repository.ErrNotFound)
+		return notFoundf("找不到该账本")
 	}
 	return nil
 }
@@ -101,7 +100,7 @@ func (w *Workspace) UpdateLedger(ctx context.Context, id, name, description stri
 // so the cascade is explicit and ordered.
 func (w *Workspace) DeleteLedger(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
-		return fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定账本")
 	}
 	db, err := w.dbHandle()
 	if err != nil {

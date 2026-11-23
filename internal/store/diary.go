@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"transactions/internal/domain"
-	"transactions/internal/repository"
 )
 
 // Diary books: a workspace's notebooks. They are independent of ledgers, so a
@@ -43,7 +42,7 @@ func (w *Workspace) DiaryBooks(ctx context.Context) ([]domain.DiaryBook, error) 
 func (w *Workspace) CreateDiaryBook(ctx context.Context, name, description string) (domain.DiaryBook, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return domain.DiaryBook{}, fmt.Errorf("%w：日记本名称不能为空", repository.ErrInvalid)
+		return domain.DiaryBook{}, invalidf("日记本名称不能为空")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -73,10 +72,10 @@ func (w *Workspace) CreateDiaryBook(ctx context.Context, name, description strin
 func (w *Workspace) UpdateDiaryBook(ctx context.Context, id, name, description string) error {
 	id, name = strings.TrimSpace(id), strings.TrimSpace(name)
 	if id == "" {
-		return fmt.Errorf("%w：日记本 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定日记本")
 	}
 	if name == "" {
-		return fmt.Errorf("%w：日记本名称不能为空", repository.ErrInvalid)
+		return invalidf("日记本名称不能为空")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -93,7 +92,7 @@ func (w *Workspace) UpdateDiaryBook(ctx context.Context, id, name, description s
 		return err
 	}
 	if changed == 0 {
-		return fmt.Errorf("%w：找不到该日记本", repository.ErrNotFound)
+		return notFoundf("找不到该日记本")
 	}
 	return nil
 }
@@ -104,7 +103,7 @@ func (w *Workspace) UpdateDiaryBook(ctx context.Context, id, name, description s
 func (w *Workspace) DeleteDiaryBook(ctx context.Context, id string) error {
 	id = strings.TrimSpace(id)
 	if id == "" {
-		return fmt.Errorf("%w：日记本 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定日记本")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -115,7 +114,7 @@ func (w *Workspace) DeleteDiaryBook(ctx context.Context, id string) error {
 		return err
 	}
 	if count <= 1 {
-		return fmt.Errorf("%w：至少保留一本日记本", repository.ErrInvalid)
+		return invalidf("至少保留一本日记本")
 	}
 	return inTx(ctx, db, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, "DELETE FROM diary_entry WHERE book_id = ?", id); err != nil {
@@ -130,7 +129,7 @@ func (w *Workspace) DeleteDiaryBook(ctx context.Context, id string) error {
 			return err
 		}
 		if changed == 0 {
-			return fmt.Errorf("%w：找不到该日记本", repository.ErrNotFound)
+			return notFoundf("找不到该日记本")
 		}
 		return nil
 	})
@@ -143,7 +142,7 @@ const diaryColumns = "id, date, content, word_count, mood, created_at, updated_a
 // three columns the date tree shows.
 func (w *Workspace) DiaryDates(ctx context.Context, bookID string) ([]domain.DiaryDateItem, error) {
 	if strings.TrimSpace(bookID) == "" {
-		return nil, fmt.Errorf("%w：日记本 id 不能为空", repository.ErrInvalid)
+		return nil, invalidf("没有指定日记本")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -173,10 +172,10 @@ func (w *Workspace) DiaryDates(ctx context.Context, bookID string) ([]domain.Dia
 // it read something.
 func (w *Workspace) DiaryEntry(ctx context.Context, bookID, date string) (domain.DiaryEntry, error) {
 	if strings.TrimSpace(bookID) == "" {
-		return domain.DiaryEntry{}, fmt.Errorf("%w：日记本 id 不能为空", repository.ErrInvalid)
+		return domain.DiaryEntry{}, invalidf("没有指定日记本")
 	}
 	if !domain.IsDiaryDate(date) {
-		return domain.DiaryEntry{}, fmt.Errorf("%w：日记日期 %q 不是 YYYY-MM-DD", repository.ErrInvalid, date)
+		return domain.DiaryEntry{}, invalidf("日记日期「%s」要写成 YYYY-MM-DD", date)
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -186,7 +185,7 @@ func (w *Workspace) DiaryEntry(ctx context.Context, bookID, date string) (domain
 		"SELECT "+diaryColumns+" FROM diary_entry WHERE book_id = ? AND date = ?", bookID, date)
 	entry, err := scanDiaryEntry(row)
 	if err == sql.ErrNoRows {
-		return domain.DiaryEntry{}, fmt.Errorf("%w：%s 还没有日记", repository.ErrNotFound, date)
+		return domain.DiaryEntry{}, notFoundf("%s 还没有日记", date)
 	}
 	return entry, err
 }
@@ -200,10 +199,10 @@ func (w *Workspace) DiaryEntry(ctx context.Context, bookID, date string) (domain
 // domain.NormalizeDiaryMood where it is shown, not here.
 func (w *Workspace) SaveDiary(ctx context.Context, bookID, date, content, mood string) (domain.DiaryEntry, error) {
 	if strings.TrimSpace(bookID) == "" {
-		return domain.DiaryEntry{}, fmt.Errorf("%w：日记本 id 不能为空", repository.ErrInvalid)
+		return domain.DiaryEntry{}, invalidf("没有指定日记本")
 	}
 	if !domain.IsDiaryDate(date) {
-		return domain.DiaryEntry{}, fmt.Errorf("%w：日记日期 %q 不是 YYYY-MM-DD", repository.ErrInvalid, date)
+		return domain.DiaryEntry{}, invalidf("日记日期「%s」要写成 YYYY-MM-DD", date)
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -218,7 +217,7 @@ func (w *Workspace) SaveDiary(ctx context.Context, bookID, date, content, mood s
 		return domain.DiaryEntry{}, err
 	}
 	if exists == 0 {
-		return domain.DiaryEntry{}, fmt.Errorf("%w：找不到该日记本", repository.ErrNotFound)
+		return domain.DiaryEntry{}, notFoundf("找不到该日记本")
 	}
 	if _, err := db.ExecContext(ctx,
 		"INSERT INTO diary_entry ("+diaryColumns+") VALUES (?, ?, ?, ?, ?, ?, ?, ?) "+
@@ -237,7 +236,7 @@ func (w *Workspace) SaveDiary(ctx context.Context, bookID, date, content, mood s
 // untouched, and a day without an entry is not an error.
 func (w *Workspace) DeleteDiary(ctx context.Context, bookID, date string) error {
 	if strings.TrimSpace(bookID) == "" {
-		return fmt.Errorf("%w：日记本 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定日记本")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -250,7 +249,7 @@ func (w *Workspace) DeleteDiary(ctx context.Context, bookID, date string) error 
 // DiaryEntries returns one book's whole diary, oldest first, for an export.
 func (w *Workspace) DiaryEntries(ctx context.Context, bookID string) ([]domain.DiaryEntry, error) {
 	if strings.TrimSpace(bookID) == "" {
-		return nil, fmt.Errorf("%w：日记本 id 不能为空", repository.ErrInvalid)
+		return nil, invalidf("没有指定日记本")
 	}
 	db, err := w.dbHandle()
 	if err != nil {

@@ -200,7 +200,7 @@ func (w *Workspace) DeleteTodoCard(ctx context.Context, cardID string) error {
 			return err
 		}
 		if exists == 0 {
-			return fmt.Errorf("%w：卡片不存在", repository.ErrNotFound)
+			return notFoundf("主题不存在")
 		}
 		if _, err := tx.ExecContext(ctx, "DELETE FROM todo_progress WHERE item_id IN "+
 			"(SELECT id FROM todo_item WHERE card_id = ?)", cardID); err != nil {
@@ -230,7 +230,7 @@ func (w *Workspace) ReorderTodoCards(ctx context.Context, cardIDs []string) erro
 			if affected, err := result.RowsAffected(); err != nil {
 				return err
 			} else if affected == 0 {
-				return fmt.Errorf("%w：卡片不存在", repository.ErrNotFound)
+				return notFoundf("主题不存在")
 			}
 		}
 		return nil
@@ -253,7 +253,7 @@ func (w *Workspace) CreateTodoItem(ctx context.Context, item domain.TodoItem) (d
 		return domain.TodoItem{}, err
 	}
 	if cardExists == 0 {
-		return domain.TodoItem{}, fmt.Errorf("%w：卡片不存在", repository.ErrNotFound)
+		return domain.TodoItem{}, notFoundf("主题不存在")
 	}
 	now := nowUnix()
 	item.ID = newID()
@@ -296,7 +296,7 @@ func (w *Workspace) UpdateTodoItem(ctx context.Context, item domain.TodoItem) (d
 			return domain.TodoItem{}, err
 		}
 		if exists == 0 {
-			return domain.TodoItem{}, fmt.Errorf("%w：卡片不存在", repository.ErrNotFound)
+			return domain.TodoItem{}, notFoundf("主题不存在")
 		}
 		cardID = item.CardID
 	}
@@ -322,7 +322,7 @@ func (w *Workspace) UpdateTodoItem(ctx context.Context, item domain.TodoItem) (d
 // SetTodoItemStatus moves an item between doing and done.
 func (w *Workspace) SetTodoItemStatus(ctx context.Context, itemID, status string) error {
 	if status != domain.TodoStatusDoing && status != domain.TodoStatusDone {
-		return fmt.Errorf("%w：待办状态只能是进行中或已完成", repository.ErrInvalid)
+		return invalidf("待办状态只能是进行中或已完成")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -357,7 +357,7 @@ func (w *Workspace) DeleteTodoItem(ctx context.Context, itemID string) error {
 			return err
 		}
 		if exists == 0 {
-			return fmt.Errorf("%w：事项不存在", repository.ErrNotFound)
+			return notFoundf("事项不存在")
 		}
 		if _, err := tx.ExecContext(ctx, "DELETE FROM todo_progress WHERE item_id = ?", itemID); err != nil {
 			return err
@@ -427,7 +427,7 @@ func (w *Workspace) SetTodoProgressDone(ctx context.Context, progressID string, 
 		return err
 	}
 	if affected == 0 {
-		return fmt.Errorf("%w：进度记录不存在", repository.ErrNotFound)
+		return notFoundf("进度记录不存在")
 	}
 	return nil
 }
@@ -447,7 +447,7 @@ func (w *Workspace) DeleteTodoProgress(ctx context.Context, progressID string) e
 		return err
 	}
 	if affected == 0 {
-		return fmt.Errorf("%w：进度记录不存在", repository.ErrNotFound)
+		return notFoundf("进度记录不存在")
 	}
 	return nil
 }
@@ -456,7 +456,7 @@ func todoItem(ctx context.Context, db *sql.DB, itemID string) (domain.TodoItem, 
 	row := db.QueryRowContext(ctx, "SELECT "+todoItemColumns+" FROM todo_item WHERE id = ?", itemID)
 	item, err := scanTodoItem(row)
 	if err == sql.ErrNoRows {
-		return domain.TodoItem{}, fmt.Errorf("%w：事项不存在", repository.ErrNotFound)
+		return domain.TodoItem{}, notFoundf("事项不存在")
 	}
 	if err != nil {
 		return domain.TodoItem{}, err
@@ -471,7 +471,7 @@ func todoProgress(ctx context.Context, db *sql.DB, progressID string) (domain.To
 		progressID)
 	progress, err := scanTodoProgress(row)
 	if err == sql.ErrNoRows {
-		return domain.TodoProgress{}, fmt.Errorf("%w：进度记录不存在", repository.ErrNotFound)
+		return domain.TodoProgress{}, notFoundf("进度记录不存在")
 	}
 	return progress, err
 }
@@ -483,17 +483,17 @@ func normalizeTodoItem(item domain.TodoItem) (domain.TodoItem, error) {
 	}
 	start, ok := domain.ParseTodoDate(strings.TrimSpace(item.StartDate))
 	if !ok {
-		return domain.TodoItem{}, fmt.Errorf("%w：日期格式应为 YYYY-MM-DD", repository.ErrInvalid)
+		return domain.TodoItem{}, invalidf("日期要写成 YYYY-MM-DD")
 	}
 	due, ok := domain.ParseTodoDate(strings.TrimSpace(item.DueDate))
 	if !ok {
-		return domain.TodoItem{}, fmt.Errorf("%w：日期格式应为 YYYY-MM-DD", repository.ErrInvalid)
+		return domain.TodoItem{}, invalidf("日期要写成 YYYY-MM-DD")
 	}
 	if start != "" && due != "" && start > due {
-		return domain.TodoItem{}, fmt.Errorf("%w：截止日期不能早于开始日期", repository.ErrInvalid)
+		return domain.TodoItem{}, invalidf("截止日期不能早于开始日期")
 	}
 	if !todoLevel(item.Urgency) || !todoLevel(item.Importance) {
-		return domain.TodoItem{}, fmt.Errorf("%w：紧急度 / 重要度不在六档内", repository.ErrInvalid)
+		return domain.TodoItem{}, invalidf("紧急度 / 重要度不在六档内")
 	}
 	item.Title = title
 	item.StartDate = start
@@ -513,7 +513,7 @@ func todoLevel(value int) bool {
 func todoText(raw string, max int, empty string) (string, error) {
 	text := strings.TrimSpace(raw)
 	if text == "" {
-		return "", fmt.Errorf("%w：%s", repository.ErrInvalid, empty)
+		return "", invalidf("%s", empty)
 	}
 	runes := []rune(text)
 	if len(runes) > max {

@@ -41,7 +41,7 @@ func (w *Workspace) StockAccounts(ctx context.Context) ([]domain.StockAccount, e
 func (w *Workspace) CreateStockAccount(ctx context.Context, name, description string) (domain.StockAccount, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return domain.StockAccount{}, fmt.Errorf("%w：股票账户名称不能为空", repository.ErrInvalid)
+		return domain.StockAccount{}, invalidf("股票账户名称不能为空")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -52,7 +52,7 @@ func (w *Workspace) CreateStockAccount(ctx context.Context, name, description st
 		return domain.StockAccount{}, err
 	}
 	if taken {
-		return domain.StockAccount{}, fmt.Errorf("%w：股票账户名称已存在", repository.ErrDuplicate)
+		return domain.StockAccount{}, duplicatef("股票账户名称已存在")
 	}
 	next, err := nextStockAccountOrder(ctx, db)
 	if err != nil {
@@ -77,10 +77,10 @@ func (w *Workspace) CreateStockAccount(ctx context.Context, name, description st
 func (w *Workspace) UpdateStockAccount(ctx context.Context, id, name, description string) error {
 	id, name = strings.TrimSpace(id), strings.TrimSpace(name)
 	if id == "" {
-		return fmt.Errorf("%w：股票账户 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定股票账户")
 	}
 	if name == "" {
-		return fmt.Errorf("%w：股票账户名称不能为空", repository.ErrInvalid)
+		return invalidf("股票账户名称不能为空")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -91,7 +91,7 @@ func (w *Workspace) UpdateStockAccount(ctx context.Context, id, name, descriptio
 		return err
 	}
 	if taken {
-		return fmt.Errorf("%w：股票账户名称已存在", repository.ErrDuplicate)
+		return duplicatef("股票账户名称已存在")
 	}
 	result, err := db.ExecContext(ctx,
 		"UPDATE stock_account SET name = ?, description = ?, updated_at = ? WHERE id = ?",
@@ -104,7 +104,7 @@ func (w *Workspace) UpdateStockAccount(ctx context.Context, id, name, descriptio
 		return err
 	}
 	if changed == 0 {
-		return fmt.Errorf("%w：股票账户不存在", repository.ErrNotFound)
+		return notFoundf("股票账户不存在")
 	}
 	return nil
 }
@@ -114,7 +114,7 @@ func (w *Workspace) UpdateStockAccount(ctx context.Context, id, name, descriptio
 func (w *Workspace) DeleteStockAccount(ctx context.Context, id string) error {
 	id = strings.TrimSpace(id)
 	if id == "" {
-		return fmt.Errorf("%w：股票账户 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定股票账户")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -125,7 +125,7 @@ func (w *Workspace) DeleteStockAccount(ctx context.Context, id string) error {
 		return fmt.Errorf("读取股票账户失败：%w", err)
 	}
 	if count <= 1 {
-		return fmt.Errorf("%w：至少保留一个股票账户", repository.ErrInvalid)
+		return invalidf("至少保留一个股票账户")
 	}
 	return inTx(ctx, db, func(tx *sql.Tx) error {
 		for _, table := range stockAccountChildTables {
@@ -142,7 +142,7 @@ func (w *Workspace) DeleteStockAccount(ctx context.Context, id string) error {
 			return err
 		}
 		if changed == 0 {
-			return fmt.Errorf("%w：股票账户不存在", repository.ErrNotFound)
+			return notFoundf("股票账户不存在")
 		}
 		return nil
 	})

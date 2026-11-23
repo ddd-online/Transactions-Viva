@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -19,7 +18,7 @@ const recordColumns = "transaction_id, ledger_id, amount_cents, transaction_type
 // handled by SQL; the page keeps its own multi-column sorting and pagination.
 func (w *Workspace) Records(ctx context.Context, query repository.RecordQuery) ([]repository.RecordEntry, error) {
 	if strings.TrimSpace(query.LedgerID) == "" {
-		return nil, fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
+		return nil, invalidf("没有指定账本")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -86,7 +85,7 @@ func (w *Workspace) Record(ctx context.Context, id string) (repository.RecordEnt
 	row := db.QueryRowContext(ctx, "SELECT "+recordColumns+" FROM transaction_record WHERE transaction_id = ?", id)
 	record, err := scanRecord(row)
 	if err == sql.ErrNoRows {
-		return repository.RecordEntry{}, fmt.Errorf("%w：找不到这条记录", repository.ErrNotFound)
+		return repository.RecordEntry{}, notFoundf("找不到这条记录")
 	}
 	if err != nil {
 		return repository.RecordEntry{}, err
@@ -131,7 +130,7 @@ func (w *Workspace) CreateRecord(ctx context.Context, record domain.TransactionR
 // is deliberate and invisible in the UI.
 func (w *Workspace) UpdateRecord(ctx context.Context, record domain.TransactionRecord, tags []string) error {
 	if strings.TrimSpace(record.TransactionID) == "" {
-		return fmt.Errorf("%w：记录 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定记录")
 	}
 	if err := validateRecord(record); err != nil {
 		return err
@@ -161,7 +160,7 @@ func (w *Workspace) UpdateRecord(ctx context.Context, record domain.TransactionR
 			return err
 		}
 		if affected == 0 {
-			return fmt.Errorf("%w：找不到这条记录", repository.ErrNotFound)
+			return notFoundf("找不到这条记录")
 		}
 		if _, err := tx.ExecContext(ctx,
 			"DELETE FROM transaction_record_tag WHERE transaction_id = ?", record.TransactionID); err != nil {
@@ -174,7 +173,7 @@ func (w *Workspace) UpdateRecord(ctx context.Context, record domain.TransactionR
 // DeleteRecord removes the record and its tag links; a missing row is fine.
 func (w *Workspace) DeleteRecord(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
-		return fmt.Errorf("%w：记录 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定记录")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -198,7 +197,7 @@ func (w *Workspace) SyncRecord(ctx context.Context, id, targetLedgerID string) e
 		return err
 	}
 	if source.Record.LedgerID == targetLedgerID {
-		return fmt.Errorf("%w：记录不能同步到同一个账本", repository.ErrInvalid)
+		return invalidf("记录不能同步到同一个账本")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -223,13 +222,13 @@ func (w *Workspace) SyncRecord(ctx context.Context, id, targetLedgerID string) e
 
 func validateRecord(record domain.TransactionRecord) error {
 	if strings.TrimSpace(record.LedgerID) == "" {
-		return fmt.Errorf("%w：账本 id 不能为空", repository.ErrInvalid)
+		return invalidf("没有指定账本")
 	}
 	if !validTransactionType(record.TransactionType) {
-		return fmt.Errorf("%w：交易类型「%s」无法识别", repository.ErrInvalid, record.TransactionType)
+		return invalidf("交易类型「%s」无法识别", record.TransactionType)
 	}
 	if strings.TrimSpace(record.Category) == "" {
-		return fmt.Errorf("%w：分类不能为空", repository.ErrInvalid)
+		return invalidf("分类不能为空")
 	}
 	return nil
 }
@@ -240,7 +239,7 @@ func requireLedger(ctx context.Context, tx *sql.Tx, ledgerID string) error {
 		return err
 	}
 	if !exists {
-		return fmt.Errorf("%w：账本 %s 不存在", repository.ErrInvalid, ledgerID)
+		return invalidf("找不到这个账本")
 	}
 	return nil
 }
@@ -347,7 +346,7 @@ func recordOrderBy(sorts []repository.RecordSort) (string, error) {
 		case repository.RecordSortAmount:
 			keys = append(keys, "CASE transaction_type WHEN 'expense' THEN -amount_cents ELSE amount_cents END "+direction)
 		default:
-			return "", fmt.Errorf("%w：排序字段「%s」无法识别", repository.ErrInvalid, sort.Field)
+			return "", invalidf("排序字段「%s」无法识别", sort.Field)
 		}
 	}
 	keys = append(keys, "transaction_at DESC", "transaction_id ASC")
@@ -357,7 +356,7 @@ func recordOrderBy(sorts []repository.RecordSort) (string, error) {
 func localDayStart(value string) (int64, error) {
 	day, err := time.ParseInLocation("2006-01-02", value, time.Local)
 	if err != nil {
-		return 0, fmt.Errorf("%w：日期「%s」无法识别", repository.ErrInvalid, value)
+		return 0, invalidf("日期「%s」无法识别", value)
 	}
 	return day.Unix(), nil
 }
@@ -365,7 +364,7 @@ func localDayStart(value string) (int64, error) {
 func localDayEnd(value string) (int64, error) {
 	day, err := time.ParseInLocation("2006-01-02", value, time.Local)
 	if err != nil {
-		return 0, fmt.Errorf("%w：日期「%s」无法识别", repository.ErrInvalid, value)
+		return 0, invalidf("日期「%s」无法识别", value)
 	}
 	return time.Date(day.Year(), day.Month(), day.Day(), 23, 59, 59, 0, time.Local).Unix(), nil
 }

@@ -31,7 +31,7 @@ const keyEventImageColumns = "id, event_date, file_path, thumb_path, original_pa
 func (w *Workspace) KeyEventsByYear(ctx context.Context, year string) ([]domain.KeyEvent, error) {
 	year = strings.TrimSpace(year)
 	if _, err := time.Parse("2006", year); err != nil {
-		return nil, fmt.Errorf("%w：年份「%s」无法识别", repository.ErrInvalid, year)
+		return nil, invalidf("年份「%s」无法识别", year)
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -59,7 +59,7 @@ func (w *Workspace) KeyEventsByYear(ctx context.Context, year string) ([]domain.
 func (w *Workspace) KeyEvent(ctx context.Context, date string) (domain.KeyEvent, error) {
 	date = strings.TrimSpace(date)
 	if date == "" {
-		return domain.KeyEvent{}, fmt.Errorf("%w：事件日期不能为空", repository.ErrInvalid)
+		return domain.KeyEvent{}, invalidf("事件日期不能为空")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -69,7 +69,7 @@ func (w *Workspace) KeyEvent(ctx context.Context, date string) (domain.KeyEvent,
 		"SELECT "+keyEventColumns+" FROM key_event WHERE date = ?", date)
 	event, err := scanKeyEvent(row)
 	if err == sql.ErrNoRows {
-		return domain.KeyEvent{}, fmt.Errorf("%w：找不到这一天的事件", repository.ErrNotFound)
+		return domain.KeyEvent{}, notFoundf("找不到这一天的事件")
 	}
 	if err != nil {
 		return domain.KeyEvent{}, err
@@ -83,7 +83,7 @@ func (w *Workspace) KeyEvent(ctx context.Context, date string) (domain.KeyEvent,
 func (w *Workspace) SaveKeyEvent(ctx context.Context, date, title, content, color string) (domain.KeyEvent, error) {
 	date = strings.TrimSpace(date)
 	if date == "" {
-		return domain.KeyEvent{}, fmt.Errorf("%w：事件日期不能为空", repository.ErrInvalid)
+		return domain.KeyEvent{}, invalidf("事件日期不能为空")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -106,7 +106,7 @@ func (w *Workspace) SaveKeyEvent(ctx context.Context, date, title, content, colo
 func (w *Workspace) KeyEventImages(ctx context.Context, date string) ([]domain.KeyEventImage, error) {
 	date = strings.TrimSpace(date)
 	if date == "" {
-		return nil, fmt.Errorf("%w：事件日期不能为空", repository.ErrInvalid)
+		return nil, invalidf("事件日期不能为空")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -138,10 +138,10 @@ func (w *Workspace) CreateKeyEventImage(ctx context.Context, image domain.KeyEve
 	image.EventDate = strings.TrimSpace(image.EventDate)
 	image.FilePath = strings.TrimSpace(image.FilePath)
 	if image.EventDate == "" {
-		return domain.KeyEventImage{}, fmt.Errorf("%w：图片缺少事件日期", repository.ErrInvalid)
+		return domain.KeyEventImage{}, invalidf("图片没有对应的日期")
 	}
 	if image.FilePath == "" {
-		return domain.KeyEventImage{}, fmt.Errorf("%w：图片缺少展示文件", repository.ErrInvalid)
+		return domain.KeyEventImage{}, invalidf("图片缺少展示图")
 	}
 	if image.ID == "" {
 		image.ID = newID()
@@ -174,7 +174,7 @@ func (w *Workspace) CreateKeyEventImage(ctx context.Context, image domain.KeyEve
 func (w *Workspace) DeleteKeyEventImage(ctx context.Context, imageID string) (domain.KeyEventImage, error) {
 	imageID = strings.TrimSpace(imageID)
 	if imageID == "" {
-		return domain.KeyEventImage{}, fmt.Errorf("%w：图片 id 不能为空", repository.ErrInvalid)
+		return domain.KeyEventImage{}, invalidf("没有指定图片")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -201,7 +201,7 @@ func (w *Workspace) DeleteKeyEventImage(ctx context.Context, imageID string) (do
 func (w *Workspace) DeleteKeyEvent(ctx context.Context, date string) ([]domain.KeyEventImage, error) {
 	date = strings.TrimSpace(date)
 	if date == "" {
-		return nil, fmt.Errorf("%w：事件日期不能为空", repository.ErrInvalid)
+		return nil, invalidf("事件日期不能为空")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
@@ -232,7 +232,7 @@ func (w *Workspace) DeleteKeyEvent(ctx context.Context, date string) ([]domain.K
 func (w *Workspace) KeyEventRecords(ctx context.Context, date string) ([]repository.RecordEntry, error) {
 	date = strings.TrimSpace(date)
 	if date == "" {
-		return nil, fmt.Errorf("%w：事件日期不能为空", repository.ErrInvalid)
+		return nil, invalidf("事件日期不能为空")
 	}
 	db, err := w.dbHandle()
 	if err != nil {
