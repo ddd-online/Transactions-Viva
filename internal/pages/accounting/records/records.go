@@ -46,6 +46,13 @@ const (
 	recordTagsWidth     = float32(180)
 	recordMarksWidth    = float32(92)
 	recordAmountWidth   = float32(120)
+
+	// recordDescriptionMin is the room 描述 keeps on the narrowest window. It
+	// is the table's one descriptive column, so the fixed columns give way
+	// (proportionally, through the row's own overflow) before it collapses to
+	// a few characters: at 960 px the description still reads, and the rest of
+	// the row is a little tighter instead of empty.
+	recordDescriptionMin = float32(160)
 )
 
 // record is one row of the table: the store's TransactionRecord folded with
@@ -435,7 +442,7 @@ func (m *Model) table(c ui.C) {
 			typography.Caption(c, "类型").Width(recordTypeWidth)
 			typography.Caption(c, "分类").Width(recordCategoryWidth).TextCenter()
 			typography.Caption(c, "标签").Width(recordTagsWidth)
-			typography.Caption(c, "描述").Grow(1)
+			typography.Caption(c, "描述").Grow(1).MinWidth(recordDescriptionMin)
 			typography.Caption(c, "标记").Width(recordMarksWidth).TextCenter()
 			m.sortHeader(c, "金额", sortAmount, recordAmountWidth, true)
 		})
@@ -473,7 +480,7 @@ func (m *Model) row(r ui.ListRow) {
 	if description == "" {
 		description = "—"
 	}
-	typography.Body(r.C, description).Grow(1).Ellipsis()
+	typography.Body(r.C, description).Grow(1).MinWidth(recordDescriptionMin).Ellipsis()
 	ui.Row(r.C).Width(recordMarksWidth).Items(ui.Center).Justify(ui.Center).Gap(6).
 		Children(func() {
 			if rec.outlier {
