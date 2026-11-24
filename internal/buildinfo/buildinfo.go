@@ -15,7 +15,7 @@ import (
 // Version is the application version. It is the same string as viva.toml's
 // version — viva package reads that file, this binary reads this constant, and a
 // test keeps the two equal.
-const Version = "0.3.0"
+const Version = "0.3.1"
 
 // Facts is one built copy of the program. Every field is a finished string: the
 // About page repaints on every pointer move and must not build them again.
