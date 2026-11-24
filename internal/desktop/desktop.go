@@ -333,10 +333,14 @@ func (m *Model) pointer(event gfx.PointerEvent) gfx.EventResult {
 	return gfx.EventResult{}
 }
 
-// scroll gives the records page's tags popup the wheel.
+// scroll gives the records page's tags popup the wheel, and the notes page the
+// wheel of its body: the note keeps that area's offset itself.
 func (m *Model) scroll(event gfx.ScrollEvent) gfx.EventResult {
-	if m.section == SectionAccounting {
+	switch m.section {
+	case SectionAccounting:
 		return m.accounting.Scroll(event)
+	case SectionNotes:
+		return m.notes.Scroll(event)
 	}
 	return gfx.EventResult{}
 }

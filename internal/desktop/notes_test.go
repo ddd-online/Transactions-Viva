@@ -2,6 +2,7 @@ package desktop
 
 import (
 	"context"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -404,6 +405,85 @@ func TestNotesSlashMenuPicksAHeading(t *testing.T) {
 	if len(note.Blocks) != 1 || note.Blocks[0].Kind != domain.NoteBlockHeading ||
 		note.Blocks[0].Level != 1 || note.Blocks[0].Text != "小节" {
 		t.Fatalf("blocks after the command menu = %+v", note.Blocks)
+	}
+}
+
+// writeLongNote writes a note whose body is taller than its pane: title, then
+// lines of text, one per block.
+func writeLongNote(t *testing.T, driver *app.Driver, title string, lines int) {
+	t.Helper()
+	createNote(t, driver)
+	if err := driver.Type(title); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	for index := range lines {
+		if err := driver.Type(fmt.Sprintf("第%d行", index+1)); err != nil {
+			t.Fatal(err)
+		}
+		if err := driver.Key(gfx.KeyEnter, 0); err != nil {
+			t.Fatal(err)
+		}
+	}
+	advance(t, driver)
+	// The caret ended on the last line, so the view is at the end of the note:
+	// scroll it back to the first line for what the test does next.
+	last := noteTextBounds(t, driver, fmt.Sprintf("第%d行", lines))
+	if err := driver.Scroll(gfx.ScrollEvent{
+		X: last.X + 40, Y: last.Y + last.Height/2, DeltaY: -100000,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestNotesWheelScrollsAwayFromTheCaret: the wheel moves the note, and the caret
+// — which did not move — must not pull the view back to itself. The caret sits on
+// the first line, so a scroll down is away from it.
+func TestNotesWheelScrollsAwayFromTheCaret(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "笔记")
+	writeLongNote(t, driver, "滚轮", 40)
+
+	first := noteTextBounds(t, driver, "第1行")
+	if err := driver.Click(first.X+20, first.Y+first.Height/2); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	line := noteTextBounds(t, driver, "第10行")
+	if err := driver.Scroll(gfx.ScrollEvent{
+		X: line.X + 40, Y: line.Y + line.Height/2, DeltaY: 160,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	if after := noteTextBounds(t, driver, "第10行"); after.Y >= line.Y-100 {
+		t.Fatalf("the wheel did not move the note: 第10行 at y=%v, then y=%v", line.Y, after.Y)
+	}
+}
+
+// TestNotesBodyShowsAScrollbar: a note taller than its pane has the scroll area's
+// bar, named for the note, instead of scrolling with nothing to show for it.
+func TestNotesBodyShowsAScrollbar(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "笔记")
+	writeLongNote(t, driver, "滚动条", 40)
+
+	first := noteTextBounds(t, driver, "第1行")
+	if err := driver.Move(first.X+40, first.Y+first.Height/2); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	if !hasControl(driver, "笔记滚动条") {
+		t.Fatalf("the note has no scrollbar over its long body")
 	}
 }
 

@@ -78,7 +78,8 @@ type blockColumn struct {
 
 func (b *blockColumn) MeasureWidth(*ui.LayoutContext) float32 { return 0 }
 
-func (b *blockColumn) MeasureHeight(*ui.LayoutContext) float32 { return 0 }
+// MeasureHeight is how tall the body is: the scroll area's content.
+func (b *blockColumn) MeasureHeight(*ui.LayoutContext) float32 { return b.m.bodyHeight() }
 
 func (b *blockColumn) PlaceWidth(ctx *ui.LayoutContext, bounds gfx.Rect) {
 	width, offset := bodyColumn(bounds.Width)
@@ -95,18 +96,15 @@ func (b *blockColumn) PlaceWidth(ctx *ui.LayoutContext, bounds gfx.Rect) {
 }
 
 func (b *blockColumn) PlaceHeight(ctx *ui.LayoutContext, bounds gfx.Rect) {
-	// The caret is brought into view here, before the grip is placed: a grip
-	// placed from the previous paint's scroll would lag a frame behind the text.
 	b.m.bodyPane = bounds
-	b.m.followCaret(bounds)
-	ctx.SetHeight(0, bounds.Height)
+	ctx.SetHeight(0, b.m.bodyHeight())
 	ctx.SetY(0, bounds.Y)
 	if ctx.Count() < 2 || b.block < 0 {
 		return
 	}
 	if row, ok := b.m.firstRowOfBlock(b.block); ok {
 		ctx.SetHeight(1, gripSize)
-		ctx.SetY(1, bodyOffset(bounds, b.m.scroll)+row.y+gripTop)
+		ctx.SetY(1, bodyOffset(bounds)+row.y+gripTop)
 	}
 }
 
@@ -116,6 +114,7 @@ func (b *blockColumn) PlaceHeight(ctx *ui.LayoutContext, bounds gfx.Rect) {
 func (m *Model) blockGrip(c ui.C, block int) {
 	theme := c.Theme()
 	c.Key("note-block-grip-" + strconv.Itoa(block))
+	m.gripID = ui.ID(c)
 	grip := ui.ButtonBase(c, "块操作").Size(gripSize, gripSize).
 		Radius(theme.Metrics.RadiusControl).
 		Background(theme.Hover).
@@ -242,7 +241,7 @@ func (m *Model) blockDrops(d *ui.DrawContext) {
 	rect := d.Rect
 	width := m.bodyLayout.width
 	column := m.bodyLayout.column
-	offsetY := bodyOffset(rect, m.scroll)
+	offsetY := bodyOffset(rect)
 	// Every visible block takes a drop, so a block can be dragged above or below
 	// another one.
 	for index := range m.bodyLayout.rows {
@@ -266,7 +265,7 @@ func (m *Model) blockDrops(d *ui.DrawContext) {
 					return false
 				}
 				if row, ok := m.firstRowOfBlock(to); ok {
-					offsetY := bodyOffset(m.bodyPane, m.scroll)
+					offsetY := bodyOffset(m.bodyPane)
 					middle := offsetY + row.y + m.blockHeight(to)/2
 					m.dropAfter = m.blockDrag.At().Y > middle
 				}
@@ -332,7 +331,7 @@ func (m *Model) paintImageGrip(canvas *gfx.Canvas, theme *ui.Theme, offsetY floa
 
 // blockAtPoint is the block under a window y.
 func (m *Model) blockAtPoint(y float32) int {
-	offsetY := bodyOffset(m.bodyPane, m.scroll)
+	offsetY := bodyOffset(m.bodyPane)
 	local := y - offsetY
 	block := -1
 	for _, row := range m.bodyLayout.rows {

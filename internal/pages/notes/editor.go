@@ -104,6 +104,7 @@ type slashState struct {
 // everywhere else too.
 func (m *Model) bodyView(c ui.C) {
 	if m.selected == "" {
+		m.area = nil
 		return
 	}
 	// A drag keeps the grip it took hold of: the source of a drag must be
@@ -115,13 +116,39 @@ func (m *Model) bodyView(c ui.C) {
 	} else {
 		m.dragBlock = -1
 	}
-	m.column.m, m.column.block = m, m.litBlock()
-	var body ui.Box
-	ui.CustomLayout(c, &m.column).Grow(1).FillWidth().Clip().Children(func() {
-		body = ui.Control(c, "笔记正文", &m.bodyInput).Draw(m.bodyDraw)
-		if m.column.block >= 0 {
-			m.blockGrip(c, m.column.block)
+	// The note owns its offset: the wheel (Scroll), the caret and a drag on the
+	// bar write it, and the area places the blocks at it in this same paint. The
+	// caret can only be brought into view once the blocks are laid out, so the
+	// body is laid out here first, at the width it had; PlaceWidth lays it out
+	// again at the width the pane of this paint gets, and the cache makes that a
+	// lookup when the width did not change.
+	if area := m.area; area != nil {
+		if area.Dragging() {
+			m.scroll = area.Offset
 		}
+		if m.canvas != nil && m.bodyPane.Width > 0 {
+			width, _ := bodyColumn(m.bodyPane.Width)
+			m.layoutBody(m.canvas, width, m.theme)
+			m.followCaret(area)
+		}
+	}
+	m.column.m, m.column.block = m, m.litBlock()
+	m.gripID = gfx.ID{}
+	var body ui.Box
+	// The note is a document taller than its pane: the area clips it at the
+	// offset the note gives, draws its scrollbar and hands the wheel back to the
+	// page. Its name carries the note, so another note opens at its first line
+	// rather than where the last one was left.
+	c.Key("note-body-" + m.selected)
+	area := ui.ScrollAt(c, m.scroll).Grow(1).FillWidth().Scrollbars().ScrollbarLabels("笔记滚动条", "")
+	m.area = area.ScrollState()
+	area.Children(func() {
+		ui.CustomLayout(c, &m.column).FillWidth().Children(func() {
+			body = ui.Control(c, "笔记正文", &m.bodyInput).Draw(m.bodyDraw)
+			if m.column.block >= 0 {
+				m.blockGrip(c, m.column.block)
+			}
+		})
 	})
 	m.gripBlock = m.column.block
 	m.slashMenu(c, body)
@@ -200,26 +227,6 @@ func (m *Model) layoutBody(canvas *gfx.Canvas, width float32, theme *ui.Theme) {
 	}
 	layout.height = y
 	m.bodyLayout = layout
-	m.clampScroll()
-}
-
-// clampScroll keeps the scroll offset inside the content.
-func (m *Model) clampScroll() {
-	if m.scroll < 0 {
-		m.scroll = 0
-	}
-	if max := m.maxScroll(); m.scroll > max {
-		m.scroll = max
-	}
-}
-
-// maxScroll is the largest scroll offset the content allows.
-func (m *Model) maxScroll() float32 {
-	overflow := m.bodyLayout.height + bodyBottomSpace - m.bodyPane.Height
-	if overflow < 0 {
-		return 0
-	}
-	return overflow
 }
 
 // bodyColumn is the width the body's text wraps at, and the offset of the text
@@ -233,10 +240,18 @@ func bodyColumn(paneWidth float32) (width, offset float32) {
 	return width, (paneWidth - width) / 2
 }
 
-// bodyOffset is the y of the body's laid-out content in a pane: the strip above
-// the first block, less the scroll. A row's own y is added to it.
-func bodyOffset(pane gfx.Rect, scroll float32) float32 {
-	return pane.Y + bodyTopInset - scroll
+// bodyOffset is the y of the body's painted content in its rectangle: the strip
+// above the first block. A row's own y is added to it. The rectangle is the one
+// the scroll area placed, so the offset is already in it.
+func bodyOffset(pane gfx.Rect) float32 {
+	return pane.Y + bodyTopInset
+}
+
+// bodyHeight is how tall the body's content is: the strip above the first block,
+// the blocks, and the empty strip under the last one that a click turns into a
+// new block.
+func (m *Model) bodyHeight() float32 {
+	return bodyTopInset + m.bodyLayout.height + bodyBottomSpace
 }
 
 // drawBody paints the body and declares its text hit.
@@ -256,7 +271,7 @@ func (m *Model) drawBody(d *ui.DrawContext) {
 	column := rect.X + offset
 	m.bodyLayout.column = column
 	focused := d.State.Focused
-	offsetY := bodyOffset(rect, m.scroll)
+	offsetY := bodyOffset(rect)
 
 	canvas.Clip(rect)
 	m.paintImages(canvas, theme, rect, column, offsetY)
@@ -387,9 +402,17 @@ func (m *Model) selectedBlockID() string {
 	return m.blocks[m.selectedImage].ID
 }
 
-// followCaret scrolls the view so the caret stays visible.
-func (m *Model) followCaret(rect gfx.Rect) {
-	block, inLine := m.position(m.doc.ByteOffset(m.doc.Caret()))
+// followCaret moves the offset so the caret stays in sight, when the caret moved
+// since the last paint. A wheel, a scrollbar drag or a block drag moves the area
+// without moving the caret, and that offset is the user's: a caret that stayed
+// where it was must not pull the view back.
+func (m *Model) followCaret(area *ui.ScrollState) {
+	caret := m.doc.ByteOffset(m.doc.Caret())
+	if area.Viewport <= 0 || (caret == m.caretShown && area.Viewport == m.caretViewport) {
+		return
+	}
+	m.caretShown, m.caretViewport = caret, area.Viewport
+	block, inLine := m.position(caret)
 	if block < 0 {
 		return
 	}
@@ -397,16 +420,34 @@ func (m *Model) followCaret(rect gfx.Rect) {
 	if !ok {
 		return
 	}
-	top := row.y + bodyTopInset
+	top := bodyTopInset + row.y
 	bottom := top + row.height
-	height := rect.Height - bodyTopInset
 	if top < m.scroll {
 		m.scroll = top
 	}
-	if bottom > m.scroll+height {
-		m.scroll = bottom - height
+	if bottom > m.scroll+area.Viewport {
+		m.scroll = bottom - area.Viewport
 	}
-	m.clampScroll()
+	if max := area.Max(); m.scroll > max {
+		m.scroll = max
+	}
+}
+
+// Scroll handles the wheel over the note. The body is a scroll area whose offset
+// the note owns, so the area hands the wheel back here; the area's own stepping
+// and range are used, and the page keeps the number.
+func (m *Model) Scroll(event gfx.ScrollEvent) gfx.EventResult {
+	if m.selected == "" || (event.Target != m.bodyKey && event.Target != m.gripID) {
+		return gfx.EventResult{}
+	}
+	area := m.area
+	if area == nil {
+		return gfx.EventResult{}
+	}
+	area.Offset = m.scroll
+	result := area.Wheel(event)
+	m.scroll = area.Offset
+	return result
 }
 
 // lineStarts is the byte offset of each block's line inside doc.
@@ -884,7 +925,7 @@ func (m *Model) bodyPointer(event gfx.PointerEvent) gfx.EventResult {
 	if m.bodyKey.IsZero() || event.Target != m.bodyKey {
 		return gfx.EventResult{}
 	}
-	offsetY := bodyOffset(m.bodyPane, m.scroll)
+	offsetY := bodyOffset(m.bodyPane)
 	for index := range m.bodyLayout.rows {
 		row := m.bodyLayout.rows[index]
 		if m.blocks[row.block].Kind != domain.NoteBlockImage {
@@ -922,16 +963,6 @@ func (m *Model) appendBlockAtEnd() {
 	m.insertBlock(len(m.blocks), domain.NoteBlock{Kind: domain.NoteBlockText})
 	m.afterEdit()
 	m.flush()
-}
-
-// bodyScroll scrolls the body with the wheel.
-func (m *Model) bodyScroll(event gfx.ScrollEvent) gfx.EventResult {
-	if m.selected == "" || event.Target != m.bodyKey {
-		return gfx.EventResult{}
-	}
-	m.scroll += event.DeltaY
-	m.clampScroll()
-	return gfx.EventResult{Handled: true, Repaint: true}
 }
 
 // bodyKeyEvent handles the keys the platform leaves to the application: the
@@ -1063,7 +1094,7 @@ func (m *Model) OffsetAt(point gfx.Point) (int, bool) {
 	if m.selected == "" || len(m.bodyLayout.rows) == 0 || m.canvas == nil {
 		return 0, false
 	}
-	offsetY := bodyOffset(m.bodyPane, m.scroll)
+	offsetY := bodyOffset(m.bodyPane)
 	localY := point.Y - offsetY
 	row := m.bodyLayout.rows[0]
 	found := false
@@ -1106,6 +1137,6 @@ func (m *Model) CaretBounds() (gfx.Rect, bool) {
 		rowText = line[row.start:min(row.end, len(line))]
 	}
 	x := m.bodyLayout.column + m.canvas.TextCaretStyle(rowText, style, inLine-row.start)
-	y := bodyOffset(m.bodyPane, m.scroll) + row.y
+	y := bodyOffset(m.bodyPane) + row.y
 	return gfx.Rect{X: x, Y: y + 2, Width: 2, Height: row.height - 4}, true
 }

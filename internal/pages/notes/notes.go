@@ -159,7 +159,13 @@ type Model struct {
 	bodyDraw   func(*ui.DrawContext)
 	bodyInput  ui.Handlers
 	bodyLayout bodyLayout
-	scroll     float32
+	// scroll is the body's offset, as the scroll area last had it; the caret moves
+	// it before the area places the blocks. caretShown is the caret the body last
+	// brought into view, and caretViewport the height it brought it into: a caret
+	// that did not move leaves the scroll where the user put it.
+	scroll        float32
+	caretShown    int
+	caretViewport float32
 	// selectedImage is the picture block the user clicked, or -1.
 	selectedImage int
 
@@ -181,9 +187,14 @@ type Model struct {
 	blockMenu  blockMenuState
 	resize     resizeState
 	column     blockColumn
+	// area is the body's scroll area as the last paint declared it: the wheel and
+	// a drag on its bar reach it between paints.
+	area *ui.ScrollState
 	// gripBlock is the block whose grip the last paint declared, or -1: the press
-	// that starts a drag is on it, so a drag takes its block from here.
+	// that starts a drag is on it, so a drag takes its block from here. gripID is
+	// that grip's identity, which the wheel over the gutter names.
 	gripBlock int
+	gripID    gfx.ID
 
 	// pictures: the open note's decoded blocks and the lightbox's one picture
 	imageEffect    *ui.EffectState[map[string]gfx.Bitmap, noteImageKey]
@@ -246,6 +257,7 @@ func New() *Model {
 		rowKeys:       map[string]int{},
 		noteImages:    map[string]gfx.Bitmap{},
 		selectedImage: -1,
+		caretShown:    -1,
 		hoverBlock:    -1,
 		dragBlock:     -1,
 		blockMenu:     blockMenuState{block: -1},
@@ -260,7 +272,6 @@ func New() *Model {
 	m.gripBlock = -1
 	m.bodyInput.Key = m.bodyKeyEvent
 	m.bodyInput.Pointer = m.bodyPointer
-	m.bodyInput.Scroll = m.bodyScroll
 	m.bodyInput.Text = m.bodyText
 	m.imageEffect = ui.NewEffectKeyed(m.loadNoteImages)
 	m.lightboxEffect = ui.NewEffectKeyed(m.loadLightboxImage)
@@ -1084,7 +1095,9 @@ func (m *Model) openNote(id string) {
 	m.phase, m.dirty = saveSaved, false
 	m.bodyKey = gfx.ID{}
 	m.bodyLayout = bodyLayout{}
-	m.scroll = 0
+	m.area = nil
+	m.gripID = gfx.ID{}
+	m.scroll, m.caretShown, m.caretViewport = 0, -1, 0
 	m.selectedImage = -1
 	m.noteImages = map[string]gfx.Bitmap{}
 	m.imageRev++
