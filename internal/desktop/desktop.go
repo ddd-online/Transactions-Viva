@@ -108,6 +108,7 @@ type Model struct {
 	// page. Tests queue answers through the driver; a run opens the real
 	// pickers.
 	pickImages   func() ([]string, error)
+	pickNoteFile func() (string, error)
 	pickSaveFile func(options app.SaveFileOptions) (string, error)
 	pickBackup   func() (string, error)
 }
@@ -157,6 +158,19 @@ func NewWithConfig(cfg config.AppConfig, store *config.Store) *Model {
 				Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.heic;*.heif;*.mov;*.mp4;*.m4v;*.webm",
 			}},
 		})
+	}
+	m.pickNoteFile = func() (string, error) {
+		files, err := app.OpenFiles(app.OpenFileOptions{
+			Title: "插入图片",
+			Filters: []app.FileFilter{{
+				Name:    "图片",
+				Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.heic;*.heif",
+			}},
+		})
+		if err != nil || len(files) == 0 {
+			return "", err
+		}
+		return files[0], nil
 	}
 	m.pickSaveFile = func(options app.SaveFileOptions) (string, error) {
 		return app.SaveFile(options)

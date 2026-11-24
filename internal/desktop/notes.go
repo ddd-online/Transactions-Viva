@@ -30,20 +30,14 @@ func (m *Model) notesCommands() notespage.Commands {
 // pickNoteImage opens the picture dialog and returns the chosen file. The
 // picker is the shell's own, so a test can answer it without a native dialog.
 func (m *Model) pickNoteImage() (string, error) {
-	if m.pickImages == nil {
+	if m.pickNoteFile == nil {
 		return "", nil
 	}
-	files, err := m.pickImages()
+	path, err := m.pickNoteFile()
 	if errors.Is(err, app.ErrCanceled) {
 		return "", nil
 	}
-	if err != nil {
-		return "", err
-	}
-	if len(files) == 0 {
-		return "", nil
-	}
-	return files[0], nil
+	return path, err
 }
 
 // importNoteImage stores one file under notes/<noteID>/ and reports its size.

@@ -77,10 +77,6 @@ func (m *Model) blockView(d *ui.DrawContext) {
 		if row.block >= len(m.blocks) {
 			continue
 		}
-		block := m.blocks[row.block]
-		if block.Kind == domain.NoteBlockImage {
-			continue
-		}
 		if row.block != m.hoverBlock && row.block != m.blockMenu.block {
 			continue
 		}
