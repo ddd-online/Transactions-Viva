@@ -139,6 +139,9 @@ type Model struct {
 	drag       ui.DragState
 	rowHit     map[gfx.ID]string
 	rowRect    map[string]gfx.Rect
+	treeWhere  int
+	treeFrom   string
+	treeTo     string
 	blockDrag  ui.DragState
 	hoverBlock int
 	dragBlock  int
@@ -162,8 +165,10 @@ type Model struct {
 	// focusTitle asks the next paint to put the keyboard in the title.
 	focusTitle bool
 
-	// The last paint's canvas and theme, kept for the movements and hit tests
-	// that run between paints, and the clock the undo groups read.
+	// measure and measureTheme are the last paint's canvas and theme, kept only
+	// for the text measurements the movements and the caret hit test need
+	// between paints (there is no other way to measure a proportional face).
+	// Nothing else is painted through them.
 	now             time.Duration
 	undoneAt        time.Duration
 	canvas          *gfx.Canvas
@@ -175,9 +180,11 @@ type Model struct {
 	focusBody       bool
 
 	// imageRev changes whenever a picture block is added, so the effect that
-	// decodes the note's pictures runs again.
-	imageRev int
-	imageKey noteImageKey
+	// decodes the note's pictures runs again; lightboxRev does the same for the
+	// lightbox, whose effect keeps its last key.
+	imageRev    int
+	imageKey    noteImageKey
+	lightboxRev int
 
 	// defaultFolder is set once the first entry to an empty tree made the
 	// default folder, so a failure is not retried every entry.
@@ -270,6 +277,8 @@ func (m *Model) Reload() {
 	}
 	if m.selected != "" {
 		if node, ok := m.nodes[m.selected]; ok && node.Kind == domain.NoteKindNote {
+			m.imageRev++
+			m.imageKey = noteImageKey{note: m.selected, rev: m.imageRev}
 			m.rebuildRows()
 			return
 		}
@@ -350,7 +359,7 @@ func (m *Model) View(c ui.C) {
 		}
 	}
 	if m.lightbox.open && m.lightbox.path != "" {
-		ui.Effect(c, m.lightboxEffect, m.lightbox.path)
+		ui.Effect(c, m.lightboxEffect, m.lightboxKey())
 		if bitmap, _, ok := m.lightboxEffect.Take(); ok {
 			m.lightbox.bitmap = bitmap
 			m.lightbox.loaded = true
@@ -908,17 +917,35 @@ func (m *Model) acceptDrop(source, target gfx.ID) bool {
 	if from == "" || to == "" {
 		return false
 	}
-	return m.dropAllowed(from, to, m.dropWhere(from, to))
+	where := m.dropWhere(from, to)
+	if !m.dropAllowed(from, to, where) {
+		return false
+	}
+	// The drag state is reset before the drop callback runs, so the placement
+	// is remembered while the pointer still tells where it is.
+	m.treeFrom, m.treeTo, m.treeWhere = from, to, where
+	return true
 }
 
-// dropWhere is where a drag would land on a target: into a folder, before or
-// after a row.
+// dropWhere is where a drag would land on a target: -1 above it, 0 into a
+// folder, 1 below it.
 func (m *Model) dropWhere(from, to string) int {
+	rect, ok := m.rowRect[to]
+	if !ok {
+		return 0
+	}
+	at := m.drag.At().Y
 	if m.nodes[to].Kind == domain.NoteKindFolder {
-		if rect, ok := m.rowRect[to]; ok && m.drag.At().Y < rect.Y+rect.Height*0.3 {
+		switch {
+		case at < rect.Y+rect.Height*0.3:
 			return -1
+		case at > rect.Y+rect.Height*0.7:
+			return 1
 		}
 		return 0
+	}
+	if at > rect.Y+rect.Height/2 {
+		return 1
 	}
 	return -1
 }
@@ -941,12 +968,34 @@ func (m *Model) dropAllowed(from, to string, where int) bool {
 
 // dropRow moves a dragged row where it was let go.
 func (m *Model) dropRow(source, target gfx.ID) {
-	from, to := m.rowHit[source], m.rowHit[target]
+	from, to := m.treeFrom, m.treeTo
 	if m.repo == nil || from == "" || to == "" {
+		from, to = m.rowHit[source], m.rowHit[target]
+	}
+	m.treeFrom, m.treeTo = "", ""
+	where := m.treeWhere
+	if from == "" || to == "" || !m.dropAllowed(from, to, where) {
 		return
 	}
-	where := m.dropWhere(from, to)
-	if !m.dropAllowed(from, to, where) {
+	where = m.treeWhere
+	if where == 1 {
+		parent := m.nodes[to].ParentID
+		position := len(m.children[parent])
+		for index, id := range m.children[parent] {
+			if id == to {
+				position = index + 1
+				break
+			}
+		}
+		if err := m.repo.MoveNoteNode(context.Background(), from, parent, position); err != nil {
+			m.report(err)
+			return
+		}
+		m.Read()
+		if parent != "" {
+			m.expanded[parent] = true
+		}
+		m.rebuildRows()
 		return
 	}
 	parent := m.nodes[to].ParentID
@@ -954,8 +1003,8 @@ func (m *Model) dropRow(source, target gfx.ID) {
 	if where == 0 {
 		parent = to
 		position = -1
-	} else if siblings := m.children[parent]; parent != "" || true {
-		for index, id := range siblings {
+	} else {
+		for index, id := range m.children[parent] {
 			if id == to {
 				position = index
 				break

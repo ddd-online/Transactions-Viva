@@ -19,7 +19,7 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
 - `internal/pages`：各功能页；页面只 import `ui` 与本工程的 components / domain / icons / repository。
 - `internal/components`：共享 UI，包括 `layout` 页面壳与表头、`datepicker`、`pagination`、
   `selectbox`、`semantic`、`chartanim`。
-- `internal/domain`：纯领域规则与数据形状（金额、记录、账本、事件、日记、待办、股票）。
+- `internal/domain`：纯领域规则与数据形状（金额、记录、账本、事件、日记、笔记、待办、股票）。
 - `internal/repository`：页面使用的数据契约；不依赖 SQLite。
 - `internal/store`：工作空间、schema、仓储与备份 / 恢复所需的数据库操作。
 - `internal/config`：配置形状、默认值、读写与归一化。
@@ -44,7 +44,8 @@ layout.Page(c, func(c ui.C) { /* toolbar */ }, func(c ui.C) { /* body */ })
 ## 数据
 
 - 一个工作空间一个目录：`transactions.db` + `data/assets`。
-- schema v1 在 `internal/store/schema/0001_init.sql` 一次性建全；打开时做 `quick_check` 与版本检查。
+- schema 版本从 1 连续递增：`0001_init.sql` 是 0.1.0 的完整库，笔记的 `0002_notes.sql` 追加在
+  同一个迁移列表里；打开时做 `quick_check` 与版本检查。
 - 金额整数分、股票价格整数厘、时间 Unix 秒、日期本地 `YYYY-MM-DD`。
 - 配置是用户数据：生产 `~/.transactions.json`，开发 `~/.transactions.dev.json`；写回保留未知键。
 - 手动备份是库 + assets 目录；自动备份是单库快照；恢复前先另存 `pre-restore-*`。

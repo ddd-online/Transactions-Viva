@@ -11,8 +11,8 @@ Transactions 是一款本地优先的个人财务桌面应用：一个工作空�
 
 当前功能：
 
-- 外壳、配置、通用设置、记账四页、待办、事件、日记、股票六页与设置页均已落地。
-- 工作空间包含账本、股票账户、日记本、事件、待办与图表；配置在
+- 外壳、配置、通用设置、记账四页、待办、事件、日记、笔记、股票六页与设置页均已落地。
+- 工作空间包含账本、股票账户、日记本、事件、待办、笔记与图表；配置在
   `~/.transactions.json`（开发期为 `~/.transactions.dev.json`）。
 - 数据备份支持立即备份、自动备份、恢复与删除单份备份；最近工作空间可切换或移除。
 - 发布由 `build/build.ps1` / `build/release.ps1` 完成。
@@ -32,6 +32,7 @@ internal/pages/          功能页：accounting、stock、todo、events、diary�
   accounting/templates/  模板页
   accounting/analysis/   分析页
   diary/                 日记页
+  notes/                 笔记页（目录树 + 自绘块编辑器）
   todo/                  待办页
 internal/diary/          日记文件导入导出
 internal/assets/         图片资产：路径校验、落盘、删除、解码、缩略图
@@ -79,6 +80,8 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
 - 每个工作空间一个独立 SQLite 数据库；图片资产在工作空间 `data/assets` 下，引用相对路径。
 - 待办属于工作空间，不属于账本。
 - 事件属于工作空间，不属于账本：`key_event.date` 唯一，图片在 `data/assets/key_events/<date>/`。
+- 笔记属于工作空间，不属于账本：一棵树（`note_node`）加每篇的块（`note_block`），笔记永远是叶子、
+  根级只放文件夹，图片在 `data/assets/notes/<note_id>/`。
 - 新库 schema 版本在 `app_meta.schema_version`；打开时检查版本与 `quick_check`，拒绝损坏、陌生或
   更高版本的库。恢复前先把当前数据另存为 `pre-restore-*`。
 - 图表预设（月度 / 年度）只可删除，不可改名 / 改粒度；自建图表整行回写。

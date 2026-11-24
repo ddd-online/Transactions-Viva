@@ -413,3 +413,75 @@ func clickRight(t *testing.T, driver *app.Driver, name string) {
 	}
 	t.Fatalf("no control named %q on screen", name)
 }
+
+// noteControlBounds finds one control by its name.
+func noteControlBounds(t *testing.T, driver *app.Driver, name string) gfx.Rect {
+	t.Helper()
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == name && !hit.IsLabel {
+			return hit.Bounds
+		}
+	}
+	t.Fatalf("no control named %q on screen", name)
+	return gfx.Rect{}
+}
+
+// TestNotesTreeDragReorders drags the note 甲 below 乙 in the same folder.
+func TestNotesTreeDragReorders(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	click(t, driver, "新建笔记")
+	if err := driver.Type("甲"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	click(t, driver, "新建笔记")
+	if err := driver.Type("乙"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	from := noteControlBounds(t, driver, "笔记 甲")
+	to := noteControlBounds(t, driver, "笔记 乙")
+	if err := driver.Press(from.X+from.Width/2, from.Y+from.Height/2, gfx.PointerButtonPrimary); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Move(to.X+to.Width/2, to.Y+to.Height-4); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Move(to.X+to.Width/2, to.Y+to.Height-4); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Release(to.X+to.Width/2, to.Y+to.Height-4, gfx.PointerButtonPrimary); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	nodes, err := model.workspace.NoteTree(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var order []string
+	for _, node := range nodes {
+		if node.Kind == domain.NoteKindNote {
+			order = append(order, node.Title)
+		}
+	}
+	if len(order) != 2 || order[0] != "乙" || order[1] != "甲" {
+		t.Fatalf("order after drag = %v, want [乙 甲]", order)
+	}
+}
+
+// TestNotesFeatureSwitchHidesTheSection turns 笔记 off in settings and checks the
+// navigation loses the section.
+func TestNotesFeatureSwitchHidesTheSection(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "设置")
+	click(t, driver, "笔记功能开关")
+	if !model.config.Features.Notes {
+		// The label names the switch; the click turned it off.
+	}
+	if hasControl(driver, "笔记") {
+		t.Fatal("笔记 is still in the navigation after being switched off")
+	}
+}

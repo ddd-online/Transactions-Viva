@@ -3,6 +3,8 @@ package notes
 import (
 	"context"
 	"errors"
+	"strconv"
+	"strings"
 
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
@@ -61,11 +63,21 @@ func (m *Model) loadNoteImages(ctx context.Context, key noteImageKey) (map[strin
 }
 
 // loadLightboxImage decodes the one picture the lightbox shows.
-func (m *Model) loadLightboxImage(_ context.Context, path string) (gfx.Bitmap, error) {
+func (m *Model) loadLightboxImage(_ context.Context, key string) (gfx.Bitmap, error) {
 	if m.cmds.LoadImage == nil {
 		return gfx.Bitmap{}, errNoImage
 	}
+	path := key
+	if index := strings.LastIndexByte(key, '\n'); index >= 0 {
+		path = key[index+1:]
+	}
 	return m.cmds.LoadImage(path, lightboxEdge)
+}
+
+// lightboxKey names the lightbox's work: the path with a revision, so reopening
+// the same picture after closing it loads it again.
+func (m *Model) lightboxKey() string {
+	return strconv.Itoa(m.lightboxRev) + "\n" + m.lightbox.path
 }
 
 // openLightbox shows one picture.
@@ -73,6 +85,7 @@ func (m *Model) openLightbox(path string) {
 	if path == "" {
 		return
 	}
+	m.lightboxRev++
 	m.lightbox = lightboxState{open: true, path: path, zoom: 1, handlers: m.lightbox.handlers}
 }
 
