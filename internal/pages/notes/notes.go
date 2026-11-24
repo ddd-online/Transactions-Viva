@@ -470,7 +470,7 @@ func (m *Model) rail(c ui.C) {
 					c.Canvas().RequestFocus(m.filterID)
 					m.findFocus = false
 				}
-				field := ui.TextFieldID(c, m.filterID, &m.filter, "过滤笔记", "搜索标题").FillWidth()
+				field := ui.TextFieldID(c, m.filterID, &m.filter, "过滤笔记", "搜索文件夹、笔记").FillWidth()
 				field.OnKey(func(event gfx.KeyEvent) gfx.EventResult {
 					if event.Key != gfx.KeyEscape {
 						return gfx.EventResult{}
