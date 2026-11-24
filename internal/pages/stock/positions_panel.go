@@ -1008,7 +1008,7 @@ func (p *positionsPanel) tradeDialog(c ui.C) {
 	isOpen := p.tradeType == domain.TradeOpen
 
 	ui.ModalWith(c, &p.tradeOpen, title, ui.ModalSpec{Width: 640}, func() {
-		ui.Scroll(c).MaxHeight(430).Children(func() {
+		ui.Scroll(c).MaxHeight(430).PadX(layout.ClipInset).Children(func() {
 			ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 				ui.Row(c).Gap(layout.BlockGap).Children(func() {
 					positionsFormColumn(c, "股票名称", func() {

@@ -67,6 +67,19 @@ const (
 	TableHeaderInsetY float32 = 4
 )
 
+// ClipInset is the room a scrolling body keeps between its content and the edge
+// that clips it: one pixel, the width of a control's border. A control that
+// starts exactly on a scroll area's edge has its hairline border drawn on the
+// clip itself, and a border on the clip is not painted in the window (the
+// headless renderer keeps it, the window drops it), so every field of a form
+// inside such an area loses its left border and the form reads as cut off by
+// the dialog's padding. It is not spacing: the scale above does not see it.
+//
+// A dialog body that scrolls a form pads by it on each side:
+//
+//	ui.Scroll(c).MaxHeight(430).PadX(layout.ClipInset).Children(form)
+const ClipInset float32 = 1
+
 // Toolbar is the standard band above a page's content: one 56px row, the
 // page's horizontal inset, one control gap, and vertical centering for every
 // control in it.

@@ -9,6 +9,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/layout"
 	"transactions/internal/domain"
 	"transactions/internal/repository"
 	"transactions/internal/store/storetest"
@@ -131,6 +132,40 @@ func TestPositionsPanelRendersAndSaves(t *testing.T) {
 	}
 }
 
+// TestTradeDialogKeepsItsFieldsOffTheScrollClip measures the 委托 form: its two
+// fields span the dialog's body less one ClipInset on each side. A field that
+// starts exactly on the edge of the area that scrolls the form has its hairline
+// border on that edge, where the window does not paint it, so the form would show
+// without a left border.
+func TestTradeDialogKeepsItsFieldsOffTheScrollClip(t *testing.T) {
+	fixture := storetest.Open(t)
+	account, err := fixture.Workspace.CreateStockAccount(context.Background(), "主账户", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	accounts := newAccountStore()
+	accounts.reset([]domain.StockAccount{account})
+	panel := newPositionsPanel(accounts, nil)
+	panel.toaster = &ui.Toaster{}
+	panel.setRepository(fixture.Workspace)
+	driver := positionsTestDriver(t, panel)
+
+	positionsTestClick(t, driver, "建仓")
+	if !positionsTestShows(driver, "成交明细") {
+		t.Fatal("the order dialog did not open")
+	}
+	name := positionsTestBounds(t, driver, "股票名称")
+	code := positionsTestBounds(t, driver, "股票代码")
+
+	metrics := gfx.DefaultMetrics()
+	// The dialog is 640 wide; its body is that less the surface padding on each
+	// side, and the form keeps one ClipInset clear of the scroll area's edges.
+	body := float32(640) - 2*(metrics.PadSurface+metrics.GapItem)
+	if got, want := code.X+code.Width-name.X, body-2*layout.ClipInset; got != want {
+		t.Fatalf("the form spans %v of the %v body; want %v, one ClipInset off each clip edge", got, body, want)
+	}
+}
+
 func positionsTestClickLast(t *testing.T, driver *app.Driver, name string) {
 	t.Helper()
 	var last *gfx.Hit
@@ -200,6 +235,17 @@ func positionsTestType(t *testing.T, driver *app.Driver, name, value string) {
 	if err := driver.Type(value); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func positionsTestBounds(t *testing.T, driver *app.Driver, name string) gfx.Rect {
+	t.Helper()
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == name && !hit.IsLabel {
+			return hit.Bounds
+		}
+	}
+	t.Fatalf("no control named %q", name)
+	return gfx.Rect{}
 }
 
 func positionsTestHitNames(driver *app.Driver) []string {

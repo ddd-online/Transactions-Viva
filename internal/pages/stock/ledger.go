@@ -368,7 +368,7 @@ func (e *ledgerEditor) dialog(c ui.C, repo repository.StockRepository, accountID
 		bodyHeight = 300
 	}
 	ui.ModalWith(c, &e.open, title, ui.ModalSpec{Width: 680}, func() {
-		ui.Scroll(c).MaxHeight(bodyHeight).Scrollbars().Children(func() {
+		ui.Scroll(c).MaxHeight(bodyHeight).PadX(layout.ClipInset).Scrollbars().Children(func() {
 			ui.Column(c).FillWidth().Gap(layout.GroupGap).Children(func() {
 				ledgerGroup(c, "买入计划", func() {
 					ledgerTextArea(c, "为什么买", &e.draft.whyBuy,
