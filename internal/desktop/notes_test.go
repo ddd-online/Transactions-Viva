@@ -373,6 +373,40 @@ func hoverBlock(t *testing.T, driver *app.Driver, text string) {
 	}
 }
 
+// TestNotesSlashMenuPicksAHeading types "/" in an empty block: the command menu
+// opens, the arrows and Enter choose 标题 1, and the note takes the keyboard back
+// for the text that follows.
+func TestNotesSlashMenuPicksAHeading(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("斜杠"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("/"); err != nil {
+		t.Fatal(err)
+	}
+	if !shows(driver, "标题 1") {
+		t.Fatal("typing / should open the command menu")
+	}
+	if err := driver.Key(gfx.KeyDown, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Key(gfx.KeyEnter, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Type("小节"); err != nil {
+		t.Fatalf("typing after the command menu: %v", err)
+	}
+	advance(t, driver)
+	note := noteByTitle(t, model, "斜杠")
+	if len(note.Blocks) != 1 || note.Blocks[0].Kind != domain.NoteBlockHeading ||
+		note.Blocks[0].Level != 1 || note.Blocks[0].Text != "小节" {
+		t.Fatalf("blocks after the command menu = %+v", note.Blocks)
+	}
+}
+
 // TestNotesBlockGripConvertsAHeading uses the block grip's menu to turn a text
 // block into a heading.
 func TestNotesBlockGripConvertsAHeading(t *testing.T) {
@@ -394,6 +428,112 @@ func TestNotesBlockGripConvertsAHeading(t *testing.T) {
 	advance(t, driver)
 
 	note := noteByTitle(t, model, "grip")
+	if note.Blocks[0].Kind != domain.NoteBlockHeading || note.Blocks[0].Level != 2 {
+		t.Fatalf("block = %+v", note.Blocks[0])
+	}
+}
+
+// TestNotesBlockGripMenuTakesTheArrows opens the grip's menu from a focused
+// body and picks a command with the keyboard: the menu's keys must not reach
+// the note's text.
+func TestNotesBlockGripMenuTakesTheArrows(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("按键"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("一段"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	hoverBlock(t, driver, "一段")
+	click(t, driver, "块操作")
+	if !shows(driver, "转为标题 2") {
+		t.Fatal("the grip's menu did not open")
+	}
+	for range 3 {
+		if err := driver.Key(gfx.KeyDown, 0); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := driver.Key(gfx.KeyEnter, 0); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	note := noteByTitle(t, model, "按键")
+	if len(note.Blocks) != 1 || note.Blocks[0].Kind != domain.NoteBlockHeading || note.Blocks[0].Level != 2 {
+		t.Fatalf("blocks after the keys = %+v", note.Blocks)
+	}
+}
+
+// TestNotesBlockGripMenuClosesOnEscape: Escape closes the grip's menu and the
+// note takes the keyboard back, so the next keystroke is text again.
+func TestNotesBlockGripMenuClosesOnEscape(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("撤退"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("一"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	hoverBlock(t, driver, "一")
+	click(t, driver, "块操作")
+	if !shows(driver, "转为标题 2") {
+		t.Fatal("the grip's menu did not open")
+	}
+	if err := driver.Key(gfx.KeyEscape, 0); err != nil {
+		t.Fatal(err)
+	}
+	if shows(driver, "转为标题 2") {
+		t.Fatal("Escape should close the grip's menu")
+	}
+	if err := driver.Type("二"); err != nil {
+		t.Fatalf("typing after the menu closed: %v", err)
+	}
+	advance(t, driver)
+	note := noteByTitle(t, model, "撤退")
+	if len(note.Blocks) != 1 || note.Blocks[0].Text != "一二" {
+		t.Fatalf("blocks after Escape = %+v", note.Blocks)
+	}
+}
+
+// TestNotesBlockGripMenuKeepsTheKeyboard chooses a command from the grip's menu
+// and then types: the keyboard belongs to the note again, not to the menu's
+// rows that just went away.
+func TestNotesBlockGripMenuKeepsTheKeyboard(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("键盘"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("一段"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	hoverBlock(t, driver, "一段")
+	click(t, driver, "块操作")
+	click(t, driver, "转为标题 2")
+	advance(t, driver)
+
+	if err := driver.Type("续写"); err != nil {
+		t.Fatalf("typing after the block command: %v", err)
+	}
+	advance(t, driver)
+	note := noteByTitle(t, model, "键盘")
+	if len(note.Blocks) == 0 || !strings.Contains(note.Blocks[0].Text, "续写") {
+		t.Fatalf("blocks after the command = %+v", note.Blocks)
+	}
 	if note.Blocks[0].Kind != domain.NoteBlockHeading || note.Blocks[0].Level != 2 {
 		t.Fatalf("block = %+v", note.Blocks[0])
 	}

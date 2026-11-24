@@ -172,13 +172,18 @@ type Model struct {
 	dirty    bool
 	editedAt time.Duration
 
-	// drag and drop between blocks
+	// drag and drop between blocks. column is the body's layout: the text
+	// control and the grip of the block it shows.
 	blockDrag  ui.DragState
 	hoverBlock int
 	dragBlock  int
 	dropAfter  bool
 	blockMenu  blockMenuState
 	resize     resizeState
+	column     blockColumn
+	// gripBlock is the block whose grip the last paint declared, or -1: the press
+	// that starts a drag is on it, so a drag takes its block from here.
+	gripBlock int
 
 	// pictures: the open note's decoded blocks and the lightbox's one picture
 	imageEffect    *ui.EffectState[map[string]gfx.Bitmap, noteImageKey]
@@ -251,6 +256,8 @@ func New() *Model {
 	}
 	m.bindTree()
 	m.bodyDraw = m.drawBody
+	m.column = blockColumn{m: m, block: -1}
+	m.gripBlock = -1
 	m.bodyInput.Key = m.bodyKeyEvent
 	m.bodyInput.Pointer = m.bodyPointer
 	m.bodyInput.Scroll = m.bodyScroll
@@ -410,19 +417,19 @@ func (m *Model) View(c ui.C) {
 	}
 	m.noticeEdits(m.now)
 	m.settleDraft(c)
-	// Viva's menus close on a press outside them, not on Escape, so the page
-	// closes its own two: the "/" commands and the grip's.
-	if (m.slash.open || m.blockMenu.open) && ui.Shortcut(c, 0, "escape") {
-		m.closeSlash()
-		m.blockMenu = blockMenuState{block: -1}
+	// The grip's menu is Viva's, which closes itself on a choice, on Escape and on
+	// a press outside: its rows go away with the keyboard. The note takes the
+	// keyboard back in the paint after the close.
+	if m.blockMenu.wasOpen && !m.blockMenu.open {
 		m.focusBody = true
 	}
-	if m.rowsDirty {
-		m.rebuildRows()
-	}
+	m.blockMenu.wasOpen = m.blockMenu.open
 	if m.focusBody && !m.bodyKey.IsZero() {
 		c.Canvas().RequestFocus(m.bodyKey)
 		m.focusBody = false
+	}
+	if m.rowsDirty {
+		m.rebuildRows()
 	}
 	ui.Effect(c, m.imageEffect, m.imageKey)
 	if images, err, ok := m.imageEffect.Take(); ok {

@@ -1,39 +1,45 @@
 package notes
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/text"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/state"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
 )
 
-// Block gestures over the body: the hovered block's grip (click opens its
-// commands, drag moves it), the picture's resize handle and the block menu.
-//
-// The grip and the menu items are parts of the body control, declared in the
-// same Draw that paints them. The drag state is declared there too, so a press
-// on the grip reaches the page's drag routing.
-
+// A block is the body's unit: a line of text with its size, or a picture, and a
+// grip in the gutter beside it. The grip and the block are one component
+// (blockColumn declares the one, blockGrip the other), so the grip is the
+// block's own: the menu it opens is that block's commands, which a kind may
+// change, and the drag it starts moves that block.
 const (
-	// partGrip is the block grip's part number inside the body control.
-	partGrip = 20
-	// partImageGrip is the picture's resize handle.
-	partImageGrip = 21
+	// partImageGrip is the picture's resize handle inside the body control.
+	partImageGrip = 20
 	// partDropBase is the first block drop target's part number.
 	partDropBase = 100
+	// gripSize is the grip's box, gripGap the space between it and the text
+	// column, and gripTop drops it onto the block's first line.
+	gripSize float32 = 18
+	gripGap  float32 = 6
+	gripTop  float32 = 2
+	// gripIconWidth and gripIconHeight are the icon inside the grip's box.
+	gripIconWidth, gripIconHeight float32 = 10, 12
 )
 
-// blockMenuState is the block grip's menu: where it opened and which block it
-// commands. The menu is a Viva context menu, as the "/" menu is.
+// blockMenuState is the grip's menu: whether it is open, which block it commands,
+// and whether the last paint had it open. The menu is Viva's, anchored to that
+// block's grip, and it closes itself on a choice, Escape or a press outside — the
+// page reads that close from wasOpen and open.
 type blockMenuState struct {
-	open  bool
-	block int
-	at    gfx.Point
-	focus bool
+	open    bool
+	block   int
+	wasOpen bool
 }
 
 // resizeState is a picture height drag.
@@ -45,7 +51,9 @@ type resizeState struct {
 	height float32
 }
 
-// gripCommands are the block menu's entries, in order.
+// gripCommands are the menu's entries, in order: what a block can be turned into
+// and what is done to it. Every kind offers them today; a kind that needs its own
+// words writes them in blockMenuItems, which has the block.
 var gripCommands = []bodyCommand{
 	{"转为正文", domain.NoteBlockText, 0},
 	{"转为标题 1", domain.NoteBlockHeading, 1},
@@ -57,240 +65,121 @@ var gripCommands = []bodyCommand{
 	{"删除块", "", 0},
 }
 
-// blockView paints the grip of the block under the pointer, the picture's resize
-// handle and the block menu, and declares their parts and drop targets.
-func (m *Model) blockView(d *ui.DrawContext) {
-	canvas, theme := d.Canvas, d.Theme
-	rect := d.Rect
-	width := m.bodyLayout.width
-	column := m.bodyLayout.column
-	offsetY := rect.Y + bodyTopInset - m.scroll
-	for index := range m.bodyLayout.rows {
-		row := m.bodyLayout.rows[index]
-		y := offsetY + row.y
-		if y+row.height < rect.Y || y > rect.Y+rect.Height {
-			continue
-		}
-		top := y
-		if first, ok := m.firstRowOfBlock(row.block); ok && first.y != row.y {
-			top = offsetY + first.y
-		}
-		if row.block >= len(m.blocks) {
-			continue
-		}
-		if row.block != m.hoverBlock && row.block != m.blockMenu.block {
-			continue
-		}
-		handle := gfx.Rect{X: column - 24, Y: top + 2, Width: 18, Height: 18}
-		if handle.X < rect.X+2 {
-			continue
-		}
-		canvas.Rounded(handle, theme.Metrics.RadiusControl, theme.Hover)
-		canvas.DrawIcon(icons.GripVertical,
-			gfx.Rect{X: handle.X + 4, Y: handle.Y + 3, Width: 10, Height: 12}, theme.MutedForeground)
-		canvas.HitWithOptions(m.bodyInput.Parts().At(partGrip), handle, "块操作",
-			gfx.HitOptions{Role: gfx.RoleButton, SkipFocus: true, Cursor: gfx.PointerCursorHand})
-		d.DragSource(&m.blockDrag, m.bodyInput.Parts().At(partGrip), handle)
-	}
-	// Every visible block takes a drop, so a block can be dragged above or below
-	// another one.
-	for index := range m.bodyLayout.rows {
-		row := m.bodyLayout.rows[index]
-		if row.block >= len(m.blocks) {
-			continue
-		}
-		if first, ok := m.firstRowOfBlock(row.block); !ok || first.y != row.y {
-			continue
-		}
-		y := offsetY + row.y
-		height := m.blockHeight(row.block)
-		blockRect := gfx.Rect{X: column, Y: y, Width: width, Height: height}
-		if blockRect.Y+blockRect.Height < rect.Y || blockRect.Y > rect.Y+rect.Height {
-			continue
-		}
-		d.DropTarget(&m.blockDrag, m.bodyInput.Parts().At(partDropBase+row.block), blockRect,
-			func(source, target gfx.ID) bool {
-				from, to := m.blockPart(source), m.blockPart(target)
-				if from < 0 {
-					from = m.dragBlock
-				}
-				if from < 0 || to < 0 || from == to {
-					return false
-				}
-				if row, ok := m.firstRowOfBlock(to); ok {
-					offsetY := m.bodyPane.Y + bodyTopInset - m.scroll
-					middle := offsetY + row.y + m.blockHeight(to)/2
-					m.dropAfter = m.blockDrag.At().Y > middle
-				}
-				return true
-			},
-			func(source, target gfx.ID) { m.dropBlock(source, target) })
-	}
-	if m.selectedImage >= 0 && m.selectedImage < len(m.blocks) {
-		m.paintImageGrip(canvas, theme, offsetY)
+// blockColumn is the body's column of blocks: the body control, which fills the
+// pane, and the grip of the block the pointer is on. It is a custom layout
+// because a grip's row is a row of the text: only the layout, which runs after
+// the text is wrapped and before anything is painted, knows where a block's first
+// line ends up.
+type blockColumn struct {
+	m *Model
+	// block is the block whose grip is declared, or -1 for none.
+	block int
+}
+
+func (b *blockColumn) MeasureWidth(*ui.LayoutContext) float32 { return 0 }
+
+func (b *blockColumn) MeasureHeight(*ui.LayoutContext) float32 { return 0 }
+
+func (b *blockColumn) PlaceWidth(ctx *ui.LayoutContext, bounds gfx.Rect) {
+	width, offset := bodyColumn(bounds.Width)
+	// The text is wrapped here, before the page paints: the grip's row is one of
+	// its rows, and the body paints the layout this computes.
+	b.m.layoutBody(ctx.Frame.Canvas(), width, &ctx.Frame.Palette)
+	b.m.bodyLayout.column = bounds.X + offset
+	ctx.SetWidth(0, bounds.Width)
+	ctx.SetX(0, bounds.X)
+	if ctx.Count() > 1 {
+		ctx.SetWidth(1, gripSize)
+		ctx.SetX(1, bounds.X+offset-gripGap-gripSize)
 	}
 }
 
-// firstRowOfBlock is the first painted row of a block.
-func (m *Model) firstRowOfBlock(block int) (bodyRow, bool) {
-	for _, row := range m.bodyLayout.rows {
-		if row.block == block {
-			return row, true
-		}
-	}
-	return bodyRow{}, false
-}
-
-// blockHeight is the painted height of a block.
-func (m *Model) blockHeight(block int) float32 {
-	var height float32
-	for _, row := range m.bodyLayout.rows {
-		if row.block == block {
-			height += row.height
-		}
-	}
-	return height
-}
-
-// blockPart decodes a block's drop target part back into its index.
-func (m *Model) blockPart(id gfx.ID) int {
-	index, ok := id.In(m.bodyInput.Parts())
-	if !ok || index < partDropBase {
-		return -1
-	}
-	return index - partDropBase
-}
-
-// blockMenuView declares the grip's menu as a Viva context menu under the grip.
-func (m *Model) blockMenuView(c ui.C, body ui.Box) {
-	if !m.blockMenu.open {
+func (b *blockColumn) PlaceHeight(ctx *ui.LayoutContext, bounds gfx.Rect) {
+	// The caret is brought into view here, before the grip is placed: a grip
+	// placed from the previous paint's scroll would lag a frame behind the text.
+	b.m.bodyPane = bounds
+	b.m.followCaret(bounds)
+	ctx.SetHeight(0, bounds.Height)
+	ctx.SetY(0, bounds.Y)
+	if ctx.Count() < 2 || b.block < 0 {
 		return
 	}
-	var first gfx.ID
-	ui.ContextMenuAt(c, body, &m.blockMenu.open, m.blockMenu.at, func(items *ui.MenuItems) {
-		for _, item := range gripCommands {
-			entry := items.Item(item.label)
-			if first.IsZero() {
-				first = entry.ID()
-			}
-			if entry.Clicked() {
-				m.chooseBlockMenu(item)
-			}
-		}
+	if row, ok := b.m.firstRowOfBlock(b.block); ok {
+		ctx.SetHeight(1, gripSize)
+		ctx.SetY(1, bodyOffset(bounds, b.m.scroll)+row.y+gripTop)
+	}
+}
+
+// blockGrip is one block's grip: the button in the gutter that opens the block's
+// commands and drags the block to another place. It is the drag's source, so a
+// press that does not move is a click, and a press that moves moves the block.
+func (m *Model) blockGrip(c ui.C, block int) {
+	theme := c.Theme()
+	c.Key("note-block-grip-" + strconv.Itoa(block))
+	grip := ui.ButtonBase(c, "块操作").Size(gripSize, gripSize).
+		Radius(theme.Metrics.RadiusControl).
+		Background(theme.Hover).
+		Hover(ui.Look{}.Background(state.Selected(*theme))).
+		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
+		Focus(ui.Look{}.Ring(2, theme.Ring))
+	grip.Children(func() {
+		ui.Icon(c, icons.GripVertical).Size(gripIconWidth, gripIconHeight).
+			Color(theme.MutedForeground)
 	})
-	if m.blockMenu.focus && !first.IsZero() {
-		c.Canvas().RequestFocus(first)
-		m.blockMenu.focus = false
+	grip.DragSource(&m.blockDrag)
+	if grip.Clicked() {
+		m.openBlockMenu(block)
 	}
+	// Under the grip, as the tree's row actions open under their button: the list
+	// is the block's commands, and it leaves the block it commands in sight.
+	ui.Menu(c, grip, &m.blockMenu.open, func(items *ui.MenuItems) {
+		m.blockMenuItems(c, items, block)
+	})
 }
 
-// paintImageGrip paints the selected picture's resize handle under it.
-func (m *Model) paintImageGrip(canvas *gfx.Canvas, theme *ui.Theme, offsetY float32) {
-	row, ok := m.firstRowOfBlock(m.selectedImage)
-	if !ok || m.selectedImage >= len(m.blocks) {
-		return
+// litBlock is the block whose grip is shown: the one being dragged, the one whose
+// menu is open, or the one under the pointer.
+func (m *Model) litBlock() int {
+	switch {
+	case m.dragBlock >= 0 && m.dragBlock < len(m.blocks):
+		return m.dragBlock
+	case m.blockMenu.open && m.blockMenu.block >= 0 && m.blockMenu.block < len(m.blocks):
+		return m.blockMenu.block
+	case m.hoverBlock >= 0 && m.hoverBlock < len(m.blocks):
+		return m.hoverBlock
 	}
-	width := m.bodyLayout.width
-	_, height := domain.NoteImageSize(m.blocks[m.selectedImage].ImageWidth, m.blocks[m.selectedImage].ImageHeight,
-		m.blocks[m.selectedImage].ImageScale, float64(width))
-	if height <= 0 {
-		return
-	}
-	grip := gfx.Rect{
-		X: m.bodyLayout.column + width/2 - 18, Y: offsetY + row.y + float32(height) - 4,
-		Width: 36, Height: 8,
-	}
-	canvas.Rounded(grip, 4, theme.Primary)
-	canvas.HitWithOptions(m.bodyInput.Parts().At(partImageGrip), grip, "调整图片高度",
-		gfx.HitOptions{Role: gfx.RoleSeparator, SkipFocus: true, Cursor: gfx.PointerCursorResizeVertical})
+	return -1
 }
 
-// blockAtPoint is the block under a window y.
-func (m *Model) blockAtPoint(y float32) int {
-	offsetY := m.bodyPane.Y + bodyTopInset - m.scroll
-	local := y - offsetY
-	block := -1
-	for _, row := range m.bodyLayout.rows {
-		if local >= row.y && local <= row.y+row.height {
-			block = row.block
+// blockMenuItems declares one block's commands. Every kind offers gripCommands
+// today; a kind that takes no text, or one that can be replaced rather than
+// converted, declares its own list here from m.blocks[block].Kind.
+func (m *Model) blockMenuItems(c ui.C, items *ui.MenuItems, block int) {
+	for _, command := range gripCommands {
+		if items.Item(command.label).Clicked() {
+			m.chooseBlockMenu(c, block, command)
+			return
 		}
 	}
-	return block
 }
 
-// blockMouse handles the grip, the block menu and the picture resize. It reports
-// whether the press was taken.
-func (m *Model) blockMouse(event gfx.PointerEvent) gfx.EventResult {
-	if event.Kind == gfx.PointerDown && event.Button == gfx.PointerButtonPrimary {
-		m.blockMenu = blockMenuState{block: -1}
-	}
-	if index, ok := event.Target.In(m.bodyInput.Parts()); ok {
-		switch {
-		case index == partGrip:
-			if event.Kind == gfx.PointerDown && event.Button == gfx.PointerButtonPrimary {
-				m.dragBlock = m.blockAtPoint(event.Y)
-				m.openBlockMenu(event)
-				return gfx.EventResult{Handled: true, Repaint: true}
-			}
-		case index == partImageGrip:
-			switch event.Kind {
-			case gfx.PointerDown:
-				if m.selectedImage >= 0 && m.selectedImage < len(m.blocks) {
-					m.resize = resizeState{
-						block: m.selectedImage, from: event.Y,
-						scale: m.blocks[m.selectedImage].ImageScale,
-					}
-					return gfx.EventResult{Handled: true}
-				}
-			case gfx.PointerMove:
-			case gfx.PointerUp:
-				m.resize = resizeState{block: -1}
-				return gfx.EventResult{Handled: true, Repaint: true}
-			}
-		}
-	}
-	if m.resize.block >= 0 {
-		switch event.Kind {
-		case gfx.PointerMove:
-			block := m.blocks[m.resize.block]
-			delta := event.Y - m.resize.from
-			width := m.bodyLayout.width
-			_, rawHeight := domain.NoteImageSize(block.ImageWidth, block.ImageHeight, m.resize.scale, float64(width))
-			if height := float32(rawHeight); height > 0 {
-				next := height + delta
-				if next < 40 {
-					next = 40
-				}
-				block.ImageScale = domain.NoteImageScale(float64(next) / float64(block.ImageHeight))
-				m.blocks[m.resize.block] = block
-				m.bodyLayout = bodyLayout{}
-			}
-			return gfx.EventResult{Handled: true, Repaint: true}
-		case gfx.PointerUp:
-			m.resize = resizeState{block: -1}
-			m.markEdited(m.now)
-			m.flush()
-			return gfx.EventResult{Handled: true, Repaint: true}
-		}
-	}
-	return gfx.EventResult{}
-}
-
-// openBlockMenu opens the grip's menu at the press, under the grip.
-func (m *Model) openBlockMenu(event gfx.PointerEvent) {
-	block := m.blockAtPoint(event.Y)
-	if block < 0 {
+// openBlockMenu opens the grip's menu for one block, or closes it when it is that
+// block's menu already open.
+func (m *Model) openBlockMenu(block int) {
+	if m.blockMenu.open && m.blockMenu.block == block {
+		m.blockMenu.open = false
 		return
 	}
-	m.blockMenu = blockMenuState{
-		open: true, block: block, at: gfx.Point{X: event.X + 14, Y: event.Y + 6}, focus: true,
-	}
+	m.blockMenu.open, m.blockMenu.block = true, block
 }
 
-// chooseBlockMenu runs one command of the block menu.
-func (m *Model) chooseBlockMenu(item bodyCommand) {
-	block := m.blockMenu.block
-	m.blockMenu = blockMenuState{block: -1}
+// chooseBlockMenu runs one command of the block menu on the block it belongs to.
+func (m *Model) chooseBlockMenu(c ui.C, block int, item bodyCommand) {
+	m.blockMenu.open = false
+	// The chosen row closes the menu, and the keyboard goes with its rows: the
+	// paint after this one gives it back to the note (see View). That paint has to
+	// be asked for: closing a menu asks for none of its own.
+	c.After(func() { m.focusBody = true })
 	if block < 0 || block >= len(m.blocks) {
 		return
 	}
@@ -345,14 +234,164 @@ func (m *Model) deleteBlock(block int) {
 	m.flush()
 }
 
-// dropBlock moves a dragged block above or below the block it was let go on.
-func (m *Model) dropBlock(source, target gfx.ID) {
-	m.blockMenu = blockMenuState{block: -1}
-	from, to := m.blockPart(source), m.blockPart(target)
-	if from < 0 {
-		from = m.dragBlock
+// blockDrops declares the drop target of every visible block and paints the
+// selected picture's resize handle. The grip is a button of the body's column, so
+// it is not declared here.
+func (m *Model) blockDrops(d *ui.DrawContext) {
+	canvas, theme := d.Canvas, d.Theme
+	rect := d.Rect
+	width := m.bodyLayout.width
+	column := m.bodyLayout.column
+	offsetY := bodyOffset(rect, m.scroll)
+	// Every visible block takes a drop, so a block can be dragged above or below
+	// another one.
+	for index := range m.bodyLayout.rows {
+		row := m.bodyLayout.rows[index]
+		if row.block >= len(m.blocks) {
+			continue
+		}
+		if first, ok := m.firstRowOfBlock(row.block); !ok || first.y != row.y {
+			continue
+		}
+		y := offsetY + row.y
+		height := m.blockHeight(row.block)
+		blockRect := gfx.Rect{X: column, Y: y, Width: width, Height: height}
+		if blockRect.Y+blockRect.Height < rect.Y || blockRect.Y > rect.Y+rect.Height {
+			continue
+		}
+		d.DropTarget(&m.blockDrag, m.bodyInput.Parts().At(partDropBase+row.block), blockRect,
+			func(source, target gfx.ID) bool {
+				from, to := m.dragBlock, m.blockPart(target)
+				if from < 0 || to < 0 || from == to {
+					return false
+				}
+				if row, ok := m.firstRowOfBlock(to); ok {
+					offsetY := bodyOffset(m.bodyPane, m.scroll)
+					middle := offsetY + row.y + m.blockHeight(to)/2
+					m.dropAfter = m.blockDrag.At().Y > middle
+				}
+				return true
+			},
+			func(source, target gfx.ID) { m.dropBlock(target) })
 	}
-	m.dragBlock = -1
+	if m.selectedImage >= 0 && m.selectedImage < len(m.blocks) {
+		m.paintImageGrip(canvas, theme, offsetY)
+	}
+}
+
+// firstRowOfBlock is the first painted row of a block.
+func (m *Model) firstRowOfBlock(block int) (bodyRow, bool) {
+	for _, row := range m.bodyLayout.rows {
+		if row.block == block {
+			return row, true
+		}
+	}
+	return bodyRow{}, false
+}
+
+// blockHeight is the painted height of a block.
+func (m *Model) blockHeight(block int) float32 {
+	var height float32
+	for _, row := range m.bodyLayout.rows {
+		if row.block == block {
+			height += row.height
+		}
+	}
+	return height
+}
+
+// blockPart decodes a block's drop target part back into its index.
+func (m *Model) blockPart(id gfx.ID) int {
+	index, ok := id.In(m.bodyInput.Parts())
+	if !ok || index < partDropBase {
+		return -1
+	}
+	return index - partDropBase
+}
+
+// paintImageGrip paints the selected picture's resize handle under it.
+func (m *Model) paintImageGrip(canvas *gfx.Canvas, theme *ui.Theme, offsetY float32) {
+	row, ok := m.firstRowOfBlock(m.selectedImage)
+	if !ok || m.selectedImage >= len(m.blocks) {
+		return
+	}
+	width := m.bodyLayout.width
+	_, height := domain.NoteImageSize(m.blocks[m.selectedImage].ImageWidth, m.blocks[m.selectedImage].ImageHeight,
+		m.blocks[m.selectedImage].ImageScale, float64(width))
+	if height <= 0 {
+		return
+	}
+	grip := gfx.Rect{
+		X: m.bodyLayout.column + width/2 - 18, Y: offsetY + row.y + float32(height) - 4,
+		Width: 36, Height: 8,
+	}
+	canvas.Rounded(grip, 4, theme.Primary)
+	canvas.HitWithOptions(m.bodyInput.Parts().At(partImageGrip), grip, "调整图片高度",
+		gfx.HitOptions{Role: gfx.RoleSeparator, SkipFocus: true, Cursor: gfx.PointerCursorResizeVertical})
+}
+
+// blockAtPoint is the block under a window y.
+func (m *Model) blockAtPoint(y float32) int {
+	offsetY := bodyOffset(m.bodyPane, m.scroll)
+	local := y - offsetY
+	block := -1
+	for _, row := range m.bodyLayout.rows {
+		if local >= row.y && local <= row.y+row.height {
+			block = row.block
+		}
+	}
+	return block
+}
+
+// blockMouse handles the picture's resize. It reports whether the press was taken.
+func (m *Model) blockMouse(event gfx.PointerEvent) gfx.EventResult {
+	if index, ok := event.Target.In(m.bodyInput.Parts()); ok && index == partImageGrip {
+		switch event.Kind {
+		case gfx.PointerDown:
+			if m.selectedImage >= 0 && m.selectedImage < len(m.blocks) {
+				m.resize = resizeState{
+					block: m.selectedImage, from: event.Y,
+					scale: m.blocks[m.selectedImage].ImageScale,
+				}
+				return gfx.EventResult{Handled: true}
+			}
+		case gfx.PointerMove:
+		case gfx.PointerUp:
+			m.resize = resizeState{block: -1}
+			return gfx.EventResult{Handled: true, Repaint: true}
+		}
+	}
+	if m.resize.block >= 0 {
+		switch event.Kind {
+		case gfx.PointerMove:
+			block := m.blocks[m.resize.block]
+			delta := event.Y - m.resize.from
+			width := m.bodyLayout.width
+			_, rawHeight := domain.NoteImageSize(block.ImageWidth, block.ImageHeight, m.resize.scale, float64(width))
+			if height := float32(rawHeight); height > 0 {
+				next := height + delta
+				if next < 40 {
+					next = 40
+				}
+				block.ImageScale = domain.NoteImageScale(float64(next) / float64(block.ImageHeight))
+				m.blocks[m.resize.block] = block
+				m.bodyLayout = bodyLayout{}
+			}
+			return gfx.EventResult{Handled: true, Repaint: true}
+		case gfx.PointerUp:
+			m.resize = resizeState{block: -1}
+			m.markEdited(m.now)
+			m.flush()
+			return gfx.EventResult{Handled: true, Repaint: true}
+		}
+	}
+	return gfx.EventResult{}
+}
+
+// dropBlock moves the dragged block above or below the block it was let go on.
+func (m *Model) dropBlock(target gfx.ID) {
+	m.blockMenu.open = false
+	from, to := m.dragBlock, m.blockPart(target)
 	if from < 0 || to < 0 || from == to || from >= len(m.blocks) || to >= len(m.blocks) {
 		return
 	}

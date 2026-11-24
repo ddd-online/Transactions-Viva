@@ -98,16 +98,33 @@ type slashState struct {
 	focus bool
 }
 
-// bodyView declares the body control and the two menus that hang off it. A
-// menu is the framework's context menu, so its panel, rows, hover, clicks and
-// keys are the app's everywhere else too.
+// bodyView declares the body: its column of blocks — the text control and the
+// grip of the block it shows — and the "/" menu that hangs off the text. A menu
+// is the framework's, so its panel, rows, hover, clicks and keys are the app's
+// everywhere else too.
 func (m *Model) bodyView(c ui.C) {
 	if m.selected == "" {
 		return
 	}
-	body := ui.Control(c, "笔记正文", &m.bodyInput).Grow(1).FillWidth().Draw(m.bodyDraw)
+	// A drag keeps the grip it took hold of: the source of a drag must be
+	// declared every paint, or the framework cancels the drag.
+	if m.blockDrag.Dragging() {
+		if m.dragBlock < 0 {
+			m.dragBlock = m.gripBlock
+		}
+	} else {
+		m.dragBlock = -1
+	}
+	m.column.m, m.column.block = m, m.litBlock()
+	var body ui.Box
+	ui.CustomLayout(c, &m.column).Grow(1).FillWidth().Clip().Children(func() {
+		body = ui.Control(c, "笔记正文", &m.bodyInput).Draw(m.bodyDraw)
+		if m.column.block >= 0 {
+			m.blockGrip(c, m.column.block)
+		}
+	})
+	m.gripBlock = m.column.block
 	m.slashMenu(c, body)
-	m.blockMenuView(c, body)
 }
 
 // style is the text style of one block.
@@ -205,6 +222,23 @@ func (m *Model) maxScroll() float32 {
 	return overflow
 }
 
+// bodyColumn is the width the body's text wraps at, and the offset of the text
+// column inside a pane of the given width: the column is centred, and no wider
+// than readingWidth.
+func bodyColumn(paneWidth float32) (width, offset float32) {
+	width = min(paneWidth, readingWidth)
+	if width < 80 {
+		width = 80
+	}
+	return width, (paneWidth - width) / 2
+}
+
+// bodyOffset is the y of the body's laid-out content in a pane: the strip above
+// the first block, less the scroll. A row's own y is added to it.
+func bodyOffset(pane gfx.Rect, scroll float32) float32 {
+	return pane.Y + bodyTopInset - scroll
+}
+
 // drawBody paints the body and declares its text hit.
 func (m *Model) drawBody(d *ui.DrawContext) {
 	if m.selected == "" || d.Canvas == nil {
@@ -217,19 +251,12 @@ func (m *Model) drawBody(d *ui.DrawContext) {
 	canvas, theme, rect := d.Canvas, d.Theme, d.Rect
 	// The body's column is the page's column: the right column already carries
 	// the page inset, so the text starts on the title's left edge.
-	width := rect.Width
-	if width > readingWidth {
-		width = readingWidth
-	}
-	if width < 80 {
-		width = 80
-	}
+	width, offset := bodyColumn(rect.Width)
 	m.layoutBody(canvas, width, theme)
-	column := rect.X + (rect.Width-width)/2
+	column := rect.X + offset
 	m.bodyLayout.column = column
 	focused := d.State.Focused
-	m.followCaret(rect)
-	offsetY := rect.Y + bodyTopInset - m.scroll
+	offsetY := bodyOffset(rect, m.scroll)
 
 	canvas.Clip(rect)
 	m.paintImages(canvas, theme, rect, column, offsetY)
@@ -244,7 +271,7 @@ func (m *Model) drawBody(d *ui.DrawContext) {
 			TextColor: gfx.Color{}, HideNativeOverlays: true, Placement: m,
 		})
 	}
-	m.blockView(d)
+	m.blockDrops(d)
 }
 
 // paintText paints the text rows, the selection and the input method's
@@ -834,8 +861,14 @@ func (m *Model) bodyPointer(event gfx.PointerEvent) gfx.EventResult {
 		return result
 	}
 	if event.Kind == gfx.PointerMove {
-		m.hoverBlock = m.blockAtPoint(event.Y)
-		return gfx.EventResult{}
+		// The grip of the block under the pointer shows and hides with it, so a
+		// move that changes the block is a reason to paint.
+		block := m.blockAtPoint(event.Y)
+		if block == m.hoverBlock {
+			return gfx.EventResult{}
+		}
+		m.hoverBlock = block
+		return gfx.EventResult{Repaint: true}
 	}
 	if event.Kind != gfx.PointerDown || event.Button != gfx.PointerButtonPrimary {
 		return gfx.EventResult{}
@@ -851,7 +884,7 @@ func (m *Model) bodyPointer(event gfx.PointerEvent) gfx.EventResult {
 	if m.bodyKey.IsZero() || event.Target != m.bodyKey {
 		return gfx.EventResult{}
 	}
-	offsetY := m.bodyPane.Y + bodyTopInset - m.scroll
+	offsetY := bodyOffset(m.bodyPane, m.scroll)
 	for index := range m.bodyLayout.rows {
 		row := m.bodyLayout.rows[index]
 		if m.blocks[row.block].Kind != domain.NoteBlockImage {
@@ -1030,7 +1063,7 @@ func (m *Model) OffsetAt(point gfx.Point) (int, bool) {
 	if m.selected == "" || len(m.bodyLayout.rows) == 0 || m.canvas == nil {
 		return 0, false
 	}
-	offsetY := m.bodyPane.Y + bodyTopInset - m.scroll
+	offsetY := bodyOffset(m.bodyPane, m.scroll)
 	localY := point.Y - offsetY
 	row := m.bodyLayout.rows[0]
 	found := false
@@ -1073,6 +1106,6 @@ func (m *Model) CaretBounds() (gfx.Rect, bool) {
 		rowText = line[row.start:min(row.end, len(line))]
 	}
 	x := m.bodyLayout.column + m.canvas.TextCaretStyle(rowText, style, inLine-row.start)
-	y := m.bodyPane.Y + bodyTopInset - m.scroll + row.y
+	y := bodyOffset(m.bodyPane, m.scroll) + row.y
 	return gfx.Rect{X: x, Y: y + 2, Width: 2, Height: row.height - 4}, true
 }
