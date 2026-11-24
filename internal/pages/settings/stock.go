@@ -122,7 +122,7 @@ func (m *Model) stockTradeSettings(c ui.C, spec Spec, stock *StockConfig) {
 
 func (m *Model) stockDataSettings(c ui.C, spec Spec, stock *StockConfig) {
 	controls.Row(c, "最近操作",
-		"追加本金、支取、利息归本和每笔委托各记一条，保留最近 10 条；回滚会撤销最近一次操作。",
+		"本金、支取、利息与每笔委托各记一条，保留最近 10 条，回滚撤销上一次。",
 		func() {
 			if ui.Button(c, "查看记录").Secondary().Clicked() {
 				m.stock.operationsOpen = true
@@ -137,7 +137,7 @@ func (m *Model) stockDataSettings(c ui.C, spec Spec, stock *StockConfig) {
 		})
 	ui.Divider(c)
 	controls.Row(c, "归档到新账户",
-		"把当前账户的本金、资金记录和全部股票数据迁到新账户；原账户只保留标签、模板和费用设置。归档前请先清空全部持仓。",
+		"本金、资金记录与全部股票数据迁到新账户，需先清空持仓。",
 		func() {
 			if ui.Button(c, "归档到新账户").Secondary().Clicked() {
 				m.stock.archiveOpen, m.stock.archiveError, m.stock.archiveName = true, "", ""
@@ -145,7 +145,7 @@ func (m *Model) stockDataSettings(c ui.C, spec Spec, stock *StockConfig) {
 		})
 	ui.Divider(c)
 	controls.Row(c, "重置股票数据",
-		"清空当前账户的全部股票数据，包括本金、资金、持仓、成交、轮次、复盘、心得、标签、模板与费用设置。此操作不可恢复。",
+		"清空本账户的本金、资金、持仓、成交、复盘与设置，不可恢复。",
 		func() {
 			if ui.Button(c, "重置股票数据").Destructive().Clicked() {
 				m.stock.resetOpen = true
