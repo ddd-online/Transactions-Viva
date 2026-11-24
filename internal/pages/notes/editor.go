@@ -25,8 +25,6 @@ const (
 	// readingWidth is the widest the body runs; the text column is centred in
 	// the pane.
 	readingWidth float32 = 760
-	// bodySideInset is the padding beside the text column.
-	bodySideInset float32 = 16
 	// bodyTopInset is the gap between the title and the first block.
 	bodyTopInset float32 = 6
 	// bodyBottomSpace is the empty strip under the last block that a click
@@ -210,7 +208,9 @@ func (m *Model) drawBody(d *ui.DrawContext) {
 	m.canvas = d.Canvas
 	m.theme = d.Theme
 	canvas, theme, rect := d.Canvas, d.Theme, d.Rect
-	width := rect.Width - 2*bodySideInset
+	// The body's column is the page's column: the right column already carries
+	// the page inset, so the text starts on the title's left edge.
+	width := rect.Width
 	if width > readingWidth {
 		width = readingWidth
 	}
@@ -867,8 +867,13 @@ func (m *Model) paintSlash(canvas *gfx.Canvas, theme *ui.Theme, rect gfx.Rect) {
 		row := gfx.Rect{X: x, Y: y + 4 + float32(index)*rowHeight, Width: width, Height: rowHeight}
 		canvas.Label(item.label, row, gfx.TextStyle{Size: theme.Metrics.FontSizeM, Color: theme.PopoverForeground})
 		if !m.bodyKey.IsZero() {
-			canvas.HitWithOptions(m.bodyInput.Parts().At(index), row, item.label,
+			part := m.bodyInput.Parts().At(index)
+			canvas.HitWithOptions(part, row, item.label,
 				gfx.HitOptions{Role: gfx.RoleOption, SkipFocus: true})
+			if canvas.Clicked(part) {
+				m.chooseSlash(item)
+				return
+			}
 		}
 	}
 	if m.slash.query != "" {
@@ -894,12 +899,10 @@ func (m *Model) bodyPointer(event gfx.PointerEvent) gfx.EventResult {
 		return gfx.EventResult{}
 	}
 	if m.slash.open {
-		if index, ok := event.Target.In(m.bodyInput.Parts()); ok {
-			items := m.slashMatches()
-			if index >= 0 && index < len(items) {
-				m.chooseSlash(items[index])
-				return gfx.EventResult{Handled: true, Repaint: true}
-			}
+		if index, ok := event.Target.In(m.bodyInput.Parts()); ok && index < len(slashItems) {
+			// The release's click pass chooses the item; the press keeps the
+			// menu open for it.
+			return gfx.EventResult{}
 		}
 		m.closeSlash()
 	}

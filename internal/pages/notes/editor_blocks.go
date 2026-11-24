@@ -53,6 +53,7 @@ var blockMenuItems = []slashItem{
 	{"转为标题 3", domain.NoteBlockHeading, 3},
 	{"转为标题 4", domain.NoteBlockHeading, 4},
 	{"转为标题 5", domain.NoteBlockHeading, 5},
+	{"插入图片", domain.NoteBlockImage, 0},
 	{"删除块", "", 0},
 }
 
@@ -184,8 +185,13 @@ func (m *Model) paintBlockMenu(canvas *gfx.Canvas, theme *ui.Theme, rect gfx.Rec
 	for index, item := range blockMenuItems {
 		row := gfx.Rect{X: x, Y: y + 4 + float32(index)*rowHeight, Width: width, Height: rowHeight}
 		canvas.Label(item.label, row, gfx.TextStyle{Size: theme.Metrics.FontSizeM, Color: theme.PopoverForeground})
-		canvas.HitWithOptions(m.bodyInput.Parts().At(partMenuBase+index), row, item.label,
+		part := m.bodyInput.Parts().At(partMenuBase + index)
+		canvas.HitWithOptions(part, row, item.label,
 			gfx.HitOptions{Role: gfx.RoleOption, SkipFocus: true})
+		if canvas.Clicked(part) {
+			m.chooseBlockMenu(item)
+			return
+		}
 	}
 }
 
@@ -226,16 +232,17 @@ func (m *Model) blockAtPoint(y float32) int {
 // blockMouse handles the grip, the block menu and the picture resize. It reports
 // whether the press was taken.
 func (m *Model) blockMouse(event gfx.PointerEvent) gfx.EventResult {
+	if event.Kind == gfx.PointerDown && event.Button == gfx.PointerButtonPrimary {
+		if index, ok := event.Target.In(m.bodyInput.Parts()); ok &&
+			index >= partMenuBase && index < partMenuBase+len(blockMenuItems) {
+			// The release's click pass chooses the item; the press must not
+			// close the menu or take the click away from it.
+			return gfx.EventResult{}
+		}
+		m.blockMenu = blockMenuState{block: -1}
+	}
 	if index, ok := event.Target.In(m.bodyInput.Parts()); ok {
 		switch {
-		case index >= partMenuBase:
-			if event.Kind == gfx.PointerDown && event.Button == gfx.PointerButtonPrimary {
-				item := index - partMenuBase
-				if item >= 0 && item < len(blockMenuItems) {
-					m.chooseBlockMenu(blockMenuItems[item])
-				}
-				return gfx.EventResult{Handled: true, Repaint: true}
-			}
 		case index == partGrip:
 			if event.Kind == gfx.PointerDown && event.Button == gfx.PointerButtonPrimary {
 				m.dragBlock = m.blockAtPoint(event.Y)
@@ -304,6 +311,10 @@ func (m *Model) chooseBlockMenu(item slashItem) {
 	}
 	if item.kind == "" {
 		m.deleteBlock(block)
+		return
+	}
+	if item.kind == domain.NoteBlockImage {
+		m.pickPicture()
 		return
 	}
 	m.newHistoryStep()

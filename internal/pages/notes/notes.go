@@ -373,12 +373,10 @@ func (m *Model) View(c ui.C) {
 			m.lightbox.loaded = true
 		}
 	}
-	layout.Page(c, m.toolbar, func(c ui.C) {
-		ui.Row(c).Grow(1).FillWidth().Children(func() {
-			m.rail(c)
-			ui.Divider(c)
-			m.detail(c)
-		})
+	ui.Row(c).Grow(1).FillWidth().Children(func() {
+		m.rail(c)
+		ui.Divider(c)
+		m.detail(c)
 	})
 	m.formDialog(c)
 	m.deleteDialog(c)
@@ -386,24 +384,16 @@ func (m *Model) View(c ui.C) {
 	ui.Toasts(c, &m.toaster)
 }
 
-// toolbar is the page's band, as 日记's: where the selection lives on the left,
-// and the open note's save state with the insert command at the right.
-func (m *Model) toolbar(c ui.C) {
-	layout.Toolbar(c, func() {
-		m.breadcrumb(c)
-		if m.selected == "" {
-			return
-		}
-		m.saveState(c)
-		if ui.Button(c, "图片").Outline().Icon(icons.Plus).Clicked() {
-			c.After(func() { m.pickAndInsert() })
-		}
-	})
-}
-
-// rail is the tree column: the section's title and count, the create command,
-// the title filter, and the tree.
+// rail is the tree column: the section's title and count with the create
+// command, the tree, and the title filter pinned at the foot where it belongs
+// to the list it filters.
 func (m *Model) rail(c ui.C) {
+	text := strings.TrimSpace(m.filter.Text())
+	if text != m.filterText {
+		m.filterText = text
+		m.rowsDirty = true
+		m.rebuildRows()
+	}
 	layout.Rail(c, layout.RailWidth, func(c ui.C) {
 		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, "笔记")
@@ -414,28 +404,23 @@ func (m *Model) rail(c ui.C) {
 				m.openCreateFolder()
 			}
 		})
-		ui.Column(c).FillWidth().PadX(layout.Inset).PadBottom(8).Children(func() {
-			ui.TextField(c, &m.filter, "过滤笔记", "过滤标题").FillWidth()
-		})
 		ui.Divider(c)
-		text := strings.TrimSpace(m.filter.Text())
-		if text != m.filterText {
-			m.filterText = text
-			m.rowsDirty = true
-			m.rebuildRows()
-		}
 		if len(m.rows) == 0 && m.filterText != "" {
 			emptystate.Notice(c, "没有匹配的笔记")
-			return
-		}
-		// The rows are copied because a click may rebuild the tree under us.
-		rows := append([]treeRow(nil), m.rows...)
-		ui.Scroll(c).Grow(1).Children(func() {
-			ui.Column(c).FillWidth().PadY(4).Children(func() {
-				for _, row := range rows {
-					m.rowView(c, row)
-				}
+		} else {
+			// The rows are copied because a click may rebuild the tree under us.
+			rows := append([]treeRow(nil), m.rows...)
+			ui.Scroll(c).Grow(1).Children(func() {
+				ui.Column(c).FillWidth().PadY(4).Children(func() {
+					for _, row := range rows {
+						m.rowView(c, row)
+					}
+				})
 			})
+		}
+		ui.Divider(c)
+		ui.Column(c).FillWidth().PadX(layout.Inset).PadY(8).Children(func() {
+			ui.TextField(c, &m.filter, "过滤笔记", "过滤标题").FillWidth()
 		})
 	})
 }
@@ -524,9 +509,9 @@ func (m *Model) rowView(c ui.C, row treeRow) {
 	})
 }
 
-// detail is the right column: the note's title and its block editor, with no
-// band of their own — the page band above already says where the note lives and
-// whether it is saved.
+// detail is the right column: a quiet line naming where the note lives and
+// whether it is saved, then the title and the block editor — no band of its
+// own, so the page opens on the note.
 func (m *Model) detail(c ui.C) {
 	theme := c.Theme()
 	if m.selected == "" {
@@ -535,9 +520,17 @@ func (m *Model) detail(c ui.C) {
 		return
 	}
 	ui.Column(c).Grow(1).FillHeight().FillWidth().PadX(layout.Inset).Children(func() {
-		// The title sits in the same measure as the body, so the two read down
-		// one column.
-		ui.Row(c).FillWidth().Justify(ui.Center).PadTop(12).PadBottom(2).Children(func() {
+		// The meta line and the title sit in the same measure as the body, so
+		// the whole page reads down one column.
+		ui.Row(c).FillWidth().Justify(ui.Center).PadTop(10).Children(func() {
+			ui.Column(c).MaxWidth(readingWidth).Grow(1).Children(func() {
+				ui.Row(c).FillWidth().Gap(12).Items(ui.Center).Children(func() {
+					m.breadcrumb(c)
+					m.saveState(c)
+				})
+			})
+		})
+		ui.Row(c).FillWidth().Justify(ui.Center).PadTop(2).PadBottom(2).Children(func() {
 			ui.Column(c).MaxWidth(readingWidth).Grow(1).Children(func() {
 				c.Key("note-title")
 				m.titleID = ui.ID(c)
@@ -562,7 +555,7 @@ func (m *Model) detail(c ui.C) {
 func (m *Model) breadcrumb(c ui.C) {
 	theme := c.Theme()
 	path := m.locationPath()
-	ui.Row(c).Grow(1).MinWidth(0).Gap(6).Items(ui.Center).Children(func() {
+	ui.Row(c).Grow(1).MinWidth(0).Gap(4).Items(ui.Center).Children(func() {
 		for index, id := range path {
 			if index > 0 {
 				ui.Icon(c, icons.ChevronRight).Size(12, 12).Color(theme.MutedForeground)
@@ -571,7 +564,7 @@ func (m *Model) breadcrumb(c ui.C) {
 			if index == len(path)-1 {
 				color = theme.Foreground
 			}
-			typography.Body(c, strings.TrimSpace(m.nodes[id].Title)).
+			typography.Caption(c, strings.TrimSpace(m.nodes[id].Title)).
 				MaxLines(1).Ellipsis().Shrink(1).MinWidth(0).Color(color)
 		}
 	})

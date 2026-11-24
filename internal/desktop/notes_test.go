@@ -187,8 +187,7 @@ func TestNotesImageBlockIsStored(t *testing.T) {
 	file.Close()
 	model.pickNoteFile = func() (string, error) { return source, nil }
 
-	click(t, driver, "图片")
-	advance(t, driver)
+	insertPicture(t, driver)
 	note := noteByTitle(t, model, "配图")
 	found := false
 	for _, block := range note.Blocks {
@@ -523,8 +522,7 @@ func TestNotesImageSelectAndLightbox(t *testing.T) {
 	}
 	file.Close()
 	model.pickNoteFile = func() (string, error) { return source, nil }
-	click(t, driver, "图片")
-	advance(t, driver)
+	insertPicture(t, driver)
 
 	body := noteControlBounds(t, driver, "笔记正文")
 	centerX, centerY := body.X+body.Width/2, body.Y+60
@@ -548,4 +546,16 @@ func createNote(t *testing.T, driver *app.Driver) {
 	t.Helper()
 	clickRight(t, driver, "文件夹 我的笔记")
 	click(t, driver, "新建笔记")
+}
+
+// insertPicture inserts a picture through the body's "/" menu, the only visible
+// insert command now that the page band is gone.
+func insertPicture(t *testing.T, driver *app.Driver) {
+	t.Helper()
+	click(t, driver, "笔记正文")
+	if err := driver.Type("/"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "图片")
+	advance(t, driver)
 }
