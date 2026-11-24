@@ -410,8 +410,9 @@ func (m *Model) rail(c ui.C) {
 			ui.Spacer(c)
 			m.folderButton(c)
 		})
-		// No rule and no gap between the header and the tree: the rows start
-		// right where the header ends, so the column reads as one list.
+		// The rule under the header stays; the rows begin right below it, so
+		// the header and its tree are one block with no gap between them.
+		ui.Divider(c)
 		if len(m.rows) == 0 && m.filterText != "" {
 			emptystate.Notice(c, "没有匹配的笔记")
 		} else {
