@@ -14,6 +14,7 @@ import (
 var schemaFiles embed.FS
 
 var initSchema = mustReadSchema("schema/0001_init.sql")
+var notesSchema = mustReadSchema("schema/0002_notes.sql")
 
 func mustReadSchema(name string) string {
 	data, err := schemaFiles.ReadFile(name)
@@ -23,8 +24,8 @@ func mustReadSchema(name string) string {
 	return string(data)
 }
 
-// migration is one schema change. Versions are contiguous from 1; this release
-// ships the complete schema as version 1 and has no incremental steps.
+// migration is one schema change. Versions are contiguous from 1; version 1 is
+// the complete 0.1.0 schema, and each later feature appends its own file.
 type migration struct {
 	version int
 	name    string
@@ -33,6 +34,7 @@ type migration struct {
 
 var migrations = []migration{
 	{version: 1, name: "init", sql: initSchema},
+	{version: 2, name: "notes", sql: notesSchema},
 }
 
 func targetVersion() int { return migrations[len(migrations)-1].version }
@@ -178,6 +180,7 @@ func validateSchemaTables(db *sql.DB) error {
 		"stock_operation", "stock_day_review", "stock_lesson", "stock_ledger",
 		"stock_limit_day", "stock_limit_pool", "stock_limit_quote",
 		"todo_card", "todo_item", "todo_progress",
+		"note_node", "note_block",
 	} {
 		exists, err := tableExists(db, table)
 		if err != nil {
