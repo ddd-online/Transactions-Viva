@@ -33,6 +33,10 @@ import (
 // writes, the same 600 ms 日记 uses.
 const saveDelay = 600 * time.Millisecond
 
+// titleFreshPaints is how many paints a freshly opened title field has to take
+// the keyboard: the platform answers its AutoFocus after the first one.
+const titleFreshPaints = 2
+
 // treeIndent is one level of the notes tree, and treeRowPad the inset before
 // the first level.
 const (
@@ -108,11 +112,13 @@ type Model struct {
 	filter     ui.Field
 	filterText string
 
-	// title is the note's title field, titleText its last read value and
-	// titleID its identity in the page tree.
-	title     ui.Field
-	titleText string
-	titleID   gfx.ID
+	// title is the note's title. The band paints titleText as text and puts
+	// the field in place only while the title is being edited; titleID is the
+	// field's identity while it is painted.
+	title        ui.Field
+	titleText    string
+	titleID      gfx.ID
+	titleEditing bool
 
 	// The body editor. The text and its undo history live in doc; blocks
 	// mirrors doc's lines one for one, and lines is doc's last split.
@@ -164,8 +170,9 @@ type Model struct {
 	toaster      ui.Toaster
 	errorMessage string
 
-	// focusTitle asks the next paint to put the keyboard in the title.
-	focusTitle bool
+	// titleFresh counts the paints the title's field gets to take the keyboard
+	// before a paint without it closes the field again.
+	titleFresh int
 
 	// measure and measureTheme are the last paint's canvas and theme, kept only
 	// for the text measurements the movements and the caret hit test need
@@ -244,6 +251,7 @@ func (m *Model) SetDataSource(repo repository.NotesRepository) {
 	m.expanded = map[string]bool{}
 	m.node, m.selected = "", ""
 	m.titleText = ""
+	m.titleEditing, m.titleFresh = false, 0
 	m.phase, m.dirty = saveSaved, false
 	m.errorMessage = ""
 	m.history = nil
@@ -287,6 +295,7 @@ func (m *Model) Reload() {
 	}
 	m.selected = ""
 	m.titleText = ""
+	m.titleEditing, m.titleFresh = false, 0
 	m.blocks, m.lines = nil, nil
 	m.doc = text.NewEditor("")
 	m.history = nil
@@ -509,68 +518,98 @@ func (m *Model) rowView(c ui.C, row treeRow) {
 	})
 }
 
-// detail is the right column: a quiet line naming where the note lives and
-// whether it is saved, then the title and the block editor — no band of its
-// own, so the page opens on the note.
+// detail is the right column: the note's band, then the block editor. The band
+// spans the column the way 日记's day band does, so the page opens on the note
+// with its title where a document's title belongs.
 func (m *Model) detail(c ui.C) {
-	theme := c.Theme()
 	if m.selected == "" {
 		emptystate.Page(c, &icons.Note, "选择一篇笔记",
 			"在左侧文件夹上右键，选择「新建笔记」。", nil)
 		return
 	}
-	ui.Column(c).Grow(1).FillHeight().FillWidth().PadX(layout.Inset).Children(func() {
-		// The meta line and the title sit in the same measure as the body, so
-		// the whole page reads down one column.
-		ui.Row(c).FillWidth().Justify(ui.Center).PadTop(10).Children(func() {
-			ui.Column(c).MaxWidth(readingWidth).Grow(1).Children(func() {
-				ui.Row(c).FillWidth().Gap(12).Items(ui.Center).Children(func() {
-					m.breadcrumb(c)
-					m.saveState(c)
-				})
-			})
+	ui.Column(c).Grow(1).FillHeight().FillWidth().Children(func() {
+		layout.SectionHeader(c, layout.Inset).Children(func() {
+			m.titleBar(c)
 		})
-		ui.Row(c).FillWidth().Justify(ui.Center).PadTop(2).PadBottom(2).Children(func() {
-			ui.Column(c).MaxWidth(readingWidth).Grow(1).Children(func() {
-				c.Key("note-title")
-				m.titleID = ui.ID(c)
-				title := ui.TextFieldID(c, m.titleID, &m.title, "笔记标题", "未命名笔记").
-					FontSize(theme.Metrics.FontSizeL).Weight(gfx.WeightSemibold).FillWidth()
-				if m.focusTitle {
-					c.Canvas().RequestFocus(m.titleID)
-					m.focusTitle = false
-				}
-				if title.Submitted() {
-					c.Canvas().RequestFocus(m.bodyKey)
-				}
-			})
+		ui.Divider(c)
+		ui.Column(c).Grow(1).FillWidth().PadX(layout.Inset).Children(func() {
+			m.bodyView(c)
 		})
-		m.bodyView(c)
 	})
 }
 
-// breadcrumb is where the selection lives: the open note's folders, or the
-// selected folder itself. The nearest part is in the foreground; the title
-// field below already names an open note.
-func (m *Model) breadcrumb(c ui.C) {
+// titleBar is the band: the note's title and, at the right, the draft's state.
+// The title reads as text; a press turns it into the field, Enter or a press
+// anywhere else closes it again.
+func (m *Model) titleBar(c ui.C) {
 	theme := c.Theme()
-	path := m.locationPath()
-	ui.Row(c).Grow(1).MinWidth(0).Gap(4).Items(ui.Center).Children(func() {
-		for index, id := range path {
-			if index > 0 {
-				ui.Icon(c, icons.ChevronRight).Size(12, 12).Color(theme.MutedForeground)
-			}
-			color := theme.MutedForeground
-			if index == len(path)-1 {
-				color = theme.Foreground
-			}
-			typography.Caption(c, strings.TrimSpace(m.nodes[id].Title)).
-				MaxLines(1).Ellipsis().Shrink(1).MinWidth(0).Color(color)
+	if m.titleEditing {
+		m.titleField(c)
+		m.saveState(c)
+		return
+	}
+	c.Key("note-title")
+	name := strings.TrimSpace(m.titleText)
+	empty := name == ""
+	if empty {
+		name = domain.NoteDisplayTitle("")
+	}
+	titler := ui.Row(c).Grow(1).MinWidth(0).FillHeight().Items(ui.Center).
+		HitWith(ui.ID(c), "笔记标题", gfx.HitOptions{
+			Role: gfx.RoleButton, Value: name, Cursor: gfx.PointerCursorText,
+		})
+	if titler.Clicked() {
+		m.beginTitle()
+	}
+	titler.Children(func() {
+		label := typography.Section(c, name).MaxLines(1).Ellipsis().Shrink(1).MinWidth(0)
+		if empty {
+			label = label.Color(theme.MutedForeground)
 		}
 	})
+	m.saveState(c)
 }
 
-// saveState is the quiet state beside the breadcrumb.
+// titleField is the title while it is being edited: the note's one text field,
+// so a title is typed, selected and pasted like any other field. It takes the
+// keyboard the first time it is painted and gives it back when the user goes
+// elsewhere.
+func (m *Model) titleField(c ui.C) {
+	c.Key("note-title-field")
+	m.titleID = ui.ID(c)
+	field := ui.TextFieldID(c, m.titleID, &m.title, "笔记标题", "未命名笔记").
+		FontSize(typography.SizeSection).Weight(gfx.WeightBold).Grow(1).MinWidth(0).AutoFocus()
+	switch {
+	case field.Submitted():
+		m.commitTitle()
+		c.Canvas().RequestFocus(m.bodyKey)
+	case m.titleFresh > 0:
+		// The field asked for the keyboard this paint; the platform answers
+		// after it.
+		m.titleFresh--
+	case c.Canvas().Focused() != m.titleID:
+		m.commitTitle()
+	}
+}
+
+// beginTitle turns the title into its field.
+func (m *Model) beginTitle() {
+	m.titleEditing = true
+	m.titleFresh = titleFreshPaints
+}
+
+// commitTitle closes the field. The text is already the page's — noticeEdits
+// reads it every frame — so closing only writes the draft now instead of after
+// the pause.
+func (m *Model) commitTitle() {
+	m.titleEditing = false
+	m.titleFresh = 0
+	if m.dirty {
+		m.flush()
+	}
+}
+
+// saveState is the quiet state at the right of the band.
 func (m *Model) saveState(c ui.C) {
 	theme := c.Theme()
 	label, color := "已保存", theme.MutedForeground
@@ -580,37 +619,9 @@ func (m *Model) saveState(c ui.C) {
 	case saveFailed:
 		label, color = "保存失败", theme.Danger
 	}
-	typography.Caption(c, label).Color(color)
-}
-
-// locationPath is the path the band shows: the open note's folders, or the
-// selected folder and its folders.
-func (m *Model) locationPath() []string {
-	if m.selected != "" {
-		return m.folderPath(m.selected)
-	}
-	node, ok := m.nodes[m.node]
-	if !ok || node.Kind != domain.NoteKindFolder {
-		return nil
-	}
-	return append(m.folderPath(node.ID), node.ID)
-}
-
-// folderPath lists the folders above a note, root first.
-func (m *Model) folderPath(id string) []string {
-	var path []string
-	for {
-		node, ok := m.nodes[id]
-		if !ok || node.ParentID == "" {
-			break
-		}
-		path = append(path, node.ParentID)
-		id = node.ParentID
-	}
-	for left, right := 0, len(path)-1; left < right; left, right = left+1, right-1 {
-		path[left], path[right] = path[right], path[left]
-	}
-	return path
+	// The state never gives way: a long title truncates instead of pushing it
+	// out of the band.
+	typography.Caption(c, label).Color(color).Shrink(0)
 }
 
 // rebuildRows flattens the tree into the visible rows, honouring the folded
@@ -707,6 +718,7 @@ func (m *Model) openNote(id string) {
 	m.node = id
 	m.titleText = note.Node.Title
 	m.title.SetText(m.titleText)
+	m.titleEditing, m.titleFresh = false, 0
 	m.loadBlocks(note.Blocks)
 	m.history = nil
 	m.phase, m.dirty = saveSaved, false
@@ -774,7 +786,8 @@ func (m *Model) createNote() {
 	m.Read()
 	m.node = node.ID
 	m.openNote(node.ID)
-	m.focusTitle = true
+	m.titleEditing = true
+	m.titleFresh = titleFreshPaints
 	m.rebuildRows()
 }
 
@@ -923,6 +936,7 @@ func (m *Model) confirmDelete() {
 	if m.selected != "" && containsString(deleted.NoteIDs, m.selected) {
 		m.selected = ""
 		m.titleText = ""
+		m.titleEditing, m.titleFresh = false, 0
 		m.blocks, m.lines = nil, nil
 		m.doc = text.NewEditor("")
 		m.history = nil

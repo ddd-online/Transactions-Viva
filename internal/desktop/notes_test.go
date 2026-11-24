@@ -85,6 +85,56 @@ func TestNotesTypesTitleAndBlocks(t *testing.T) {
 	}
 }
 
+// noteHitRole is the role of the control named name, or zero when the name is
+// only painted text.
+func noteHitRole(t *testing.T, driver *app.Driver, name string) gfx.Role {
+	t.Helper()
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == name && !hit.IsLabel {
+			return hit.Role
+		}
+	}
+	return 0
+}
+
+// TestNotesTitleIsTextUntilClicked drives the band's title: it reads as text, a
+// press turns it into the field with the keyboard in it, and a press on the body
+// closes it and writes what was typed.
+func TestNotesTitleIsTextUntilClicked(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("周会"); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Key(gfx.KeyEnter, 0); err != nil {
+		t.Fatal(err)
+	}
+	if role := noteHitRole(t, driver, "笔记标题"); role != gfx.RoleButton {
+		t.Fatalf("the title at rest has role %v, want the band's text", role)
+	}
+	if !shows(driver, "周会") {
+		t.Fatal("the band should name the note")
+	}
+
+	click(t, driver, "笔记标题")
+	if role := noteHitRole(t, driver, "笔记标题"); role != gfx.RoleTextField {
+		t.Fatalf("the pressed title has role %v, want a field", role)
+	}
+	if err := driver.Type("记录"); err != nil {
+		t.Fatalf("typing into the title: %v", err)
+	}
+	// A press on the body closes the field; the draft is written at once
+	// instead of after the pause.
+	click(t, driver, "笔记正文")
+	if role := noteHitRole(t, driver, "笔记标题"); role != gfx.RoleButton {
+		t.Fatalf("the title after a press on the body has role %v, want text again", role)
+	}
+	if note := noteByTitle(t, model, "周会记录"); note.Node.Title != "周会记录" {
+		t.Fatalf("stored title = %q", note.Node.Title)
+	}
+}
+
 // TestNotesBackspaceMergesAndUndoRestores drives the block semantics and the
 // snapshot undo: Enter splits, Backspace at the start merges, Ctrl+Z restores.
 func TestNotesBackspaceMergesAndUndoRestores(t *testing.T) {

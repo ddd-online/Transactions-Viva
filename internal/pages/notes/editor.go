@@ -25,8 +25,8 @@ const (
 	// readingWidth is the widest the body runs; the text column is centred in
 	// the pane.
 	readingWidth float32 = 760
-	// bodyTopInset is the gap between the title and the first block.
-	bodyTopInset float32 = 6
+	// bodyTopInset is the gap between the band and the first block.
+	bodyTopInset float32 = 14
 	// bodyBottomSpace is the empty strip under the last block that a click
 	// turns into a new block.
 	bodyBottomSpace float32 = 140
