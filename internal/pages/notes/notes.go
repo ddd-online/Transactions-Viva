@@ -410,6 +410,13 @@ func (m *Model) View(c ui.C) {
 	}
 	m.noticeEdits(m.now)
 	m.settleDraft(c)
+	// Viva's menus close on a press outside them, not on Escape, so the page
+	// closes its own two: the "/" commands and the grip's.
+	if (m.slash.open || m.blockMenu.open) && ui.Shortcut(c, 0, "escape") {
+		m.closeSlash()
+		m.blockMenu = blockMenuState{block: -1}
+		m.focusBody = true
+	}
 	if m.rowsDirty {
 		m.rebuildRows()
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/domain"
+	"transactions/internal/icons"
 )
 
 // Block gestures over the body: the hovered block's grip (click opens its
@@ -22,18 +23,17 @@ const (
 	partGrip = 20
 	// partImageGrip is the picture's resize handle.
 	partImageGrip = 21
-	// partMenuBase is the block menu's first item part number.
-	partMenuBase = 40
 	// partDropBase is the first block drop target's part number.
 	partDropBase = 100
 )
 
 // blockMenuState is the block grip's menu: where it opened and which block it
-// commands.
+// commands. The menu is a Viva context menu, as the "/" menu is.
 type blockMenuState struct {
 	open  bool
 	block int
-	x, y  float32
+	at    gfx.Point
+	focus bool
 }
 
 // resizeState is a picture height drag.
@@ -45,8 +45,8 @@ type resizeState struct {
 	height float32
 }
 
-// blockMenuItems are the block menu's entries, in order.
-var blockMenuItems = []slashItem{
+// gripCommands are the block menu's entries, in order.
+var gripCommands = []bodyCommand{
 	{"转为正文", domain.NoteBlockText, 0},
 	{"转为标题 1", domain.NoteBlockHeading, 1},
 	{"转为标题 2", domain.NoteBlockHeading, 2},
@@ -85,15 +85,9 @@ func (m *Model) blockView(d *ui.DrawContext) {
 		if handle.X < rect.X+2 {
 			continue
 		}
-		canvas.Rounded(handle, 4, theme.Hover)
-		for dot := 0; dot < 3; dot++ {
-			for columnDot := 0; columnDot < 2; columnDot++ {
-				canvas.Fill(gfx.Rect{
-					X: handle.X + 5 + float32(columnDot)*5, Y: handle.Y + 5 + float32(dot)*4,
-					Width: 2, Height: 2,
-				}, theme.MutedForeground)
-			}
-		}
+		canvas.Rounded(handle, theme.Metrics.RadiusControl, theme.Hover)
+		canvas.DrawIcon(icons.GripVertical,
+			gfx.Rect{X: handle.X + 4, Y: handle.Y + 3, Width: 10, Height: 12}, theme.MutedForeground)
 		canvas.HitWithOptions(m.bodyInput.Parts().At(partGrip), handle, "块操作",
 			gfx.HitOptions{Role: gfx.RoleButton, SkipFocus: true, Cursor: gfx.PointerCursorHand})
 		d.DragSource(&m.blockDrag, m.bodyInput.Parts().At(partGrip), handle)
@@ -132,9 +126,6 @@ func (m *Model) blockView(d *ui.DrawContext) {
 			},
 			func(source, target gfx.ID) { m.dropBlock(source, target) })
 	}
-	if m.blockMenu.open {
-		m.paintBlockMenu(canvas, theme, rect)
-	}
 	if m.selectedImage >= 0 && m.selectedImage < len(m.blocks) {
 		m.paintImageGrip(canvas, theme, offsetY)
 	}
@@ -170,28 +161,26 @@ func (m *Model) blockPart(id gfx.ID) int {
 	return index - partDropBase
 }
 
-// paintBlockMenu paints the grip's menu.
-func (m *Model) paintBlockMenu(canvas *gfx.Canvas, theme *ui.Theme, rect gfx.Rect) {
-	rowHeight := float32(30)
-	width := float32(180)
-	height := float32(8) + rowHeight*float32(len(blockMenuItems))
-	x := min(m.blockMenu.x, rect.X+rect.Width-width-8)
-	y := m.blockMenu.y
-	if y+height > rect.Y+rect.Height {
-		y = m.blockMenu.y - height
+// blockMenuView declares the grip's menu as a Viva context menu under the grip.
+func (m *Model) blockMenuView(c ui.C, body ui.Box) {
+	if !m.blockMenu.open {
+		return
 	}
-	canvas.Rounded(gfx.Rect{X: x, Y: y, Width: width, Height: height}, 8, theme.Popover)
-	canvas.RoundedBorder(gfx.Rect{X: x, Y: y, Width: width, Height: height}, 8, 1, theme.Border, gfx.Color{})
-	for index, item := range blockMenuItems {
-		row := gfx.Rect{X: x, Y: y + 4 + float32(index)*rowHeight, Width: width, Height: rowHeight}
-		canvas.Label(item.label, row, gfx.TextStyle{Size: theme.Metrics.FontSizeM, Color: theme.PopoverForeground})
-		part := m.bodyInput.Parts().At(partMenuBase + index)
-		canvas.HitWithOptions(part, row, item.label,
-			gfx.HitOptions{Role: gfx.RoleOption, SkipFocus: true})
-		if canvas.Clicked(part) {
-			m.chooseBlockMenu(item)
-			return
+	var first gfx.ID
+	ui.ContextMenuAt(c, body, &m.blockMenu.open, m.blockMenu.at, func(items *ui.MenuItems) {
+		for _, item := range gripCommands {
+			entry := items.Item(item.label)
+			if first.IsZero() {
+				first = entry.ID()
+			}
+			if entry.Clicked() {
+				m.chooseBlockMenu(item)
+			}
 		}
+	})
+	if m.blockMenu.focus && !first.IsZero() {
+		c.Canvas().RequestFocus(first)
+		m.blockMenu.focus = false
 	}
 }
 
@@ -233,12 +222,6 @@ func (m *Model) blockAtPoint(y float32) int {
 // whether the press was taken.
 func (m *Model) blockMouse(event gfx.PointerEvent) gfx.EventResult {
 	if event.Kind == gfx.PointerDown && event.Button == gfx.PointerButtonPrimary {
-		if index, ok := event.Target.In(m.bodyInput.Parts()); ok &&
-			index >= partMenuBase && index < partMenuBase+len(blockMenuItems) {
-			// The release's click pass chooses the item; the press must not
-			// close the menu or take the click away from it.
-			return gfx.EventResult{}
-		}
 		m.blockMenu = blockMenuState{block: -1}
 	}
 	if index, ok := event.Target.In(m.bodyInput.Parts()); ok {
@@ -293,17 +276,19 @@ func (m *Model) blockMouse(event gfx.PointerEvent) gfx.EventResult {
 	return gfx.EventResult{}
 }
 
-// openBlockMenu opens the grip's menu at the press.
+// openBlockMenu opens the grip's menu at the press, under the grip.
 func (m *Model) openBlockMenu(event gfx.PointerEvent) {
 	block := m.blockAtPoint(event.Y)
 	if block < 0 {
 		return
 	}
-	m.blockMenu = blockMenuState{open: true, block: block, x: event.X + 14, y: event.Y + 4}
+	m.blockMenu = blockMenuState{
+		open: true, block: block, at: gfx.Point{X: event.X + 14, Y: event.Y + 6}, focus: true,
+	}
 }
 
 // chooseBlockMenu runs one command of the block menu.
-func (m *Model) chooseBlockMenu(item slashItem) {
+func (m *Model) chooseBlockMenu(item bodyCommand) {
 	block := m.blockMenu.block
 	m.blockMenu = blockMenuState{block: -1}
 	if block < 0 || block >= len(m.blocks) {

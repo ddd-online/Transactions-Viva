@@ -68,15 +68,15 @@ type snapshot struct {
 	sel    text.Range
 }
 
-// slashItem is one command of the "/" menu.
-type slashItem struct {
+// bodyCommand is one command of the "/" menu.
+type bodyCommand struct {
 	label string
 	kind  string
 	level int
 }
 
-// slashItems are the menu's entries, in order.
-var slashItems = []slashItem{
+// bodyCommands are the menu's entries, in order.
+var bodyCommands = []bodyCommand{
 	{"正文", domain.NoteBlockText, 0},
 	{"标题 1", domain.NoteBlockHeading, 1},
 	{"标题 2", domain.NoteBlockHeading, 2},
@@ -86,21 +86,28 @@ var slashItems = []slashItem{
 	{"图片", domain.NoteBlockImage, 0},
 }
 
-// slashState is the "/" block menu: it is open at a caret position, filters by
-// what the user keeps typing and turns the current block into the chosen one.
+// slashState is the "/" command menu: it is open at a point of the body, for the
+// block it will turn into the command the user chooses. The menu itself is a
+// Viva context menu, so its keys, its rows and its closing are the framework's.
 type slashState struct {
 	open  bool
-	query string
-	x, y  float32
-	items []slashItem
+	block int
+	at    gfx.Point
+	// focus asks the paint that opens the menu to put the keyboard in its first
+	// row, so typing and Enter belong to the menu rather than the note.
+	focus bool
 }
 
-// bodyView declares the body control.
+// bodyView declares the body control and the two menus that hang off it. A
+// menu is the framework's context menu, so its panel, rows, hover, clicks and
+// keys are the app's everywhere else too.
 func (m *Model) bodyView(c ui.C) {
 	if m.selected == "" {
 		return
 	}
-	ui.Control(c, "笔记正文", &m.bodyInput).Grow(1).FillWidth().Draw(m.bodyDraw)
+	body := ui.Control(c, "笔记正文", &m.bodyInput).Grow(1).FillWidth().Draw(m.bodyDraw)
+	m.slashMenu(c, body)
+	m.blockMenuView(c, body)
 }
 
 // style is the text style of one block.
@@ -237,7 +244,6 @@ func (m *Model) drawBody(d *ui.DrawContext) {
 			TextColor: gfx.Color{}, HideNativeOverlays: true, Placement: m,
 		})
 	}
-	m.paintSlash(canvas, theme, rect)
 	m.blockView(d)
 }
 
@@ -470,11 +476,6 @@ func (m *Model) bodyEvent(event window.TextEvent) (window.TextState, error) {
 	if m.selected == "" {
 		return window.TextState{}, nil
 	}
-	if m.slash.open {
-		if m.slashKey(event) {
-			return m.state(), nil
-		}
-	}
 	if m.doc.CompositionActive() {
 		// The input method owns the text until it commits.
 		event.Apply(m.doc)
@@ -510,7 +511,6 @@ func (m *Model) bodyEvent(event window.TextEvent) (window.TextState, error) {
 			return m.state(), nil
 		case window.TextInsertNewline, window.TextInsertLineBreak:
 			m.newHistoryStep()
-			m.closeSlash()
 			m.applyEvent(event, m.selectionStart())
 			m.afterEdit()
 			return m.state(), nil
@@ -765,121 +765,63 @@ func (m *Model) slashStart() bool {
 	return inLine == 0 && strings.TrimSpace(m.lines[block]) == ""
 }
 
-// openSlash opens the "/" menu at the caret.
+// openSlash opens the "/" menu under the caret, for the block the caret is in.
 func (m *Model) openSlash() {
+	offset := m.doc.ByteOffset(m.doc.Caret())
+	block, _ := m.position(offset)
+	at := gfx.Point{}
 	if rect, ok := m.CaretBounds(); ok {
-		m.slash.x, m.slash.y = rect.X, rect.Y+rect.Height+2
+		at = gfx.Point{X: rect.X, Y: rect.Y + rect.Height + 2}
 	}
-	m.slash = slashState{open: true, x: m.slash.x, y: m.slash.y, items: slashItems}
+	m.slash = slashState{open: true, block: block, at: at, focus: true}
 }
 
 // closeSlash closes the menu.
 func (m *Model) closeSlash() { m.slash = slashState{} }
 
-// slashKey filters the menu with what the user types; Enter takes the first
-// match and Escape closes it.
-func (m *Model) slashKey(event window.TextEvent) bool {
-	switch event.Kind {
-	case window.TextInsert:
-		m.slash.query += event.Text
-	case window.TextPaste:
-		m.slash.query += event.Text
-	case window.TextCommandEvent:
-		switch event.Command {
-		case window.TextDeleteBackward:
-			if m.slash.query == "" {
-				m.closeSlash()
-				return true
-			}
-			runes := []rune(m.slash.query)
-			m.slash.query = string(runes[:len(runes)-1])
-		case window.TextInsertNewline, window.TextInsertLineBreak:
-			items := m.slashMatches()
-			if len(items) == 0 {
-				m.closeSlash()
-				return true
-			}
-			m.chooseSlash(items[0])
-			return true
-		}
-	case window.TextSetMarked, window.TextUnmark, window.TextCancelComposition:
-		return false
+// slashMenu declares the "/" command menu as a Viva context menu at the caret.
+// It is declared after the body, so the body is the control the menu hangs off
+// and the press that chooses a row lands in the menu rather than the text.
+func (m *Model) slashMenu(c ui.C, body ui.Box) {
+	if !m.slash.open {
+		return
 	}
-	return true
+	var first gfx.ID
+	ui.ContextMenuAt(c, body, &m.slash.open, m.slash.at, func(items *ui.MenuItems) {
+		for _, item := range bodyCommands {
+			entry := items.Item(item.label)
+			if first.IsZero() {
+				first = entry.ID()
+			}
+			if entry.Clicked() {
+				m.chooseSlash(item)
+			}
+		}
+	})
+	if m.slash.focus && !first.IsZero() {
+		c.Canvas().RequestFocus(first)
+		m.slash.focus = false
+	}
 }
 
-// slashMatches is the menu's entries that contain the query.
-func (m *Model) slashMatches() []slashItem {
-	query := strings.TrimSpace(m.slash.query)
-	var items []slashItem
-	for _, item := range slashItems {
-		if query == "" || strings.Contains(item.label, query) {
-			items = append(items, item)
-		}
-	}
-	return items
-}
-
-// chooseSlash turns the current block into the chosen kind.
-func (m *Model) chooseSlash(item slashItem) {
+// chooseSlash turns the block the menu was opened on into the chosen kind.
+func (m *Model) chooseSlash(item bodyCommand) {
+	block := m.slash.block
 	m.closeSlash()
 	if item.kind == domain.NoteBlockImage {
 		m.pickPicture()
 		return
 	}
-	offset := m.doc.ByteOffset(m.doc.Caret())
-	block, _ := m.position(offset)
 	if block < 0 || block >= len(m.blocks) {
 		return
 	}
 	m.newHistoryStep()
-	if item.kind == domain.NoteBlockImage {
-		return
-	}
 	m.blocks[block].Kind = item.kind
 	m.blocks[block].Level = item.level
 	m.bodyLayout = bodyLayout{}
 	m.focusBody = true
 	m.markEdited(m.now)
 	m.flush()
-}
-
-// paintSlash paints the "/" menu at the caret.
-func (m *Model) paintSlash(canvas *gfx.Canvas, theme *ui.Theme, rect gfx.Rect) {
-	if !m.slash.open {
-		return
-	}
-	items := m.slashMatches()
-	rowHeight := float32(30)
-	width := float32(180)
-	height := float32(8) + rowHeight*float32(len(items))
-	x := min(m.slash.x, rect.X+rect.Width-width-8)
-	y := m.slash.y
-	if y+height > rect.Y+rect.Height {
-		y = m.slash.y - height - 8
-	}
-	if len(items) == 0 {
-		height = 30
-	}
-	canvas.Rounded(gfx.Rect{X: x, Y: y, Width: width, Height: height}, 8, theme.Popover)
-	canvas.RoundedBorder(gfx.Rect{X: x, Y: y, Width: width, Height: height}, 8, 1, theme.Border, gfx.Color{})
-	for index, item := range items {
-		row := gfx.Rect{X: x, Y: y + 4 + float32(index)*rowHeight, Width: width, Height: rowHeight}
-		canvas.Label(item.label, row, gfx.TextStyle{Size: theme.Metrics.FontSizeM, Color: theme.PopoverForeground})
-		if !m.bodyKey.IsZero() {
-			part := m.bodyInput.Parts().At(index)
-			canvas.HitWithOptions(part, row, item.label,
-				gfx.HitOptions{Role: gfx.RoleOption, SkipFocus: true})
-			if canvas.Clicked(part) {
-				m.chooseSlash(item)
-				return
-			}
-		}
-	}
-	if m.slash.query != "" {
-		canvas.Label("/"+m.slash.query, gfx.Rect{X: x, Y: y - 18, Width: width, Height: 16},
-			gfx.TextStyle{Size: theme.Metrics.FontSizeS, Color: theme.MutedForeground})
-	}
 }
 
 // bodyPointer handles presses on pictures, on the "/" menu and on the strip
@@ -899,7 +841,7 @@ func (m *Model) bodyPointer(event gfx.PointerEvent) gfx.EventResult {
 		return gfx.EventResult{}
 	}
 	if m.slash.open {
-		if index, ok := event.Target.In(m.bodyInput.Parts()); ok && index < len(slashItems) {
+		if index, ok := event.Target.In(m.bodyInput.Parts()); ok && index < len(bodyCommands) {
 			// The release's click pass chooses the item; the press keeps the
 			// menu open for it.
 			return gfx.EventResult{}
