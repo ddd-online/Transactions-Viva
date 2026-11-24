@@ -113,7 +113,7 @@ func New() *Model {
 	m.tree.Key = func(index int) int { return index }
 	m.tree.Node = m.node
 	m.tree.Label = m.rowLabel
-	m.tree.RowHeight = layout.RowHeight
+	m.tree.RowHeight = layout.TreeRowHeight
 	return m
 }
 

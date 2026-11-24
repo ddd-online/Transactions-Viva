@@ -46,6 +46,12 @@ const (
 	// RowHeight is one row of a data table or of a rail list.
 	RowHeight float32 = 44
 
+	// TreeRowHeight is one row of a page's tree: the diary's date tree and the
+	// notes tree. A tree is scanned down a column of names, not read row by row
+	// like a table, so its rows sit closer together than a list's — the height
+	// the reference application uses for the same trees.
+	TreeRowHeight float32 = 30
+
 	// FooterHeight is the band under a table that carries its totals.
 	FooterHeight float32 = 40
 

@@ -634,7 +634,7 @@ func (m *Model) bindTree() {
 	m.tree.Key = m.rowKey
 	m.tree.Node = m.treeNode
 	m.tree.Label = m.rowLabel
-	m.tree.RowHeight = layout.RowHeight
+	m.tree.RowHeight = layout.TreeRowHeight
 	m.tree.Indent = treeIndent
 	m.tree.CanDrop = m.canDropRow
 }
