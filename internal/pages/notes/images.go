@@ -18,6 +18,9 @@ const (
 	noteImageEdge = 1600
 	// lightboxEdge is the longest edge the lightbox decodes at.
 	lightboxEdge = 2048
+	// lightboxShare is how much of the window a picture may take in the
+	// lightbox: a screenshot opens at nine tenths of it, not in a fixed box.
+	lightboxShare float32 = 0.9
 )
 
 // errNoImage is the lightbox's report while the shell cannot decode a picture.
@@ -94,21 +97,55 @@ func (m *Model) closeLightbox() {
 	m.lightbox = lightboxState{handlers: m.lightbox.handlers}
 }
 
-// lightboxView declares the lightbox modal.
+// lightboxView declares the lightbox modal. The dialog is sized to the picture,
+// which itself is laid out inside nine tenths of the window: a wide screenshot
+// fills it instead of sitting in a box of a fixed size, and a small picture gets
+// a small dialog.
 func (m *Model) lightboxView(c ui.C) {
 	if !m.lightbox.open {
 		return
 	}
 	theme := c.Theme()
-	ui.ModalWith(c, &m.lightbox.open, "笔记图片", ui.ModalSpec{Width: 900}, func() {
-		ui.Control(c, "笔记图片预览", &m.lightbox.handlers).
+	// The dialog insets its body by the surface padding, and the picture keeps
+	// the same room around itself; asking for the body's width plus that padding
+	// makes the body exactly the picture's width.
+	pad := theme.Metrics.PadSurface + theme.Metrics.GapItem
+	spec := ui.ModalSpec{Width: 900}
+	size, sized := m.lightboxFit(c.Bounds())
+	if sized {
+		spec.Width = size.Width + 2*pad
+	}
+	ui.ModalWith(c, &m.lightbox.open, "笔记图片", spec, func() {
+		view := ui.Control(c, "笔记图片预览", &m.lightbox.handlers).
 			FillWidth().Height(540).
 			Radius(theme.Metrics.RadiusSurface).Clip().
 			Draw(m.drawLightbox)
+		if sized {
+			view.Height(size.Height)
+		}
 	}, nil)
 	if !m.lightbox.open {
 		m.closeLightbox()
 	}
+}
+
+// lightboxFit is the size the picture takes in the lightbox: its own aspect
+// ratio inside lightboxShare of the window. It reports false until the bitmap is
+// decoded, while the dialog is still the default size.
+func (m *Model) lightboxFit(bounds gfx.Rect) (gfx.Size, bool) {
+	bitmap := m.lightbox.bitmap
+	if !m.lightbox.loaded || bitmap.Width <= 0 || bitmap.Height <= 0 {
+		return gfx.Size{}, false
+	}
+	maxWidth, maxHeight := bounds.Width*lightboxShare, bounds.Height*lightboxShare
+	if maxWidth <= 0 || maxHeight <= 0 {
+		return gfx.Size{}, false
+	}
+	scale := min(maxWidth/float32(bitmap.Width), maxHeight/float32(bitmap.Height))
+	return gfx.Size{
+		Width:  float32(bitmap.Width) * scale,
+		Height: float32(bitmap.Height) * scale,
+	}, true
 }
 
 // drawLightbox paints the picture at its zoom and pan.

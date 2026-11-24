@@ -734,6 +734,16 @@ func TestNotesImageSelectAndLightbox(t *testing.T) {
 	if !shows(driver, "笔记图片") {
 		t.Fatal("the second press should open the lightbox")
 	}
+	// The picture is laid out inside nine tenths of the window, its own aspect
+	// kept: a wide picture opens wide instead of in a box of a fixed size.
+	view := noteControlBounds(t, driver, "笔记图片预览")
+	snapshot := driver.Snapshot()
+	if view.Width > float32(snapshot.Width)*0.9+1 || view.Height > float32(snapshot.Height)*0.9+1 {
+		t.Fatalf("the lightbox view is %vx%v in a %dx%d window", view.Width, view.Height, snapshot.Width, snapshot.Height)
+	}
+	if ratio := view.Width / view.Height; ratio < 1.9 || ratio > 2.1 {
+		t.Fatalf("the lightbox view is %vx%v, want the picture's 2:1", view.Width, view.Height)
+	}
 }
 
 // createNote makes a note in the default folder through the folder's context
