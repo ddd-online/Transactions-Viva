@@ -1127,6 +1127,9 @@ func (m *Model) loadBlocks(blocks []domain.NoteBlock) {
 		lines[index] = block.Text
 	}
 	m.doc = text.NewEditor(strings.Join(lines, "\n"))
+	// A loaded note opens at its first line: the editor starts with the caret at
+	// the end, which would open the note at its last one.
+	m.doc.MoveTo(0, false)
 	m.lines = lines
 	m.linesDirty = false
 	m.bodyLayout = bodyLayout{}
