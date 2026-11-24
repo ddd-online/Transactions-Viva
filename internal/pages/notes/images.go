@@ -147,11 +147,13 @@ func (m *Model) lightboxPointer(event gfx.PointerEvent) gfx.EventResult {
 }
 
 // pickPicture asks the shell for a picture and inserts it after the caret.
+// pickPicture asks the shell for a picture from an input pass that has no C: the
+// deferred call runs after the pointer pass, never inside the paint.
 func (m *Model) pickPicture() {
-	if m.cmds.PickImage == nil || m.selected == "" {
+	if m.cmds.PickImage == nil || m.selected == "" || m.canvas == nil {
 		return
 	}
-	m.pickPending = true
+	m.canvas.AfterPaint(func() { m.pickAndInsert() })
 }
 
 // pickAndInsert runs the picture dialog. The shell calls it from c.After, so the

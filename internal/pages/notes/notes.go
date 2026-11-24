@@ -159,12 +159,14 @@ type Model struct {
 	// The last paint's canvas and theme, kept for the movements and hit tests
 	// that run between paints, and the clock the undo groups read.
 	now             time.Duration
+	undoneAt        time.Duration
 	canvas          *gfx.Canvas
 	theme           *ui.Theme
 	bodyPane        gfx.Rect
 	lineStartsCache []int
 	slash           slashState
 	pickPending     bool
+	focusBody       bool
 
 	// imageRev changes whenever a picture block is added, so the effect that
 	// decodes the note's pictures runs again.
@@ -199,7 +201,6 @@ func New() *Model {
 		lightbox:      lightboxState{},
 	}
 	m.bodyDraw = m.drawBody
-	m.bodyInput.Role = gfx.RoleTextField
 	m.bodyInput.Key = m.bodyKeyEvent
 	m.bodyInput.Pointer = m.bodyPointer
 	m.bodyInput.Scroll = m.bodyScroll
@@ -318,14 +319,19 @@ func (m *Model) View(c ui.C) {
 		m.Reload()
 	}
 	m.now = c.Canvas().Now()
+	if m.selected != "" && !m.bodyKey.IsZero() && c.Canvas().Focused() == m.bodyKey &&
+		ui.Shortcut(c, ui.Primary, "z") && m.undoneAt != m.now {
+		m.undo()
+		m.undoneAt = m.now
+	}
 	m.noticeEdits(m.now)
 	m.settleDraft(c)
 	if m.rowsDirty {
 		m.rebuildRows()
 	}
-	if m.pickPending {
-		m.pickPending = false
-		c.After(func() { m.pickAndInsert() })
+	if m.focusBody && !m.bodyKey.IsZero() {
+		c.Canvas().RequestFocus(m.bodyKey)
+		m.focusBody = false
 	}
 	ui.Effect(c, m.imageEffect, m.imageKey)
 	if images, err, ok := m.imageEffect.Take(); ok {
@@ -494,7 +500,7 @@ func (m *Model) detail(c ui.C) {
 			m.breadcrumb(c)
 			ui.Spacer(c)
 			if ui.Button(c, "图片").Outline().Icon(icons.Plus).Clicked() {
-				m.pickPicture()
+				c.After(func() { m.pickAndInsert() })
 			}
 			m.saveState(c)
 		})
@@ -1011,7 +1017,7 @@ func (m *Model) flush() {
 		block.NoteID = m.selected
 		if block.Kind == domain.NoteBlockImage {
 			block.Text = ""
-		} else {
+		} else if index < len(m.lines) {
 			block.Text = m.lines[index]
 		}
 		blocks[index] = block
@@ -1036,16 +1042,10 @@ func (m *Model) flush() {
 	m.rowsDirty = true
 }
 
-// syncLines splits the editor's text into the block lines.
+// syncLines splits the editor's text into the block lines. It never pads or
+// truncates: the caller that changed the text keeps the block list in step.
 func (m *Model) syncLines() {
-	lines := strings.Split(m.doc.String(), "\n")
-	for len(lines) < len(m.blocks) {
-		lines = append(lines, "")
-	}
-	for len(lines) > len(m.blocks) {
-		lines = lines[:len(lines)-1]
-	}
-	m.lines = lines
+	m.lines = strings.Split(m.doc.String(), "\n")
 }
 
 // report shows a write or read failure and keeps it on the page.

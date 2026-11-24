@@ -27,15 +27,13 @@ func (m *Model) notesCommands() notespage.Commands {
 	}
 }
 
-// pickNoteImage opens the picture dialog and returns the chosen file.
+// pickNoteImage opens the picture dialog and returns the chosen file. The
+// picker is the shell's own, so a test can answer it without a native dialog.
 func (m *Model) pickNoteImage() (string, error) {
-	files, err := app.OpenFiles(app.OpenFileOptions{
-		Title: "插入图片",
-		Filters: []app.FileFilter{{
-			Name:    "图片",
-			Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.heic;*.heif",
-		}},
-	})
+	if m.pickImages == nil {
+		return "", nil
+	}
+	files, err := m.pickImages()
 	if errors.Is(err, app.ErrCanceled) {
 		return "", nil
 	}

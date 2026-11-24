@@ -508,18 +508,18 @@ func (m *Model) bodyEvent(event window.TextEvent) (window.TextState, error) {
 		case window.TextRedo:
 			return m.state(), nil
 		case window.TextInsertNewline, window.TextInsertLineBreak:
-			m.pushHistory()
+			m.newHistoryStep()
 			m.closeSlash()
 			m.applyEvent(event, m.selectionStart())
 			m.afterEdit()
 			return m.state(), nil
 		case window.TextDeleteBackward:
-			m.pushHistory()
+			m.newHistoryStep()
 			m.applyEvent(event, m.backspaceStart())
 			m.afterEdit()
 			return m.state(), nil
 		case window.TextDeleteForward:
-			m.pushHistory()
+			m.newHistoryStep()
 			m.applyEvent(event, m.selectionStart())
 			m.afterEdit()
 			return m.state(), nil
@@ -602,7 +602,7 @@ func (m *Model) removeBlock(index int) {
 
 // pasteText inserts pasted text, splitting the block on its line breaks.
 func (m *Model) pasteText(event window.TextEvent) {
-	m.pushHistory()
+	m.newHistoryStep()
 	m.applyEvent(event, m.selectionStart())
 	m.afterEdit()
 }
@@ -664,7 +664,7 @@ func (m *Model) insertPicture(block domain.NoteBlock) {
 	if m.selected == "" {
 		return
 	}
-	m.pushHistory()
+	m.newHistoryStep()
 	m.syncLines()
 	offset := m.doc.ByteOffset(m.doc.Caret())
 	current, inLine := m.position(offset)
@@ -689,25 +689,39 @@ func (m *Model) insertPicture(block domain.NoteBlock) {
 	m.bodyLayout = bodyLayout{}
 	m.selectedImage = -1
 	m.markEdited(m.now)
+	m.focusBody = true
 	m.flush()
 	m.imageRev++
 	m.imageKey = noteImageKey{note: m.selected, rev: m.imageRev}
 }
 
-// pushHistory keeps the state before an edit. Consecutive keystrokes share one
-// snapshot.
+// pushHistory keeps the state before a keystroke. Consecutive keystrokes share
+// one snapshot.
 func (m *Model) pushHistory() {
 	if m.histOpen && m.now-m.histAt < historyGroup {
 		m.histAt = m.now
 		return
 	}
+	m.pushSnapshot()
+	m.histOpen = true
+}
+
+// pushSnapshot records the state unconditionally.
+func (m *Model) pushSnapshot() {
 	if len(m.history) >= historyLimit {
 		m.history = m.history[1:]
 	}
 	blocks := make([]domain.NoteBlock, len(m.blocks))
 	copy(blocks, m.blocks)
 	m.history = append(m.history, snapshot{text: m.doc.String(), blocks: blocks, sel: m.doc.Selection()})
-	m.histOpen, m.histAt = true, m.now
+	m.histAt = m.now
+}
+
+// newHistoryStep pushes a snapshot and ends the coalescing group, so a
+// structural edit is always its own undo step.
+func (m *Model) newHistoryStep() {
+	m.pushSnapshot()
+	m.histOpen = false
 }
 
 // undo restores the last snapshot; the whole document, attributes included.
@@ -736,6 +750,9 @@ func (m *Model) slashStart() bool {
 	offset := m.doc.ByteOffset(m.doc.Caret())
 	block, inLine := m.position(offset)
 	if block < 0 || block >= len(m.blocks) || m.blocks[block].Kind == domain.NoteBlockImage {
+		return false
+	}
+	if block >= len(m.lines) {
 		return false
 	}
 	return inLine == 0 && strings.TrimSpace(m.lines[block]) == ""
@@ -808,13 +825,14 @@ func (m *Model) chooseSlash(item slashItem) {
 	if block < 0 || block >= len(m.blocks) {
 		return
 	}
-	m.pushHistory()
+	m.newHistoryStep()
 	if item.kind == domain.NoteBlockImage {
 		return
 	}
 	m.blocks[block].Kind = item.kind
 	m.blocks[block].Level = item.level
 	m.bodyLayout = bodyLayout{}
+	m.focusBody = true
 	m.markEdited(m.now)
 	m.flush()
 }
@@ -843,7 +861,7 @@ func (m *Model) paintSlash(canvas *gfx.Canvas, theme *ui.Theme, rect gfx.Rect) {
 		canvas.Label(item.label, row, gfx.TextStyle{Size: theme.Metrics.FontSizeM, Color: theme.PopoverForeground})
 		if !m.bodyKey.IsZero() {
 			canvas.HitWithOptions(m.bodyInput.Parts().At(index), row, item.label,
-				gfx.HitOptions{Role: gfx.RoleOption})
+				gfx.HitOptions{Role: gfx.RoleOption, SkipFocus: true})
 		}
 	}
 	if m.slash.query != "" {
@@ -893,9 +911,9 @@ func (m *Model) bodyPointer(event gfx.PointerEvent) gfx.EventResult {
 
 // appendBlockAtEnd adds or focuses the empty block under the last block.
 func (m *Model) appendBlockAtEnd() {
-	m.pushHistory()
+	m.newHistoryStep()
 	last := len(m.blocks) - 1
-	if last >= 0 && m.blocks[last].Kind == domain.NoteBlockText &&
+	if last >= 0 && last < len(m.lines) && m.blocks[last].Kind == domain.NoteBlockText &&
 		strings.TrimSpace(m.lines[last]) == "" {
 		m.doc.MoveTo(m.bytesToRune(m.blockStart(last)+len(m.lines[last])), false)
 		return
