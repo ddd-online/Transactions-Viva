@@ -44,4 +44,7 @@ type NotesRepository interface {
 	// dragged.
 	NoteRailWidth(ctx context.Context) (float32, error)
 	SetNoteRailWidth(ctx context.Context, width float32) error
+	// NoteRailHidden says the tree column was left hidden.
+	NoteRailHidden(ctx context.Context) (bool, error)
+	SetNoteRailHidden(ctx context.Context, hidden bool) error
 }

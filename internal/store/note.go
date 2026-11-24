@@ -580,6 +580,39 @@ func (w *Workspace) NoteRailWidth(ctx context.Context) (float32, error) {
 	return float32(width), nil
 }
 
+// NoteRailHidden says the 笔记 tree column was left hidden.
+func (w *Workspace) NoteRailHidden(ctx context.Context) (bool, error) {
+	db, err := w.dbHandle()
+	if err != nil {
+		return false, err
+	}
+	var value string
+	err = db.QueryRowContext(ctx, "SELECT value FROM app_meta WHERE key = 'note_rail_hidden'").Scan(&value)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(value) == "1", nil
+}
+
+// SetNoteRailHidden remembers whether the 笔记 tree column is showing.
+func (w *Workspace) SetNoteRailHidden(ctx context.Context, hidden bool) error {
+	db, err := w.dbHandle()
+	if err != nil {
+		return err
+	}
+	value := "0"
+	if hidden {
+		value = "1"
+	}
+	_, err = db.ExecContext(ctx,
+		"INSERT INTO app_meta(key, value) VALUES ('note_rail_hidden', ?) "+
+			"ON CONFLICT(key) DO UPDATE SET value = excluded.value", value)
+	return err
+}
+
 // SetNoteRailWidth remembers the width of the 笔记 tree column, so the split the
 // user dragged comes back with the workspace.
 func (w *Workspace) SetNoteRailWidth(ctx context.Context, width float32) error {

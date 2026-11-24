@@ -328,7 +328,8 @@ func TestNotesRenameAndLastNote(t *testing.T) {
 
 // TestNotesRailWidthIsRemembered stores the width the user dragged the divider
 // to: unset reads as zero, a stored width comes back, and a value that is not a
-// width reads as unset rather than as a pane of no width.
+// width reads as unset rather than as a pane of no width. The tree's visibility
+// rides the same app_meta row.
 func TestNotesRailWidthIsRemembered(t *testing.T) {
 	ctx := context.Background()
 	workspace := testWorkspace(t)
@@ -350,6 +351,22 @@ func TestNotesRailWidthIsRemembered(t *testing.T) {
 	}
 	if got, err := workspace.NoteRailWidth(ctx); err != nil || got != 0 {
 		t.Fatalf("NoteRailWidth of a corrupt value = %v, %v", got, err)
+	}
+
+	if hidden, err := workspace.NoteRailHidden(ctx); err != nil || hidden {
+		t.Fatalf("NoteRailHidden before any hide = %v, %v", hidden, err)
+	}
+	if err := workspace.SetNoteRailHidden(ctx, true); err != nil {
+		t.Fatalf("SetNoteRailHidden(true): %v", err)
+	}
+	if hidden, err := workspace.NoteRailHidden(ctx); err != nil || !hidden {
+		t.Fatalf("NoteRailHidden = %v, %v", hidden, err)
+	}
+	if err := workspace.SetNoteRailHidden(ctx, false); err != nil {
+		t.Fatalf("SetNoteRailHidden(false): %v", err)
+	}
+	if hidden, err := workspace.NoteRailHidden(ctx); err != nil || hidden {
+		t.Fatalf("NoteRailHidden after showing again = %v, %v", hidden, err)
 	}
 }
 

@@ -33,10 +33,6 @@ import (
 // writes, the same 600 ms 日记 uses.
 const saveDelay = 600 * time.Millisecond
 
-// titleFreshPaints is how many paints a freshly opened title field has to take
-// the keyboard: the platform answers its AutoFocus after the first one.
-const titleFreshPaints = 2
-
 // treeIndent is one level of the notes tree.
 const treeIndent = 16
 
@@ -143,14 +139,15 @@ type Model struct {
 	split       ui.SplitterState
 	railLoaded  bool
 	railDragged bool
+	// railHidden hides the tree column: the note then has the whole window,
+	// which is what the band's panel button is for.
+	railHidden bool
 
-	// title is the note's title. The band paints titleText as text and puts
-	// the field in place only while the title is being edited; titleID is the
-	// field's identity while it is painted.
-	title        ui.Field
-	titleText    string
-	titleID      gfx.ID
-	titleEditing bool
+	// title is the note's title field, titleText its last read value and
+	// titleID its identity in the band.
+	title     ui.Field
+	titleText string
+	titleID   gfx.ID
 
 	// The body editor. The text and its undo history live in doc; blocks
 	// mirrors doc's lines one for one, and lines is doc's last split.
@@ -196,9 +193,9 @@ type Model struct {
 	toaster      ui.Toaster
 	errorMessage string
 
-	// titleFresh counts the paints the title's field gets to take the keyboard
-	// before a paint without it closes the field again.
-	titleFresh int
+	// focusTitle asks the next paint to put the keyboard in the title, which a
+	// note just created does.
+	focusTitle bool
 
 	// measure and measureTheme are the last paint's canvas and theme, kept only
 	// for the text measurements the movements and the caret hit test need
@@ -286,12 +283,13 @@ func (m *Model) SetDataSource(repo repository.NotesRepository) {
 	m.bindTree()
 	m.node, m.selected = "", ""
 	m.titleText = ""
-	m.titleEditing, m.titleFresh = false, 0
+	m.focusTitle = false
 	m.phase, m.dirty = saveSaved, false
 	m.errorMessage = ""
 	// The tree's width belongs to the workspace that was open, so another one
 	// starts at the default until its own width is read.
 	m.railLoaded, m.railDragged = false, false
+	m.railHidden = false
 	m.split.Pos = layout.RailWidth
 	m.history = nil
 	m.noteImages = map[string]gfx.Bitmap{}
@@ -312,11 +310,14 @@ func (m *Model) Reload() {
 		return
 	}
 	if !m.railLoaded {
-		// The divider's width is read once, so a reload never undoes a drag the
-		// user is about to make.
+		// The tree's width and its visibility are read once, so a reload never
+		// undoes what the user just did to it.
 		m.railLoaded = true
 		if width, err := m.repo.NoteRailWidth(context.Background()); err == nil && width > 0 {
 			m.split.Pos = width
+		}
+		if hidden, err := m.repo.NoteRailHidden(context.Background()); err == nil {
+			m.railHidden = hidden
 		}
 	}
 	m.Read()
@@ -342,7 +343,7 @@ func (m *Model) Reload() {
 	}
 	m.selected = ""
 	m.titleText = ""
-	m.titleEditing, m.titleFresh = false, 0
+	m.focusTitle = false
 	m.blocks, m.lines = nil, nil
 	m.doc = text.NewEditor("")
 	m.history = nil
@@ -431,6 +432,10 @@ func (m *Model) View(c ui.C) {
 	}
 	m.settleSplit()
 	ui.Row(c).Grow(1).FillWidth().Children(func() {
+		if m.railHidden {
+			m.detail(c)
+			return
+		}
 		m.rail(c)
 		// The splitter is the column's edge: one hairline that the pointer can
 		// drag, instead of a fixed width and a divider.
@@ -500,6 +505,18 @@ func (m *Model) rail(c ui.C) {
 	})
 }
 
+// toggleRail shows or hides the tree column, and remembers which the workspace
+// was left in.
+func (m *Model) toggleRail() {
+	m.railHidden = !m.railHidden
+	if m.repo == nil {
+		return
+	}
+	if err := m.repo.SetNoteRailHidden(context.Background(), m.railHidden); err != nil {
+		m.report(err)
+	}
+}
+
 // toggleSearch shows or hides the title search under the toolbar. Hiding it
 // clears the query too, so the tree never stays filtered by a field the user
 // cannot see.
@@ -549,23 +566,24 @@ func (m *Model) settleSplit() {
 // icons with the appearance toggle's hover and press, not outlined buttons.
 func (m *Model) toolbar(c ui.C) {
 	ui.Row(c).Gap(2).Shrink(0).Children(func() {
-		search := m.toolButton(c, "搜索笔记", icons.Search, m.toggleSearch)
+		search := m.iconButton(c, "搜索笔记", icons.Search, m.toggleSearch)
 		if m.searchOpen {
 			// The command holds the field open, so it reads as on.
 			search.Background(state.Selected(*c.Theme()))
 		}
-		m.toolButton(c, "新建笔记", icons.SquarePen, m.createNote)
-		m.toolButton(c, "新建文件夹", icons.FolderPlus, m.openCreateFolder)
+		m.iconButton(c, "新建笔记", icons.SquarePen, m.createNote)
+		m.iconButton(c, "新建文件夹", icons.FolderPlus, m.openCreateFolder)
 		label, icon := "展开全部", icons.ListTree
 		if m.allExpanded() {
 			label, icon = "收起全部", icons.ListX
 		}
-		m.toolButton(c, label, icon, m.toggleExpandAll)
+		m.iconButton(c, label, icon, m.toggleExpandAll)
 	})
 }
 
-// toolButton is one command of the toolbar.
-func (m *Model) toolButton(c ui.C, label string, icon gfx.Icon, action func()) ui.Box {
+// iconButton is one bare icon command of the page: the toolbar's four and the
+// band's panel button.
+func (m *Model) iconButton(c ui.C, label string, icon gfx.Icon, action func()) ui.Box {
 	theme := c.Theme()
 	button := ui.ButtonBase(c, label).Size(28, 28).
 		Radius(theme.Metrics.RadiusControl).
@@ -879,8 +897,14 @@ func (m *Model) moveRow(from, parent string, position int) {
 // with its title where a document's title belongs.
 func (m *Model) detail(c ui.C) {
 	if m.selected == "" {
+		// A hidden tree leaves the empty state without its command, so the
+		// band comes back for the button that shows the tree again.
+		if m.railHidden {
+			layout.SectionHeader(c, layout.Inset).Children(func() { m.railButton(c) })
+			ui.Divider(c)
+		}
 		emptystate.Page(c, &icons.Note, "选择一篇笔记",
-			"在左侧文件夹上右键，选择「新建笔记」。", nil)
+			"点「新建笔记」建一篇，或在目录里选一篇已有的。", nil)
 		return
 	}
 	ui.Column(c).Grow(1).FillHeight().FillWidth().Children(func() {
@@ -894,74 +918,40 @@ func (m *Model) detail(c ui.C) {
 	})
 }
 
-// titleBar is the band: the note's title and, at the right, the draft's state.
-// The title reads as text; a press turns it into the field, Enter or a press
-// anywhere else closes it again.
+// titleBar is the band: the panel button that shows or hides the tree, the
+// note's title as a field, and at the right the draft's state. The title is
+// always the field, as the reference application has it: a title is read and
+// typed in the same place.
 func (m *Model) titleBar(c ui.C) {
-	theme := c.Theme()
-	if m.titleEditing {
-		m.titleField(c)
-		m.saveState(c)
-		return
-	}
-	c.Key("note-title")
-	name := strings.TrimSpace(m.titleText)
-	empty := name == ""
-	if empty {
-		name = domain.NoteDisplayTitle("")
-	}
-	titler := ui.Row(c).Grow(1).MinWidth(0).FillHeight().Items(ui.Center).
-		HitWith(ui.ID(c), "笔记标题", gfx.HitOptions{
-			Role: gfx.RoleButton, Value: name, Cursor: gfx.PointerCursorText,
-		})
-	if titler.Clicked() {
-		m.beginTitle()
-	}
-	titler.Children(func() {
-		label := typography.Section(c, name).MaxLines(1).Ellipsis().Shrink(1).MinWidth(0)
-		if empty {
-			label = label.Color(theme.MutedForeground)
-		}
-	})
+	m.railButton(c)
+	m.titleField(c)
 	m.saveState(c)
 }
 
-// titleField is the title while it is being edited: the note's one text field,
-// so a title is typed, selected and pasted like any other field. It takes the
-// keyboard the first time it is painted and gives it back when the user goes
-// elsewhere.
+// railButton shows or hides the tree column. It lives in the band rather than
+// the tree, so it is still there to bring the tree back.
+func (m *Model) railButton(c ui.C) {
+	label := "隐藏目录"
+	if m.railHidden {
+		label = "显示目录"
+	}
+	m.iconButton(c, label, icons.PanelLeft, m.toggleRail)
+}
+
+// titleField is the note's title, one field the band always shows.
 func (m *Model) titleField(c ui.C) {
-	c.Key("note-title-field")
+	c.Key("note-title")
 	m.titleID = ui.ID(c)
 	field := ui.TextFieldID(c, m.titleID, &m.title, "笔记标题", "未命名笔记").
-		FontSize(typography.SizeSection).Weight(gfx.WeightBold).Grow(1).MinWidth(0).AutoFocus()
-	switch {
-	case field.Submitted():
-		m.commitTitle()
-		c.Canvas().RequestFocus(m.bodyKey)
-	case m.titleFresh > 0:
-		// The field asked for the keyboard this paint; the platform answers
-		// after it.
-		m.titleFresh--
-	case c.Canvas().Focused() != m.titleID:
-		m.commitTitle()
+		FontSize(typography.SizeSection).Weight(gfx.WeightBold).Grow(1).MinWidth(0)
+	if m.focusTitle {
+		c.Canvas().RequestFocus(m.titleID)
+		m.focusTitle = false
 	}
-}
-
-// beginTitle turns the title into its field.
-func (m *Model) beginTitle() {
-	m.titleEditing = true
-	m.titleFresh = titleFreshPaints
-}
-
-// commitTitle closes the field. The text is already the page's — noticeEdits
-// reads it every frame — so closing only writes the draft now instead of after
-// the pause.
-func (m *Model) commitTitle() {
-	m.titleEditing = false
-	m.titleFresh = 0
-	if m.dirty {
-		m.flush()
+	if field.Submitted() {
+		// Enter in the title goes on in the body, the way a document's title
+		// leads into its text.
+		c.Canvas().RequestFocus(m.bodyKey)
 	}
 }
 
@@ -1074,7 +1064,7 @@ func (m *Model) openNote(id string) {
 	m.node = id
 	m.titleText = note.Node.Title
 	m.title.SetText(m.titleText)
-	m.titleEditing, m.titleFresh = false, 0
+	m.focusTitle = false
 	m.loadBlocks(note.Blocks)
 	m.history = nil
 	m.phase, m.dirty = saveSaved, false
@@ -1142,8 +1132,7 @@ func (m *Model) createNote() {
 	m.Read()
 	m.node = node.ID
 	m.openNote(node.ID)
-	m.titleEditing = true
-	m.titleFresh = titleFreshPaints
+	m.focusTitle = true
 	m.rebuildRows()
 }
 
@@ -1300,7 +1289,7 @@ func (m *Model) confirmDelete() {
 	if m.selected != "" && containsString(deleted.NoteIDs, m.selected) {
 		m.selected = ""
 		m.titleText = ""
-		m.titleEditing, m.titleFresh = false, 0
+		m.focusTitle = false
 		m.blocks, m.lines = nil, nil
 		m.doc = text.NewEditor("")
 		m.history = nil
