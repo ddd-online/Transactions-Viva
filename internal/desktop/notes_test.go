@@ -503,10 +503,10 @@ func TestNotesSplitterResizesTheRail(t *testing.T) {
 	}
 }
 
-// TestNotesToolbarSearchFocusesTheFilter presses 搜索笔记 instead of the field:
-// the keyboard lands in the filter at the foot of the column, so what is typed
-// filters the tree.
-func TestNotesToolbarSearchFocusesTheFilter(t *testing.T) {
+// TestNotesToolbarSearchTogglesTheField presses 搜索笔记 instead of the field:
+// the field appears under the toolbar with the keyboard in it, and a second
+// press hides it and clears what it held.
+func TestNotesToolbarSearchTogglesTheField(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "笔记")
 	createNote(t, driver)
@@ -527,7 +527,35 @@ func TestNotesToolbarSearchFocusesTheFilter(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !hasControl(driver, "笔记 周报") || hasControl(driver, "笔记 月报") {
-		t.Fatal("搜索笔记 should put the keyboard in the filter")
+		t.Fatal("搜索笔记 should open the field with the keyboard in it")
+	}
+	click(t, driver, "搜索笔记")
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	if hasControl(driver, "过滤笔记") {
+		t.Fatal("the second press should hide the field")
+	}
+	if !hasControl(driver, "笔记 周报") || !hasControl(driver, "笔记 月报") {
+		t.Fatal("hiding the field should clear the query")
+	}
+
+	// Escape is the other way out, and it clears the query too.
+	click(t, driver, "搜索笔记")
+	if err := driver.Type("周"); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Key(gfx.KeyEscape, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	if hasControl(driver, "过滤笔记") {
+		t.Fatal("Escape should hide the field")
+	}
+	if !hasControl(driver, "笔记 月报") {
+		t.Fatal("Escape should clear the query")
 	}
 	_ = model
 }
@@ -579,7 +607,8 @@ func TestNotesToolbarCollapsesAndExpands(t *testing.T) {
 	}
 }
 
-// TestNotesFilterShowsTheMatchingNotes filters the tree by title.
+// TestNotesFilterShowsTheMatchingNotes filters the tree by title: 搜索笔记 opens
+// the field, and what is typed keeps only the matching notes.
 func TestNotesFilterShowsTheMatchingNotes(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "笔记")
@@ -593,7 +622,7 @@ func TestNotesFilterShowsTheMatchingNotes(t *testing.T) {
 		t.Fatal(err)
 	}
 	advance(t, driver)
-	click(t, driver, "过滤笔记")
+	click(t, driver, "搜索笔记")
 	if err := driver.Type("周"); err != nil {
 		t.Fatal(err)
 	}

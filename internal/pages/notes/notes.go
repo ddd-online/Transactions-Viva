@@ -121,12 +121,13 @@ type Model struct {
 	node     string
 	selected string
 
-	// filter is the title filter at the foot of the column: filterText is what
-	// it holds, filterID its identity, and findFocus asks the next paint to put
-	// the keyboard in it, which is what 搜索笔记 does.
+	// filter is the title search: filterText is what it holds and filterID its
+	// identity. searchOpen says whether the toolbar's 搜索笔记 has it showing,
+	// and findFocus asks the paint that shows it to put the keyboard in it.
 	filter     ui.Field
 	filterText string
 	filterID   gfx.ID
+	searchOpen bool
 	findFocus  bool
 
 	// split is the divider between the tree and the note: Pos is the tree's
@@ -271,6 +272,9 @@ func (m *Model) SetDataSource(repo repository.NotesRepository) {
 	m.expanded = map[string]bool{}
 	m.rowKeys = map[string]int{}
 	m.nextRowKey = 0
+	m.searchOpen, m.findFocus = false, false
+	m.filterText = ""
+	m.filter.SetText("")
 	m.tree = ui.TreeState{}
 	m.rowMenu = rowMenuState{}
 	m.bindTree()
@@ -437,8 +441,7 @@ func (m *Model) View(c ui.C) {
 }
 
 // rail is the tree column: the section's title and count with its four
-// commands, the tree, and the title filter pinned at the foot where it belongs
-// to the list it filters.
+// commands, the title search under them while 搜索笔记 has it open, and the tree.
 func (m *Model) rail(c ui.C) {
 	text := strings.TrimSpace(m.filter.Text())
 	if text != m.filterText {
@@ -457,6 +460,26 @@ func (m *Model) rail(c ui.C) {
 			ui.Spacer(c)
 			m.toolbar(c)
 		})
+		if m.searchOpen {
+			ui.Column(c).FillWidth().PadX(layout.Inset).PadBottom(4).Children(func() {
+				c.Key("note-search")
+				m.filterID = ui.ID(c)
+				// The button that opened it painted before this field in the
+				// same pass, so the request lands on the field the pass declares.
+				if m.findFocus {
+					c.Canvas().RequestFocus(m.filterID)
+					m.findFocus = false
+				}
+				field := ui.TextFieldID(c, m.filterID, &m.filter, "过滤笔记", "搜索标题").FillWidth()
+				field.OnKey(func(event gfx.KeyEvent) gfx.EventResult {
+					if event.Key != gfx.KeyEscape {
+						return gfx.EventResult{}
+					}
+					m.closeSearch()
+					return gfx.EventResult{Handled: true, Repaint: true}
+				})
+			})
+		}
 		// The rule under the header stays; the rows begin right below it, so
 		// the header and its tree are one block with no gap between them.
 		ui.Divider(c)
@@ -468,17 +491,31 @@ func (m *Model) rail(c ui.C) {
 			}).Label("笔记列表").Grow(1)
 			m.treeChanges()
 		}
-		ui.Divider(c)
-		ui.Column(c).FillWidth().PadX(layout.Inset).PadY(8).Children(func() {
-			c.Key("note-filter")
-			m.filterID = ui.ID(c)
-			if m.findFocus {
-				c.Canvas().RequestFocus(m.filterID)
-				m.findFocus = false
-			}
-			ui.TextFieldID(c, m.filterID, &m.filter, "过滤笔记", "过滤标题").FillWidth()
-		})
 	})
+}
+
+// toggleSearch shows or hides the title search under the toolbar. Hiding it
+// clears the query too, so the tree never stays filtered by a field the user
+// cannot see.
+func (m *Model) toggleSearch() {
+	if m.searchOpen {
+		m.closeSearch()
+		return
+	}
+	m.searchOpen = true
+	m.findFocus = true
+}
+
+// closeSearch hides the field like the query it held never existed.
+func (m *Model) closeSearch() {
+	m.searchOpen = false
+	m.findFocus = false
+	m.filter.SetText("")
+	if m.filterText != "" {
+		m.filterText = ""
+		m.rowsDirty = true
+		m.rebuildRows()
+	}
 }
 
 // settleSplit writes the tree's width when the user lets go of the divider. The
@@ -506,7 +543,11 @@ func (m *Model) settleSplit() {
 // icons with the appearance toggle's hover and press, not outlined buttons.
 func (m *Model) toolbar(c ui.C) {
 	ui.Row(c).Gap(2).Shrink(0).Children(func() {
-		m.toolButton(c, "搜索笔记", icons.Search, func() { m.findFocus = true })
+		search := m.toolButton(c, "搜索笔记", icons.Search, m.toggleSearch)
+		if m.searchOpen {
+			// The command holds the field open, so it reads as on.
+			search.Background(state.Selected(*c.Theme()))
+		}
 		m.toolButton(c, "新建笔记", icons.SquarePen, m.createNote)
 		m.toolButton(c, "新建文件夹", icons.FolderPlus, m.openCreateFolder)
 		label, icon := "展开全部", icons.ListTree
@@ -518,7 +559,7 @@ func (m *Model) toolbar(c ui.C) {
 }
 
 // toolButton is one command of the toolbar.
-func (m *Model) toolButton(c ui.C, label string, icon gfx.Icon, action func()) {
+func (m *Model) toolButton(c ui.C, label string, icon gfx.Icon, action func()) ui.Box {
 	theme := c.Theme()
 	button := ui.ButtonBase(c, label).Size(28, 28).
 		Radius(theme.Metrics.RadiusControl).
@@ -532,6 +573,7 @@ func (m *Model) toolButton(c ui.C, label string, icon gfx.Icon, action func()) {
 	if button.Clicked() {
 		action()
 	}
+	return button
 }
 
 // folderIconColor and noteIconColor are what the tree's icons are painted in: a
