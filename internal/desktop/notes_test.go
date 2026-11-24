@@ -52,6 +52,37 @@ func TestNotesFirstVisitCreatesTheFolder(t *testing.T) {
 	}
 }
 
+// TestNotesFolderButtonMakesAFolder presses the band's bare folder command: it
+// opens the 新建文件夹 dialog, and 确定 makes the folder in the open note's tree.
+func TestNotesFolderButtonMakesAFolder(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	click(t, driver, "新建文件夹")
+	if !shows(driver, "新建文件夹") || !hasControl(driver, "名称") {
+		t.Fatal("the folder command should open the 新建文件夹 dialog")
+	}
+	if err := driver.Type("工作"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "确定")
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	if !shows(driver, "工作") {
+		t.Fatal("the new folder should appear in the tree")
+	}
+	nodes, err := model.workspace.NoteTree(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, node := range nodes {
+		if node.Kind == domain.NoteKindFolder && node.Title == "工作" {
+			return
+		}
+	}
+	t.Fatalf("no 工作 folder in %+v", nodes)
+}
+
 // TestNotesTypesTitleAndBlocks writes a title and two text blocks, waits for the
 // autosave and reads them back from the workspace.
 func TestNotesTypesTitleAndBlocks(t *testing.T) {

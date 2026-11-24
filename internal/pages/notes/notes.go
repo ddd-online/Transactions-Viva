@@ -408,10 +408,7 @@ func (m *Model) rail(c ui.C) {
 			typography.Section(c, "笔记")
 			layout.SectionCount(c, strconv.Itoa(m.noteCount))
 			ui.Spacer(c)
-			if ui.Button(c, "新建文件夹").Outline().Icon(icons.FolderPlus).IconOnly().
-				Tooltip("新建文件夹").Clicked() {
-				m.openCreateFolder()
-			}
+			m.folderButton(c)
 		})
 		// No rule and no gap between the header and the tree: the rows start
 		// right where the header ends, so the column reads as one list.
@@ -433,6 +430,25 @@ func (m *Model) rail(c ui.C) {
 			ui.TextField(c, &m.filter, "过滤笔记", "过滤标题").FillWidth()
 		})
 	})
+}
+
+// folderButton is the band's one command: a bare icon that answers hover, press
+// and focus the way the shell's appearance toggle does, instead of an outlined
+// button that would read as a form control beside the tree.
+func (m *Model) folderButton(c ui.C) {
+	theme := c.Theme()
+	button := ui.ButtonBase(c, "新建文件夹").Size(32, 32).
+		Radius(theme.Metrics.RadiusControl).
+		Hover(ui.Look{}.Background(state.Hover(*theme))).
+		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
+		Focus(ui.Look{}.Ring(2, theme.Ring)).
+		Tooltip("新建文件夹")
+	button.Children(func() {
+		ui.Icon(c, icons.FolderPlus).Size(16, 16)
+	})
+	if button.Clicked() {
+		m.openCreateFolder()
+	}
 }
 
 // rowView is one row of the tree: the chevron of a folder, the icon, the name,
@@ -897,6 +913,14 @@ func (m *Model) submitForm() {
 	m.Read()
 	m.node = folder.ID
 	m.expanded[folder.ID] = true
+	// The folder opens in view: a new folder inside a folded one would
+	// otherwise be created where the user cannot see it.
+	if parent := folder.ParentID; parent != "" && !m.expanded[parent] {
+		m.expanded[parent] = true
+		if err := m.repo.SetNoteNodeExpanded(ctx, parent, true); err != nil {
+			m.report(err)
+		}
+	}
 	m.rebuildRows()
 }
 
