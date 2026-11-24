@@ -213,6 +213,17 @@ func TestNotesImageBlockIsStored(t *testing.T) {
 	if !found {
 		t.Fatalf("no image block in %+v", note.Blocks)
 	}
+
+	// The picture gets a text block after it, and typing goes there.
+	if err := driver.Type("插图说明"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	note = noteByTitle(t, model, "配图")
+	last := note.Blocks[len(note.Blocks)-1]
+	if last.Kind != domain.NoteBlockText || last.Text != "插图说明" {
+		t.Fatalf("the text after the picture = %+v", note.Blocks)
+	}
 }
 
 // noteTextBounds finds the painted text equal to value, which locates a block or

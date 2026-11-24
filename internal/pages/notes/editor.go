@@ -675,15 +675,21 @@ func (m *Model) insertPicture(block domain.NoteBlock) {
 	}
 	empty := inLine == 0 && strings.TrimSpace(line) == "" &&
 		m.blocks[current].Kind != domain.NoteBlockImage
+	// The picture occupies a line of its own and an empty text block follows
+	// it, so the caret and the next keystroke never land on the picture.
+	end := m.blockStart(current) + len(line)
 	if empty {
 		m.blocks[current] = block
-		m.doc.MoveTo(m.bytesToRune(m.blockStart(current)), false)
-	} else {
-		at := current + 1
-		m.doc.MoveTo(m.bytesToRune(m.blockStart(current)+len(line)), false)
+		m.doc.MoveTo(m.bytesToRune(end), false)
 		m.doc.Insert("\n")
-		m.insertBlock(at, block)
-		m.doc.MoveTo(m.bytesToRune(m.blockStart(at)), false)
+		m.insertBlock(current+1, domain.NoteBlock{Kind: domain.NoteBlockText})
+		m.doc.MoveTo(m.bytesToRune(m.blockStart(current+1)), false)
+	} else {
+		m.doc.MoveTo(m.bytesToRune(end), false)
+		m.doc.Insert("\n\n")
+		m.insertBlock(current+1, block)
+		m.insertBlock(current+2, domain.NoteBlock{Kind: domain.NoteBlockText})
+		m.doc.MoveTo(m.bytesToRune(m.blockStart(current+2)), false)
 	}
 	m.syncLines()
 	m.linesDirty = false
