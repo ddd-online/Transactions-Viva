@@ -40,6 +40,12 @@ const titleFreshPaints = 2
 // treeIndent is one level of the notes tree.
 const treeIndent = 16
 
+// leafInset is how far a row without a chevron starts past the tree's own inset:
+// a branch gives its chevron 24 pixels (Viva's tree), and a note — or a folder
+// that holds nothing and so has none — takes that room and two pixels more, to
+// sit beside a folder's icon down the column instead of out-dented from it.
+const leafInset float32 = 24 + 2
+
 // railMinWidth and editorMinWidth are how far the divider between the two
 // columns may travel: the tree still fits its title and its four commands, and
 // the note keeps a measure that reads.
@@ -716,7 +722,11 @@ func (m *Model) rowContent(c ui.C, index int) {
 	}
 	// One child of the tree's row, not three: the tree spaces its row's children
 	// by GapItem, and the icon belongs to the name, one pixel from it.
-	ui.Row(c).FillWidth().Gap(1).Items(ui.Center).Children(func() {
+	inset := float32(0)
+	if !(node.Kind == domain.NoteKindFolder && len(m.children[node.ID]) > 0) {
+		inset = leafInset
+	}
+	ui.Row(c).FillWidth().PadLeft(inset).Gap(1).Items(ui.Center).Children(func() {
 		ui.Icon(c, icon).Size(15, 15).Color(color).Shrink(0)
 		typography.Body(c, m.rowName(node)).Grow(1).MinWidth(0).MaxLines(1).Ellipsis()
 
