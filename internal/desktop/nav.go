@@ -15,6 +15,7 @@ const (
 	SectionTodo
 	SectionEvents
 	SectionDiary
+	SectionNotes
 	SectionSettings
 )
 
@@ -31,6 +32,7 @@ var navSections = [...]navEntry{
 	{SectionTodo, "待办", icons.Todo},
 	{SectionEvents, "事件", icons.Events},
 	{SectionDiary, "日记", icons.Diary},
+	{SectionNotes, "笔记", icons.Note},
 }
 
 // pageTabs returns the section's second-level entries, or nil for a section
@@ -75,6 +77,8 @@ func (m *Model) closeOverlays(section Section) {
 		page = m.events
 	case SectionDiary:
 		page = m.diary
+	case SectionNotes:
+		page = m.notes
 	}
 	if closer, ok := page.(interface{ CloseOverlays() }); ok {
 		closer.CloseOverlays()
@@ -102,6 +106,11 @@ func (m *Model) openSection(section Section) {
 	}
 	if section == SectionStock && previous != section {
 		m.stock.Reload()
+	}
+	if section == SectionNotes && previous != section {
+		// Notes belong to the workspace, so entering the section rereads the
+		// tree instead of trusting what the last visit held.
+		m.notes.Reload()
 	}
 	m.closeLeft(previous, tab)
 }

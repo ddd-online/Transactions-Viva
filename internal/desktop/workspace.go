@@ -40,6 +40,7 @@ func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 		m.todo.SetRepository(nil, nil)
 		m.diary.SetDataSource(nil)
 		m.events.SetDataSource(nil)
+		m.notes.SetDataSource(nil)
 		_ = m.stock.SetRepository(nil)
 		m.stock.SetLimitService(nil)
 		if m.workspace != nil {
@@ -57,6 +58,7 @@ func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 			m.todo.SetRepository(m.workspace, m.workspace)
 			m.diary.SetDataSource(m.workspace)
 			m.events.SetDataSource(m.workspace)
+			m.notes.SetDataSource(m.workspace)
 			_ = m.stock.SetRepository(m.workspace)
 			m.stock.SetLimitService(m.stockLimitService(m.workspace))
 		}
@@ -65,6 +67,7 @@ func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 	// The 日记 page reads the same workspace and the same ledger list.
 	m.todo.SetRepository(workspace, workspace)
 	m.diary.SetDataSource(workspace)
+	m.notes.SetDataSource(workspace)
 	// Events belong to the workspace itself, so the page reads it and nothing
 	// about a ledger.
 	m.events.SetDataSource(workspace)
@@ -76,6 +79,7 @@ func (m *Model) adoptWorkspace(workspace *storepkg.Workspace) error {
 			m.todo.SetRepository(m.workspace, m.workspace)
 			m.diary.SetDataSource(m.workspace)
 			m.events.SetDataSource(m.workspace)
+			m.notes.SetDataSource(m.workspace)
 			_ = m.stock.SetRepository(m.workspace)
 			m.stock.SetLimitService(m.stockLimitService(m.workspace))
 		}

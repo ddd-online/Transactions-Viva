@@ -74,11 +74,12 @@ const (
 	FeatureKeyEvent   FeatureKey = "keyEvent"
 	FeatureDiary      FeatureKey = "diary"
 	FeatureTodo       FeatureKey = "todo"
+	FeatureNotes      FeatureKey = "notes"
 )
 
 // FeatureKeys are the features in the settings page's row order.
 var FeatureKeys = [...]FeatureKey{
-	FeatureAccounting, FeatureStock, FeatureKeyEvent, FeatureDiary, FeatureTodo,
+	FeatureAccounting, FeatureStock, FeatureKeyEvent, FeatureDiary, FeatureTodo, FeatureNotes,
 }
 
 // ErrFeatureKey is returned when a feature key is not one of FeatureKeys.
@@ -108,6 +109,8 @@ func (f FeatureFlags) Enabled(key FeatureKey) bool {
 		return f.Diary
 	case FeatureTodo:
 		return f.Todo
+	case FeatureNotes:
+		return f.Notes
 	}
 	return false
 }
@@ -125,6 +128,8 @@ func (f *FeatureFlags) set(key FeatureKey, enabled bool) bool {
 		f.Diary = enabled
 	case FeatureTodo:
 		f.Todo = enabled
+	case FeatureNotes:
+		f.Notes = enabled
 	default:
 		return false
 	}
@@ -137,13 +142,14 @@ type ProxySetting struct {
 	URL  string    `json:"url"`
 }
 
-// FeatureFlags are the five optional features. Settings always exists.
+// FeatureFlags are the six optional features. Settings always exists.
 type FeatureFlags struct {
 	Accounting bool `json:"accounting"`
 	Stock      bool `json:"stock"`
 	KeyEvent   bool `json:"keyEvent"`
 	Diary      bool `json:"diary"`
 	Todo       bool `json:"todo"`
+	Notes      bool `json:"notes"`
 }
 
 // AppConfig is everything the configuration file holds. Pointers keep "not
@@ -194,6 +200,7 @@ func DefaultFeatures() FeatureFlags {
 		KeyEvent:   true,
 		Diary:      true,
 		Todo:       true,
+		Notes:      true,
 	}
 }
 

@@ -391,6 +391,8 @@ func (s Section) feature() config.FeatureKey {
 		return config.FeatureKeyEvent
 	case SectionDiary:
 		return config.FeatureDiary
+	case SectionNotes:
+		return config.FeatureNotes
 	}
 	return ""
 }

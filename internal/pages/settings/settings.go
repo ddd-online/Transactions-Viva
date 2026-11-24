@@ -250,7 +250,7 @@ func closeBehaviorLabel(value config.CloseBehavior) string {
 	return "每次询问"
 }
 
-// featureRows are the five feature switches in the settings page's order.
+// featureRows are the six feature switches in the settings page's order.
 var featureRows = [...]struct {
 	key   config.FeatureKey
 	title string
@@ -260,6 +260,7 @@ var featureRows = [...]struct {
 	{config.FeatureTodo, "待办"},
 	{config.FeatureKeyEvent, "事件"},
 	{config.FeatureDiary, "日记"},
+	{config.FeatureNotes, "笔记"},
 }
 
 // Model is the settings page's state: the chosen section, kept while the shell

@@ -21,6 +21,7 @@ import (
 	"transactions/internal/pages/accounting/ledger"
 	"transactions/internal/pages/diary"
 	"transactions/internal/pages/events"
+	"transactions/internal/pages/notes"
 	"transactions/internal/pages/settings"
 	"transactions/internal/pages/stock"
 	"transactions/internal/pages/todo"
@@ -90,6 +91,7 @@ type Model struct {
 	todo     *todo.Model
 	events   *events.Model
 	diary    *diary.Model
+	notes    *notes.Model
 	settings *settings.Model
 	backups  *backup.Service
 
@@ -136,6 +138,7 @@ func NewWithConfig(cfg config.AppConfig, store *config.Store) *Model {
 		todo:        todo.New(),
 		events:      events.New(),
 		diary:       diary.New(),
+		notes:       notes.New(),
 		settings:    settings.New(),
 		backups:     backup.New(),
 	}
@@ -173,6 +176,7 @@ func NewWithConfig(cfg config.AppConfig, store *config.Store) *Model {
 	}
 	m.events.SetLinksOpen(cfg.KeyEventLinkedOpen)
 	m.events.SetCommands(m.eventCommands())
+	m.notes.SetCommands(m.notesCommands())
 	m.refreshTheme()
 	m.section = m.firstEnabledSection()
 	if m.section != SectionSettings {
@@ -456,6 +460,8 @@ func (m *Model) content(c ui.C) {
 				m.events.View(c)
 			case SectionDiary:
 				m.diary.View(c)
+			case SectionNotes:
+				m.notes.View(c)
 			case SectionSettings:
 				m.settings.View(c, m.settingsSpec())
 			}
