@@ -398,6 +398,21 @@ func (w *Workspace) SetNoteNodeExpanded(ctx context.Context, id string, expanded
 	return nil
 }
 
+// SetNoteFoldersExpanded opens or closes every folder at once, the way the
+// tree's 展开全部 / 收起全部 command does. It touches only folders, so a note's
+// stored state is never rewritten by it.
+func (w *Workspace) SetNoteFoldersExpanded(ctx context.Context, expanded bool) error {
+	db, err := w.dbHandle()
+	if err != nil {
+		return err
+	}
+	if _, err := db.ExecContext(ctx,
+		"UPDATE note_node SET expanded = ? WHERE kind = ?", boolInt(expanded), domain.NoteKindFolder); err != nil {
+		return fmt.Errorf("保存折叠状态失败：%w", err)
+	}
+	return nil
+}
+
 // SaveNote writes a note's title and blocks in one transaction. Blocks with an id
 // are updated in place, blocks without one are inserted, and rows the caller
 // dropped are deleted; only rows that actually changed are written, so saving a

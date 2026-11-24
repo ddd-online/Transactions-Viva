@@ -33,6 +33,8 @@ type NotesRepository interface {
 	ReorderNoteNodes(ctx context.Context, parentID string, ids []string) error
 	// SetNoteNodeExpanded stores a folder's fold state.
 	SetNoteNodeExpanded(ctx context.Context, id string, expanded bool) error
+	// SetNoteFoldersExpanded opens or closes every folder at once.
+	SetNoteFoldersExpanded(ctx context.Context, expanded bool) error
 	// SaveNote writes a note's title and blocks, assigning ids to new blocks.
 	SaveNote(ctx context.Context, note domain.Note) (domain.Note, error)
 	// LastNoteID is the note opened last, or empty.

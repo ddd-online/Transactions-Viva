@@ -247,6 +247,44 @@ func TestNotesDeleteSubtreeAndExpanded(t *testing.T) {
 	}
 }
 
+// TestNotesFoldersExpandAtOnce drives the tree's 展开全部 / 收起全部 command: one
+// statement opens or closes every folder, and a note's stored state is left as
+// it was.
+func TestNotesFoldersExpandAtOnce(t *testing.T) {
+	ctx := context.Background()
+	workspace := testWorkspace(t)
+	outer := testNoteFolder(t, workspace, "工作")
+	inner, err := workspace.CreateNoteNode(ctx, outer.ID, domain.NoteKindFolder, "归档")
+	if err != nil {
+		t.Fatalf("CreateNoteNode: %v", err)
+	}
+	if err := workspace.SetNoteFoldersExpanded(ctx, true); err != nil {
+		t.Fatalf("SetNoteFoldersExpanded(true): %v", err)
+	}
+	states := func() map[string]bool {
+		tree, err := workspace.NoteTree(ctx)
+		if err != nil {
+			t.Fatalf("NoteTree: %v", err)
+		}
+		expanded := map[string]bool{}
+		for _, node := range tree {
+			if node.Kind == domain.NoteKindFolder {
+				expanded[node.ID] = node.Expanded
+			}
+		}
+		return expanded
+	}
+	if got := states(); !got[outer.ID] || !got[inner.ID] {
+		t.Fatalf("after 展开全部 = %+v, want both folders open", got)
+	}
+	if err := workspace.SetNoteFoldersExpanded(ctx, false); err != nil {
+		t.Fatalf("SetNoteFoldersExpanded(false): %v", err)
+	}
+	if got := states(); got[outer.ID] || got[inner.ID] {
+		t.Fatalf("after 收起全部 = %+v, want both folders closed", got)
+	}
+}
+
 func TestNotesRenameAndLastNote(t *testing.T) {
 	ctx := context.Background()
 	workspace := testWorkspace(t)

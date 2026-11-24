@@ -109,8 +109,13 @@ type Model struct {
 	node     string
 	selected string
 
+	// filter is the title filter at the foot of the column: filterText is what
+	// it holds, filterID its identity, and findFocus asks the next paint to put
+	// the keyboard in it, which is what 搜索笔记 does.
 	filter     ui.Field
 	filterText string
+	filterID   gfx.ID
+	findFocus  bool
 
 	// title is the note's title. The band paints titleText as text and puts
 	// the field in place only while the title is being edited; titleID is the
@@ -393,8 +398,8 @@ func (m *Model) View(c ui.C) {
 	ui.Toasts(c, &m.toaster)
 }
 
-// rail is the tree column: the section's title and count with the create
-// command, the tree, and the title filter pinned at the foot where it belongs
+// rail is the tree column: the section's title and count with its four
+// commands, the tree, and the title filter pinned at the foot where it belongs
 // to the list it filters.
 func (m *Model) rail(c ui.C) {
 	text := strings.TrimSpace(m.filter.Text())
@@ -408,7 +413,7 @@ func (m *Model) rail(c ui.C) {
 			typography.Section(c, "笔记")
 			layout.SectionCount(c, strconv.Itoa(m.noteCount))
 			ui.Spacer(c)
-			m.folderButton(c)
+			m.toolbar(c)
 		})
 		// The rule under the header stays; the rows begin right below it, so
 		// the header and its tree are one block with no gap between them.
@@ -428,28 +433,92 @@ func (m *Model) rail(c ui.C) {
 		}
 		ui.Divider(c)
 		ui.Column(c).FillWidth().PadX(layout.Inset).PadY(8).Children(func() {
-			ui.TextField(c, &m.filter, "过滤笔记", "过滤标题").FillWidth()
+			c.Key("note-filter")
+			m.filterID = ui.ID(c)
+			if m.findFocus {
+				c.Canvas().RequestFocus(m.filterID)
+				m.findFocus = false
+			}
+			ui.TextFieldID(c, m.filterID, &m.filter, "过滤笔记", "过滤标题").FillWidth()
 		})
 	})
 }
 
-// folderButton is the band's one command: a bare icon that answers hover, press
-// and focus the way the shell's appearance toggle does, instead of an outlined
-// button that would read as a form control beside the tree.
-func (m *Model) folderButton(c ui.C) {
+// toolbar is the column's four commands, the row 参考应用 puts above its tree:
+// search, a note, a folder, and opening or closing every folder. They are bare
+// icons with the appearance toggle's hover and press, not outlined buttons.
+func (m *Model) toolbar(c ui.C) {
+	ui.Row(c).Gap(2).Shrink(0).Children(func() {
+		m.toolButton(c, "搜索笔记", icons.Search, func() { m.findFocus = true })
+		m.toolButton(c, "新建笔记", icons.SquarePen, m.createNote)
+		m.toolButton(c, "新建文件夹", icons.FolderPlus, m.openCreateFolder)
+		label, icon := "展开全部", icons.ListTree
+		if m.allExpanded() {
+			label, icon = "收起全部", icons.ListX
+		}
+		m.toolButton(c, label, icon, m.toggleExpandAll)
+	})
+}
+
+// toolButton is one command of the toolbar.
+func (m *Model) toolButton(c ui.C, label string, icon gfx.Icon, action func()) {
 	theme := c.Theme()
-	button := ui.ButtonBase(c, "新建文件夹").Size(32, 32).
+	button := ui.ButtonBase(c, label).Size(28, 28).
 		Radius(theme.Metrics.RadiusControl).
 		Hover(ui.Look{}.Background(state.Hover(*theme))).
 		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
 		Focus(ui.Look{}.Ring(2, theme.Ring)).
-		Tooltip("新建文件夹")
+		Tooltip(label)
 	button.Children(func() {
-		ui.Icon(c, icons.FolderPlus).Size(16, 16)
+		ui.Icon(c, icon).Size(15, 15)
 	})
 	if button.Clicked() {
-		m.openCreateFolder()
+		action()
 	}
+}
+
+// folderIconColor and noteIconColor are what the tree's icons are painted in: a
+// folder takes the palette's amber, the same warm tone the app already uses for
+// a hot mark, and a note the product's blue. Both come from the theme, so the
+// dark appearance keeps its own pair.
+func folderIconColor(theme *ui.Theme) gfx.Color { return theme.Chart[3] }
+func noteIconColor(theme *ui.Theme) gfx.Color   { return theme.Primary }
+
+// allExpanded reports whether every folder that holds something is open, which
+// is the state 收起全部 leaves the tree in.
+func (m *Model) allExpanded() bool {
+	found := false
+	for id, node := range m.nodes {
+		if node.Kind != domain.NoteKindFolder || len(m.children[id]) == 0 {
+			continue
+		}
+		if !m.expanded[id] {
+			return false
+		}
+		found = true
+	}
+	return found
+}
+
+// toggleExpandAll opens every folder, or closes them all when they already are
+// open. The filter opens folders on its own, so the command does nothing while
+// a query is typed.
+func (m *Model) toggleExpandAll() {
+	if m.repo == nil || m.filterText != "" {
+		return
+	}
+	expanded := !m.allExpanded()
+	if err := m.repo.SetNoteFoldersExpanded(context.Background(), expanded); err != nil {
+		m.report(err)
+		return
+	}
+	for id, node := range m.nodes {
+		if node.Kind == domain.NoteKindFolder {
+			m.expanded[id] = expanded
+		}
+	}
+	m.rowsDirty = true
+	m.rebuildRows()
 }
 
 // rowView is one row of the tree: the chevron of a folder, the icon, the name,
@@ -525,10 +594,12 @@ func (m *Model) rowView(c ui.C, row treeRow) {
 			ui.Row(c).Width(16)
 		}
 		icon := icons.Note
+		color := noteIconColor(theme)
 		if node.Kind == domain.NoteKindFolder {
 			icon = icons.Folder
+			color = folderIconColor(theme)
 		}
-		ui.Icon(c, icon).Size(15, 15).Color(theme.MutedForeground)
+		ui.Icon(c, icon).Size(15, 15).Color(color)
 		row := ui.Row(c).Grow(1).MinWidth(0).Children(func() {
 			typography.Body(c, name).MaxLines(1).Ellipsis().Shrink(1).MinWidth(0)
 		})

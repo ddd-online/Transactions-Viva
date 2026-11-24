@@ -464,6 +464,82 @@ func TestNotesRenameAndDeleteFromTheTree(t *testing.T) {
 	}
 }
 
+// TestNotesToolbarSearchFocusesTheFilter presses 搜索笔记 instead of the field:
+// the keyboard lands in the filter at the foot of the column, so what is typed
+// filters the tree.
+func TestNotesToolbarSearchFocusesTheFilter(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("周报"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	createNote(t, driver)
+	if err := driver.Type("月报"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	click(t, driver, "搜索笔记")
+	if err := driver.Type("周"); err != nil {
+		t.Fatalf("typing after 搜索笔记: %v", err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	if !hasControl(driver, "笔记 周报") || hasControl(driver, "笔记 月报") {
+		t.Fatal("搜索笔记 should put the keyboard in the filter")
+	}
+	_ = model
+}
+
+// TestNotesToolbarMakesANote presses 新建笔记: the note is created in the
+// selected folder and opens with its title ready to be typed.
+func TestNotesToolbarMakesANote(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	click(t, driver, "新建笔记")
+	if !hasControl(driver, "笔记正文") {
+		t.Fatal("新建笔记 should open the new note's body")
+	}
+	if err := driver.Type("清单"); err != nil {
+		t.Fatalf("typing the new note's title: %v", err)
+	}
+	advance(t, driver)
+	if note := noteByTitle(t, model, "清单"); note.Node.Title != "清单" {
+		t.Fatalf("stored title = %q", note.Node.Title)
+	}
+}
+
+// TestNotesToolbarCollapsesAndExpands presses 收起全部 and then 展开全部: the
+// folder's notes leave the tree and come back, and the command renames itself.
+func TestNotesToolbarCollapsesAndExpands(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("周报"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	if !hasControl(driver, "笔记 周报") {
+		t.Fatal("the note should be in the tree")
+	}
+	click(t, driver, "收起全部")
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	if hasControl(driver, "笔记 周报") {
+		t.Fatal("收起全部 should close the folder and hide its notes")
+	}
+	click(t, driver, "展开全部")
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	if !hasControl(driver, "笔记 周报") {
+		t.Fatal("展开全部 should open the folder again")
+	}
+}
+
 // TestNotesFilterShowsTheMatchingNotes filters the tree by title.
 func TestNotesFilterShowsTheMatchingNotes(t *testing.T) {
 	driver, _ := open(t)
@@ -621,12 +697,13 @@ func TestNotesImageSelectAndLightbox(t *testing.T) {
 	}
 }
 
-// createNote makes a note in the default folder through its context menu: the
-// header no longer has a create button.
+// createNote makes a note in the default folder through the folder's context
+// menu. The menu item is picked by role: the toolbar has a 新建笔记 command of
+// its own, and a click by name would find that one.
 func createNote(t *testing.T, driver *app.Driver) {
 	t.Helper()
 	clickRight(t, driver, "文件夹 我的笔记")
-	click(t, driver, "新建笔记")
+	clickRole(t, driver, "新建笔记", gfx.RoleMenuItem)
 }
 
 // insertPicture inserts a picture through the body's "/" menu, the only visible
