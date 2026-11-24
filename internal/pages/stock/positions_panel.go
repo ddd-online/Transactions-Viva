@@ -939,9 +939,7 @@ func (p *positionsPanel) dailyReadDialog(c ui.C) {
 	}
 	title := "每日复盘 · " + p.dailyRead.ReviewDate
 	ui.ModalWith(c, &p.dailyReadOpen, title, ui.ModalSpec{Width: 560}, func() {
-		ui.Scroll(c).MaxHeight(320).Children(func() {
-			positionsTextBlock(c, p.dailyRead.Review)
-		})
+		positionsTextBlock(c, p.dailyRead.Review)
 	}, func() {
 		if ui.Button(c, "关闭").Outline().Clicked() {
 			p.dailyReadOpen = false
@@ -983,9 +981,7 @@ func (p *positionsPanel) roundReadDialog(c ui.C) {
 		return
 	}
 	ui.ModalWith(c, &p.roundReadOpen, "本轮复盘", ui.ModalSpec{Width: 560}, func() {
-		ui.Scroll(c).MaxHeight(320).Children(func() {
-			positionsTextBlock(c, p.roundReadText)
-		})
+		positionsTextBlock(c, p.roundReadText)
 	}, func() {
 		if ui.Button(c, "关闭").Outline().Clicked() {
 			p.roundReadOpen = false
@@ -1008,113 +1004,111 @@ func (p *positionsPanel) tradeDialog(c ui.C) {
 	isOpen := p.tradeType == domain.TradeOpen
 
 	ui.ModalWith(c, &p.tradeOpen, title, ui.ModalSpec{Width: 640}, func() {
-		ui.Scroll(c).MaxHeight(430).PadX(layout.ClipInset).Children(func() {
-			ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
-				ui.Row(c).Gap(layout.BlockGap).Children(func() {
-					positionsFormColumn(c, "股票名称", func() {
-						if ui.TextField(c, &p.tradeName, "股票名称", "例如：浦发银行").
-							Disabled(!isOpen).Grow(1).Changed() {
-							p.tradeAutoName = ""
-						}
-					})
-					positionsFormColumn(c, "股票代码", func() {
-						if ui.TextField(c, &p.tradeCode, "股票代码", "例如：600000").
-							Disabled(!isOpen).Grow(1).Changed() {
-							if p.tradeAutoName != "" && p.tradeName == p.tradeAutoName {
-								p.tradeName = ""
-							}
-							p.tradeAutoName = ""
-							p.tradeNameKey, p.tradeNameDone = "", ""
-						}
-					})
-				})
-
-				ui.Column(c).Gap(layout.Gap).Children(func() {
-					ui.Row(c).FillWidth().Items(ui.Center).Children(func() {
-						typography.Section(c, "成交明细")
-						ui.Spacer(c)
-						if !fixedLots {
-							if ui.Button(c, "添加一笔成交").Ghost().Small().Clicked() {
-								p.tradeFills = append(p.tradeFills, positionsTradeFill{})
-							}
-						}
-					})
-					for index := range p.tradeFills {
-						index := index
-						fill := &p.tradeFills[index]
-						ui.Row(c.KeyInt(index)).Gap(layout.Gap).Items(ui.Center).Children(func() {
-							ui.TextField(c, &fill.price, "成交价（元）", "0.00").
-								Mono().Grow(1)
-							ui.TextField(c, &fill.lots, "手数", p.lotsPlaceholder()).
-								Mono().Grow(1).Disabled(fixedLots)
-							if !fixedLots && len(p.tradeFills) > 1 {
-								if ui.Button(c, "移除这笔成交").Ghost().Small().IconOnly().
-									Icon(icons.Trash2).Tooltip("移除这笔成交").Clicked() {
-									i := index
-									c.After(func() { p.removeTradeFill(i) })
-								}
-							}
-						})
+		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
+			ui.Row(c).Gap(layout.BlockGap).Children(func() {
+				positionsFormColumn(c, "股票名称", func() {
+					if ui.TextField(c, &p.tradeName, "股票名称", "例如：浦发银行").
+						Disabled(!isOpen).Grow(1).Changed() {
+						p.tradeAutoName = ""
 					}
 				})
-
-				p.tradeSummary(c)
-
-				ui.Row(c).Gap(layout.BlockGap).Children(func() {
-					positionsFormColumn(c, "委托时间", func() {
-						datepicker.Picker(c, &p.tradePick, datepicker.Spec{
-							Label: "委托时间", Start: p.tradeDate, Grain: datepicker.ByDay,
-							Fill: true, CloseOnPick: true, Viewport: c.Bounds(),
-							OnRange: func(start, _ string) { p.tradeDate = start },
-						})
-					})
-					positionsFormColumn(c, "交易标签", func() {
-						selectbox.Select(c, &p.tradeTag, p.tagChoicesWith(p.tradeTag), nil).
-							Label("交易标签")
-					})
+				positionsFormColumn(c, "股票代码", func() {
+					if ui.TextField(c, &p.tradeCode, "股票代码", "例如：600000").
+						Disabled(!isOpen).Grow(1).Changed() {
+						if p.tradeAutoName != "" && p.tradeName == p.tradeAutoName {
+							p.tradeName = ""
+						}
+						p.tradeAutoName = ""
+						p.tradeNameKey, p.tradeNameDone = "", ""
+					}
 				})
+			})
 
-				ui.Column(c).Gap(layout.Gap).Children(func() {
-					ui.Row(c).FillWidth().Items(ui.Center).Children(func() {
-						typography.Section(c, "本轮费用设置")
-						ui.Spacer(c)
-						if isOpen {
-							if ui.Button(c, "恢复系统配置").Ghost().Small().Clicked() {
-								p.tradeFee = positionsFeeFormOf(p.fee)
+			ui.Column(c).Gap(layout.Gap).Children(func() {
+				ui.Row(c).FillWidth().Items(ui.Center).Children(func() {
+					typography.Section(c, "成交明细")
+					ui.Spacer(c)
+					if !fixedLots {
+						if ui.Button(c, "添加一笔成交").Ghost().Small().Clicked() {
+							p.tradeFills = append(p.tradeFills, positionsTradeFill{})
+						}
+					}
+				})
+				for index := range p.tradeFills {
+					index := index
+					fill := &p.tradeFills[index]
+					ui.Row(c.KeyInt(index)).Gap(layout.Gap).Items(ui.Center).Children(func() {
+						ui.TextField(c, &fill.price, "成交价（元）", "0.00").
+							Mono().Grow(1)
+						ui.TextField(c, &fill.lots, "手数", p.lotsPlaceholder()).
+							Mono().Grow(1).Disabled(fixedLots)
+						if !fixedLots && len(p.tradeFills) > 1 {
+							if ui.Button(c, "移除这笔成交").Ghost().Small().IconOnly().
+								Icon(icons.Trash2).Tooltip("移除这笔成交").Clicked() {
+								i := index
+								c.After(func() { p.removeTradeFill(i) })
 							}
 						}
 					})
-					if isOpen {
-						ui.Row(c).Gap(layout.BlockGap).Children(func() {
-							positionsFormColumn(c, "佣金费率（万分之）", func() {
-								ui.TextField(c, &p.tradeFee.commission, "佣金费率（万分之）", "0").
-									Mono().Grow(1)
-							})
-							positionsFormColumn(c, "最低佣金（元/委托）", func() {
-								ui.TextField(c, &p.tradeFee.min, "最低佣金（元/委托）", "0.00").
-									Mono().Grow(1)
-							})
-						})
-						ui.Row(c).Gap(layout.BlockGap).Children(func() {
-							positionsFormColumn(c, "印花税（%）", func() {
-								ui.TextField(c, &p.tradeFee.stamp, "印花税（%）", "0").
-									Mono().Grow(1)
-							})
-							positionsFormColumn(c, "过户费（%）", func() {
-								ui.TextField(c, &p.tradeFee.transfer, "过户费（%）", "0").
-									Mono().Grow(1)
-							})
-						})
-					} else {
-						typography.Caption(c, positionsFeeText(p.roundFeeOf(p.tradeCode), p.fee)).
-							Color(c.Theme().MutedForeground)
-					}
-				})
-
-				if p.tradeError != "" {
-					typography.Caption(c, p.tradeError).Color(c.Theme().Danger)
 				}
 			})
+
+			p.tradeSummary(c)
+
+			ui.Row(c).Gap(layout.BlockGap).Children(func() {
+				positionsFormColumn(c, "委托时间", func() {
+					datepicker.Picker(c, &p.tradePick, datepicker.Spec{
+						Label: "委托时间", Start: p.tradeDate, Grain: datepicker.ByDay,
+						Fill: true, CloseOnPick: true, Viewport: c.Bounds(),
+						OnRange: func(start, _ string) { p.tradeDate = start },
+					})
+				})
+				positionsFormColumn(c, "交易标签", func() {
+					selectbox.Select(c, &p.tradeTag, p.tagChoicesWith(p.tradeTag), nil).
+						Label("交易标签")
+				})
+			})
+
+			ui.Column(c).Gap(layout.Gap).Children(func() {
+				ui.Row(c).FillWidth().Items(ui.Center).Children(func() {
+					typography.Section(c, "本轮费用设置")
+					ui.Spacer(c)
+					if isOpen {
+						if ui.Button(c, "恢复系统配置").Ghost().Small().Clicked() {
+							p.tradeFee = positionsFeeFormOf(p.fee)
+						}
+					}
+				})
+				if isOpen {
+					ui.Row(c).Gap(layout.BlockGap).Children(func() {
+						positionsFormColumn(c, "佣金费率（万分之）", func() {
+							ui.TextField(c, &p.tradeFee.commission, "佣金费率（万分之）", "0").
+								Mono().Grow(1)
+						})
+						positionsFormColumn(c, "最低佣金（元/委托）", func() {
+							ui.TextField(c, &p.tradeFee.min, "最低佣金（元/委托）", "0.00").
+								Mono().Grow(1)
+						})
+					})
+					ui.Row(c).Gap(layout.BlockGap).Children(func() {
+						positionsFormColumn(c, "印花税（%）", func() {
+							ui.TextField(c, &p.tradeFee.stamp, "印花税（%）", "0").
+								Mono().Grow(1)
+						})
+						positionsFormColumn(c, "过户费（%）", func() {
+							ui.TextField(c, &p.tradeFee.transfer, "过户费（%）", "0").
+								Mono().Grow(1)
+						})
+					})
+				} else {
+					typography.Caption(c, positionsFeeText(p.roundFeeOf(p.tradeCode), p.fee)).
+						Color(c.Theme().MutedForeground)
+				}
+			})
+
+			if p.tradeError != "" {
+				typography.Caption(c, p.tradeError).Color(c.Theme().Danger)
+			}
 		})
 	}, func() {
 		if ui.Button(c, "取消").Outline().Clicked() {

@@ -1057,9 +1057,7 @@ func (p *recordsPanel) readModal(c ui.C) {
 		return
 	}
 	ui.ModalWith(c, &p.readOpen, p.readTitle, ui.ModalSpec{Width: 560}, func() {
-		ui.Scroll(c).MaxHeight(320).Children(func() {
-			ui.Wrap(c, p.readText).FontSize(typography.SizeBody)
-		})
+		ui.Wrap(c, p.readText).FontSize(typography.SizeBody)
 	}, func() {
 		if ui.Button(c, "关闭").Outline().Clicked() {
 			p.readOpen = false

@@ -361,59 +361,51 @@ func (e *ledgerEditor) dialog(c ui.C, repo repository.StockRepository, accountID
 		title = "编辑台账"
 	}
 	levels := domain.PlanLevelsOf(e.sheet.BuyPrice, e.draft.stopLoss, e.draft.takeProfit)
-	// Keep the footer on screen at the 620 px minimum window; the body scrolls
-	// when the whole form does not fit.
-	bodyHeight := c.Bounds().Height - 300
-	if bodyHeight < 300 {
-		bodyHeight = 300
-	}
 	ui.ModalWith(c, &e.open, title, ui.ModalSpec{Width: 680}, func() {
-		ui.Scroll(c).MaxHeight(bodyHeight).PadX(layout.ClipInset).Scrollbars().Children(func() {
-			ui.Column(c).FillWidth().Gap(layout.GroupGap).Children(func() {
-				ledgerGroup(c, "买入计划", func() {
-					ledgerTextArea(c, "为什么买", &e.draft.whyBuy,
-						"当时为什么决定买这一轮")
-					ui.Row(c).FillWidth().Gap(layout.BlockGap).Items(ui.Start).Children(func() {
-						ledgerComputed(c, "买入价", ledgerOrDash(e.sheet.BuyPrice), theme.Foreground)
-						ledgerComputed(c, "买入成本", ledgerOrDash(e.sheet.BuyCost), theme.Foreground)
-						ledgerInput(c, "止损", func() {
-							ui.TextField(c, &e.draft.stopLoss, "止损", "例如：9.00").
-								Mono().Grow(1)
-						}, ledgerDeltaNote(levels.Downside), ledgerDeltaTone(theme, levels.Downside))
-						ledgerInput(c, "止盈", func() {
-							ui.TextField(c, &e.draft.takeProfit, "止盈", "例如：12.00").
-								Mono().Grow(1)
-						}, ledgerDeltaNote(levels.Upside), ledgerDeltaTone(theme, levels.Upside))
-					})
-					ledgerRatioLine(c, levels)
+		ui.Column(c).FillWidth().Gap(layout.GroupGap).Children(func() {
+			ledgerGroup(c, "买入计划", func() {
+				ledgerTextArea(c, "为什么买", &e.draft.whyBuy,
+					"当时为什么决定买这一轮")
+				ui.Row(c).FillWidth().Gap(layout.BlockGap).Items(ui.Start).Children(func() {
+					ledgerComputed(c, "买入价", ledgerOrDash(e.sheet.BuyPrice), theme.Foreground)
+					ledgerComputed(c, "买入成本", ledgerOrDash(e.sheet.BuyCost), theme.Foreground)
+					ledgerInput(c, "止损", func() {
+						ui.TextField(c, &e.draft.stopLoss, "止损", "例如：9.00").
+							Mono().Grow(1)
+					}, ledgerDeltaNote(levels.Downside), ledgerDeltaTone(theme, levels.Downside))
+					ledgerInput(c, "止盈", func() {
+						ui.TextField(c, &e.draft.takeProfit, "止盈", "例如：12.00").
+							Mono().Grow(1)
+					}, ledgerDeltaNote(levels.Upside), ledgerDeltaTone(theme, levels.Upside))
 				})
-				ledgerGroup(c, "清仓结果", func() {
-					ui.Row(c).FillWidth().Gap(layout.BlockGap).Items(ui.Start).Children(func() {
-						if !e.sheet.Closed {
-							ledgerComputed(c, "卖出价", "清仓后回填", theme.MutedForeground)
-							ledgerComputed(c, "卖出净额", "清仓后回填", theme.MutedForeground)
-							ledgerComputed(c, "净盈亏", "清仓后回填", theme.MutedForeground)
-							return
-						}
-						tone := theme.Foreground
-						if e.sheet.HasNet {
-							tone = pnlColor(*theme, e.sheet.NetCents)
-						}
-						ledgerComputed(c, "卖出价", ledgerOrDash(e.sheet.SellPrice), theme.Foreground)
-						ledgerComputed(c, "卖出净额", ledgerOrDash(e.sheet.SellNet), theme.Foreground)
-						ledgerComputed(c, "净盈亏", ledgerOrDash(e.sheet.NetPnl), tone)
-					})
-				})
-				ledgerGroup(c, "执行复盘", func() {
-					ledgerRadioGroup(c, "是否按系统执行", &e.draft.followedSystem)
-					ledgerInput(c, "一句话", func() {
-						ui.TextField(c, &e.draft.summary, "一句话", "例如：按计划执行").Grow(1)
-					}, "", theme.MutedForeground)
-				})
-				if e.err != "" {
-					typography.Caption(c, e.err).Color(theme.Danger)
-				}
+				ledgerRatioLine(c, levels)
 			})
+			ledgerGroup(c, "清仓结果", func() {
+				ui.Row(c).FillWidth().Gap(layout.BlockGap).Items(ui.Start).Children(func() {
+					if !e.sheet.Closed {
+						ledgerComputed(c, "卖出价", "清仓后回填", theme.MutedForeground)
+						ledgerComputed(c, "卖出净额", "清仓后回填", theme.MutedForeground)
+						ledgerComputed(c, "净盈亏", "清仓后回填", theme.MutedForeground)
+						return
+					}
+					tone := theme.Foreground
+					if e.sheet.HasNet {
+						tone = pnlColor(*theme, e.sheet.NetCents)
+					}
+					ledgerComputed(c, "卖出价", ledgerOrDash(e.sheet.SellPrice), theme.Foreground)
+					ledgerComputed(c, "卖出净额", ledgerOrDash(e.sheet.SellNet), theme.Foreground)
+					ledgerComputed(c, "净盈亏", ledgerOrDash(e.sheet.NetPnl), tone)
+				})
+			})
+			ledgerGroup(c, "执行复盘", func() {
+				ledgerRadioGroup(c, "是否按系统执行", &e.draft.followedSystem)
+				ledgerInput(c, "一句话", func() {
+					ui.TextField(c, &e.draft.summary, "一句话", "例如：按计划执行").Grow(1)
+				}, "", theme.MutedForeground)
+			})
+			if e.err != "" {
+				typography.Caption(c, e.err).Color(theme.Danger)
+			}
 		})
 	}, func() {
 		if ui.Button(c, "取消").Outline().Clicked() {

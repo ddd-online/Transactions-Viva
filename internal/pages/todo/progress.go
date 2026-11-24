@@ -7,7 +7,6 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
-	"transactions/internal/components/layout"
 	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
@@ -58,7 +57,7 @@ func (m *Model) progressView(c ui.C) {
 				typography.Body(c, "这条事项没有进度记录。").Muted()
 				return
 			}
-			ui.Scroll(c).Height(320).FillWidth().PadX(layout.ClipInset).Gap(2).Children(func() {
+			ui.Column(c).FillWidth().Gap(2).Children(func() {
 				deleted := false
 				for index := range panel.item.Progress {
 					if deleted {

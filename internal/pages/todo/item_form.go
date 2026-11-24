@@ -176,32 +176,30 @@ func (m *Model) themeManagerBody(c ui.C, form *itemForm) {
 		typography.Body(c, "还没有主题").Muted()
 		return
 	}
-	ui.Scroll(c).MaxHeight(320).FillWidth().Children(func() {
-		ui.Column(c).FillWidth().Gap(2).Children(func() {
-			for index := range m.cards {
-				card := &m.cards[index]
-				c.Key("theme-" + card.ID)
-				ui.Row(c).MinHeight(40).FillWidth().PadSides(0, 6, 0, 6).Gap(8).
-					Items(ui.Center).Children(func() {
-					typography.Body(c, card.Title).Grow(1).Ellipsis()
-					if form.confirmTheme == card.ID {
-						typography.Caption(c, fmt.Sprintf("%d 项会一起删除", len(card.Items))).Muted()
-						if ui.Button(c, "取消").Small().Outline().Clicked() {
-							form.confirmTheme = ""
-						}
-						if ui.Button(c, "删除").Small().Destructive().Clicked() {
-							m.deleteTheme(card.ID)
-							form.confirmTheme = ""
-						}
-						return
+	ui.Column(c).FillWidth().Gap(2).Children(func() {
+		for index := range m.cards {
+			card := &m.cards[index]
+			c.Key("theme-" + card.ID)
+			ui.Row(c).MinHeight(40).FillWidth().PadSides(0, 6, 0, 6).Gap(8).
+				Items(ui.Center).Children(func() {
+				typography.Body(c, card.Title).Grow(1).Ellipsis()
+				if form.confirmTheme == card.ID {
+					typography.Caption(c, fmt.Sprintf("%d 项会一起删除", len(card.Items))).Muted()
+					if ui.Button(c, "取消").Small().Outline().Clicked() {
+						form.confirmTheme = ""
 					}
-					typography.Caption(c, fmt.Sprintf("%d 项", len(card.Items))).Mono().Muted()
-					if ui.Button(c, "删除").Small().DestructiveOutline().Clicked() {
-						form.confirmTheme = card.ID
+					if ui.Button(c, "删除").Small().Destructive().Clicked() {
+						m.deleteTheme(card.ID)
+						form.confirmTheme = ""
 					}
-				})
-			}
-		})
+					return
+				}
+				typography.Caption(c, fmt.Sprintf("%d 项", len(card.Items))).Mono().Muted()
+				if ui.Button(c, "删除").Small().DestructiveOutline().Clicked() {
+					form.confirmTheme = card.ID
+				}
+			})
+		}
 	})
 }
 

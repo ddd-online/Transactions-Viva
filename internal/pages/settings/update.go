@@ -271,21 +271,19 @@ func (m *Model) updateNotesModal(c ui.C) {
 		title += " · v" + m.updateRelease.Version
 	}
 	ui.ModalWith(c, &m.updateNotesOpen, title, ui.ModalSpec{Width: 640}, func() {
+		blocks := releaseBlocks(m.updateRelease.Body)
+		if len(blocks) == 0 {
+			typography.Body(c, "这次发布没有填写更新内容。").Muted()
+			return
+		}
 		ui.Column(c).FillWidth().Gap(8).Children(func() {
-			blocks := releaseBlocks(m.updateRelease.Body)
-			if len(blocks) == 0 {
-				typography.Body(c, "这次发布没有填写更新内容。").Muted()
-				return
-			}
-			ui.Scroll(c).Height(380).FillWidth().Gap(8).Children(func() {
-				for _, block := range blocks {
-					if block.heading {
-						typography.BodyStrong(c, block.text)
-					} else {
-						ui.Wrap(c, block.text)
-					}
+			for _, block := range blocks {
+				if block.heading {
+					typography.BodyStrong(c, block.text)
+				} else {
+					ui.Wrap(c, block.text)
 				}
-			})
+			}
 		})
 	}, func() {
 		if ui.Button(c, "关闭").Outline().Clicked() {

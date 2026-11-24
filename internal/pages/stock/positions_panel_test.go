@@ -132,12 +132,11 @@ func TestPositionsPanelRendersAndSaves(t *testing.T) {
 	}
 }
 
-// TestTradeDialogKeepsItsFieldsOffTheScrollClip measures the 委托 form: its two
-// fields span the dialog's body less one ClipInset on each side. A field that
-// starts exactly on the edge of the area that scrolls the form has its hairline
-// border on that edge, where the window does not paint it, so the form would show
-// without a left border.
-func TestTradeDialogKeepsItsFieldsOffTheScrollClip(t *testing.T) {
+// TestTradeDialogGrowsWithItsForm measures the 委托 form: the dialog is as tall
+// as the form it holds, so the form never scrolls. The two name fields span the
+// dialog's body exactly, and a fill row the user adds moves the footer down by
+// that row instead of scrolling the form inside a fixed body.
+func TestTradeDialogGrowsWithItsForm(t *testing.T) {
 	fixture := storetest.Open(t)
 	account, err := fixture.Workspace.CreateStockAccount(context.Background(), "主账户", "")
 	if err != nil {
@@ -148,7 +147,7 @@ func TestTradeDialogKeepsItsFieldsOffTheScrollClip(t *testing.T) {
 	panel := newPositionsPanel(accounts, nil)
 	panel.toaster = &ui.Toaster{}
 	panel.setRepository(fixture.Workspace)
-	driver := positionsTestDriver(t, panel)
+	driver := positionsTestDriverSize(t, panel, 1413, 969)
 
 	positionsTestClick(t, driver, "建仓")
 	if !positionsTestShows(driver, "成交明细") {
@@ -156,13 +155,29 @@ func TestTradeDialogKeepsItsFieldsOffTheScrollClip(t *testing.T) {
 	}
 	name := positionsTestBounds(t, driver, "股票名称")
 	code := positionsTestBounds(t, driver, "股票代码")
-
 	metrics := gfx.DefaultMetrics()
-	// The dialog is 640 wide; its body is that less the surface padding on each
-	// side, and the form keeps one ClipInset clear of the scroll area's edges.
 	body := float32(640) - 2*(metrics.PadSurface+metrics.GapItem)
-	if got, want := code.X+code.Width-name.X, body-2*layout.ClipInset; got != want {
-		t.Fatalf("the form spans %v of the %v body; want %v, one ClipInset off each clip edge", got, body, want)
+	if got := code.X + code.Width - name.X; got != body {
+		t.Fatalf("the form spans %v of the %v body; want the full body", got, body)
+	}
+
+	fee := positionsTestBounds(t, driver, "过户费（%）")
+	footer := positionsTestBounds(t, driver, "取消")
+	if fee.Y+fee.Height > footer.Y {
+		t.Fatalf("the last fee field ends at %v over the footer at %v: the dialog clips its form", fee.Y+fee.Height, footer.Y)
+	}
+
+	// The dialog is centered, so it grows by both halves: the form runs one fill
+	// row and its gap taller between the name field and the footer.
+	span := footer.Y - name.Y
+	positionsTestClick(t, driver, "添加一笔成交")
+	grownName := positionsTestBounds(t, driver, "股票名称")
+	grown := positionsTestBounds(t, driver, "取消")
+	if want := span + metrics.ControlHeight + layout.Gap; grown.Y-grownName.Y != want {
+		t.Fatalf("the form is %v tall after a fill row; want %v, one row and its gap taller", grown.Y-grownName.Y, want)
+	}
+	if b := positionsTestBounds(t, driver, "过户费（%）"); b.Y+b.Height > grown.Y {
+		t.Fatalf("the last fee field ends at %v over the grown footer at %v", b.Y+b.Height, grown.Y)
 	}
 }
 
@@ -187,11 +202,16 @@ func positionsTestClickLast(t *testing.T, driver *app.Driver, name string) {
 
 func positionsTestDriver(t *testing.T, panel *positionsPanel) *app.Driver {
 	t.Helper()
+	return positionsTestDriverSize(t, panel, 960, 620)
+}
+
+func positionsTestDriverSize(t *testing.T, panel *positionsPanel, width, height int) *app.Driver {
+	t.Helper()
 	page := ui.NewPage(ui.PageConfig{View: func(c ui.C) {
 		panel.View(c)
 		ui.Toasts(c, panel.toaster)
 	}})
-	driver, err := app.NewDriver(ui.Configure(page, app.Config{Width: 960, Height: 620}), nil)
+	driver, err := app.NewDriver(ui.Configure(page, app.Config{Width: width, Height: height}), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
