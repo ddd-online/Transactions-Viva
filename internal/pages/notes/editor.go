@@ -238,6 +238,7 @@ func (m *Model) drawBody(d *ui.DrawContext) {
 		})
 	}
 	m.paintSlash(canvas, theme, rect)
+	m.blockView(d)
 }
 
 // paintText paints the text rows, the selection and the input method's
@@ -873,7 +874,17 @@ func (m *Model) paintSlash(canvas *gfx.Canvas, theme *ui.Theme, rect gfx.Rect) {
 // bodyPointer handles presses on pictures, on the "/" menu and on the strip
 // under the last block; text presses go to the placement.
 func (m *Model) bodyPointer(event gfx.PointerEvent) gfx.EventResult {
-	if m.selected == "" || event.Kind != gfx.PointerDown || event.Button != gfx.PointerButtonPrimary {
+	if m.selected == "" {
+		return gfx.EventResult{}
+	}
+	if result := m.blockMouse(event); result.Handled {
+		return result
+	}
+	if event.Kind == gfx.PointerMove {
+		m.hoverBlock = m.blockAtPoint(event.Y)
+		return gfx.EventResult{}
+	}
+	if event.Kind != gfx.PointerDown || event.Button != gfx.PointerButtonPrimary {
 		return gfx.EventResult{}
 	}
 	if m.slash.open {
@@ -897,6 +908,10 @@ func (m *Model) bodyPointer(event gfx.PointerEvent) gfx.EventResult {
 		}
 		y := offsetY + row.y
 		if event.Y >= y && event.Y <= y+row.height {
+			if m.selectedImage == row.block {
+				m.openLightbox(m.blocks[row.block].ImagePath)
+				return gfx.EventResult{Handled: true, Repaint: true}
+			}
 			m.selectedImage = row.block
 			return gfx.EventResult{Handled: true, Repaint: true}
 		}

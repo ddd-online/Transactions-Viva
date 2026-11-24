@@ -135,10 +135,16 @@ type Model struct {
 	dirty    bool
 	editedAt time.Duration
 
-	// drag and drop between tree rows
-	drag    ui.DragState
-	rowHit  map[gfx.ID]string
-	rowRect map[string]gfx.Rect
+	// drag and drop between tree rows, and between blocks
+	drag       ui.DragState
+	rowHit     map[gfx.ID]string
+	rowRect    map[string]gfx.Rect
+	blockDrag  ui.DragState
+	hoverBlock int
+	dragBlock  int
+	dropAfter  bool
+	blockMenu  blockMenuState
+	resize     resizeState
 
 	// pictures: the open note's decoded blocks and the lightbox's one picture
 	imageEffect    *ui.EffectState[map[string]gfx.Bitmap, noteImageKey]
@@ -197,6 +203,10 @@ func New() *Model {
 		rowRect:       map[string]gfx.Rect{},
 		noteImages:    map[string]gfx.Bitmap{},
 		selectedImage: -1,
+		hoverBlock:    -1,
+		dragBlock:     -1,
+		blockMenu:     blockMenuState{block: -1},
+		resize:        resizeState{block: -1},
 		doc:           text.NewEditor(""),
 		lightbox:      lightboxState{},
 	}
@@ -720,6 +730,12 @@ func (m *Model) createNote() {
 	if err != nil {
 		m.report(err)
 		return
+	}
+	if !m.expanded[parent] {
+		m.expanded[parent] = true
+		if err := m.repo.SetNoteNodeExpanded(context.Background(), parent, true); err != nil {
+			m.report(err)
+		}
 	}
 	m.selected = ""
 	m.Read()

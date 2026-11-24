@@ -7,8 +7,10 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/vivaui/viva/app"
 	"github.com/vivaui/viva/gfx"
 
 	"transactions/internal/domain"
@@ -211,4 +213,203 @@ func TestNotesImageBlockIsStored(t *testing.T) {
 	if !found {
 		t.Fatalf("no image block in %+v", note.Blocks)
 	}
+}
+
+// noteTextBounds finds the painted text equal to value, which locates a block or
+// a picture on the body.
+func noteTextBounds(t *testing.T, driver *app.Driver, value string) gfx.Rect {
+	t.Helper()
+	for _, label := range driver.Snapshot().Labels {
+		if label.Value == value {
+			return label.Bounds
+		}
+	}
+	t.Fatalf("no painted text %q on screen", value)
+	return gfx.Rect{}
+}
+
+// hoverBlock moves the pointer onto a block so its grip is painted.
+func hoverBlock(t *testing.T, driver *app.Driver, text string) {
+	t.Helper()
+	bounds := noteTextBounds(t, driver, text)
+	if err := driver.Move(bounds.X-16, bounds.Y+bounds.Height/2); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestNotesBlockGripConvertsAHeading uses the block grip's menu to turn a text
+// block into a heading.
+func TestNotesBlockGripConvertsAHeading(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	click(t, driver, "新建笔记")
+	if err := driver.Type("grip"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("小节"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	hoverBlock(t, driver, "小节")
+	click(t, driver, "块操作")
+	click(t, driver, "转为标题 2")
+	advance(t, driver)
+
+	note := noteByTitle(t, model, "grip")
+	if note.Blocks[0].Kind != domain.NoteBlockHeading || note.Blocks[0].Level != 2 {
+		t.Fatalf("block = %+v", note.Blocks[0])
+	}
+}
+
+// TestNotesBlockGripDragReorders drags the grip of the first block under the
+// second one.
+func TestNotesBlockGripDragReorders(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	click(t, driver, "新建笔记")
+	if err := driver.Type("drag"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("甲"); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Key(gfx.KeyEnter, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Type("乙"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	hoverBlock(t, driver, "甲")
+	var grip gfx.Rect
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == "块操作" {
+			grip = hit.Bounds
+		}
+	}
+	if grip.Width == 0 {
+		t.Fatal("the block grip was not painted")
+	}
+	second := noteTextBounds(t, driver, "乙")
+	if err := driver.Press(grip.X+grip.Width/2, grip.Y+grip.Height/2, gfx.PointerButtonPrimary); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Move(second.X+40, second.Y+second.Height-3); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Move(second.X+40, second.Y+second.Height-3); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Release(second.X+40, second.Y+second.Height-3, gfx.PointerButtonPrimary); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	note := noteByTitle(t, model, "drag")
+	if len(note.Blocks) != 2 || note.Blocks[0].Text != "乙" || note.Blocks[1].Text != "甲" {
+		t.Fatalf("blocks after drag = %+v", note.Blocks)
+	}
+}
+
+// TestNotesRenameAndDeleteFromTheTree renames a note through the tree's context
+// menu and deletes it with the confirmation.
+func TestNotesRenameAndDeleteFromTheTree(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	click(t, driver, "新建笔记")
+	if err := driver.Type("旧名"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	clickRight(t, driver, "笔记 旧名")
+	click(t, driver, "重命名")
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == "名称" && hit.Role == gfx.RoleTextField {
+			if err := driver.Click(hit.Bounds.X+hit.Bounds.Width-8, hit.Bounds.Y+hit.Bounds.Height/2); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err := driver.Type("新名"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "确定")
+	advance(t, driver)
+
+	left, err := model.workspace.NoteTree(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	renamed := ""
+	for _, node := range left {
+		if node.Kind == domain.NoteKindNote {
+			renamed = node.Title
+		}
+	}
+	if !strings.Contains(renamed, "新名") {
+		t.Fatalf("the note kept the old title %q", renamed)
+	}
+
+	clickRight(t, driver, "笔记 "+renamed)
+	click(t, driver, "删除")
+	click(t, driver, "删除")
+	advance(t, driver)
+	left, err = model.workspace.NoteTree(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, node := range left {
+		if node.Kind == domain.NoteKindNote {
+			t.Fatalf("note survived deletion: %+v", node)
+		}
+	}
+}
+
+// TestNotesFilterShowsTheMatchingNotes filters the tree by title.
+func TestNotesFilterShowsTheMatchingNotes(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "笔记")
+	click(t, driver, "新建笔记")
+	if err := driver.Type("周报"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	click(t, driver, "新建笔记")
+	if err := driver.Type("月报"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	click(t, driver, "过滤笔记")
+	if err := driver.Type("周"); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	if !hasControl(driver, "笔记 周报") || hasControl(driver, "笔记 月报") {
+		t.Fatal("the filter should keep only 周报")
+	}
+}
+
+// clickRight presses the secondary button on the control named name.
+func clickRight(t *testing.T, driver *app.Driver, name string) {
+	t.Helper()
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == name && !hit.IsLabel {
+			b := hit.Bounds
+			if err := driver.ClickButton(b.X+b.Width/2, b.Y+b.Height/2, gfx.PointerButtonSecondary); err != nil {
+				t.Fatal(err)
+			}
+			return
+		}
+	}
+	t.Fatalf("no control named %q on screen", name)
 }
