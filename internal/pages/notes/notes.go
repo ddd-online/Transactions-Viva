@@ -38,9 +38,9 @@ const treeIndent = 16
 
 // leafInset is how far a row without a chevron starts past the tree's own inset:
 // a branch gives its chevron 24 pixels (Viva's tree), and a note — or a folder
-// that holds nothing and so has none — takes that room and two pixels more, to
-// sit beside a folder's icon down the column instead of out-dented from it.
-const leafInset float32 = 24 + 2
+// that holds nothing and so has none — takes the same room, so the icons of a
+// level line up down the column.
+const leafInset float32 = 24
 
 // railMinWidth and editorMinWidth are how far the divider between the two
 // columns may travel: the tree still fits its title and its four commands, and
