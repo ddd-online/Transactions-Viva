@@ -413,14 +413,15 @@ func (m *Model) rail(c ui.C) {
 				m.openCreateFolder()
 			}
 		})
-		ui.Divider(c)
+		// No rule and no gap between the header and the tree: the rows start
+		// right where the header ends, so the column reads as one list.
 		if len(m.rows) == 0 && m.filterText != "" {
 			emptystate.Notice(c, "没有匹配的笔记")
 		} else {
 			// The rows are copied because a click may rebuild the tree under us.
 			rows := append([]treeRow(nil), m.rows...)
 			ui.Scroll(c).Grow(1).Children(func() {
-				ui.Column(c).FillWidth().PadY(4).Children(func() {
+				ui.Column(c).FillWidth().PadBottom(4).Children(func() {
 					for _, row := range rows {
 						m.rowView(c, row)
 					}
