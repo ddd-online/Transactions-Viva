@@ -523,6 +523,35 @@ var Note = gfx.Icon{
 	},
 }
 
+// notebook is a compiled vector icon.
+var Notebook = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(2.0, 6.0),
+		gfx.LineTo(6.0, 6.0),
+		gfx.MoveTo(2.0, 10.0),
+		gfx.LineTo(6.0, 10.0),
+		gfx.MoveTo(2.0, 14.0),
+		gfx.LineTo(6.0, 14.0),
+		gfx.MoveTo(2.0, 18.0),
+		gfx.LineTo(6.0, 18.0),
+		gfx.MoveTo(18.0, 2.0),
+		gfx.CubicTo(19.1046, 2.0, 20.0, 2.89543, 20.0, 4.0),
+		gfx.LineTo(20.0, 20.0),
+		gfx.CubicTo(20.0, 21.1046, 19.1046, 22.0, 18.0, 22.0),
+		gfx.LineTo(6.0, 22.0),
+		gfx.CubicTo(4.89543, 22.0, 4.0, 21.1046, 4.0, 20.0),
+		gfx.LineTo(4.0, 4.0),
+		gfx.CubicTo(4.0, 2.89543, 4.89543, 2.0, 6.0, 2.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(16.0, 2.0),
+		gfx.LineTo(16.0, 22.0),
+	},
+}
+
 // pencil is a compiled vector icon.
 var Pencil = gfx.Icon{
 	ViewBox: 24.0,

@@ -32,7 +32,7 @@ var navSections = [...]navEntry{
 	{SectionTodo, "待办", icons.Todo},
 	{SectionEvents, "事件", icons.Events},
 	{SectionDiary, "日记", icons.Diary},
-	{SectionNotes, "笔记", icons.Note},
+	{SectionNotes, "笔记", icons.Notebook},
 }
 
 // pageTabs returns the section's second-level entries, or nil for a section
