@@ -714,34 +714,37 @@ func (m *Model) rowContent(c ui.C, index int) {
 	if node.Kind == domain.NoteKindFolder {
 		icon, color = icons.Folder, folderIconColor(theme)
 	}
-	ui.Icon(c, icon).Size(15, 15).Color(color).Shrink(0)
-	ui.Row(c).Width(4)
-	typography.Body(c, m.rowName(node)).Grow(1).MinWidth(0).MaxLines(1).Ellipsis()
+	// One child of the tree's row, not three: the tree spaces its row's children
+	// by GapItem, and the icon belongs to the name, one pixel from it.
+	ui.Row(c).FillWidth().Gap(1).Items(ui.Center).Children(func() {
+		ui.Icon(c, icon).Size(15, 15).Color(color).Shrink(0)
+		typography.Body(c, m.rowName(node)).Grow(1).MinWidth(0).MaxLines(1).Ellipsis()
 
-	// The actions are quiet until the row is lit: the pointer is on it, it has
-	// the keyboard, or it is the row the menu belongs to.
-	lit := m.rowMenu.open && m.rowMenu.node == node.ID
-	if rowID := m.tree.RowID(index); !rowID.IsZero() {
-		lit = lit || c.Canvas().Hovered() == rowID || c.Canvas().FocusVisible() == rowID
-	}
-	if lit = lit || node.ID == m.selected; !lit {
-		return
-	}
-	c.Key("note-row-menu-" + node.ID)
-	button := ui.ButtonBase(c, "更多操作 "+m.rowName(node)).Size(24, 24).
-		Radius(theme.Metrics.RadiusControl).
-		Hover(ui.Look{}.Background(state.Hover(*theme))).
-		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
-		Focus(ui.Look{}.Ring(2, theme.Ring)).
-		Tooltip("更多操作").Shrink(0)
-	button.Children(func() {
-		ui.Icon(c, icons.Ellipsis).Size(15, 15).Color(theme.MutedForeground)
-	})
-	if button.Clicked() {
-		m.rowMenu = rowMenuState{open: true, node: node.ID}
-	}
-	ui.Menu(c, button, &m.rowMenu.open, func(items *ui.MenuItems) {
-		m.rowMenuItems(items, node)
+		// The actions are quiet until the row is lit: the pointer is on it, it
+		// has the keyboard, or it is the row the menu belongs to.
+		lit := m.rowMenu.open && m.rowMenu.node == node.ID
+		if rowID := m.tree.RowID(index); !rowID.IsZero() {
+			lit = lit || c.Canvas().Hovered() == rowID || c.Canvas().FocusVisible() == rowID
+		}
+		if lit = lit || node.ID == m.selected; !lit {
+			return
+		}
+		c.Key("note-row-menu-" + node.ID)
+		button := ui.ButtonBase(c, "更多操作 "+m.rowName(node)).Size(24, 24).
+			Radius(theme.Metrics.RadiusControl).
+			Hover(ui.Look{}.Background(state.Hover(*theme))).
+			Pressed(ui.Look{}.Background(state.Pressed(*theme))).
+			Focus(ui.Look{}.Ring(2, theme.Ring)).
+			Tooltip("更多操作").Shrink(0)
+		button.Children(func() {
+			ui.Icon(c, icons.Ellipsis).Size(15, 15).Color(theme.MutedForeground)
+		})
+		if button.Clicked() {
+			m.rowMenu = rowMenuState{open: true, node: node.ID}
+		}
+		ui.Menu(c, button, &m.rowMenu.open, func(items *ui.MenuItems) {
+			m.rowMenuItems(items, node)
+		})
 	})
 }
 
