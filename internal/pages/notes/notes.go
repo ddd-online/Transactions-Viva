@@ -382,7 +382,6 @@ func (m *Model) rail(c ui.C) {
 	theme := c.Theme()
 	layout.Rail(c, layout.RailWidth, func(c ui.C) {
 		layout.SectionHeader(c, layout.Inset).Children(func() {
-			typography.Section(c, "笔记")
 			ui.Spacer(c)
 			if ui.Button(c, "新建笔记").Secondary().Icon(icons.Plus).Clicked() {
 				m.createNote()
@@ -487,7 +486,8 @@ func (m *Model) rowView(c ui.C, row treeRow) {
 				ui.Icon(c, icon).Size(14, 14).Color(theme.MutedForeground)
 			})
 		} else {
-			ui.Spacer(c).Width(16)
+			// A leaf keeps the chevron's room so names line up down a column.
+			ui.Row(c).Width(16)
 		}
 		icon := icons.Note
 		if node.Kind == domain.NoteKindFolder {
@@ -525,18 +525,22 @@ func (m *Model) detail(c ui.C) {
 		})
 		ui.Divider(c)
 		ui.Column(c).Grow(1).FillWidth().PadX(layout.Inset).Children(func() {
-			ui.Row(c).FillWidth().PadTop(8).PadBottom(2).Children(func() {
-				c.Key("note-title")
-				m.titleID = ui.ID(c)
-				title := ui.TextFieldID(c, m.titleID, &m.title, "笔记标题", "未命名笔记").
-					FontSize(theme.Metrics.FontSizeL).Weight(gfx.WeightSemibold).FillWidth()
-				if m.focusTitle {
-					c.Canvas().RequestFocus(m.titleID)
-					m.focusTitle = false
-				}
-				if title.Submitted() {
-					c.Canvas().RequestFocus(m.bodyKey)
-				}
+			// The title sits in the same measure as the body, so the two read
+			// down one column.
+			ui.Row(c).FillWidth().Justify(ui.Center).PadTop(8).PadBottom(2).Children(func() {
+				ui.Column(c).MaxWidth(readingWidth).Grow(1).Children(func() {
+					c.Key("note-title")
+					m.titleID = ui.ID(c)
+					title := ui.TextFieldID(c, m.titleID, &m.title, "笔记标题", "未命名笔记").
+						FontSize(theme.Metrics.FontSizeL).Weight(gfx.WeightSemibold).FillWidth()
+					if m.focusTitle {
+						c.Canvas().RequestFocus(m.titleID)
+						m.focusTitle = false
+					}
+					if title.Submitted() {
+						c.Canvas().RequestFocus(m.bodyKey)
+					}
+				})
 			})
 			m.bodyView(c)
 		})
@@ -1041,6 +1045,11 @@ func (m *Model) noticeEdits(now time.Duration) {
 	title := m.title.Text()
 	if title != m.titleText {
 		m.titleText = title
+		if node, ok := m.nodes[m.selected]; ok {
+			node.Title = domain.NoteTitle(title)
+			m.nodes[m.selected] = node
+			m.rowsDirty = true
+		}
 		m.markEdited(now)
 	}
 }
