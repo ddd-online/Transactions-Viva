@@ -37,12 +37,8 @@ const saveDelay = 600 * time.Millisecond
 // the keyboard: the platform answers its AutoFocus after the first one.
 const titleFreshPaints = 2
 
-// treeIndent is one level of the notes tree, and treeRowPad the inset before
-// the first level.
-const (
-	treeIndent = 16
-	treeRowPad = 8
-)
+// treeIndent is one level of the notes tree.
+const treeIndent = 16
 
 // railMinWidth and editorMinWidth are how far the divider between the two
 // columns may travel: the tree still fits its title and its four commands, and
@@ -76,11 +72,11 @@ type Commands struct {
 	LoadImage func(relative string, maxEdge int) (gfx.Bitmap, error)
 }
 
-// treeRow is one visible row of the tree.
+// treeRow is one visible row of the tree: the node it shows and how deep the
+// tree has it.
 type treeRow struct {
-	node   string
-	depth  int
-	branch bool
+	node  string
+	depth int
 }
 
 // nodeForm is the 新建文件夹 / 重命名 dialog.
@@ -105,13 +101,21 @@ type Model struct {
 	cmds Commands
 
 	// nodes and children are the whole tree, noteCount its notes; rows are the
-	// visible part of it, rebuilt when the tree, a fold or the filter changed.
+	// visible part of it, rebuilt when the tree, a fold or the filter changed,
+	// and tree is the Viva tree that shows them.
 	nodes     map[string]domain.NoteNode
 	noteCount int
 	children  map[string][]string
 	rows      []treeRow
 	rowsDirty bool
 	expanded  map[string]bool
+	tree      ui.TreeState
+	// rowKeys name a node's row for the tree, so a row keeps its focus and its
+	// identity while rows open and close above it. nextRowKey hands them out.
+	rowKeys    map[string]int
+	nextRowKey int
+	// rowMenu is the actions menu of one row, opened by its "…" button.
+	rowMenu rowMenuState
 	// node is the selected tree row (a folder or a note), selected the open
 	// note. They differ while a folder is selected.
 	node     string
@@ -164,13 +168,7 @@ type Model struct {
 	dirty    bool
 	editedAt time.Duration
 
-	// drag and drop between tree rows, and between blocks
-	drag       ui.DragState
-	rowHit     map[gfx.ID]string
-	rowRect    map[string]gfx.Rect
-	treeWhere  int
-	treeFrom   string
-	treeTo     string
+	// drag and drop between blocks
 	blockDrag  ui.DragState
 	hoverBlock int
 	dragBlock  int
@@ -236,8 +234,7 @@ func New() *Model {
 		nodes:         map[string]domain.NoteNode{},
 		children:      map[string][]string{},
 		expanded:      map[string]bool{},
-		rowHit:        map[gfx.ID]string{},
-		rowRect:       map[string]gfx.Rect{},
+		rowKeys:       map[string]int{},
 		noteImages:    map[string]gfx.Bitmap{},
 		selectedImage: -1,
 		hoverBlock:    -1,
@@ -248,6 +245,7 @@ func New() *Model {
 		lightbox:      lightboxState{},
 		split:         ui.SplitterState{Pos: layout.RailWidth},
 	}
+	m.bindTree()
 	m.bodyDraw = m.drawBody
 	m.bodyInput.Key = m.bodyKeyEvent
 	m.bodyInput.Pointer = m.bodyPointer
@@ -271,6 +269,11 @@ func (m *Model) SetDataSource(repo repository.NotesRepository) {
 	m.children = map[string][]string{}
 	m.rows = nil
 	m.expanded = map[string]bool{}
+	m.rowKeys = map[string]int{}
+	m.nextRowKey = 0
+	m.tree = ui.TreeState{}
+	m.rowMenu = rowMenuState{}
+	m.bindTree()
 	m.node, m.selected = "", ""
 	m.titleText = ""
 	m.titleEditing, m.titleFresh = false, 0
@@ -460,15 +463,10 @@ func (m *Model) rail(c ui.C) {
 		if len(m.rows) == 0 && m.filterText != "" {
 			emptystate.Notice(c, "没有匹配的笔记")
 		} else {
-			// The rows are copied because a click may rebuild the tree under us.
-			rows := append([]treeRow(nil), m.rows...)
-			ui.Scroll(c).Grow(1).Children(func() {
-				ui.Column(c).FillWidth().PadBottom(4).Children(func() {
-					for _, row := range rows {
-						m.rowView(c, row)
-					}
-				})
-			})
+			ui.Tree(c, &m.tree, len(m.rows), m.rowLabel, func(index int) {
+				m.rowContent(c, index)
+			}).Label("笔记列表").Grow(1)
+			m.treeChanges()
 		}
 		ui.Divider(c)
 		ui.Column(c).FillWidth().PadX(layout.Inset).PadY(8).Children(func() {
@@ -580,90 +578,245 @@ func (m *Model) toggleExpandAll() {
 	m.rebuildRows()
 }
 
-// rowView is one row of the tree: the chevron of a folder, the icon, the name,
-// its commands on a right click, and its place in a drag.
-func (m *Model) rowView(c ui.C, row treeRow) {
+// rowMenuState is the actions menu one row opened: which node it belongs to and
+// whether it is showing.
+type rowMenuState struct {
+	open bool
+	node string
+}
+
+// bindTree gives the tree the page's callbacks. Viva's tree owns the rows'
+// geometry, the chevron, the selection, the keyboard walk and the drag, so the
+// page only describes a row and answers what the user did to it.
+func (m *Model) bindTree() {
+	m.tree.Key = m.rowKey
+	m.tree.Node = m.treeNode
+	m.tree.Label = m.rowLabel
+	m.tree.RowHeight = layout.RowHeight
+	m.tree.Indent = treeIndent
+	m.tree.CanDrop = m.canDropRow
+}
+
+// rowKey is a node's row identity. The tree keeps a row's focus by this number,
+// so a node keeps the one it was given while rows open and close above it.
+func (m *Model) rowKey(index int) int {
+	if index < 0 || index >= len(m.rows) {
+		return -1
+	}
+	id := m.rows[index].node
+	if key, ok := m.rowKeys[id]; ok {
+		return key
+	}
+	m.nextRowKey++
+	m.rowKeys[id] = m.nextRowKey
+	return m.nextRowKey
+}
+
+// treeNode describes row i to the tree: how deep it is, whether it has children
+// and shows them, and whether it is the one the page has selected.
+func (m *Model) treeNode(index int) ui.TreeNode {
+	if index < 0 || index >= len(m.rows) {
+		return ui.TreeNode{}
+	}
+	row := m.rows[index]
 	node, ok := m.nodes[row.node]
+	if !ok {
+		return ui.TreeNode{}
+	}
+	folder := node.Kind == domain.NoteKindFolder
+	return ui.TreeNode{
+		Depth:    row.depth,
+		Branch:   folder && len(m.children[node.ID]) > 0,
+		Expanded: m.expanded[node.ID] || m.filterText != "",
+		Selected: node.ID == m.selected || node.ID == m.node,
+	}
+}
+
+// rowLabel is a row's accessible name, which a folder and a note spell with
+// their own word.
+func (m *Model) rowLabel(index int) string {
+	if index < 0 || index >= len(m.rows) {
+		return ""
+	}
+	node, ok := m.nodes[m.rows[index].node]
+	if !ok {
+		return ""
+	}
+	if node.Kind == domain.NoteKindFolder {
+		return "文件夹 " + m.rowName(node)
+	}
+	return "笔记 " + m.rowName(node)
+}
+
+// rowName is the name a row shows: a note without a title is 未命名笔记.
+func (m *Model) rowName(node domain.NoteNode) string {
+	if node.Kind == domain.NoteKindNote {
+		return domain.NoteDisplayTitle(node.Title)
+	}
+	return strings.TrimSpace(node.Title)
+}
+
+// rowContent declares what one row holds: the icon, the name, and the actions
+// menu's button where the row is lit. The tree owns the row itself, so the
+// chevron, the indent, the selected fill and the drop marks are its work.
+func (m *Model) rowContent(c ui.C, index int) {
+	if index < 0 || index >= len(m.rows) {
+		return
+	}
+	node, ok := m.nodes[m.rows[index].node]
 	if !ok {
 		return
 	}
 	theme := c.Theme()
-	selected := row.node == m.node || row.node == m.selected
-	name := strings.TrimSpace(node.Title)
-	if node.Kind == domain.NoteKindNote {
-		name = domain.NoteDisplayTitle(node.Title)
+	icon, color := icons.Note, noteIconColor(theme)
+	if node.Kind == domain.NoteKindFolder {
+		icon, color = icons.Folder, folderIconColor(theme)
 	}
-	c.Key("note-row-" + row.node)
-	id := ui.ID(c)
-	m.rowHit[id] = row.node
-	label := "文件夹 " + name
-	if node.Kind == domain.NoteKindNote {
-		label = "笔记 " + name
+	ui.Icon(c, icon).Size(15, 15).Color(color).Shrink(0)
+	ui.Row(c).Width(4)
+	typography.Body(c, m.rowName(node)).Grow(1).MinWidth(0).MaxLines(1).Ellipsis()
+
+	// The actions are quiet until the row is lit: the pointer is on it, it has
+	// the keyboard, or it is the row the menu belongs to.
+	lit := m.rowMenu.open && m.rowMenu.node == node.ID
+	if rowID := m.tree.RowID(index); !rowID.IsZero() {
+		lit = lit || c.Canvas().Hovered() == rowID || c.Canvas().FocusVisible() == rowID
 	}
-	box := ui.Row(c).FillWidth().MinHeight(layout.RowHeight).MaxHeight(layout.RowHeight).
-		PadLeft(treeRowPad+float32(row.depth)*treeIndent).PadRight(treeRowPad).
-		Gap(4).Items(ui.Center).
-		HitWith(id, label, gfx.HitOptions{Role: gfx.RoleOption, Selected: selected, Cursor: gfx.PointerCursorHand}).
-		Draw(func(d *ui.DrawContext) { m.rowRect[row.node] = d.Rect })
-	if selected {
-		box = box.Background(state.Selected(*theme))
-	} else {
-		box = box.Hover(ui.Look{}.Background(state.Hover(*theme)))
+	if lit = lit || node.ID == m.selected; !lit {
+		return
 	}
-	box = box.DragSource(&m.drag).DropTarget(&m.drag, m.acceptDrop, m.dropRow)
-	ui.ContextMenu(c, box, func(menu *ui.MenuItems) {
-		if node.Kind == domain.NoteKindFolder {
-			if menu.Item("新建笔记").Clicked() {
-				m.node = node.ID
-				m.createNote()
-			}
-			if menu.Item("新建文件夹").Clicked() {
-				m.openCreateFolderAt(node.ID)
-			}
-			menu.Separator()
-		}
-		if menu.Item("重命名").Clicked() {
-			m.openRename(node.ID)
-		}
-		if menu.Item("删除").Destructive().Clicked() {
-			m.askDelete(node.ID)
-		}
+	c.Key("note-row-menu-" + node.ID)
+	button := ui.ButtonBase(c, "更多操作 "+m.rowName(node)).Size(24, 24).
+		Radius(theme.Metrics.RadiusControl).
+		Hover(ui.Look{}.Background(state.Hover(*theme))).
+		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
+		Focus(ui.Look{}.Ring(2, theme.Ring)).
+		Tooltip("更多操作").Shrink(0)
+	button.Children(func() {
+		ui.Icon(c, icons.Ellipsis).Size(15, 15).Color(theme.MutedForeground)
 	})
-	if box.Clicked() {
-		m.selectNode(row.node)
+	if button.Clicked() {
+		m.rowMenu = rowMenuState{open: true, node: node.ID}
 	}
-	box.Children(func() {
-		if row.branch && node.Kind == domain.NoteKindFolder {
-			open := m.expanded[node.ID] || m.filterText != ""
-			icon := icons.ChevronRight
-			if open {
-				icon = icons.ChevronDown
-			}
-			c.Key("note-chevron-" + row.node)
-			toggler := ui.Row(c).Size(16, 16).Center().
-				HitWith(ui.ID(c), "展开或收起 "+name, gfx.HitOptions{Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand})
-			if toggler.Clicked() {
-				m.toggleFolder(node.ID)
-			}
-			toggler.Children(func() {
-				ui.Icon(c, icon).Size(14, 14).Color(theme.MutedForeground)
-			})
-		} else {
-			// A leaf keeps the chevron's room so names line up down a column.
-			ui.Row(c).Width(16)
-		}
-		icon := icons.Note
-		color := noteIconColor(theme)
-		if node.Kind == domain.NoteKindFolder {
-			icon = icons.Folder
-			color = folderIconColor(theme)
-		}
-		ui.Icon(c, icon).Size(15, 15).Color(color)
-		row := ui.Row(c).Grow(1).MinWidth(0).Children(func() {
-			typography.Body(c, name).MaxLines(1).Ellipsis().Shrink(1).MinWidth(0)
-		})
-		_ = row
+	ui.Menu(c, button, &m.rowMenu.open, func(items *ui.MenuItems) {
+		m.rowMenuItems(items, node)
 	})
+}
+
+// rowMenuItems is a row's actions: a folder makes notes and folders, both kinds
+// rename and delete.
+func (m *Model) rowMenuItems(items *ui.MenuItems, node domain.NoteNode) {
+	if node.Kind == domain.NoteKindFolder {
+		if items.Item("新建笔记").Clicked() {
+			m.node = node.ID
+			m.createNote()
+		}
+		if items.Item("新建文件夹").Clicked() {
+			m.openCreateFolderAt(node.ID)
+		}
+		items.Separator()
+	}
+	if items.Item("重命名").Clicked() {
+		m.openRename(node.ID)
+	}
+	if items.Item("删除").Destructive().Clicked() {
+		m.askDelete(node.ID)
+	}
+}
+
+// treeChanges applies what the tree reported this paint: a branch opened or
+// closed, a row chosen, or a row dropped on another. The rows it paints next
+// follow from the state set here, which the click's own repaint shows.
+func (m *Model) treeChanges() {
+	if index, ok := m.tree.Toggled(); ok {
+		if index < len(m.rows) {
+			m.toggleFolder(m.rows[index].node)
+		}
+	}
+	if index, ok := m.tree.Chosen(); ok {
+		if index < len(m.rows) {
+			m.selectNode(m.rows[index].node)
+		}
+	}
+	if move, ok := m.tree.Dropped(); ok {
+		m.applyTreeMove(move)
+	}
+}
+
+// canDropRow reports whether the tree may let row from go at where of row to.
+// A folder never lands inside itself or its own subtree, only a folder takes a
+// row into it, and a note never lands at the root, which holds folders only.
+func (m *Model) canDropRow(from, to int, where ui.TreeDrop) bool {
+	if from < 0 || to < 0 || from >= len(m.rows) || to >= len(m.rows) || from == to {
+		return false
+	}
+	source, ok := m.nodes[m.rows[from].node]
+	if !ok {
+		return false
+	}
+	target, ok := m.nodes[m.rows[to].node]
+	if !ok || m.subtreeContains(source.ID, target.ID) {
+		return false
+	}
+	if where == ui.TreeDropInside {
+		return target.Kind == domain.NoteKindFolder
+	}
+	return target.ParentID != "" || source.Kind == domain.NoteKindFolder
+}
+
+// applyTreeMove moves the dropped row where it was let go and opens the folder
+// that received it, so a row dropped into a folded folder is seen arriving.
+func (m *Model) applyTreeMove(move ui.TreeMove) {
+	if move.From < 0 || move.To < 0 || move.From >= len(m.rows) || move.To >= len(m.rows) {
+		return
+	}
+	from, to := m.rows[move.From].node, m.rows[move.To].node
+	parent := m.nodes[to].ParentID
+	if move.Where == ui.TreeDropInside {
+		parent = to
+	}
+	m.moveRow(from, parent, m.dropPosition(from, to, parent, move.Where))
+}
+
+// dropPosition is where the moved row goes among its new siblings, counted
+// without itself: the store inserts it there.
+func (m *Model) dropPosition(from, to, parent string, where ui.TreeDrop) int {
+	if where == ui.TreeDropInside {
+		return -1
+	}
+	position := 0
+	for _, id := range m.children[parent] {
+		if id == from {
+			continue
+		}
+		if id == to {
+			break
+		}
+		position++
+	}
+	if where == ui.TreeDropAfter {
+		position++
+	}
+	return position
+}
+
+// moveRow moves a node under parent at position and rereads the tree.
+func (m *Model) moveRow(from, parent string, position int) {
+	if m.repo == nil {
+		return
+	}
+	if err := m.repo.MoveNoteNode(context.Background(), from, parent, position); err != nil {
+		m.report(err)
+		return
+	}
+	m.Read()
+	if parent != "" {
+		m.expanded[parent] = true
+		if err := m.repo.SetNoteNodeExpanded(context.Background(), parent, true); err != nil {
+			m.report(err)
+		}
+	}
+	m.rebuildRows()
 }
 
 // detail is the right column: the note's band, then the block editor. The band
@@ -802,7 +955,7 @@ func (m *Model) rebuildRows() {
 			if m.filterText != "" && !visible[id] {
 				continue
 			}
-			rows = append(rows, treeRow{node: id, depth: depth, branch: len(m.children[id]) > 0})
+			rows = append(rows, treeRow{node: id, depth: depth})
 			if node.Kind != domain.NoteKindFolder {
 				continue
 			}
@@ -1102,117 +1255,6 @@ func (m *Model) confirmDelete() {
 		m.node = ""
 	}
 	m.Read()
-	m.rebuildRows()
-}
-
-// acceptDrop decides whether a dragged row may land on another.
-func (m *Model) acceptDrop(source, target gfx.ID) bool {
-	from, to := m.rowHit[source], m.rowHit[target]
-	if from == "" || to == "" {
-		return false
-	}
-	where := m.dropWhere(from, to)
-	if !m.dropAllowed(from, to, where) {
-		return false
-	}
-	// The drag state is reset before the drop callback runs, so the placement
-	// is remembered while the pointer still tells where it is.
-	m.treeFrom, m.treeTo, m.treeWhere = from, to, where
-	return true
-}
-
-// dropWhere is where a drag would land on a target: -1 above it, 0 into a
-// folder, 1 below it.
-func (m *Model) dropWhere(from, to string) int {
-	rect, ok := m.rowRect[to]
-	if !ok {
-		return 0
-	}
-	at := m.drag.At().Y
-	if m.nodes[to].Kind == domain.NoteKindFolder {
-		switch {
-		case at < rect.Y+rect.Height*0.3:
-			return -1
-		case at > rect.Y+rect.Height*0.7:
-			return 1
-		}
-		return 0
-	}
-	if at > rect.Y+rect.Height/2 {
-		return 1
-	}
-	return -1
-}
-
-// dropAllowed reports whether a drop is legal: never into itself or its own
-// subtree, never into a note, and never onto the root.
-func (m *Model) dropAllowed(from, to string, where int) bool {
-	if from == to || m.nodes[from].ID == "" || m.nodes[to].ID == "" {
-		return false
-	}
-	if m.subtreeContains(from, to) {
-		return false
-	}
-	if where == 0 {
-		return m.nodes[to].Kind == domain.NoteKindFolder
-	}
-	parent := m.nodes[to].ParentID
-	return parent != "" || m.nodes[from].Kind == domain.NoteKindFolder
-}
-
-// dropRow moves a dragged row where it was let go.
-func (m *Model) dropRow(source, target gfx.ID) {
-	from, to := m.treeFrom, m.treeTo
-	if m.repo == nil || from == "" || to == "" {
-		from, to = m.rowHit[source], m.rowHit[target]
-	}
-	m.treeFrom, m.treeTo = "", ""
-	where := m.treeWhere
-	if from == "" || to == "" || !m.dropAllowed(from, to, where) {
-		return
-	}
-	where = m.treeWhere
-	if where == 1 {
-		parent := m.nodes[to].ParentID
-		position := len(m.children[parent])
-		for index, id := range m.children[parent] {
-			if id == to {
-				position = index + 1
-				break
-			}
-		}
-		if err := m.repo.MoveNoteNode(context.Background(), from, parent, position); err != nil {
-			m.report(err)
-			return
-		}
-		m.Read()
-		if parent != "" {
-			m.expanded[parent] = true
-		}
-		m.rebuildRows()
-		return
-	}
-	parent := m.nodes[to].ParentID
-	position := 0
-	if where == 0 {
-		parent = to
-		position = -1
-	} else {
-		for index, id := range m.children[parent] {
-			if id == to {
-				position = index
-				break
-			}
-		}
-	}
-	if err := m.repo.MoveNoteNode(context.Background(), from, parent, position); err != nil {
-		m.report(err)
-		return
-	}
-	m.Read()
-	if parent != "" {
-		m.expanded[parent] = true
-	}
 	m.rebuildRows()
 }
 

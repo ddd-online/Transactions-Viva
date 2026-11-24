@@ -332,6 +332,34 @@ var Download = gfx.Icon{
 	},
 }
 
+// ellipsis is a compiled vector icon.
+var Ellipsis = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(13.0, 12.0),
+		gfx.CubicTo(13.0, 12.5523, 12.5523, 13.0, 12.0, 13.0),
+		gfx.CubicTo(11.4477, 13.0, 11.0, 12.5523, 11.0, 12.0),
+		gfx.CubicTo(11.0, 11.4477, 11.4477, 11.0, 12.0, 11.0),
+		gfx.CubicTo(12.5523, 11.0, 13.0, 11.4477, 13.0, 12.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(20.0, 12.0),
+		gfx.CubicTo(20.0, 12.5523, 19.5523, 13.0, 19.0, 13.0),
+		gfx.CubicTo(18.4477, 13.0, 18.0, 12.5523, 18.0, 12.0),
+		gfx.CubicTo(18.0, 11.4477, 18.4477, 11.0, 19.0, 11.0),
+		gfx.CubicTo(19.5523, 11.0, 20.0, 11.4477, 20.0, 12.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(6.0, 12.0),
+		gfx.CubicTo(6.0, 12.5523, 5.55228, 13.0, 5.0, 13.0),
+		gfx.CubicTo(4.44772, 13.0, 4.0, 12.5523, 4.0, 12.0),
+		gfx.CubicTo(4.0, 11.4477, 4.44772, 11.0, 5.0, 11.0),
+		gfx.CubicTo(5.55228, 11.0, 6.0, 11.4477, 6.0, 12.0),
+		gfx.ClosePath(),
+	},
+}
+
 // events is a compiled vector icon.
 var Events = gfx.Icon{
 	ViewBox: 24.0,

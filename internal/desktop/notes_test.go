@@ -410,7 +410,7 @@ func TestNotesBlockGripDragReorders(t *testing.T) {
 	}
 }
 
-// TestNotesRenameAndDeleteFromTheTree renames a note through the tree's context
+// TestNotesRenameAndDeleteFromTheTree renames a note through its row's actions
 // menu and deletes it with the confirmation.
 func TestNotesRenameAndDeleteFromTheTree(t *testing.T) {
 	driver, model := open(t)
@@ -421,7 +421,7 @@ func TestNotesRenameAndDeleteFromTheTree(t *testing.T) {
 	}
 	advance(t, driver)
 
-	clickRight(t, driver, "笔记 旧名")
+	openRowMenu(t, driver, "笔记 旧名")
 	click(t, driver, "重命名")
 	for _, hit := range driver.Snapshot().Hits {
 		if hit.Label == "名称" && hit.Role == gfx.RoleTextField {
@@ -450,7 +450,7 @@ func TestNotesRenameAndDeleteFromTheTree(t *testing.T) {
 		t.Fatalf("the note kept the old title %q", renamed)
 	}
 
-	clickRight(t, driver, "笔记 "+renamed)
+	openRowMenu(t, driver, "笔记 "+renamed)
 	click(t, driver, "删除")
 	click(t, driver, "删除")
 	advance(t, driver)
@@ -605,19 +605,19 @@ func TestNotesFilterShowsTheMatchingNotes(t *testing.T) {
 	}
 }
 
-// clickRight presses the secondary button on the control named name.
-func clickRight(t *testing.T, driver *app.Driver, name string) {
+// openRowMenu presses the actions button of the tree row named name, which the
+// row shows under the pointer: the pointer goes onto the row first, then onto
+// the button that appears at its right.
+func openRowMenu(t *testing.T, driver *app.Driver, name string) {
 	t.Helper()
-	for _, hit := range driver.Snapshot().Hits {
-		if hit.Label == name && !hit.IsLabel {
-			b := hit.Bounds
-			if err := driver.ClickButton(b.X+b.Width/2, b.Y+b.Height/2, gfx.PointerButtonSecondary); err != nil {
-				t.Fatal(err)
-			}
-			return
-		}
+	row := noteControlBounds(t, driver, name)
+	if err := driver.Move(row.X+row.Width/2, row.Y+row.Height/2); err != nil {
+		t.Fatal(err)
 	}
-	t.Fatalf("no control named %q on screen", name)
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "更多操作 "+strings.TrimPrefix(name, "笔记 "))
 }
 
 // noteControlBounds finds one control by its name.
@@ -630,6 +630,83 @@ func noteControlBounds(t *testing.T, driver *app.Driver, name string) gfx.Rect {
 	}
 	t.Fatalf("no control named %q on screen", name)
 	return gfx.Rect{}
+}
+
+// TestNotesTreeDragIntoAFolder drops a note onto a folder: the tree reports the
+// middle of a folder row as a drop into it, and the note moves there.
+func TestNotesTreeDragIntoAFolder(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("甲"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	click(t, driver, "新建文件夹")
+	if err := driver.Type("工作"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "确定")
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+
+	dragRow(t, driver, "笔记 甲", "文件夹 工作", 0.5)
+	advance(t, driver)
+	nodes, err := model.workspace.NoteTree(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	folder := ""
+	for _, node := range nodes {
+		if node.Kind == domain.NoteKindFolder && node.Title == "工作" {
+			folder = node.ID
+		}
+	}
+	if folder == "" {
+		t.Fatal("the 工作 folder is gone")
+	}
+	for _, node := range nodes {
+		if node.Kind != domain.NoteKindNote {
+			continue
+		}
+		if node.ParentID != folder {
+			t.Fatalf("the note stayed under %q, want it inside 工作", node.ParentID)
+		}
+	}
+}
+
+// TestNotesTreeKeyboardOpensANote walks the tree with the keyboard: the rows
+// take the arrows, and Enter opens the row the focus reached.
+func TestNotesTreeKeyboardOpensANote(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("甲"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	createNote(t, driver)
+	if err := driver.Type("乙"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	click(t, driver, "笔记 甲")
+	for _, key := range []gfx.Key{gfx.KeyDown, gfx.KeyEnter} {
+		if err := driver.Key(key, 0); err != nil {
+			t.Fatal(err)
+		}
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("给乙"); err != nil {
+		t.Fatalf("typing after the keyboard chose a row: %v", err)
+	}
+	advance(t, driver)
+	note := noteByTitle(t, model, "乙")
+	if len(note.Blocks) == 0 || note.Blocks[0].Text != "给乙" {
+		t.Fatalf("the keyboard opened %+v instead of 乙", note.Blocks)
+	}
 }
 
 // TestNotesTreeDragReorders drags the note 甲 below 乙 in the same folder.
@@ -675,6 +752,49 @@ func TestNotesTreeDragReorders(t *testing.T) {
 	}
 	if len(order) != 2 || order[0] != "乙" || order[1] != "甲" {
 		t.Fatalf("order after drag = %v, want [乙 甲]", order)
+	}
+
+	// Dragging down past a neighbour lands right below it, not at the end:
+	// 乙 goes between 甲 and the note made last.
+	createNote(t, driver)
+	if err := driver.Type("丙"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	dragRow(t, driver, "笔记 乙", "笔记 丙", 0.75)
+	advance(t, driver)
+	order = nil
+	nodes, err = model.workspace.NoteTree(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, node := range nodes {
+		if node.Kind == domain.NoteKindNote {
+			order = append(order, node.Title)
+		}
+	}
+	if len(order) != 3 || order[0] != "甲" || order[1] != "丙" || order[2] != "乙" {
+		t.Fatalf("order after dragging down = %v, want [甲 丙 乙]", order)
+	}
+}
+
+// dragRow drags the row named from onto the row named to, at share down that
+// row: under half drops before it, over half after it.
+func dragRow(t *testing.T, driver *app.Driver, from, to string, share float32) {
+	t.Helper()
+	source := noteControlBounds(t, driver, from)
+	target := noteControlBounds(t, driver, to)
+	x, y := target.X+target.Width/2, target.Y+target.Height*share
+	if err := driver.Press(source.X+source.Width/2, source.Y+source.Height/2, gfx.PointerButtonPrimary); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := driver.Move(x, y); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := driver.Release(x, y, gfx.PointerButtonPrimary); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -746,13 +866,11 @@ func TestNotesImageSelectAndLightbox(t *testing.T) {
 	}
 }
 
-// createNote makes a note in the default folder through the folder's context
-// menu. The menu item is picked by role: the toolbar has a 新建笔记 command of
-// its own, and a click by name would find that one.
+// createNote makes a note in the selected folder through the column's 新建笔记
+// command, which the shell's tree no longer duplicates in a row menu.
 func createNote(t *testing.T, driver *app.Driver) {
 	t.Helper()
-	clickRight(t, driver, "文件夹 我的笔记")
-	clickRole(t, driver, "新建笔记", gfx.RoleMenuItem)
+	click(t, driver, "新建笔记")
 }
 
 // insertPicture inserts a picture through the body's "/" menu, the only visible
