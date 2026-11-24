@@ -40,4 +40,8 @@ type NotesRepository interface {
 	// LastNoteID is the note opened last, or empty.
 	LastNoteID(ctx context.Context) (string, error)
 	SetLastNoteID(ctx context.Context, id string) error
+	// NoteRailWidth is the width the tree column had, or zero when it was never
+	// dragged.
+	NoteRailWidth(ctx context.Context) (float32, error)
+	SetNoteRailWidth(ctx context.Context, width float32) error
 }

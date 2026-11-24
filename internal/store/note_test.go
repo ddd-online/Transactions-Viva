@@ -326,5 +326,32 @@ func TestNotesRenameAndLastNote(t *testing.T) {
 	}
 }
 
+// TestNotesRailWidthIsRemembered stores the width the user dragged the divider
+// to: unset reads as zero, a stored width comes back, and a value that is not a
+// width reads as unset rather than as a pane of no width.
+func TestNotesRailWidthIsRemembered(t *testing.T) {
+	ctx := context.Background()
+	workspace := testWorkspace(t)
+	if got, err := workspace.NoteRailWidth(ctx); err != nil || got != 0 {
+		t.Fatalf("NoteRailWidth before any drag = %v, %v", got, err)
+	}
+	if err := workspace.SetNoteRailWidth(ctx, 342.5); err != nil {
+		t.Fatalf("SetNoteRailWidth: %v", err)
+	}
+	if got, err := workspace.NoteRailWidth(ctx); err != nil || got != 342.5 {
+		t.Fatalf("NoteRailWidth = %v, %v", got, err)
+	}
+	if err := workspace.SetNoteRailWidth(ctx, 0); err == nil {
+		t.Fatal("a zero width was stored")
+	}
+	if _, err := workspace.db.ExecContext(ctx,
+		"UPDATE app_meta SET value = 'wide' WHERE key = 'note_rail_width'"); err != nil {
+		t.Fatalf("corrupt the width: %v", err)
+	}
+	if got, err := workspace.NoteRailWidth(ctx); err != nil || got != 0 {
+		t.Fatalf("NoteRailWidth of a corrupt value = %v, %v", got, err)
+	}
+}
+
 // The store implements the page's notes contract.
 var _ repository.NotesRepository = (*Workspace)(nil)

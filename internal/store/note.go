@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"transactions/internal/domain"
@@ -554,6 +555,45 @@ func (w *Workspace) SetLastNoteID(ctx context.Context, id string) error {
 	_, err = db.ExecContext(ctx,
 		"INSERT INTO app_meta(key, value) VALUES ('last_note_id', ?) "+
 			"ON CONFLICT(key) DO UPDATE SET value = excluded.value", id)
+	return err
+}
+
+// NoteRailWidth is the width the 笔记 tree column had when the section was last
+// left, or zero when it was never dragged.
+func (w *Workspace) NoteRailWidth(ctx context.Context) (float32, error) {
+	db, err := w.dbHandle()
+	if err != nil {
+		return 0, err
+	}
+	var value string
+	err = db.QueryRowContext(ctx, "SELECT value FROM app_meta WHERE key = 'note_rail_width'").Scan(&value)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	width, err := strconv.ParseFloat(strings.TrimSpace(value), 32)
+	if err != nil || width <= 0 {
+		return 0, nil
+	}
+	return float32(width), nil
+}
+
+// SetNoteRailWidth remembers the width of the 笔记 tree column, so the split the
+// user dragged comes back with the workspace.
+func (w *Workspace) SetNoteRailWidth(ctx context.Context, width float32) error {
+	if !(width > 0) {
+		return invalidf("目录宽度无效")
+	}
+	db, err := w.dbHandle()
+	if err != nil {
+		return err
+	}
+	_, err = db.ExecContext(ctx,
+		"INSERT INTO app_meta(key, value) VALUES ('note_rail_width', ?) "+
+			"ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+		strconv.FormatFloat(float64(width), 'f', 1, 32))
 	return err
 }
 

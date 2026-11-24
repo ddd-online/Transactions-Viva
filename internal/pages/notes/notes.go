@@ -44,6 +44,14 @@ const (
 	treeRowPad = 8
 )
 
+// railMinWidth and editorMinWidth are how far the divider between the two
+// columns may travel: the tree still fits its title and its four commands, and
+// the note keeps a measure that reads.
+const (
+	railMinWidth   float32 = 240
+	editorMinWidth float32 = 420
+)
+
 // savePhase is what the header says about the draft.
 type savePhase uint8
 
@@ -116,6 +124,14 @@ type Model struct {
 	filterText string
 	filterID   gfx.ID
 	findFocus  bool
+
+	// split is the divider between the tree and the note: Pos is the tree's
+	// width, kept in pixels so a wider window gives the extra room to the note.
+	// railLoaded is true once the stored width was read, and railDragged the
+	// last paint's drag state, so the width is written when the drag ends.
+	split       ui.SplitterState
+	railLoaded  bool
+	railDragged bool
 
 	// title is the note's title. The band paints titleText as text and puts
 	// the field in place only while the title is being edited; titleID is the
@@ -230,6 +246,7 @@ func New() *Model {
 		resize:        resizeState{block: -1},
 		doc:           text.NewEditor(""),
 		lightbox:      lightboxState{},
+		split:         ui.SplitterState{Pos: layout.RailWidth},
 	}
 	m.bodyDraw = m.drawBody
 	m.bodyInput.Key = m.bodyKeyEvent
@@ -259,6 +276,10 @@ func (m *Model) SetDataSource(repo repository.NotesRepository) {
 	m.titleEditing, m.titleFresh = false, 0
 	m.phase, m.dirty = saveSaved, false
 	m.errorMessage = ""
+	// The tree's width belongs to the workspace that was open, so another one
+	// starts at the default until its own width is read.
+	m.railLoaded, m.railDragged = false, false
+	m.split.Pos = layout.RailWidth
 	m.history = nil
 	m.noteImages = map[string]gfx.Bitmap{}
 	if repo == nil {
@@ -276,6 +297,14 @@ func (m *Model) SetCommands(cmds Commands) { m.cmds = cmds }
 func (m *Model) Reload() {
 	if m.repo == nil {
 		return
+	}
+	if !m.railLoaded {
+		// The divider's width is read once, so a reload never undoes a drag the
+		// user is about to make.
+		m.railLoaded = true
+		if width, err := m.repo.NoteRailWidth(context.Background()); err == nil && width > 0 {
+			m.split.Pos = width
+		}
 	}
 	m.Read()
 	if len(m.nodes) == 0 && !m.defaultFolder {
@@ -387,9 +416,15 @@ func (m *Model) View(c ui.C) {
 			m.lightbox.loaded = true
 		}
 	}
+	m.settleSplit()
 	ui.Row(c).Grow(1).FillWidth().Children(func() {
 		m.rail(c)
-		ui.Divider(c)
+		// The splitter is the column's edge: one hairline that the pointer can
+		// drag, instead of a fixed width and a divider.
+		ui.Splitter(c, &m.split).SplitterThickness(1).Mins(railMinWidth, editorMinWidth).
+			HitWith(ui.ID(c), "调整笔记目录宽度", gfx.HitOptions{
+				Role: gfx.RoleSeparator, SkipFocus: true, Cursor: gfx.PointerCursorResizeHorizontal,
+			})
 		m.detail(c)
 	})
 	m.formDialog(c)
@@ -408,7 +443,11 @@ func (m *Model) rail(c ui.C) {
 		m.rowsDirty = true
 		m.rebuildRows()
 	}
-	layout.Rail(c, layout.RailWidth, func(c ui.C) {
+	width := m.split.Pos
+	if width <= 0 {
+		width = layout.RailWidth
+	}
+	layout.Rail(c, width, func(c ui.C) {
 		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, "笔记")
 			layout.SectionCount(c, strconv.Itoa(m.noteCount))
@@ -442,6 +481,26 @@ func (m *Model) rail(c ui.C) {
 			ui.TextFieldID(c, m.filterID, &m.filter, "过滤笔记", "过滤标题").FillWidth()
 		})
 	})
+}
+
+// settleSplit writes the tree's width when the user lets go of the divider. The
+// width is the one piece of the page's layout that belongs to the user, so it
+// goes back into the workspace and returns with it.
+func (m *Model) settleSplit() {
+	if m.split.Dragging() {
+		m.railDragged = true
+		return
+	}
+	if !m.railDragged {
+		return
+	}
+	m.railDragged = false
+	if m.repo == nil {
+		return
+	}
+	if err := m.repo.SetNoteRailWidth(context.Background(), m.split.Pos); err != nil {
+		m.report(err)
+	}
 }
 
 // toolbar is the column's four commands, the row 参考应用 puts above its tree:

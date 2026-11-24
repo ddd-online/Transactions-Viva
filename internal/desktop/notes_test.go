@@ -13,6 +13,7 @@ import (
 	"github.com/vivaui/viva/app"
 	"github.com/vivaui/viva/gfx"
 
+	"transactions/internal/components/layout"
 	"transactions/internal/domain"
 )
 
@@ -461,6 +462,44 @@ func TestNotesRenameAndDeleteFromTheTree(t *testing.T) {
 		if node.Kind == domain.NoteKindNote {
 			t.Fatalf("note survived deletion: %+v", node)
 		}
+	}
+}
+
+// TestNotesSplitterResizesTheRail drags the divider between the tree and the
+// note: the column widens, the note moves over, and the workspace remembers the
+// width the user left it at.
+func TestNotesSplitterResizesTheRail(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	before := noteControlBounds(t, driver, "笔记正文")
+	split := noteControlBounds(t, driver, "调整笔记目录宽度")
+	x, y := split.X+split.Width/2, split.Y+40
+	const step = 60
+	if err := driver.Press(x, y, gfx.PointerButtonPrimary); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := driver.Move(x+step, y); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := driver.Release(x+step, y, gfx.PointerButtonPrimary); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	after := noteControlBounds(t, driver, "笔记正文")
+	if grown := after.X - before.X; grown < step-8 || grown > step+8 {
+		t.Fatalf("the note moved %v px, want about %d", grown, step)
+	}
+	width, err := model.workspace.NoteRailWidth(context.Background())
+	if err != nil {
+		t.Fatalf("NoteRailWidth: %v", err)
+	}
+	if width < layout.RailWidth+step-8 || width > layout.RailWidth+step+8 {
+		t.Fatalf("stored rail width = %v, want about %v", width, layout.RailWidth+step)
 	}
 }
 
