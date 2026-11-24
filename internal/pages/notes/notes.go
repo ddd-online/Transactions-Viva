@@ -12,6 +12,7 @@ package notes
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"time"
 
@@ -91,9 +92,10 @@ type Model struct {
 	repo repository.NotesRepository
 	cmds Commands
 
-	// nodes and children are the whole tree; rows are the visible part of it,
-	// rebuilt when the tree, a fold or the filter changed.
+	// nodes and children are the whole tree, noteCount its notes; rows are the
+	// visible part of it, rebuilt when the tree, a fold or the filter changed.
 	nodes     map[string]domain.NoteNode
+	noteCount int
 	children  map[string][]string
 	rows      []treeRow
 	rowsDirty bool
@@ -314,6 +316,12 @@ func (m *Model) Read() {
 		m.nodes[node.ID] = node
 		m.expanded[node.ID] = node.Expanded
 	}
+	m.noteCount = 0
+	for _, node := range nodes {
+		if node.Kind == domain.NoteKindNote {
+			m.noteCount++
+		}
+	}
 	for _, node := range nodes {
 		m.children[node.ParentID] = append(m.children[node.ParentID], node.ID)
 	}
@@ -365,10 +373,12 @@ func (m *Model) View(c ui.C) {
 			m.lightbox.loaded = true
 		}
 	}
-	ui.Row(c).Grow(1).FillWidth().Children(func() {
-		m.rail(c)
-		ui.Divider(c)
-		m.detail(c)
+	layout.Page(c, m.toolbar, func(c ui.C) {
+		ui.Row(c).Grow(1).FillWidth().Children(func() {
+			m.rail(c)
+			ui.Divider(c)
+			m.detail(c)
+		})
 	})
 	m.formDialog(c)
 	m.deleteDialog(c)
@@ -376,17 +386,31 @@ func (m *Model) View(c ui.C) {
 	ui.Toasts(c, &m.toaster)
 }
 
-// rail is the tree column: its own header with the two create commands, the
-// title filter, and the tree.
+// toolbar is the page's band, as 日记's: where the selection lives on the left,
+// and the open note's save state with the insert command at the right.
+func (m *Model) toolbar(c ui.C) {
+	layout.Toolbar(c, func() {
+		m.breadcrumb(c)
+		if m.selected == "" {
+			return
+		}
+		m.saveState(c)
+		if ui.Button(c, "图片").Outline().Icon(icons.Plus).Clicked() {
+			c.After(func() { m.pickAndInsert() })
+		}
+	})
+}
+
+// rail is the tree column: the section's title and count, the create command,
+// the title filter, and the tree.
 func (m *Model) rail(c ui.C) {
-	theme := c.Theme()
 	layout.Rail(c, layout.RailWidth, func(c ui.C) {
 		layout.SectionHeader(c, layout.Inset).Children(func() {
+			typography.Section(c, "笔记")
+			layout.SectionCount(c, strconv.Itoa(m.noteCount))
 			ui.Spacer(c)
-			if ui.Button(c, "新建笔记").Secondary().Icon(icons.Plus).Clicked() {
-				m.createNote()
-			}
-			if ui.Button(c, "").Outline().Icon(icons.FolderPlus).Label("新建文件夹").Clicked() {
+			if ui.Button(c, "新建文件夹").Outline().Icon(icons.FolderPlus).IconOnly().
+				Tooltip("新建文件夹").Clicked() {
 				m.openCreateFolder()
 			}
 		})
@@ -413,7 +437,6 @@ func (m *Model) rail(c ui.C) {
 				}
 			})
 		})
-		_ = theme
 	})
 }
 
@@ -501,66 +524,57 @@ func (m *Model) rowView(c ui.C, row treeRow) {
 	})
 }
 
-// detail is the right column: the breadcrumb and save state, the title, and the
-// block editor.
+// detail is the right column: the note's title and its block editor, with no
+// band of their own — the page band above already says where the note lives and
+// whether it is saved.
 func (m *Model) detail(c ui.C) {
 	theme := c.Theme()
 	if m.selected == "" {
 		emptystate.Page(c, &icons.Note, "选择一篇笔记",
-			"在左边新建或选择一篇笔记。", func() {
-				if ui.Button(c, "新建笔记").Clicked() {
-					m.createNote()
-				}
-			})
+			"在左侧文件夹上右键，选择「新建笔记」。", nil)
 		return
 	}
-	ui.Column(c).Grow(1).FillHeight().Children(func() {
-		layout.SectionHeader(c, layout.Inset).Children(func() {
-			m.breadcrumb(c)
-			ui.Spacer(c)
-			if ui.Button(c, "图片").Outline().Icon(icons.Plus).Clicked() {
-				c.After(func() { m.pickAndInsert() })
-			}
-			m.saveState(c)
-		})
-		ui.Divider(c)
-		ui.Column(c).Grow(1).FillWidth().PadX(layout.Inset).Children(func() {
-			// The title sits in the same measure as the body, so the two read
-			// down one column.
-			ui.Row(c).FillWidth().Justify(ui.Center).PadTop(8).PadBottom(2).Children(func() {
-				ui.Column(c).MaxWidth(readingWidth).Grow(1).Children(func() {
-					c.Key("note-title")
-					m.titleID = ui.ID(c)
-					title := ui.TextFieldID(c, m.titleID, &m.title, "笔记标题", "未命名笔记").
-						FontSize(theme.Metrics.FontSizeL).Weight(gfx.WeightSemibold).FillWidth()
-					if m.focusTitle {
-						c.Canvas().RequestFocus(m.titleID)
-						m.focusTitle = false
-					}
-					if title.Submitted() {
-						c.Canvas().RequestFocus(m.bodyKey)
-					}
-				})
+	ui.Column(c).Grow(1).FillHeight().FillWidth().PadX(layout.Inset).Children(func() {
+		// The title sits in the same measure as the body, so the two read down
+		// one column.
+		ui.Row(c).FillWidth().Justify(ui.Center).PadTop(12).PadBottom(2).Children(func() {
+			ui.Column(c).MaxWidth(readingWidth).Grow(1).Children(func() {
+				c.Key("note-title")
+				m.titleID = ui.ID(c)
+				title := ui.TextFieldID(c, m.titleID, &m.title, "笔记标题", "未命名笔记").
+					FontSize(theme.Metrics.FontSizeL).Weight(gfx.WeightSemibold).FillWidth()
+				if m.focusTitle {
+					c.Canvas().RequestFocus(m.titleID)
+					m.focusTitle = false
+				}
+				if title.Submitted() {
+					c.Canvas().RequestFocus(m.bodyKey)
+				}
 			})
-			m.bodyView(c)
 		})
+		m.bodyView(c)
 	})
 }
 
-// breadcrumb is the folder path of the open note.
+// breadcrumb is where the selection lives: the open note's folders, or the
+// selected folder itself. The nearest part is in the foreground; the title
+// field below already names an open note.
 func (m *Model) breadcrumb(c ui.C) {
 	theme := c.Theme()
-	path := m.folderPath(m.selected)
-	for index, id := range path {
-		if index > 0 {
-			ui.Icon(c, icons.ChevronRight).Size(12, 12).Color(theme.MutedForeground)
+	path := m.locationPath()
+	ui.Row(c).Grow(1).MinWidth(0).Gap(6).Items(ui.Center).Children(func() {
+		for index, id := range path {
+			if index > 0 {
+				ui.Icon(c, icons.ChevronRight).Size(12, 12).Color(theme.MutedForeground)
+			}
+			color := theme.MutedForeground
+			if index == len(path)-1 {
+				color = theme.Foreground
+			}
+			typography.Body(c, strings.TrimSpace(m.nodes[id].Title)).
+				MaxLines(1).Ellipsis().Shrink(1).MinWidth(0).Color(color)
 		}
-		typography.Caption(c, strings.TrimSpace(m.nodes[id].Title))
-	}
-	if len(path) > 0 {
-		ui.Icon(c, icons.ChevronRight).Size(12, 12).Color(theme.MutedForeground)
-	}
-	typography.Caption(c, domain.NoteDisplayTitle(m.titleText)).Color(theme.Foreground)
+	})
 }
 
 // saveState is the quiet state beside the breadcrumb.
@@ -574,6 +588,19 @@ func (m *Model) saveState(c ui.C) {
 		label, color = "保存失败", theme.Danger
 	}
 	typography.Caption(c, label).Color(color)
+}
+
+// locationPath is the path the band shows: the open note's folders, or the
+// selected folder and its folders.
+func (m *Model) locationPath() []string {
+	if m.selected != "" {
+		return m.folderPath(m.selected)
+	}
+	node, ok := m.nodes[m.node]
+	if !ok || node.Kind != domain.NoteKindFolder {
+		return nil
+	}
+	return append(m.folderPath(node.ID), node.ID)
 }
 
 // folderPath lists the folders above a note, root first.

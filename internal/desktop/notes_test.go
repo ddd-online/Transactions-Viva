@@ -46,7 +46,7 @@ func TestNotesFirstVisitCreatesTheFolder(t *testing.T) {
 	if !shows(driver, "我的笔记") {
 		t.Fatal("the first visit should create the default folder")
 	}
-	click(t, driver, "新建笔记")
+	createNote(t, driver)
 	if !hasControl(driver, "笔记正文") {
 		t.Fatal("a new note should open its body editor")
 	}
@@ -57,7 +57,7 @@ func TestNotesFirstVisitCreatesTheFolder(t *testing.T) {
 func TestNotesTypesTitleAndBlocks(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "笔记")
-	click(t, driver, "新建笔记")
+	createNote(t, driver)
 	if err := driver.Type("周会"); err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestNotesTypesTitleAndBlocks(t *testing.T) {
 func TestNotesBackspaceMergesAndUndoRestores(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "笔记")
-	click(t, driver, "新建笔记")
+	createNote(t, driver)
 	if err := driver.Type("会"); err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestNotesBackspaceMergesAndUndoRestores(t *testing.T) {
 func TestNotesSlashMenuTurnsABlockIntoAHeading(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "笔记")
-	click(t, driver, "新建笔记")
+	createNote(t, driver)
 	if err := driver.Type("大纲"); err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestNotesSlashMenuTurnsABlockIntoAHeading(t *testing.T) {
 func TestNotesImageBlockIsStored(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "笔记")
-	click(t, driver, "新建笔记")
+	createNote(t, driver)
 	if err := driver.Type("配图"); err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +256,7 @@ func hoverBlock(t *testing.T, driver *app.Driver, text string) {
 func TestNotesBlockGripConvertsAHeading(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "笔记")
-	click(t, driver, "新建笔记")
+	createNote(t, driver)
 	if err := driver.Type("grip"); err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +282,7 @@ func TestNotesBlockGripConvertsAHeading(t *testing.T) {
 func TestNotesBlockGripDragReorders(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "笔记")
-	click(t, driver, "新建笔记")
+	createNote(t, driver)
 	if err := driver.Type("drag"); err != nil {
 		t.Fatal(err)
 	}
@@ -334,7 +334,7 @@ func TestNotesBlockGripDragReorders(t *testing.T) {
 func TestNotesRenameAndDeleteFromTheTree(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "笔记")
-	click(t, driver, "新建笔记")
+	createNote(t, driver)
 	if err := driver.Type("旧名"); err != nil {
 		t.Fatal(err)
 	}
@@ -388,12 +388,12 @@ func TestNotesRenameAndDeleteFromTheTree(t *testing.T) {
 func TestNotesFilterShowsTheMatchingNotes(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "笔记")
-	click(t, driver, "新建笔记")
+	createNote(t, driver)
 	if err := driver.Type("周报"); err != nil {
 		t.Fatal(err)
 	}
 	advance(t, driver)
-	click(t, driver, "新建笔记")
+	createNote(t, driver)
 	if err := driver.Type("月报"); err != nil {
 		t.Fatal(err)
 	}
@@ -441,12 +441,12 @@ func noteControlBounds(t *testing.T, driver *app.Driver, name string) gfx.Rect {
 func TestNotesTreeDragReorders(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "笔记")
-	click(t, driver, "新建笔记")
+	createNote(t, driver)
 	if err := driver.Type("甲"); err != nil {
 		t.Fatal(err)
 	}
 	advance(t, driver)
-	click(t, driver, "新建笔记")
+	createNote(t, driver)
 	if err := driver.Type("乙"); err != nil {
 		t.Fatal(err)
 	}
@@ -502,7 +502,7 @@ func TestNotesFeatureSwitchHidesTheSection(t *testing.T) {
 func TestNotesImageSelectAndLightbox(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "笔记")
-	click(t, driver, "新建笔记")
+	createNote(t, driver)
 	if err := driver.Type("看图"); err != nil {
 		t.Fatal(err)
 	}
@@ -540,4 +540,12 @@ func TestNotesImageSelectAndLightbox(t *testing.T) {
 	if !shows(driver, "笔记图片") {
 		t.Fatal("the second press should open the lightbox")
 	}
+}
+
+// createNote makes a note in the default folder through its context menu: the
+// header no longer has a create button.
+func createNote(t *testing.T, driver *app.Driver) {
+	t.Helper()
+	clickRight(t, driver, "文件夹 我的笔记")
+	click(t, driver, "新建笔记")
 }
