@@ -15,6 +15,7 @@ import (
 
 	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
+	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/icons"
 	"transactions/internal/pages/accounting/ledger"
@@ -421,11 +422,8 @@ func (m *Model) categoryRow(row ui.ListRow) {
 	if cat.count > 0 {
 		countPill(row.C, cat.count)
 	}
-	remove := ui.Button(row.C, "删除分类 "+cat.name).
-		Ghost().Icon(icons.Trash2).IconOnly().Tooltip("删除分类")
-	if remove.Clicked() {
-		m.askDeleteCategory(cat.name)
-	}
+	m.rowDelete(row, &m.categoryList, "category-delete-"+cat.name, "删除分类 "+cat.name,
+		"删除分类", func() { m.askDeleteCategory(cat.name) })
 }
 
 // tagRow declares one tag of the chosen category.
@@ -445,10 +443,44 @@ func (m *Model) tagRow(row ui.ListRow) {
 	if one.count > 0 {
 		countPill(row.C, one.count)
 	}
-	remove := ui.Button(row.C, "删除标签 "+one.name).
-		Ghost().Icon(icons.Trash2).IconOnly().Tooltip("删除标签")
-	if remove.Clicked() {
-		m.askDeleteTag(one.name)
+	m.rowDelete(row, &m.tagList, "tag-delete-"+one.name, "删除标签 "+one.name,
+		"删除标签", func() { m.askDeleteTag(one.name) })
+}
+
+// rowDeleteSize is the trailing slot of a tags row: the delete key's box while the
+// row is lit, and empty space the rest of the time, so the count pill does not
+// shift when the key appears.
+const rowDeleteSize float32 = 24
+
+// rowDelete is a list row's delete key, quiet until the row is lit — the pointer on
+// it, the keyboard on it, or the chosen row — the rule every rail here follows. The
+// key names its identity before it is declared, so moving the pointer onto the key
+// keeps the row lit: without that the row would un-hover, the key would vanish
+// under the pointer, and the click would never land.
+func (m *Model) rowDelete(row ui.ListRow, list *ui.ListState, key, label, tooltip string, remove func()) {
+	theme := row.C.Theme()
+	row.C.Key(key)
+	keyID := ui.ID(row.C)
+	lit := row.Selected() || row.C.Canvas().Hovered() == keyID
+	if id := list.RowID(row.Index); !id.IsZero() {
+		lit = lit || row.C.Canvas().Hovered() == id || row.C.Canvas().FocusVisible() == id
+	}
+	if !lit {
+		ui.Row(row.C).Width(rowDeleteSize).Shrink(0)
+		return
+	}
+	button := ui.ButtonBase(row.C, label).Size(rowDeleteSize, rowDeleteSize).
+		Radius(theme.Metrics.RadiusItem()).
+		HitWith(keyID, label, gfx.HitOptions{Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand}).
+		Hover(ui.Look{}.Background(theme.Hover)).
+		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
+		Focus(ui.Look{}.Ring(2, theme.Ring)).
+		Tooltip(tooltip)
+	button.Children(func() {
+		ui.Icon(row.C, icons.Trash2).Size(15, 15).Color(theme.MutedForeground)
+	})
+	if button.Clicked() {
+		remove()
 	}
 }
 

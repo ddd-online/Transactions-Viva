@@ -3,6 +3,9 @@ package tags
 import (
 	"testing"
 
+	"github.com/vivaui/viva/app"
+	"github.com/vivaui/viva/ui"
+
 	"transactions/internal/domain"
 	"transactions/internal/store/storetest"
 )
@@ -225,4 +228,71 @@ func TestLedgerSwitchClearsTheChosenCategory(t *testing.T) {
 	if m.ledgerID != fixture.Travel.ID {
 		t.Fatalf("ledger = %q", m.ledgerID)
 	}
+}
+
+// TestRowDeleteKeysWaitForThePointer is the two columns' delete keys: a list nobody
+// points at stays clean, and the key appears on the row under the pointer — the
+// same rule the other rails follow.
+func TestRowDeleteKeysWaitForThePointer(t *testing.T) {
+	m, _ := newTestModel(t)
+	page := ui.NewPage(ui.PageConfig{View: m.View})
+	driver, err := app.NewDriver(ui.Configure(page, app.Config{Width: 1200, Height: 800}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(driver.Close)
+
+	if hasHit(driver, "删除分类 餐饮美食") {
+		t.Fatal("a category nobody points at shows its delete key")
+	}
+	if err := driver.Move(centre(t, driver, "餐饮美食")); err != nil {
+		t.Fatal(err)
+	}
+	if !hasHit(driver, "删除分类 餐饮美食") {
+		t.Fatal("the category's delete key did not appear under the pointer")
+	}
+
+	// Choose the category: its tags appear, and their keys wait for the pointer too.
+	clickName(t, driver, "餐饮美食")
+	if hasHit(driver, "删除标签 三餐") {
+		t.Fatal("a tag nobody points at shows its delete key")
+	}
+	if err := driver.Move(centre(t, driver, "三餐")); err != nil {
+		t.Fatal(err)
+	}
+	if !hasHit(driver, "删除标签 三餐") {
+		t.Fatal("the tag's delete key did not appear under the pointer")
+	}
+}
+
+// centre is the middle of the control named name.
+func centre(t *testing.T, driver *app.Driver, name string) (float32, float32) {
+	t.Helper()
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == name && !hit.IsLabel {
+			b := hit.Bounds
+			return b.X + b.Width/2, b.Y + b.Height/2
+		}
+	}
+	t.Fatalf("no control named %q", name)
+	return 0, 0
+}
+
+// clickName presses the middle of the control named name.
+func clickName(t *testing.T, driver *app.Driver, name string) {
+	t.Helper()
+	x, y := centre(t, driver, name)
+	if err := driver.Click(x, y); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// hasHit reports whether a control with exactly this name is painted.
+func hasHit(driver *app.Driver, name string) bool {
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == name && !hit.IsLabel {
+			return true
+		}
+	}
+	return false
 }

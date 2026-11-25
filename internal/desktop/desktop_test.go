@@ -313,12 +313,14 @@ func TestTagsPage(t *testing.T) {
 	}
 	click(t, driver, "取消")
 
+	hoverRow(t, driver, "洗澡")
 	click(t, driver, "删除标签 洗澡")
 	click(t, driver, "删除")
 	if hasControl(driver, "洗澡") {
 		t.Fatal("the tag was not deleted")
 	}
 
+	hoverRow(t, driver, "宠物")
 	click(t, driver, "删除分类 宠物")
 	click(t, driver, "删除")
 	if hasControl(driver, "宠物") {
@@ -327,6 +329,23 @@ func TestTagsPage(t *testing.T) {
 	if !shows(driver, "选择分类查看标签") {
 		t.Fatal("deleting the chosen category did not clear the tag column")
 	}
+}
+
+// hoverRow puts the pointer on the middle of the row named name: the row's
+// actions, such as its delete key, appear only while the row is lit.
+func hoverRow(t *testing.T, driver *app.Driver, name string) {
+	t.Helper()
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label != name || hit.IsLabel {
+			continue
+		}
+		b := hit.Bounds
+		if err := driver.Move(b.X+b.Width/2, b.Y+b.Height/2); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	t.Fatalf("no row named %q", name)
 }
 
 // TestTemplatesPage drives the 记账 · 模板 screen: the table, the required
