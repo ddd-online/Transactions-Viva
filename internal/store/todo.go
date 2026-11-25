@@ -311,6 +311,13 @@ func (w *Workspace) UpdateTodoItem(ctx context.Context, item domain.TodoItem) (d
 		item.ID); err != nil {
 		return domain.TodoItem{}, fmt.Errorf("保存待办事项失败：%w", err)
 	}
+	if cardID != existing.CardID {
+		// Moving the last item to another theme empties the old one; it goes the
+		// way a theme goes when its last item is deleted.
+		if err := pruneEmptyCard(ctx, db, existing.CardID); err != nil {
+			return domain.TodoItem{}, err
+		}
+	}
 	progress, err := todoProgressByItem(ctx, db)
 	if err != nil {
 		return domain.TodoItem{}, err
@@ -344,27 +351,50 @@ func (w *Workspace) SetTodoItemStatus(ctx context.Context, itemID, status string
 	return nil
 }
 
-// DeleteTodoItem removes an item and its progress.
+// DeleteTodoItem removes an item and its progress. The last item to leave a theme
+// takes the theme with it: a theme exists to hold items, and the board has no row
+// for one that holds none (see pruneEmptyCard).
 func (w *Workspace) DeleteTodoItem(ctx context.Context, itemID string) error {
 	db, err := w.dbHandle()
 	if err != nil {
 		return err
 	}
 	return inTx(ctx, db, func(tx *sql.Tx) error {
-		var exists int
-		if err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM todo_item WHERE id = ?",
-			itemID).Scan(&exists); err != nil {
+		var cardID string
+		if err := tx.QueryRowContext(ctx, "SELECT card_id FROM todo_item WHERE id = ?",
+			itemID).Scan(&cardID); err != nil {
+			if err == sql.ErrNoRows {
+				return notFoundf("事项不存在")
+			}
 			return err
-		}
-		if exists == 0 {
-			return notFoundf("事项不存在")
 		}
 		if _, err := tx.ExecContext(ctx, "DELETE FROM todo_progress WHERE item_id = ?", itemID); err != nil {
 			return err
 		}
-		_, err := tx.ExecContext(ctx, "DELETE FROM todo_item WHERE id = ?", itemID)
-		return err
+		if _, err := tx.ExecContext(ctx, "DELETE FROM todo_item WHERE id = ?", itemID); err != nil {
+			return err
+		}
+		return pruneEmptyCard(ctx, tx, cardID)
 	})
+}
+
+// sqlExecer is what pruneEmptyCard needs: the workspace outside a transaction and
+// the transaction inside one.
+type sqlExecer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
+// pruneEmptyCard deletes a theme no item belongs to any more — the last item was
+// deleted, or moved to another theme. Completed items count: a theme whose items
+// are all done still holds them, and the history names them.
+func pruneEmptyCard(ctx context.Context, execer sqlExecer, cardID string) error {
+	if cardID == "" {
+		return nil
+	}
+	_, err := execer.ExecContext(ctx,
+		"DELETE FROM todo_card WHERE id = ? AND NOT EXISTS (SELECT 1 FROM todo_item WHERE card_id = ?)",
+		cardID, cardID)
+	return err
 }
 
 // AddTodoProgress appends one log line under an existing item.

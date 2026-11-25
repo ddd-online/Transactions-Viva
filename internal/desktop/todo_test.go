@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/vivaui/viva/app"
+	"github.com/vivaui/viva/gfx"
 )
 
 func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
@@ -13,8 +14,7 @@ func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
 	// The board is empty: the empty state's own 新建事项 button paints after the
 	// toolbar's, so clickLast takes it.
 	clickLast(t, driver, "新建事项")
-	click(t, driver, "主题")
-	driver.Type("本周")
+	startTheme(t, driver, "本周")
 	click(t, driver, "事项")
 	driver.Type("写周报")
 	click(t, driver, "创建")
@@ -63,7 +63,7 @@ func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
 	// The row's commands are its context menu: delete the item first.
 	rightClickText(t, driver, "写日报")
 	click(t, driver, "删除事项")
-	clickLast(t, driver, "删除")
+	click(t, driver, "删除")
 	if shows(driver, "写日报") {
 		t.Fatal("deleted item is still shown")
 	}
@@ -71,39 +71,49 @@ func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
 	// Editing can move the item to a theme that does not exist yet.
 	rightClickText(t, driver, "写周报")
 	click(t, driver, "编辑事项")
-	click(t, driver, "主题")
-	click(t, driver, "新建主题…")
-	driver.Type("下周")
+	startTheme(t, driver, "下周")
 	click(t, driver, "保存")
 	if !shows(driver, "下周") {
 		t.Fatal("the edited item did not move to the new theme")
 	}
 
-	// The same menu deletes the theme and whatever it still holds.
+	// Moving the last item out of 本周 deleted it: a theme holds items or it is
+	// not a theme.
+	if shows(driver, "本周") {
+		t.Fatal("the theme the item left outlived it")
+	}
+
+	// The same menu deletes a theme and whatever it still holds; with the board's
+	// only theme gone there is nothing left.
 	rightClickText(t, driver, "写周报")
 	click(t, driver, "删除主题「下周」")
 	clickLast(t, driver, "删除")
 	if shows(driver, "下周") || shows(driver, "写周报") {
 		t.Fatal("deleted theme is still shown")
 	}
-
-	// 本周 is now empty and has no row in the table; the theme manager is
-	// where it can still be deleted.
-	clickLast(t, driver, "新建事项")
-	click(t, driver, "主题")
-	click(t, driver, "管理主题…")
-	click(t, driver, "删除")
-	click(t, driver, "删除")
-	if !shows(driver, "还没有主题") {
-		t.Fatal("the deleted theme is still in the theme manager")
-	}
-	click(t, driver, "返回")
-	click(t, driver, "取消")
 	if !shows(driver, "把下一件事放到板上") {
 		t.Fatal("the board is not empty after deleting every theme")
 	}
-	if !shows(driver, "把下一件事放到板上") {
-		t.Fatal("the empty board is not shown after the table empties")
+}
+
+// startTheme types a theme the board does not have yet into the form's Combobox and
+// commits the row it offers for it, which is how a theme is started now that the
+// field is the one control for both picking and naming.
+func startTheme(t *testing.T, driver *app.Driver, name string) {
+	t.Helper()
+	click(t, driver, "主题")
+	driver.Type(name)
+	if err := driver.Key(gfx.KeyEnter, 0); err != nil {
+		t.Fatal(err)
+	}
+	// The field names the theme it holds on the next paint. A move over the page
+	// is that paint, without the clock jump that patches which overlay a later
+	// click lands on.
+	if err := driver.Move(1200, 700); err != nil {
+		t.Fatal(err)
+	}
+	if !shows(driver, name) {
+		t.Fatalf("the theme field does not show %q after it was created", name)
 	}
 }
 

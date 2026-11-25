@@ -3,6 +3,17 @@ package selectbox
 
 import "github.com/vivaui/viva/ui"
 
+// Combo is ui.Combobox with the same entrance guard as Select, for the same
+// reason: the list's 8 px slide would otherwise be applied to everything painted
+// after the field.
+func Combo[T comparable](c ui.C, value *T, choices []T, nameOf func(T) string, label string) ui.Box {
+	box := ui.Combobox(c, value, choices, nameOf, label)
+	if _, open := box.Popup(); open {
+		box.DrawOver(func(d *ui.DrawContext) { d.Canvas.EndPresence() })
+	}
+	return box
+}
+
 // Select is ui.Select with the entrance of its open list kept to the list.
 //
 // The framework begins that entrance in the select's paint and never ends it

@@ -1,7 +1,6 @@
 package todo
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/vivaui/viva/ui"
@@ -16,24 +15,18 @@ type itemForm struct {
 	open bool
 	// cardID is the theme the item is saved into; cardTitle is the name the
 	// form shows, which may be a theme that does not exist yet.
-	cardID    string
-	cardTitle string
-	themes    []string
-	choices   []string
-	newTheme  bool
-	// manager shows the theme manager in place of the fields; confirmTheme is
-	// the theme whose delete button was pressed, waiting for the second step.
-	manager      bool
-	confirmTheme string
-	id           string
-	title        string
-	start        string
-	due          string
-	urgency      int
-	importance   int
-	startPick    datepicker.State
-	duePick      datepicker.State
-	err          string
+	cardID     string
+	cardTitle  string
+	themes     []string
+	id         string
+	title      string
+	start      string
+	due        string
+	urgency    int
+	importance int
+	startPick  datepicker.State
+	duePick    datepicker.State
+	err        string
 }
 
 type deleteCard struct {
@@ -67,17 +60,10 @@ func (m *Model) openItemForm(cardID string, item *domain.TodoItem) {
 	m.refreshItemThemes()
 }
 
-// refreshItemThemes rebuilds the Select's entries from the board: the themes,
-// then the two commands. It runs when the theme manager deletes a theme while
-// the form is open.
+// refreshItemThemes rebuilds the theme field's choices from the board.
 func (m *Model) refreshItemThemes() {
 	form := &m.itemForm
 	form.themes = m.cardTitles()
-	form.choices = form.choices[:0]
-	form.choices = append(form.choices, form.themes...)
-	if len(form.themes) > 0 {
-		form.choices = append(form.choices, newThemeChoice, manageThemeChoice)
-	}
 	if form.cardID != "" && m.cardTitle(form.cardID) == "" {
 		form.cardID, form.cardTitle = "", ""
 	}
@@ -92,22 +78,9 @@ func (m *Model) itemFormView(c ui.C) {
 	if form.id != "" {
 		title = "编辑事项"
 	}
-	if form.manager {
-		title = "管理主题"
-	}
 	ui.ModalWith(c, &form.open, title, ui.ModalSpec{Width: 560}, func() {
-		if form.manager {
-			m.themeManagerBody(c, form)
-			return
-		}
 		m.itemFields(c, form)
 	}, func() {
-		if form.manager {
-			if ui.Button(c, "返回").Outline().Clicked() {
-				form.manager, form.confirmTheme = false, ""
-			}
-			return
-		}
 		if ui.Button(c, "取消").Outline().Clicked() {
 			form.open = false
 		}
@@ -167,85 +140,25 @@ func (m *Model) itemFields(c ui.C, form *itemForm) {
 	})
 }
 
-// themeManagerBody is the theme manager: every theme with its item count and a
-// delete button, in place of the item fields. A second press confirms, so
-// deleting a theme with items does not open a dialog over this dialog.
-func (m *Model) themeManagerBody(c ui.C, form *itemForm) {
-	typography.Caption(c, "删除主题会连同它的事项与进度一起删除。").Muted()
-	if len(m.cards) == 0 {
-		typography.Body(c, "还没有主题").Muted()
-		return
-	}
-	ui.Column(c).FillWidth().Gap(2).Children(func() {
-		for index := range m.cards {
-			card := &m.cards[index]
-			c.Key("theme-" + card.ID)
-			ui.Row(c).MinHeight(40).FillWidth().PadSides(0, 6, 0, 6).Gap(8).
-				Items(ui.Center).Children(func() {
-				typography.Body(c, card.Title).Grow(1).Ellipsis()
-				if form.confirmTheme == card.ID {
-					typography.Caption(c, fmt.Sprintf("%d 项会一起删除", len(card.Items))).Muted()
-					if ui.Button(c, "取消").Small().Outline().Clicked() {
-						form.confirmTheme = ""
-					}
-					if ui.Button(c, "删除").Small().Destructive().Clicked() {
-						m.deleteTheme(card.ID)
-						form.confirmTheme = ""
-					}
-					return
-				}
-				typography.Caption(c, fmt.Sprintf("%d 项", len(card.Items))).Mono().Muted()
-				if ui.Button(c, "删除").Small().Destructive().Clicked() {
-					form.confirmTheme = card.ID
-				}
-			})
-		}
-	})
-}
-
-// deleteTheme removes a theme and its items from the manager.
-func (m *Model) deleteTheme(cardID string) {
-	if m.todos == nil {
-		return
-	}
-	if err := m.todos.DeleteTodoCard(m.context(), cardID); err != nil {
-		m.fail(err)
-		return
-	}
-	m.reload()
-	m.refreshItemThemes()
-	m.succeed("已删除主题")
-}
-
-// The Select's last two entries are commands, not themes: one switches the
-// field to a text field for a new theme, the other opens the theme manager.
-const (
-	newThemeChoice    = "新建主题…"
-	manageThemeChoice = "管理主题…"
-)
-
-// themeField is the theme row: a Select over the themes the board has, or a
-// text field when the user is naming a new theme (and always when the board has
-// none yet, where a Select would show an empty list).
+// themeField is the theme row: a Combobox over the board's themes that also takes
+// a name the board does not have yet — it offers what was typed as a new theme,
+// and saving creates it. One field therefore both picks an existing theme and
+// starts a new one, and the form needs no separate "new theme" command.
 func (m *Model) themeField(c ui.C, form *itemForm) {
-	if form.newTheme || len(form.themes) == 0 {
-		ui.Row(c).FillWidth().Gap(6).Children(func() {
-			ui.TextField(c, &form.cardTitle, "主题", "例如：本周").Grow(1).AutoFocus()
-			if len(form.themes) > 0 && ui.Button(c, "选择已有").Link().Clicked() {
-				form.newTheme, form.cardTitle = false, ""
-			}
-		})
-		return
-	}
-	choice := form.cardTitle
-	selectbox.Select(c, &choice, form.choices, nil).Label("主题").Placeholder("选择主题")
-	switch {
-	case choice == newThemeChoice:
-		form.newTheme, form.cardTitle = true, ""
-	case choice == manageThemeChoice:
-		form.manager = true
-	case choice != form.cardTitle:
-		form.cardTitle = choice
+	field := selectbox.Combo(c, &form.cardTitle, form.themes, nil, "主题").
+		FillWidth().
+		Placeholder("选择或输入主题").
+		Creatable("新建主题 ").
+		Empty("没有匹配的主题，输入新名字后回车新建")
+	if created, ok := field.Created(); ok {
+		form.cardTitle = created
+		// The field shows the chosen choice's name, so the new theme joins the
+		// choices here and not at save time; it reaches the board only when the
+		// item is saved.
+		form.themes = appendUnique(form.themes, created)
+		// The field paints the chosen choice's name on the next frame; ask for it,
+		// or the field would stay blank until something else repaints the page.
+		c.Canvas().RequestFrame()
 	}
 }
 
@@ -356,4 +269,14 @@ func (m *Model) setStatus(itemID, status string) {
 	if status == domain.TodoStatusDone {
 		m.succeed("已移到历史")
 	}
+}
+
+// appendUnique adds name to names unless it is already there.
+func appendUnique(names []string, name string) []string {
+	for _, existing := range names {
+		if existing == name {
+			return names
+		}
+	}
+	return append(names, name)
 }

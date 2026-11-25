@@ -211,8 +211,8 @@ func TestTodoItemMovesBetweenCards(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, card := range cards {
-		if card.ID == first.ID && len(card.Items) != 0 {
-			t.Fatalf("old card still holds %d items", len(card.Items))
+		if card.ID == first.ID {
+			t.Fatal("the theme the item left outlived it")
 		}
 		if card.ID == second.ID && (len(card.Items) != 1 || card.Items[0].ID != item.ID) {
 			t.Fatalf("new card holds %+v", card.Items)
@@ -223,5 +223,93 @@ func TestTodoItemMovesBetweenCards(t *testing.T) {
 		Urgency: domain.TodoDefaultLevel, Importance: domain.TodoDefaultLevel,
 	}); err == nil {
 		t.Fatal("moving to a card that does not exist was accepted")
+	}
+}
+
+// TestTodoDeletingTheLastItemDeletesItsTheme is the rule that keeps an empty
+// theme off the board: a theme exists to hold items, so the last item to leave it
+// takes the theme with it — while a completed item still counts as an item.
+func TestTodoDeletingTheLastItemDeletesItsTheme(t *testing.T) {
+	fixture := storetest.Open(t)
+	ctx := context.Background()
+	workspace := fixture.Workspace
+	card, err := workspace.CreateTodoCard(ctx, "本周")
+	if err != nil {
+		t.Fatal(err)
+	}
+	item := func(title string) domain.TodoItem {
+		created, err := workspace.CreateTodoItem(ctx, domain.TodoItem{
+			CardID: card.ID, Title: title,
+			Urgency: domain.TodoDefaultLevel, Importance: domain.TodoDefaultLevel,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return created
+	}
+	kept, last := item("写日报"), item("写周报")
+
+	// One item left: the theme stays, because it still holds it.
+	if err := workspace.DeleteTodoItem(ctx, kept.ID); err != nil {
+		t.Fatal(err)
+	}
+	cards, err := workspace.TodoCards(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cards) != 1 || cards[0].ID != card.ID || len(cards[0].Items) != 1 {
+		t.Fatalf("after deleting one of two items the board holds %+v", cards)
+	}
+
+	// The last item goes, and the theme goes with it.
+	if err := workspace.DeleteTodoItem(ctx, last.ID); err != nil {
+		t.Fatal(err)
+	}
+	cards, err = workspace.TodoCards(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cards) != 0 {
+		t.Fatalf("the theme outlived its last item: %+v", cards)
+	}
+}
+
+// TestTodoDoneItemsKeepTheirTheme pins the other half of the rule: an item that
+// was completed still belongs to its theme, and the history names it, so deleting
+// the doing item next to it must not delete the theme.
+func TestTodoDoneItemsKeepTheirTheme(t *testing.T) {
+	fixture := storetest.Open(t)
+	ctx := context.Background()
+	workspace := fixture.Workspace
+	card, err := workspace.CreateTodoCard(ctx, "本周")
+	if err != nil {
+		t.Fatal(err)
+	}
+	done, err := workspace.CreateTodoItem(ctx, domain.TodoItem{
+		CardID: card.ID, Title: "已完成的",
+		Urgency: domain.TodoDefaultLevel, Importance: domain.TodoDefaultLevel,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := workspace.SetTodoItemStatus(ctx, done.ID, domain.TodoStatusDone); err != nil {
+		t.Fatal(err)
+	}
+	doing, err := workspace.CreateTodoItem(ctx, domain.TodoItem{
+		CardID: card.ID, Title: "在做",
+		Urgency: domain.TodoDefaultLevel, Importance: domain.TodoDefaultLevel,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := workspace.DeleteTodoItem(ctx, doing.ID); err != nil {
+		t.Fatal(err)
+	}
+	history, err := workspace.TodoHistory(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(history) != 1 || history[0].CardTitle != "本周" {
+		t.Fatalf("the completed item lost its theme: %+v", history)
 	}
 }
