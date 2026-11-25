@@ -176,12 +176,12 @@ func (m *Model) historyRow(c ui.C, entry *domain.TodoHistory) {
 			}
 		})
 		ui.Row(c).Width(historyActionWidth).Justify(ui.Center).Gap(4).Items(ui.Center).Children(func() {
-			if ui.Button(c, "恢复").Outline().Small().Clicked() {
+			if ui.Button(c, "恢复").Ghost().Small().Clicked() {
 				// Restoring rebuilds this list, so it lands after the paint that
 				// asked for it instead of under the loop above.
 				c.After(func() { m.setStatus(item.ID, domain.TodoStatusDoing) })
 			}
-			if ui.Button(c, "删除").Outline().Small().Clicked() {
+			if ui.Button(c, "删除").Ghost().Small().Clicked() {
 				m.deleteItem = deleteItem{open: true, id: item.ID, title: item.Title}
 			}
 		})
