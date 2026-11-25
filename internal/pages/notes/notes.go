@@ -23,6 +23,7 @@ import (
 	"transactions/internal/components/emptystate"
 	"transactions/internal/components/imageviewer"
 	"transactions/internal/components/layout"
+	"transactions/internal/components/semantic"
 	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
@@ -623,13 +624,6 @@ func (m *Model) iconButton(c ui.C, label string, icon gfx.Icon, action func()) u
 	return button
 }
 
-// folderIconColor and noteIconColor are what the tree's icons are painted in: a
-// folder takes the palette's amber, the same warm tone the app already uses for
-// a hot mark, and a note the product's blue. Both come from the theme, so the
-// dark appearance keeps its own pair.
-func folderIconColor(theme *ui.Theme) gfx.Color { return theme.Chart[3] }
-func noteIconColor(theme *ui.Theme) gfx.Color   { return theme.Primary }
-
 // allExpanded reports whether every folder that holds something is open, which
 // is the state 收起全部 leaves the tree in.
 func (m *Model) allExpanded() bool {
@@ -757,9 +751,11 @@ func (m *Model) rowContent(c ui.C, index int) {
 		return
 	}
 	theme := c.Theme()
-	icon, color := icons.Note, noteIconColor(theme)
+	// A folder wears the tree's one hue and a note the secondary ink: the colour
+	// marks the rows that hold other rows, so a note never reads as a link.
+	icon, color := icons.Note, semantic.LeafInk(*theme)
 	if node.Kind == domain.NoteKindFolder {
-		icon, color = icons.Folder, folderIconColor(theme)
+		icon, color = icons.Folder, semantic.FolderInk(*theme)
 	}
 	// One child of the tree's row, not three: the tree spaces its row's children
 	// by GapItem, and the icon belongs to the name, one pixel from it.

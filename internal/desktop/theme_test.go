@@ -6,6 +6,7 @@ import (
 
 	"github.com/vivaui/viva/gfx"
 
+	"transactions/internal/components/semantic"
 	"transactions/internal/components/state"
 )
 
@@ -104,6 +105,23 @@ func TestThemesMeetTheContrastFloor(t *testing.T) {
 		for i, line := range theme.Chart {
 			if got := contrast(over(line, paper), paper); got < 3 {
 				t.Errorf("%s: chart colour %d is %.2f:1 on paper, want at least 3:1", appearance.name, i, got)
+			}
+		}
+		// The rail's two inks are 15px glyphs: they must clear 3:1 on the rail and
+		// on the chosen row, whose wash is the accent over the rail.
+		rail, chosen := theme.Muted, over(theme.Accent, theme.Muted)
+		for _, ink := range []struct {
+			name  string
+			color gfx.Color
+			bg    gfx.Color
+		}{
+			{"folder ink on the rail", semantic.FolderInk(theme), rail},
+			{"folder ink on the chosen row", semantic.FolderInk(theme), chosen},
+			{"leaf ink on the rail", semantic.LeafInk(theme), rail},
+			{"leaf ink on the chosen row", semantic.LeafInk(theme), chosen},
+		} {
+			if got := contrast(over(ink.color, ink.bg), ink.bg); got < 3 {
+				t.Errorf("%s: %s is %.2f:1, want at least 3:1", appearance.name, ink.name, got)
 			}
 		}
 	}
