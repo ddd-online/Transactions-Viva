@@ -101,7 +101,11 @@ func (m *Model) progressView(c ui.C) {
 								if line.Done {
 									text.Muted()
 								}
-								typography.Caption(c, time.Unix(line.CreatedAt, 0).Format("01-02 15:04")).Mono()
+								// The time keeps its width: when the record wraps, a long
+								// unbreakable run in it takes the room first, and the time was
+								// the one being squeezed and cut off at the buttons.
+								typography.Caption(c, time.Unix(line.CreatedAt, 0).Format("01-02 15:04")).
+									Mono().Shrink(0)
 								if ui.Button(c, "编辑进度").Ghost().Icon(icons.Pencil).IconOnly().
 									Tooltip("编辑").Clicked() {
 									panel.editID, panel.editText = line.ID, line.Content

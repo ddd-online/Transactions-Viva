@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vivaui/viva/app"
 	"github.com/vivaui/viva/ui"
@@ -200,5 +201,56 @@ func TestProgressRecordsWrapInsteadOfTruncating(t *testing.T) {
 	}
 	if joined := strings.Join(pieces, ""); joined != record {
 		t.Fatalf("the wrapped lines join to %q, want %q", joined, record)
+	}
+}
+
+// TestProgressTimesStayAligned is the time column of the progress dialog: a record
+// that wraps — a long run the line cannot break — must not squeeze the time beside
+// it. Every row's time keeps its full width and ends on the same right edge.
+func TestProgressTimesStayAligned(t *testing.T) {
+	record := "2121想加上公休啊SHUOXHO爱生活小哦!AHIOSXHUO阿水好像UI爱生活IXBHIUJA时候"
+	long, short := int64(1792000000), int64(1791000000)
+	driver, _ := paintCards(t, []domain.TodoCard{{
+		ID: "c1", Title: "工作", Items: []domain.TodoItem{{
+			ID: "i1", CardID: "c1", Title: "第一件", CreatedAt: 1,
+			Progress: []domain.TodoProgress{
+				{ID: "p1", ItemID: "i1", Content: record, CreatedAt: long},
+				{ID: "p2", ItemID: "i1", Content: "2121", CreatedAt: short},
+			},
+		}},
+	}}, nil, 0)
+
+	if !click(driver, "展开进度 第一件") {
+		t.Fatal("the board row has no expansion control")
+	}
+	if !click(driver, "编辑记录") {
+		t.Fatal("the expanded row has no progress dialog")
+	}
+
+	want := []string{
+		time.Unix(long, 0).Format("01-02 15:04"),
+		time.Unix(short, 0).Format("01-02 15:04"),
+	}
+	width := make([]float32, len(want))
+	right := make([]float32, len(want))
+	found := make([]bool, len(want))
+	for _, painted := range driver.Snapshot().Texts {
+		for index, value := range want {
+			if painted.Value != value {
+				continue
+			}
+			width[index], right[index], found[index] = painted.Bounds.Width, painted.Bounds.X+painted.Bounds.Width, true
+		}
+	}
+	for index := range want {
+		if !found[index] {
+			t.Fatalf("the time %q was not painted: it was cut off", want[index])
+		}
+	}
+	if width[0] != width[1] {
+		t.Fatalf("the times are %.1f and %.1f wide: the long record squeezed one", width[0], width[1])
+	}
+	if right[0] != right[1] {
+		t.Fatalf("the times end at %.1f and %.1f: they do not line up", right[0], right[1])
 	}
 }
