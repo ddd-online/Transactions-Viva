@@ -92,6 +92,10 @@ type nodeForm struct {
 	node   string // the node renamed
 	parent string // the folder a new folder goes into
 	field  ui.Field
+	// err is the sentence under the field: what stopped the last 确定. errOn is
+	// the field's text when it was set, so the first keystroke clears it.
+	err   string
+	errOn string
 }
 
 // deleteForm is the confirmation for a node and its subtree.
@@ -938,7 +942,14 @@ func (m *Model) detail(c ui.C) {
 			ui.Divider(c)
 		}
 		emptystate.Page(c, &icons.Note, "选择一篇笔记",
-			"点「新建笔记」建一篇，或在目录里选一篇已有的。", nil)
+			"新建一篇，或在目录里选一篇已有的。", func() {
+				if ui.Button(c, "新建文件夹").Secondary().Clicked() {
+					m.openCreateFolder()
+				}
+				if ui.Button(c, "新建笔记").Clicked() {
+					m.createNote()
+				}
+			})
 		return
 	}
 	ui.Column(c).Grow(1).FillHeight().FillWidth().Children(func() {
@@ -1231,13 +1242,24 @@ func (m *Model) askDelete(id string) {
 // formDialog is 新建文件夹 / 重命名.
 func (m *Model) formDialog(c ui.C) {
 	title := "新建文件夹"
+	placeholder := "文件夹名称"
 	if m.form.mode == "rename" {
 		title = "重命名"
+		placeholder = "名称"
 	}
+	// The error belongs to the text it complained about: typing again removes it.
+	if m.form.err != "" && m.form.field.Text() != m.form.errOn {
+		m.form.err, m.form.errOn = "", ""
+	}
+	theme := c.Theme()
 	ui.ModalWith(c, &m.form.open, title, ui.ModalSpec{Width: 380}, func() {
 		ui.Column(c).FillWidth().Gap(6).Children(func() {
 			typography.Caption(c, "名称")
-			ui.TextField(c, &m.form.field, "名称", "文件夹名称").AutoFocus()
+			field := ui.TextField(c, &m.form.field, "名称", placeholder).AutoFocus()
+			if m.form.err != "" {
+				field.Invalid(true)
+				typography.Caption(c, m.form.err).Color(theme.Danger)
+			}
 		})
 	}, func() {
 		ui.Row(c).Gap(layout.Gap).Justify(ui.End).Children(func() {
@@ -1255,13 +1277,13 @@ func (m *Model) formDialog(c ui.C) {
 func (m *Model) submitForm() {
 	name := strings.TrimSpace(m.form.field.Text())
 	if name == "" {
-		m.toast("名称不能为空")
+		m.formFail("名称不能为空")
 		return
 	}
 	ctx := context.Background()
 	if m.form.mode == "rename" {
 		if err := m.repo.RenameNoteNode(ctx, m.form.node, name); err != nil {
-			m.report(err)
+			m.formFail(err.Error())
 			return
 		}
 		if m.form.node == m.selected {
@@ -1275,7 +1297,7 @@ func (m *Model) submitForm() {
 	}
 	folder, err := m.repo.CreateNoteNode(ctx, m.form.parent, domain.NoteKindFolder, name)
 	if err != nil {
-		m.report(err)
+		m.formFail(err.Error())
 		return
 	}
 	m.form.open = false
@@ -1291,6 +1313,13 @@ func (m *Model) submitForm() {
 		}
 	}
 	m.rebuildRows()
+}
+
+// formFail puts a sentence under the dialog's field, where the app's other forms
+// report what stopped them; the dialog stays open on the text it complained
+// about.
+func (m *Model) formFail(sentence string) {
+	m.form.err, m.form.errOn = sentence, m.form.field.Text()
 }
 
 // deleteDialog confirms deleting a node and its subtree.

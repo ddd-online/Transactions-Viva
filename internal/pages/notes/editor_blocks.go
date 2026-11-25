@@ -68,6 +68,26 @@ var gripCommands = []bodyCommand{
 	{"删除块", "", 0},
 }
 
+// The three groups of the block menu, in the order it shows them.
+const (
+	commandGroupTurn = iota
+	commandGroupInsert
+	commandGroupRemove
+)
+
+// group is which group of the menu a command belongs to: the table above carries
+// it in what the command does — a kind converts, a picture is inserted, no kind
+// removes.
+func (command bodyCommand) group() int {
+	switch {
+	case command.kind == "":
+		return commandGroupRemove
+	case command.kind == domain.NoteBlockImage:
+		return commandGroupInsert
+	}
+	return commandGroupTurn
+}
+
 // blockColumn is the body's column of blocks: the body control, which fills the
 // pane, and the grip of the block the pointer is on. It is a custom layout
 // because a grip's row is a row of the text: only the layout, which runs after
@@ -155,10 +175,21 @@ func (m *Model) litBlock() int {
 
 // blockMenuItems declares one block's commands. Every kind offers gripCommands
 // today; a kind that takes no text, or one that can be replaced rather than
-// converted, declares its own list here from m.blocks[block].Kind.
+// converted, declares its own list here from m.blocks[block].Kind. The menu is
+// grouped the way the tree's row menu is: what the block becomes, what is put at
+// it, then what is taken away — and the last one is the only destructive row.
 func (m *Model) blockMenuItems(c ui.C, items *ui.MenuItems, block int) {
+	group := gripCommands[0].group()
 	for _, command := range gripCommands {
-		if items.Item(command.label).Clicked() {
+		if command.group() != group {
+			items.Separator()
+			group = command.group()
+		}
+		item := items.Item(command.label)
+		if group == commandGroupRemove {
+			item = item.Destructive()
+		}
+		if item.Clicked() {
 			m.chooseBlockMenu(c, block, command)
 			return
 		}
