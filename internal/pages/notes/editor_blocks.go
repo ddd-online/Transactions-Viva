@@ -29,9 +29,8 @@ const (
 	// picture's top edge instead.
 	gripSize float32 = 18
 	gripGap  float32 = 6
-	// gripIconWidth and gripIconHeight are the icon inside the grip's box, and
-	// gripRadius its corner radius: tighter than a control's, so the small box
-	// reads as a grip and not as a button.
+	// gripRadius is the corner of both handles in the body: the grip's box and
+	// the picture's resize bar, so the two read as one control family.
 	gripIconWidth, gripIconHeight float32 = 10, 12
 	gripRadius                    float32 = 4
 )
@@ -344,9 +343,9 @@ func (m *Model) paintImageGrip(canvas *gfx.Canvas, theme *ui.Theme, offsetY floa
 		X: m.bodyLayout.column + width/2 - 18, Y: offsetY + row.y + float32(height) - 4,
 		Width: 36, Height: 8,
 	}
-	// The handle is a plain bar: its corners are square, so it reads as the
-	// picture's edge and not as a rounded control.
-	canvas.Fill(grip, theme.Primary)
+	// The handle is a bar under the picture, rounded like the block's grip: the
+	// two handles of the body carry the same corner.
+	canvas.Rounded(grip, gripRadius, theme.Primary)
 	canvas.HitWithOptions(m.bodyInput.Parts().At(partImageGrip), grip, "调整图片高度",
 		gfx.HitOptions{Role: gfx.RoleSeparator, SkipFocus: true, Cursor: gfx.PointerCursorResizeVertical})
 }

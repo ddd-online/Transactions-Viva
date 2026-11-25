@@ -403,12 +403,14 @@ func (m *Model) paintImages(canvas *gfx.Canvas, theme *ui.Theme, rect gfx.Rect,
 		target := gfx.Rect{X: column + (width-w)/2, Y: y, Width: w, Height: h}
 		bitmap, ok := m.noteImages[block.ImagePath]
 		if !ok || bitmap.Width == 0 {
-			canvas.Rounded(target, theme.Metrics.RadiusItem(), theme.Muted)
+			canvas.Fill(target, theme.Muted)
 			continue
 		}
 		canvas.DrawBitmap(bitmap, target)
 		if block.ID != "" && block.ID == m.selectedBlockID() {
-			canvas.RoundedBorder(target, theme.Metrics.RadiusItem(), 2, theme.Primary, gfx.Color{})
+			// The frame is the picture's own edge: square, like the bitmap, so
+			// the page never rounds a corner the picture has.
+			canvas.Border(target, 2, theme.Primary, gfx.Color{})
 		}
 	}
 }
