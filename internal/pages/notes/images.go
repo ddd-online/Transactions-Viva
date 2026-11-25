@@ -3,8 +3,6 @@ package notes
 import (
 	"context"
 	"errors"
-	"strconv"
-	"strings"
 
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
@@ -13,11 +11,11 @@ import (
 )
 
 const (
-	// noteImageEdge is the longest edge a body picture is decoded at: the
-	// column takes bodyWidthShare of the pane.
-	noteImageEdge = 1600
-	// lightboxEdge is the longest edge the lightbox decodes at.
-	lightboxEdge = 2048
+	// imageEdge is the longest edge a note picture is decoded at. The lightbox
+	// shows nine tenths of the window, and the body draws the same bitmap scaled
+	// down to its column, so one decode serves both: opening the note decodes a
+	// picture once, and opening it again in the lightbox decodes nothing.
+	imageEdge = 2048
 	// lightboxShare is how much of the window a picture may take in the
 	// lightbox: a screenshot opens at nine tenths of it, not in a fixed box.
 	lightboxShare float32 = 0.9
@@ -41,7 +39,9 @@ type lightboxState struct {
 }
 
 // loadNoteImages decodes the pictures of one note for the editor. It runs off
-// the paint.
+// the paint. The view copies are read, not the originals: a note's pictures are
+// scaled once when they are imported or first shown, and coming back to the note
+// decodes a few megapixels instead of every camera original again.
 func (m *Model) loadNoteImages(ctx context.Context, key noteImageKey) (map[string]gfx.Bitmap, error) {
 	images := map[string]gfx.Bitmap{}
 	if m.repo == nil || m.cmds.LoadImage == nil {
@@ -58,11 +58,20 @@ func (m *Model) loadNoteImages(ctx context.Context, key noteImageKey) (map[strin
 		if _, ok := images[block.ImagePath]; ok {
 			continue
 		}
-		if bitmap, err := m.cmds.LoadImage(block.ImagePath, noteImageEdge); err == nil {
+		if bitmap, err := m.loadPicture(block.ImagePath, imageEdge); err == nil {
 			images[block.ImagePath] = bitmap
 		}
 	}
 	return images, nil
+}
+
+// loadPicture decodes one stored picture at maxEdge, through its view copy when
+// the platform makes one.
+func (m *Model) loadPicture(relative string, maxEdge int) (gfx.Bitmap, error) {
+	if m.cmds.LoadView != nil {
+		return m.cmds.LoadView(relative, maxEdge)
+	}
+	return m.cmds.LoadImage(relative, maxEdge)
 }
 
 // loadLightboxImage decodes the one picture the lightbox shows.
@@ -70,26 +79,27 @@ func (m *Model) loadLightboxImage(_ context.Context, key string) (gfx.Bitmap, er
 	if m.cmds.LoadImage == nil {
 		return gfx.Bitmap{}, errNoImage
 	}
-	path := key
-	if index := strings.LastIndexByte(key, '\n'); index >= 0 {
-		path = key[index+1:]
-	}
-	return m.cmds.LoadImage(path, lightboxEdge)
+	return m.loadPicture(key, imageEdge)
 }
 
-// lightboxKey names the lightbox's work: the path with a revision, so reopening
-// the same picture after closing it loads it again.
+// lightboxKey names the lightbox's work: the path alone, so the same picture is
+// decoded once and reopening it is a lookup.
 func (m *Model) lightboxKey() string {
-	return strconv.Itoa(m.lightboxRev) + "\n" + m.lightbox.path
+	return m.lightbox.path
 }
 
-// openLightbox shows one picture.
+// openLightbox shows one picture. The note already decoded it for its body —
+// same picture, same edge — so the dialog opens on those pixels; the effect below
+// only stands in when that decode has not landed yet.
 func (m *Model) openLightbox(path string) {
 	if path == "" {
 		return
 	}
-	m.lightboxRev++
-	m.lightbox = lightboxState{open: true, path: path, zoom: 1, handlers: m.lightbox.handlers}
+	state := lightboxState{open: true, path: path, zoom: 1, handlers: m.lightbox.handlers}
+	if bitmap, ok := m.noteImages[path]; ok && bitmap.Width > 0 {
+		state.bitmap, state.loaded = bitmap, true
+	}
+	m.lightbox = state
 }
 
 // closeLightbox closes the picture.

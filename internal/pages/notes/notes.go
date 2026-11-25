@@ -72,6 +72,10 @@ type Commands struct {
 	PasteImage func(noteID string) (string, int, int, error)
 	// LoadImage decodes a stored picture for painting.
 	LoadImage func(relative string, maxEdge int) (gfx.Bitmap, error)
+	// LoadView decodes a stored picture's view copy: the same picture, already
+	// scaled and encoded at import, so opening a note or its lightbox does not
+	// decode a camera original. Optional: LoadImage stands in when it is nil.
+	LoadView func(relative string, maxEdge int) (gfx.Bitmap, error)
 }
 
 // treeRow is one visible row of the tree: the node it shows and how deep the
@@ -228,11 +232,9 @@ type Model struct {
 	focusBody       bool
 
 	// imageRev changes whenever a picture block is added, so the effect that
-	// decodes the note's pictures runs again; lightboxRev does the same for the
-	// lightbox, whose effect keeps its last key.
-	imageRev    int
-	imageKey    noteImageKey
-	lightboxRev int
+	// decodes the note's pictures runs again.
+	imageRev int
+	imageKey noteImageKey
 
 	// defaultFolder is set once the first entry to an empty tree made the
 	// default folder, so a failure is not retried every entry.
@@ -449,10 +451,17 @@ func (m *Model) View(c ui.C) {
 		}
 	}
 	if m.lightbox.open && m.lightbox.path != "" {
-		ui.Effect(c, m.lightboxEffect, m.lightboxKey())
-		if bitmap, _, ok := m.lightboxEffect.Take(); ok {
-			m.lightbox.bitmap = bitmap
-			m.lightbox.loaded = true
+		// The note decoded this picture for its body at the lightbox's own edge,
+		// so opening it is a lookup; the effect is only for a picture whose
+		// decode has not landed yet.
+		if bitmap, ok := m.noteImages[m.lightbox.path]; ok && bitmap.Width > 0 {
+			m.lightbox.bitmap, m.lightbox.loaded = bitmap, true
+		} else {
+			ui.Effect(c, m.lightboxEffect, m.lightboxKey())
+			if bitmap, err, ok := m.lightboxEffect.Take(); ok && err == nil && bitmap.Width > 0 {
+				m.lightbox.bitmap = bitmap
+				m.lightbox.loaded = true
+			}
 		}
 	}
 	m.settleSplit()

@@ -534,3 +534,30 @@ func TestLoadViewCachesAStageSizedCopy(t *testing.T) {
 			again.Width, again.Height, bitmap.Width, bitmap.Height)
 	}
 }
+
+func TestLoadViewLeavesAFittingPictureUncopied(t *testing.T) {
+	workspace := t.TempDir()
+	root := Root(workspace)
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	photo := picture(800, 600, color.RGBA{R: 40, G: 90, B: 160, A: 255})
+	if err := os.WriteFile(filepath.Join(root, "photo.png"), pngBytes(t, photo), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	bitmap, err := LoadView(workspace, "photo.png", MaxDisplayEdge)
+	if err != nil {
+		t.Fatalf("LoadView: %v", err)
+	}
+	if bitmap.Width != 800 || bitmap.Height != 600 {
+		t.Fatalf("the view is %dx%d, want the picture's own 800x600", bitmap.Width, bitmap.Height)
+	}
+	view, err := Resolve(workspace, ViewPath("photo.png"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(view); !os.IsNotExist(err) {
+		t.Fatalf("a picture that already fits got a copy at %s", view)
+	}
+}

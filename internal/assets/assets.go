@@ -48,7 +48,9 @@ const (
 	ThumbnailQuality = 75
 	// ViewMaxEdge is the longest edge of the stage's view copy: large enough
 	// for the detail pane, small enough that switching pictures does not decode
-	// a 12 megapixel camera original every time.
+	// a 12 megapixel camera original every time. A caller with a larger pane asks
+	// for a larger copy — up to MaxDisplayEdge — and gets one cached beside the
+	// picture like this one.
 	ViewMaxEdge = 1600
 	// ViewJPEGQuality is the JPEG quality of that view copy.
 	ViewJPEGQuality = 85

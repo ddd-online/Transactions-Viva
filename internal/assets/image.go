@@ -168,22 +168,22 @@ func loadPicture(workspaceDir, relative string) (image.Image, error) {
 	return Decode(data)
 }
 
-// View makes the stage copy of a decoded picture: a JPEG no wider or taller than
-// maxEdge, so switching pictures decodes a small image instead of the camera
+// View makes the view copy of a decoded picture: a JPEG no wider or taller than
+// maxEdge, so opening a picture decodes a small copy instead of the camera
 // original every time.
 func View(picture image.Image, maxEdge int) ([]byte, error) {
-	if maxEdge <= 0 || maxEdge > ViewMaxEdge {
-		maxEdge = ViewMaxEdge
+	if maxEdge <= 0 || maxEdge > MaxDisplayEdge {
+		maxEdge = MaxDisplayEdge
 	}
 	return EncodeJPEG(fitEdge(picture, maxEdge), ViewJPEGQuality)
 }
 
-// LoadView loads the stage copy of a stored image, making and caching it on
-// first use. A workspace imported before view copies existed gets one the first
-// time the picture is shown; every later switch decodes the small copy.
+// LoadView loads the view copy of a stored image, making and caching it on first
+// use. A workspace imported before view copies existed gets one the first time
+// the picture is shown; every later switch decodes the small copy.
 func LoadView(workspaceDir, relative string, maxEdge int) (gfx.Bitmap, error) {
-	if maxEdge <= 0 || maxEdge > ViewMaxEdge {
-		maxEdge = ViewMaxEdge
+	if maxEdge <= 0 || maxEdge > MaxDisplayEdge {
+		maxEdge = MaxDisplayEdge
 	}
 	if bitmap, err := Load(workspaceDir, ViewPath(relative), maxEdge); err == nil {
 		return bitmap, nil
@@ -193,6 +193,11 @@ func LoadView(workspaceDir, relative string, maxEdge int) (gfx.Bitmap, error) {
 		return gfx.Bitmap{}, err
 	}
 	scaled := fitEdge(picture, maxEdge)
+	if scaled == picture {
+		// The picture already fits: a copy would only re-encode it and lose
+		// detail, so the original is its own view.
+		return Bitmap(picture), nil
+	}
 	if data, err := EncodeJPEG(scaled, ViewJPEGQuality); err == nil {
 		writeView(workspaceDir, ViewPath(relative), data)
 	}
@@ -248,8 +253,13 @@ func Bitmap(picture image.Image) gfx.Bitmap {
 }
 
 // toRGBA copies any decoded image into a tightly-packed premultiplied RGBA
-// picture, the shape the conversions and the EXIF rotation work on.
+// picture, the shape the conversions and the EXIF rotation work on. A picture
+// that is already one is returned as it stands: the decoders hand back RGBA,
+// and copying twelve megapixels to read them once more is pure latency.
 func toRGBA(picture image.Image) *image.RGBA {
+	if rgba, ok := picture.(*image.RGBA); ok {
+		return rgba
+	}
 	bounds := picture.Bounds()
 	rgba := image.NewRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
 	stddraw.Draw(rgba, rgba.Bounds(), picture, bounds.Min, stddraw.Src)

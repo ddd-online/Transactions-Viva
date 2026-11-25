@@ -24,6 +24,7 @@ func (m *Model) notesCommands() notespage.Commands {
 		ImportImage: m.importNoteImage,
 		PasteImage:  m.pasteNoteImage,
 		LoadImage:   m.loadNoteImage,
+		LoadView:    m.loadNoteView,
 	}
 }
 
@@ -83,6 +84,17 @@ func (m *Model) loadNoteImage(relative string, maxEdge int) (gfx.Bitmap, error) 
 		return gfx.Bitmap{}, errNoNoteWorkspace
 	}
 	return assets.Load(m.workspace.Directory(), relative, maxEdge)
+}
+
+// loadNoteView decodes a picture's view copy: the picture scaled and encoded once
+// beside the original, so opening a note or its lightbox decodes a few
+// megapixels instead of the camera original. A picture imported before the copy
+// existed gets one on its first open, and never pays for it again.
+func (m *Model) loadNoteView(relative string, maxEdge int) (gfx.Bitmap, error) {
+	if m.workspace == nil {
+		return gfx.Bitmap{}, errNoNoteWorkspace
+	}
+	return assets.LoadView(m.workspace.Directory(), relative, maxEdge)
 }
 
 // readNotePicture reads one file and returns the bytes to store, their format
