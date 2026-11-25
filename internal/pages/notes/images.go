@@ -122,6 +122,7 @@ func (m *Model) closeLightbox() {
 // a small dialog.
 func (m *Model) lightboxView(c ui.C) {
 	if !m.lightbox.open {
+		m.restoreMotion()
 		return
 	}
 	theme := c.Theme()
@@ -134,6 +135,18 @@ func (m *Model) lightboxView(c ui.C) {
 	if sized {
 		spec.Width = size.Width + 2*pad
 	}
+	// A picture cannot fade: Viva's overlay entrance fades the scrim and the
+	// panel but skips bitmaps, so a picture modal arrives fully bright over a
+	// window that is still undimmed and then the background darkens behind it. A
+	// viewer opens at once, so the lightbox is painted with motion off: scrim,
+	// panel and picture land together. The setting it borrowed is given back as
+	// soon as the lightbox closes (see lightboxView's return and CloseOverlays),
+	// and a reader who asked for reduced motion keeps it.
+	m.lightboxCanvas = c.Canvas()
+	if !m.reduceSaved {
+		m.reduceBefore, m.reduceSaved = m.lightboxCanvas.ReduceMotion(), true
+	}
+	m.lightboxCanvas.SetReduceMotion(true)
 	ui.ModalWith(c, &m.lightbox.open, "笔记图片", spec, func() {
 		view := ui.Control(c, "笔记图片预览", &m.lightbox.handlers).
 			FillWidth().Height(540).
@@ -146,6 +159,16 @@ func (m *Model) lightboxView(c ui.C) {
 	if !m.lightbox.open {
 		m.closeLightbox()
 	}
+}
+
+// restoreMotion gives the canvas back the reduced-motion setting the lightbox
+// borrowed, so the rest of the application keeps its motion.
+func (m *Model) restoreMotion() {
+	if !m.reduceSaved || m.lightboxCanvas == nil {
+		return
+	}
+	m.lightboxCanvas.SetReduceMotion(m.reduceBefore)
+	m.reduceSaved = false
 }
 
 // lightboxFit is the size the picture takes in the lightbox: its own aspect

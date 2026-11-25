@@ -209,6 +209,11 @@ type Model struct {
 	noteImages     map[string]gfx.Bitmap
 	lightboxEffect *ui.EffectState[gfx.Bitmap, string]
 	lightbox       lightboxState
+	// The lightbox paints with motion off, because a bitmap cannot fade; these
+	// are the canvas it borrowed and the setting to give back when it closes.
+	lightboxCanvas *gfx.Canvas
+	reduceBefore   bool
+	reduceSaved    bool
 
 	// dialogs
 	form   nodeForm
@@ -419,6 +424,7 @@ func (m *Model) CloseOverlays() {
 	m.form.open = false
 	m.remove.open = false
 	m.closeLightbox()
+	m.restoreMotion()
 }
 
 // View paints the section.
