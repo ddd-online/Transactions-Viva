@@ -601,7 +601,7 @@ func (m *Model) ledgerRows(c ui.C, spec Spec) {
 			// The last ledger stays: a workspace without one would reopen on
 			// a fresh 默认账本, as if the deletion had failed.
 			last := len(spec.Ledgers) <= 1
-			remove := ui.Button(c, "删除账本 "+one.Name).Destructive().Icon(icons.Trash2).
+			remove := ui.Button(c, "删除账本 "+one.Name).Ghost().Icon(icons.Trash2).
 				IconOnly().Disabled(last)
 			if last {
 				remove = remove.Tooltip("至少保留一个账本")
@@ -764,7 +764,7 @@ func (m *Model) stockAccountRows(c ui.C, spec Spec) {
 					m.openStockAccountForm(spec, one.ID)
 				}
 				last := len(spec.StockAccounts) <= 1
-				remove := ui.Button(c, "删除股票账户 "+one.Name).Destructive().Icon(icons.Trash2).
+				remove := ui.Button(c, "删除股票账户 "+one.Name).Ghost().Icon(icons.Trash2).
 					IconOnly().Disabled(last)
 				if last {
 					remove = remove.Tooltip("至少保留一个股票账户")
@@ -929,7 +929,7 @@ func (m *Model) diaryBooks(c ui.C, spec Spec) {
 				m.openBookForm(spec, one.ID)
 			}
 			last := len(spec.DiaryBooks) <= 1
-			remove := ui.Button(c, "删除日记本 "+one.Name).Destructive().Icon(icons.Trash2).
+			remove := ui.Button(c, "删除日记本 "+one.Name).Ghost().Icon(icons.Trash2).
 				IconOnly().Disabled(last)
 			if last {
 				remove = remove.Tooltip("至少保留一本日记本")

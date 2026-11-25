@@ -8,6 +8,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
@@ -163,20 +164,17 @@ func (m *Model) rowTail(c ui.C, index int, one row) {
 		blank(c, rowTailWidth)
 		return
 	}
-	// A delete key, so it wears the destructive palette: the danger ink on the
-	// danger wash, a step stronger under the pointer.
 	button := ui.Row(c).Size(rowTailWidth, rowTailWidth).Center().
 		Radius(theme.Metrics.RadiusControl).
-		Background(theme.Danger.WithAlpha(0.10)).
 		HitWith(keyID, "删除日记 "+domain.DiaryDateCn(one.date), gfx.HitOptions{
 			Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
 		}).
-		Hover(ui.Look{}.Background(theme.Danger.WithAlpha(0.20))).
-		Pressed(ui.Look{}.Background(theme.Danger.WithAlpha(0.30))).
+		Hover(ui.Look{}.Background(state.Hover(*theme))).
+		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
 		Focus(ui.Look{}.Ring(2, theme.Ring)).
 		Tooltip("删除日记")
 	button.Children(func() {
-		ui.Icon(c, icons.Trash2).Size(15, 15).Color(theme.Danger)
+		ui.Icon(c, icons.Trash2).Size(15, 15).Color(theme.MutedForeground)
 	})
 	if button.Clicked() {
 		m.askDeleteDate(one.date)

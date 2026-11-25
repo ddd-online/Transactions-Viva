@@ -836,7 +836,7 @@ func (p *recordsPanel) tradeRow(c ui.C, trade domain.StockTrade) {
 					}
 				}
 				remove := ui.Button(c, "删除整笔委托").
-					Destructive().Icon(icons.Trash2).XSmall().IconOnly().Tooltip("删除")
+					Ghost().Icon(icons.Trash2).XSmall().IconOnly().Tooltip("删除")
 				if remove.Clicked() {
 					p.askDeleteOrder(trade)
 				}

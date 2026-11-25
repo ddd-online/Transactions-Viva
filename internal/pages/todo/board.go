@@ -260,7 +260,7 @@ func (m *Model) progressRow(c ui.C, progress *domain.TodoProgress) {
 			text.Muted()
 		}
 		typography.Caption(c, time.Unix(progress.CreatedAt, 0).Format("01-02 15:04")).Mono()
-		if ui.Button(c, "删除进度").Destructive().Icon(icons.Trash2).IconOnly().
+		if ui.Button(c, "删除进度").Ghost().Icon(icons.Trash2).IconOnly().
 			Tooltip("删除进度").Clicked() {
 			if err := m.todos.DeleteTodoProgress(m.context(), progress.ID); err != nil {
 				m.fail(err)

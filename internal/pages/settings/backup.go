@@ -181,7 +181,7 @@ func (m *Model) backupRestoreGroup(c ui.C, spec Spec) {
 			} else {
 				typography.Caption(c, "不可恢复").Muted()
 			}
-			remove := ui.Button(c, "删除").Destructive().Small()
+			remove := ui.Button(c, "删除").DestructiveOutline().Small()
 			if spec.OnDeleteBackup == nil {
 				remove = remove.Disabled(true)
 			}

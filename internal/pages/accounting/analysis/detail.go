@@ -177,7 +177,7 @@ func (m *Model) curveRow(c ui.C, chart *domain.Chart, index int, line *domain.Ch
 					IconOnly().Tooltip("编辑曲线").Clicked() {
 					m.openLine(chart, index)
 				}
-				if ui.Button(c, "删除曲线 "+line.Label).Destructive().Small().Icon(icons.Trash2).
+				if ui.Button(c, "删除曲线 "+line.Label).Ghost().Small().Icon(icons.Trash2).
 					IconOnly().Tooltip("删除曲线").Clicked() {
 					m.removeLine(chart, index)
 				}

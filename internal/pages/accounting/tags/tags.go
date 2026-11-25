@@ -422,7 +422,7 @@ func (m *Model) categoryRow(row ui.ListRow) {
 		countPill(row.C, cat.count)
 	}
 	remove := ui.Button(row.C, "删除分类 "+cat.name).
-		Destructive().Icon(icons.Trash2).IconOnly().Tooltip("删除分类")
+		Ghost().Icon(icons.Trash2).IconOnly().Tooltip("删除分类")
 	if remove.Clicked() {
 		m.askDeleteCategory(cat.name)
 	}
@@ -446,7 +446,7 @@ func (m *Model) tagRow(row ui.ListRow) {
 		countPill(row.C, one.count)
 	}
 	remove := ui.Button(row.C, "删除标签 "+one.name).
-		Destructive().Icon(icons.Trash2).IconOnly().Tooltip("删除标签")
+		Ghost().Icon(icons.Trash2).IconOnly().Tooltip("删除标签")
 	if remove.Clicked() {
 		m.askDeleteTag(one.name)
 	}

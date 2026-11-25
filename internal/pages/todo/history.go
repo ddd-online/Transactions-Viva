@@ -181,7 +181,7 @@ func (m *Model) historyRow(c ui.C, entry *domain.TodoHistory) {
 				// asked for it instead of under the loop above.
 				c.After(func() { m.setStatus(item.ID, domain.TodoStatusDoing) })
 			}
-			if ui.Button(c, "删除").Destructive().Small().Clicked() {
+			if ui.Button(c, "删除").Ghost().Small().Clicked() {
 				m.deleteItem = deleteItem{open: true, id: item.ID, title: item.Title}
 			}
 		})

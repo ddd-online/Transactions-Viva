@@ -849,7 +849,7 @@ func (p *positionsPanel) tradeRow(c ui.C, trade domain.StockTrade) {
 				Icon(icons.Pencil).Tooltip("编辑成交").Clicked() {
 				p.openTradeEdit(trade)
 			}
-			if ui.Button(c, "删除").Destructive().Small().IconOnly().
+			if ui.Button(c, "删除").Ghost().Small().IconOnly().
 				Icon(icons.Trash2).Tooltip("删除整笔委托").Clicked() {
 				p.openDeleteOrder(trade)
 			}
