@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -438,6 +439,14 @@ func TestOpenRejectsNewerSchema(t *testing.T) {
 	}
 	if _, err := Open(directory); !errors.Is(err, ErrVersionTooNew) {
 		t.Fatalf("error = %v", err)
+	} else {
+		// The message has to be actionable: an older build cannot open the
+		// workspace, so it says to update and names the copy to fall back on.
+		for _, want := range []string{"更新版本", "transactions.db.bak"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Fatalf("error %q does not mention %q", err, want)
+			}
+		}
 	}
 }
 

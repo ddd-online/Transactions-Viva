@@ -96,7 +96,7 @@ func applyMigrations(db *sql.DB, databasePath string, list []migration, current 
 	}
 	target := list[len(list)-1].version
 	if current > target {
-		return fmt.Errorf("%w：当前库格式版本 %d，本程序支持到 %d", ErrVersionTooNew, current, target)
+		return versionTooNewError(current, target)
 	}
 	if current == target {
 		return nil
@@ -135,7 +135,7 @@ func applyMigrations(db *sql.DB, databasePath string, list []migration, current 
 // backupDatabase writes a single rollback copy next to the database. VACUUM
 // INTO needs to run outside a transaction.
 func backupDatabase(db *sql.DB, databasePath string) error {
-	backupPath := databasePath + ".bak"
+	backupPath := databasePath + backupSuffix
 	if err := os.Remove(backupPath); err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -194,4 +194,23 @@ func validateSchemaTables(db *sql.DB) error {
 }
 
 // databasePathOf is the database inside a workspace directory.
-func databasePathOf(directory string) string { return filepath.Join(directory, "transactions.db") }
+func databasePathOf(directory string) string { return filepath.Join(directory, databaseName) }
+
+// databaseName and backupSuffix name the two files a person may have to look
+// for by hand when an older build meets a newer workspace.
+const (
+	databaseName = "transactions.db"
+	backupSuffix = ".bak"
+)
+
+// versionTooNewError says what an older build found, what it knows, and both
+// ways out: install a newer build, or fall back to the copy the upgrading build
+// left next to the database. The fallback is named with its cost because it
+// drops everything written after the upgrade.
+func versionTooNewError(current, target int) error {
+	return fmt.Errorf(
+		"%w：当前库格式版本 %d，本程序支持到 %d；请换用更新版本的程序打开这个工作空间。"+
+			"升级前的副本留在工作空间里的 %s，退不回去时才改用它，它会丢掉升级之后的改动",
+		ErrVersionTooNew, current, target, databaseName+backupSuffix,
+	)
+}

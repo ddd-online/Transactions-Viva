@@ -77,7 +77,7 @@ func Open(directory string) (*Workspace, error) {
 		return closeOnError(ErrNotWorkspace)
 	}
 	if version > targetVersion() {
-		return closeOnError(fmt.Errorf("%w：当前库格式版本 %d，本程序支持到 %d", ErrVersionTooNew, version, targetVersion()))
+		return closeOnError(versionTooNewError(version, targetVersion()))
 	}
 	if err := applyMigrations(db, databasePath, migrations, version); err != nil {
 		return closeOnError(err)
