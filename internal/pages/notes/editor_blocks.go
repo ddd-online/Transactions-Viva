@@ -28,8 +28,11 @@ const (
 	gripSize float32 = 18
 	gripGap  float32 = 6
 	gripTop  float32 = 2
-	// gripIconWidth and gripIconHeight are the icon inside the grip's box.
+	// gripIconWidth and gripIconHeight are the icon inside the grip's box, and
+	// gripRadius its corner radius: tighter than a control's, so the small box
+	// reads as a grip and not as a button.
 	gripIconWidth, gripIconHeight float32 = 10, 12
+	gripRadius                    float32 = 4
 )
 
 // blockMenuState is the grip's menu: whether it is open, which block it commands,
@@ -116,7 +119,7 @@ func (m *Model) blockGrip(c ui.C, block int) {
 	c.Key("note-block-grip-" + strconv.Itoa(block))
 	m.gripID = ui.ID(c)
 	grip := ui.ButtonBase(c, "块操作").Size(gripSize, gripSize).
-		Radius(theme.Metrics.RadiusControl).
+		Radius(gripRadius).
 		Background(theme.Hover).
 		Hover(ui.Look{}.Background(state.Selected(*theme))).
 		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
@@ -324,7 +327,9 @@ func (m *Model) paintImageGrip(canvas *gfx.Canvas, theme *ui.Theme, offsetY floa
 		X: m.bodyLayout.column + width/2 - 18, Y: offsetY + row.y + float32(height) - 4,
 		Width: 36, Height: 8,
 	}
-	canvas.Rounded(grip, 4, theme.Primary)
+	// The handle is a plain bar: its corners are square, so it reads as the
+	// picture's edge and not as a rounded control.
+	canvas.Fill(grip, theme.Primary)
 	canvas.HitWithOptions(m.bodyInput.Parts().At(partImageGrip), grip, "调整图片高度",
 		gfx.HitOptions{Role: gfx.RoleSeparator, SkipFocus: true, Cursor: gfx.PointerCursorResizeVertical})
 }
