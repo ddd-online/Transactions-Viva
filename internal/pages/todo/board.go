@@ -253,7 +253,9 @@ func (m *Model) progressRow(c ui.C, progress *domain.TodoProgress) {
 				m.reload()
 			}
 		}
-		text := typography.Caption(c, progress.Content).Grow(1)
+		// The line wraps instead of clipping: a progress record is a sentence, not a
+		// cell. The time and the delete key keep their place at its right.
+		text := typography.CaptionParagraph(c, progress.Content, 0).Grow(1).MinWidth(0)
 		if progress.Done {
 			text.Muted()
 		}

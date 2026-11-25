@@ -2,6 +2,7 @@ package todo
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/vivaui/viva/app"
@@ -75,18 +76,21 @@ func (r *boardRepo) restore(itemID, status string) error {
 // second-level navigation, so the test picks the tab the way the shell does.
 func paint(t *testing.T, tab int, history []domain.TodoHistory) (*app.Driver, *boardRepo) {
 	t.Helper()
-	repo := &boardRepo{
-		cards: []domain.TodoCard{
-			{ID: "c1", Title: "工作", Items: []domain.TodoItem{
-				{ID: "i1", CardID: "c1", Title: "第一件", CreatedAt: 3},
-				{ID: "i2", CardID: "c1", Title: "第二件", CreatedAt: 2},
-			}},
-			{ID: "c2", Title: "家里", Items: []domain.TodoItem{
-				{ID: "i3", CardID: "c2", Title: "第三件", CreatedAt: 1},
-			}},
-		},
-		history: history,
-	}
+	return paintCards(t, []domain.TodoCard{
+		{ID: "c1", Title: "工作", Items: []domain.TodoItem{
+			{ID: "i1", CardID: "c1", Title: "第一件", CreatedAt: 3},
+			{ID: "i2", CardID: "c1", Title: "第二件", CreatedAt: 2},
+		}},
+		{ID: "c2", Title: "家里", Items: []domain.TodoItem{
+			{ID: "i3", CardID: "c2", Title: "第三件", CreatedAt: 1},
+		}},
+	}, history, tab)
+}
+
+// paintCards is paint over the cards a test names.
+func paintCards(t *testing.T, cards []domain.TodoCard, history []domain.TodoHistory, tab int) (*app.Driver, *boardRepo) {
+	t.Helper()
+	repo := &boardRepo{cards: cards, history: history}
 	model := New()
 	if err := model.SetRepository(workspaceRepo{}, repo); err != nil {
 		t.Fatalf("SetRepository: %v", err)
@@ -155,5 +159,46 @@ func TestRestoringAHistoryItemKeepsTheHistoryPainting(t *testing.T) {
 	}
 	if len(repo.history) != 1 {
 		t.Fatalf("the store kept %d history entries, want 1", len(repo.history))
+	}
+}
+
+// TestProgressRecordsWrapInsteadOfTruncating pins the fix for the progress log: a
+// record is a sentence, so it wraps inside its row instead of running under the
+// time and the two buttons. A wrapped line is painted as its own piece of text, so
+// the dialog's copy of a long record arrives as several pieces that join back into
+// the record; a truncated one arrives whole and clipped.
+func TestProgressRecordsWrapInsteadOfTruncating(t *testing.T) {
+	record := "2121想加上公休啊SHUOXHO爱生活小哦AHIOSXHUIO阿，再补一句更长的说明看看会不会换行而不是被截断"
+	driver, _ := paintCards(t, []domain.TodoCard{{
+		ID: "c1", Title: "工作", Items: []domain.TodoItem{{
+			ID: "i1", CardID: "c1", Title: "第一件", CreatedAt: 1,
+			Progress: []domain.TodoProgress{{ID: "p1", ItemID: "i1", Content: record, CreatedAt: 1}},
+		}},
+	}}, nil, 0)
+
+	// The row's own expansion, then the progress dialog.
+	if !click(driver, "展开进度 第一件") {
+		t.Fatal("the board row has no expansion control")
+	}
+	if !click(driver, "编辑记录") {
+		t.Fatal("the expanded row has no progress dialog")
+	}
+
+	var pieces []string
+	for _, painted := range driver.Snapshot().Texts {
+		// The expanded row prints the whole record on one line of its own; the
+		// dialog is the copy this test is about.
+		if painted.Value == record || painted.Value == "" {
+			continue
+		}
+		if strings.Contains(record, painted.Value) {
+			pieces = append(pieces, painted.Value)
+		}
+	}
+	if len(pieces) < 2 {
+		t.Fatalf("the dialog painted the record as %d piece(s): it was clipped, not wrapped", len(pieces))
+	}
+	if joined := strings.Join(pieces, ""); joined != record {
+		t.Fatalf("the wrapped lines join to %q, want %q", joined, record)
 	}
 }

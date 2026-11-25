@@ -94,7 +94,10 @@ func (m *Model) progressView(c ui.C) {
 									panel.editID, panel.editText = "", ""
 								}
 							} else {
-								text := typography.Body(c, line.Content).Grow(1)
+								// The record wraps instead of running under the time and the
+								// buttons: a progress line is a sentence, and a long one is
+								// exactly what a log is for.
+								text := typography.BodyParagraph(c, line.Content, 0).Grow(1).MinWidth(0)
 								if line.Done {
 									text.Muted()
 								}
