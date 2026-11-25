@@ -35,7 +35,7 @@ func TestDiaryPageWritesTheDay(t *testing.T) {
 	if !shows(driver, "暂无日记") {
 		t.Fatal("an empty book should say it has no diary")
 	}
-	today := domain.DiaryToday()
+	today := domain.Today()
 	if !shows(driver, domain.DiaryDateCn(today)) {
 		t.Fatalf("the editor does not name today (%s)", today)
 	}
@@ -123,7 +123,7 @@ func containsLabel(driver *app.Driver, want string) bool {
 // toolbar switches between them.
 func TestDiaryBooksHoldTheirOwnDays(t *testing.T) {
 	driver, model := open(t)
-	today := domain.DiaryToday()
+	today := domain.Today()
 	click(t, driver, "日记")
 	click(t, driver, "日记正文")
 	if err := driver.Type("第一本的日记"); err != nil {

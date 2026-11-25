@@ -1168,7 +1168,7 @@ func (m *Model) ensurePeriod() {
 	if m.diary.period != "" {
 		return
 	}
-	today, ok := domain.ParseDiaryDate(domain.DiaryToday())
+	today, ok := domain.ParseDiaryDate(domain.Today())
 	if !ok {
 		return
 	}

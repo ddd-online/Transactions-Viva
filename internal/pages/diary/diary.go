@@ -105,7 +105,7 @@ type Model struct {
 // SetDataSource once a workspace is open.
 func New() *Model {
 	m := &Model{
-		selected: domain.DiaryToday(),
+		selected: domain.Today(),
 		expanded: map[string]bool{},
 		pick:     datepicker.NewState(),
 	}
@@ -307,7 +307,7 @@ func (m *Model) toolbar(c ui.C) {
 		m.bookPicker(c)
 		ui.Divider(c).Height(24)
 		if ui.Button(c, "今天").Secondary().Clicked() {
-			m.selectDate(domain.DiaryToday())
+			m.selectDate(domain.Today())
 		}
 		datepicker.Picker(c, &m.pick, datepicker.Spec{
 			Label: "日记日期", Start: m.selected, Grain: datepicker.ByDay,
@@ -390,7 +390,7 @@ func (m *Model) editor(c ui.C) {
 			// The placeholder names the day the editor is showing: a past entry
 			// is not "today's" diary.
 			placeholder := "写下今天的日记……"
-			if m.selected != domain.DiaryToday() {
+			if m.selected != domain.Today() {
 				placeholder = "写下这天的日记……"
 			}
 			ui.TextArea(c, &m.body, "日记正文", placeholder).

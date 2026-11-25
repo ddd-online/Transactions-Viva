@@ -172,8 +172,8 @@ func newPositionsPanel(accounts *accountStore, quotes stockquote.Fetcher) *posit
 		tradesByCode: map[string][]domain.StockTrade{},
 		quoteMap:     map[string]domain.StockQuote{},
 		tradeFills:   []positionsTradeFill{{}},
-		dailyDate:    domain.DiaryToday(),
-		tradeDate:    domain.DiaryToday(),
+		dailyDate:    domain.Today(),
+		tradeDate:    domain.Today(),
 		dailyPick:    datepicker.NewState(),
 		tradePick:    datepicker.NewState(),
 	}
@@ -912,7 +912,7 @@ func (p *positionsPanel) dailyDialog(c ui.C) {
 			} else {
 				datepicker.Picker(c, &p.dailyPick, datepicker.Spec{
 					Label: "日期", Start: p.dailyDate, Grain: datepicker.ByDay,
-					Fill: true, CloseOnPick: true, MaxDate: domain.DiaryToday(),
+					Fill: true, CloseOnPick: true, MaxDate: domain.Today(),
 					Viewport: c.Bounds(),
 					OnRange:  func(start, _ string) { p.dailyDate = start },
 				})
@@ -1376,7 +1376,7 @@ func (p *positionsPanel) openLedger() {
 }
 
 func (p *positionsPanel) openDailyToday(position *domain.StockPosition) {
-	today := domain.DiaryToday()
+	today := domain.Today()
 	p.dailyOpen = true
 	p.dailyEditDate = ""
 	p.dailyDate = today
@@ -1418,7 +1418,7 @@ func (p *positionsPanel) saveDaily() {
 		p.dailyError = "日期要写成 YYYY-MM-DD"
 		return
 	}
-	if date > domain.DiaryToday() {
+	if date > domain.Today() {
 		p.dailyError = "每日复盘只能写到当天"
 		return
 	}
@@ -1498,7 +1498,7 @@ func (p *positionsPanel) openTrade(kind string, position *domain.StockPosition) 
 		positionLots = strconv.Itoa(position.Quantity / 100)
 	}
 	p.tradeFills = []positionsTradeFill{{lots: positionLots}}
-	p.tradeDate = domain.DiaryToday()
+	p.tradeDate = domain.Today()
 	p.tradeTag = domain.DefaultStockTradeTag
 	if position != nil {
 		p.tradeTag = domain.EffectivePositionTag(position.Tag)

@@ -118,8 +118,9 @@ func DiaryWeekdayCn(value string) string {
 	return diaryWeekdays[int(parsed.Weekday())]
 }
 
-// DiaryToday is today's local date in the stored form.
-func DiaryToday() string { return time.Now().Format(DiaryDateLayout) }
+// Today is today's local date in the stored form: a date the whole application
+// keys records by, not only the diary.
+func Today() string { return time.Now().Format(DiaryDateLayout) }
 
 // DiaryMonthKey is the `YYYY-MM` a date falls in; "" when the date is invalid.
 func DiaryMonthKey(value string) string {
