@@ -47,6 +47,7 @@ func TestDiaryDateIsStrict(t *testing.T) {
 func TestDiaryMoodNormalization(t *testing.T) {
 	cases := map[string]string{
 		"烦躁": "😤", "焦虑": "😰", "难过": "😢", "平静": "😐", "开心": "😊",
+		"😠":  "😠",
 		"😊":  "😊",
 		"":   "",
 		"??": "??",
@@ -58,6 +59,12 @@ func TestDiaryMoodNormalization(t *testing.T) {
 	}
 	if DiaryMoodLabel("😢") != "难过" {
 		t.Fatalf("label = %q", DiaryMoodLabel("😢"))
+	}
+	if DiaryMoodLabel("😠") != "生气" {
+		t.Fatalf("the new mood's label = %q", DiaryMoodLabel("😠"))
+	}
+	if DiaryMoods[0].Emoji != "😠" {
+		t.Fatalf("the picker starts with %q, want the angriest mood", DiaryMoods[0].Emoji)
 	}
 	if DiaryMoodLabel("开心") != "开心" {
 		t.Fatalf("Chinese label = %q", DiaryMoodLabel("开心"))

@@ -28,9 +28,10 @@ type DiaryMood struct {
 	Label string
 }
 
-// DiaryMoods are the five moods in the picker's order. The emoji is what
-// the database stores; the label is only ever shown.
+// DiaryMoods are the six moods in the picker's order, angriest first. The emoji
+// is what the database stores; the label is only ever shown.
 var DiaryMoods = [...]DiaryMood{
+	{Emoji: "😠", Label: "生气"},
 	{Emoji: "😤", Label: "烦躁"},
 	{Emoji: "😰", Label: "焦虑"},
 	{Emoji: "😢", Label: "难过"},

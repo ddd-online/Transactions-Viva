@@ -415,12 +415,13 @@ type moodRow struct {
 	name  string
 }
 
-// moodRows are the picker's six choices in the picker's order: 清除 first,
-// then the five moods. The names are the accessible labels and the tooltips —
-// ui.Choice would name each segment by its emoji alone, and both a screen reader
-// and a pointer would get a face with no word for it.
+// moodRows are the picker's seven choices in the picker's order: 清除 first,
+// then the six moods, angriest first. The names are the accessible labels and the
+// tooltips — ui.Choice would name each segment by its emoji alone, and both a
+// screen reader and a pointer would get a face with no word for it.
 var moodRows = [...]moodRow{
 	{value: "", emoji: "—", name: "清除心情"},
+	{value: "😠", emoji: "😠", name: "生气"},
 	{value: "😤", emoji: "😤", name: "烦躁"},
 	{value: "😰", emoji: "😰", name: "焦虑"},
 	{value: "😢", emoji: "😢", name: "难过"},
@@ -428,9 +429,9 @@ var moodRows = [...]moodRow{
 	{value: "😊", emoji: "😊", name: "开心"},
 }
 
-// moodPicker is the six-choice mood row: the app's segmented look, built from
+// moodPicker is the seven-choice mood row: the app's segmented look, built from
 // ButtonBase because the segmented control cannot name an option differently
-// from what it paints. One tab stop: the arrows move between the six.
+// from what it paints. One tab stop: the arrows move between the seven.
 //
 // The chrome follows the app's segmented control exactly (Viva's
 // newSegmentPalette): the track is Muted inside a hairline, a resting segment
