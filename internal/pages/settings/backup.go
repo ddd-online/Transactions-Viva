@@ -181,7 +181,7 @@ func (m *Model) backupRestoreGroup(c ui.C, spec Spec) {
 			} else {
 				typography.Caption(c, "不可恢复").Muted()
 			}
-			remove := ui.Button(c, "删除").DestructiveOutline().Small()
+			remove := ui.Button(c, "删除").Secondary().Small()
 			if spec.OnDeleteBackup == nil {
 				remove = remove.Disabled(true)
 			}
@@ -215,7 +215,7 @@ func (m *Model) backupRecentGroup(c ui.C, spec Spec) {
 						m.report("切换工作空间失败", func() error { return spec.OnOpenRecentWorkspace(directory) })
 					}
 				}
-				remove := ui.Button(c, "移除").Ghost().Small()
+				remove := ui.Button(c, "移除").Secondary().Small()
 				if spec.OnRemoveRecentWorkspace == nil {
 					remove = remove.Disabled(true)
 				}

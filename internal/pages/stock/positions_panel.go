@@ -642,7 +642,7 @@ func (p *positionsPanel) feeLine(c ui.C, position *domain.StockPosition) {
 func (p *positionsPanel) ledgerSection(c ui.C, position *domain.StockPosition) {
 	sheet := p.ledgerSheet(position)
 	stockSection(c, "交易台账", layout.Inset, func() {
-		if ui.Button(c, ledgerActionLabel(sheet)).Outline().Small().Clicked() {
+		if ui.Button(c, ledgerActionLabel(sheet)).Small().Secondary().Clicked() {
 			p.openLedger()
 		}
 	}, func() {
@@ -678,7 +678,7 @@ func (p *positionsPanel) dailySection(c ui.C, position *domain.StockPosition) {
 	theme := c.Theme()
 	reviews := p.currentDayReviews(position.StockCode)
 	stockSection(c, "每日复盘", layout.Inset, func() {
-		if ui.Button(c, "写今日").Outline().Small().Clicked() {
+		if ui.Button(c, "写今日").Small().Secondary().Clicked() {
 			p.openDailyToday(position)
 		}
 	}, func() {
@@ -728,7 +728,7 @@ func (p *positionsPanel) roundSection(c ui.C, position *domain.StockPosition) {
 		text = "还没有写本轮复盘，点「编辑」记录买入与卖出的理由。"
 	}
 	stockSection(c, "本轮复盘", layout.Inset, func() {
-		if ui.Button(c, "编辑").Outline().Small().Clicked() {
+		if ui.Button(c, "编辑").Small().Secondary().Clicked() {
 			p.openRoundEdit()
 		}
 	}, func() {

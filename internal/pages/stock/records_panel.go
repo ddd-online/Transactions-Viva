@@ -849,7 +849,7 @@ func (p *recordsPanel) ledgerSection(c ui.C, round domain.StockRoundDetail) {
 	sheet := ledgerSheetOfView(round.Ledger)
 	open := func() { p.openLedger(round) }
 	p.recordSection(c, "交易台账", func() {
-		if ui.Button(c, ledgerActionLabel(sheet)).Outline().Small().Clicked() {
+		if ui.Button(c, ledgerActionLabel(sheet)).Small().Secondary().Clicked() {
 			open()
 		}
 	}, func() {

@@ -68,7 +68,7 @@ func (m *Model) aboutHeader(c ui.C, spec Spec, facts buildinfo.Facts) {
 				typography.Title(c, "Transactions")
 				typography.CaptionParagraph(c, "本地优先的个人财务工作台：所有数据都在你的工作目录中。", 2)
 			})
-			if ui.Button(c, "复制版本信息").Outline().Clicked() {
+			if ui.Button(c, "复制版本信息").Secondary().Clicked() {
 				m.copyBuildInfo(spec, facts)
 			}
 		})
