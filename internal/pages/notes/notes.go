@@ -21,6 +21,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/emptystate"
+	"transactions/internal/components/imageviewer"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
@@ -208,12 +209,8 @@ type Model struct {
 	imageEffect    *ui.EffectState[map[string]gfx.Bitmap, noteImageKey]
 	noteImages     map[string]gfx.Bitmap
 	lightboxEffect *ui.EffectState[gfx.Bitmap, string]
-	lightbox       lightboxState
-	// The lightbox paints with motion off, because a bitmap cannot fade; these
-	// are the canvas it borrowed and the setting to give back when it closes.
-	lightboxCanvas *gfx.Canvas
-	reduceBefore   bool
-	reduceSaved    bool
+	lightbox       lightbox
+	viewer         *imageviewer.Viewer
 
 	// dialogs
 	form   nodeForm
@@ -274,7 +271,7 @@ func New() *Model {
 		blockMenu:     blockMenuState{block: -1},
 		resize:        resizeState{block: -1},
 		doc:           text.NewEditor(""),
-		lightbox:      lightboxState{},
+		viewer:        imageviewer.New(),
 		split:         ui.SplitterState{Pos: layout.RailWidth},
 	}
 	m.bindTree()
@@ -286,9 +283,6 @@ func New() *Model {
 	m.bodyInput.Text = m.bodyText
 	m.imageEffect = ui.NewEffectKeyed(m.loadNoteImages)
 	m.lightboxEffect = ui.NewEffectKeyed(m.loadLightboxImage)
-	m.lightbox.handlers.Role = gfx.RoleGroup
-	m.lightbox.handlers.Pointer = m.lightboxPointer
-	m.lightbox.handlers.Scroll = m.lightboxScroll
 	return m
 }
 
@@ -424,7 +418,6 @@ func (m *Model) CloseOverlays() {
 	m.form.open = false
 	m.remove.open = false
 	m.closeLightbox()
-	m.restoreMotion()
 }
 
 // View paints the section.
@@ -458,20 +451,6 @@ func (m *Model) View(c ui.C) {
 	if images, err, ok := m.imageEffect.Take(); ok {
 		if err == nil {
 			m.noteImages = images
-		}
-	}
-	if m.lightbox.open && m.lightbox.path != "" {
-		// The note decoded this picture for its body at the lightbox's own edge,
-		// so opening it is a lookup; the effect is only for a picture whose
-		// decode has not landed yet.
-		if bitmap, ok := m.noteImages[m.lightbox.path]; ok && bitmap.Width > 0 {
-			m.lightbox.bitmap, m.lightbox.loaded = bitmap, true
-		} else {
-			ui.Effect(c, m.lightboxEffect, m.lightboxKey())
-			if bitmap, err, ok := m.lightboxEffect.Take(); ok && err == nil && bitmap.Width > 0 {
-				m.lightbox.bitmap = bitmap
-				m.lightbox.loaded = true
-			}
 		}
 	}
 	m.settleSplit()

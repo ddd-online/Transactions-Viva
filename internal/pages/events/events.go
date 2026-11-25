@@ -23,6 +23,7 @@ import (
 
 	"transactions/internal/components/datepicker"
 	"transactions/internal/components/emptystate"
+	"transactions/internal/components/imageviewer"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
@@ -106,16 +107,10 @@ type confirmation struct {
 	imageID string
 }
 
-// preview is the lightbox: which image, its zoom and pan, and the drag that is
-// moving it.
+// preview is the lightbox's place in the day's list; the zoom, the pan and the
+// dialog itself belong to the viewer both pages share.
 type preview struct {
-	open     bool
-	index    int
-	zoom     float32
-	pan      gfx.Point
-	dragging bool
-	last     gfx.Point
-	handlers ui.Handlers
+	index int
 }
 
 // Model is the 事件 page's state.
@@ -167,6 +162,7 @@ type Model struct {
 	deleteEvent confirmation
 	deleteImage confirmation
 	preview     preview
+	viewer      *imageviewer.Viewer
 	pick        datepicker.State
 
 	errorMessage string
@@ -183,11 +179,7 @@ func New() *Model {
 		bits:      map[string]gfx.Bitmap{},
 		bitErrs:   map[string]string{},
 	}
-	m.preview.handlers = ui.Handlers{
-		Pointer: m.previewPointer,
-		Scroll:  m.previewScroll,
-		Key:     m.previewKey,
-	}
+	m.viewer = imageviewer.New()
 	m.display = ui.NewEffectKeyed(func(_ context.Context, request displayRequest) (gfx.Bitmap, error) {
 		loader := m.cmds.LoadView
 		if loader == nil {
@@ -251,8 +243,7 @@ func (m *Model) CloseOverlays() {
 	m.add.open = false
 	m.deleteEvent.open = false
 	m.deleteImage.open = false
-	m.preview.open = false
-	m.preview.dragging = false
+	m.viewer.Hide()
 }
 
 // View paints the toolbar and the three panes.

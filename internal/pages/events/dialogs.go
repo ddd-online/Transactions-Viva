@@ -6,6 +6,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/datepicker"
+	"transactions/internal/components/imageviewer"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/typography"
 )
@@ -76,29 +77,31 @@ func (m *Model) deleteImageDialog(c ui.C) {
 		})
 }
 
-// previewDialog is the lightbox: the picture at fit size, a wheel zoom and a
-// drag, with 上一张 / 下一张 and the arrow keys to move through the day's list.
-// The modal itself closes on Escape and on a press outside it.
+// previewDialog is the lightbox: the picture at fit size in a dialog shaped like
+// it, a wheel zoom and a drag, with 上一张 / 下一张 and the arrow keys to move
+// through the day's list. The modal itself closes on Escape and on a press
+// outside it. The viewer is the notes page's too, so a picture opens at the same
+// size on both pages.
 func (m *Model) previewDialog(c ui.C) {
-	theme := c.Theme()
-	ui.ModalWith(c, &m.preview.open, "事件图片", ui.ModalSpec{Width: 900}, func() {
-		ui.Control(c, "事件图片预览", &m.preview.handlers).
-			FillWidth().Height(520).
-			Radius(theme.Metrics.RadiusSurface).Clip().
-			Draw(func(d *ui.DrawContext) {
-				m.drawPreview(d)
+	if image, ok := m.mainImage(); ok && m.viewer.Shown() {
+		m.viewer.Show(m.previewPicture(image))
+	}
+	m.viewer.View(c, imageviewer.Spec{
+		Title: "事件图片",
+		Label: "事件图片预览",
+		Keys:  m.previewKeys,
+		Footer: func() {
+			ui.Row(c).FillWidth().Gap(layout.Gap).Items(ui.Center).Children(func() {
+				if ui.Button(c, "上一张").Secondary().Clicked() {
+					m.stepPreview(-1)
+				}
+				ui.Spacer(c)
+				typography.Caption(c, fmt.Sprintf("%d / %d", m.preview.index+1, len(m.images)))
+				ui.Spacer(c)
+				if ui.Button(c, "下一张").Secondary().Clicked() {
+					m.stepPreview(1)
+				}
 			})
-	}, func() {
-		ui.Row(c).FillWidth().Gap(layout.Gap).Items(ui.Center).Children(func() {
-			if ui.Button(c, "上一张").Secondary().Clicked() {
-				m.stepPreview(-1)
-			}
-			ui.Spacer(c)
-			typography.Caption(c, fmt.Sprintf("%d / %d", m.preview.index+1, len(m.images)))
-			ui.Spacer(c)
-			if ui.Button(c, "下一张").Secondary().Clicked() {
-				m.stepPreview(1)
-			}
-		})
+		},
 	})
 }

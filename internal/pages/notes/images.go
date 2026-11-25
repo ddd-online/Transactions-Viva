@@ -7,6 +7,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/imageviewer"
 	"transactions/internal/domain"
 )
 
@@ -16,31 +17,20 @@ const (
 	// down to its column, so one decode serves both: opening the note decodes a
 	// picture once, and opening it again in the lightbox decodes nothing.
 	imageEdge = 2048
-	// lightboxShare is how much of the window a picture may take in the
-	// lightbox: a screenshot opens at nine tenths of it, not in a fixed box.
-	lightboxShare float32 = 0.9
 )
 
 // errNoImage is the lightbox's report while the shell cannot decode a picture.
 var errNoImage = errors.New("没有可显示的图片")
 
-// lightboxState is the one picture the user opened: its zoom and pan, and the
-// gestures over it.
-type lightboxState struct {
-	open bool
+// lightbox is the picture the viewer shows. The viewer owns the zoom, the pan and
+// the dialog; the page owns which picture it is and the decode behind it.
+type lightbox struct {
 	path string
 	// width and height are the picture's own pixel size, taken from the block
-	// that holds it. The dialog takes its shape from them, not from the bitmap:
-	// a picture that is still decoding opens the dialog at its final size, so the
-	// frame never chases the picture a frame behind.
+	// that holds it: the dialog takes its shape from them, so it opens at its
+	// final size before anything is decoded.
 	width, height int
-	loaded        bool
 	bitmap        gfx.Bitmap
-	zoom          float32
-	pan           gfx.Point
-	dragFrom      gfx.Point
-	dragging      bool
-	handlers      ui.Handlers
 }
 
 // loadNoteImages decodes the pictures of one note for the editor. It runs off
@@ -95,148 +85,55 @@ func (m *Model) lightboxKey() string {
 
 // openLightbox shows one picture, whose pixel size the block already knows. The
 // note decoded it for its body too — same picture, same edge — so the dialog
-// opens on those pixels; the effect below only stands in when that decode has not
-// landed yet.
+// opens on those pixels; the effect in View only stands in when that decode has
+// not landed yet.
 func (m *Model) openLightbox(path string, width, height int) {
 	if path == "" {
 		return
 	}
-	state := lightboxState{
-		open: true, path: path, width: width, height: height,
-		zoom: 1, handlers: m.lightbox.handlers,
-	}
+	m.lightbox = lightbox{path: path, width: width, height: height}
 	if bitmap, ok := m.noteImages[path]; ok && bitmap.Width > 0 {
-		state.bitmap, state.loaded = bitmap, true
+		m.lightbox.bitmap = bitmap
 	}
-	m.lightbox = state
+	m.viewer.Show(m.lightboxPicture())
 }
 
 // closeLightbox closes the picture.
 func (m *Model) closeLightbox() {
-	m.lightbox = lightboxState{handlers: m.lightbox.handlers}
+	m.lightbox = lightbox{}
+	m.viewer.Hide()
 }
 
-// lightboxView declares the lightbox modal. The dialog is sized to the picture,
-// which itself is laid out inside nine tenths of the window: a wide screenshot
-// fills it instead of sitting in a box of a fixed size, and a small picture gets
-// a small dialog.
+// lightboxPicture is what the viewer paints this paint: the copy the note decoded
+// for its body, or the one the lightbox's own effect brought.
+func (m *Model) lightboxPicture() imageviewer.Picture {
+	return imageviewer.Picture{
+		Path:   m.lightbox.path,
+		Width:  m.lightbox.width,
+		Height: m.lightbox.height,
+		Bitmap: m.lightbox.bitmap,
+	}
+}
+
+// lightboxView opens the viewer on the picture the page holds. The dialog is
+// sized to the picture, nine tenths of the window at most, and the decoding runs
+// off the paint.
 func (m *Model) lightboxView(c ui.C) {
-	if !m.lightbox.open {
-		m.restoreMotion()
-		return
-	}
-	theme := c.Theme()
-	// The dialog insets its body by the surface padding, and the picture keeps
-	// the same room around itself; asking for the body's width plus that padding
-	// makes the body exactly the picture's width.
-	pad := theme.Metrics.PadSurface + theme.Metrics.GapItem
-	spec := ui.ModalSpec{Width: 900}
-	size, sized := m.lightboxFit(c.Bounds())
-	if sized {
-		spec.Width = size.Width + 2*pad
-	}
-	// A picture cannot fade: Viva's overlay entrance fades the scrim and the
-	// panel but skips bitmaps, so a picture modal arrives fully bright over a
-	// window that is still undimmed and then the background darkens behind it. A
-	// viewer opens at once, so the lightbox is painted with motion off: scrim,
-	// panel and picture land together. The setting it borrowed is given back as
-	// soon as the lightbox closes (see lightboxView's return and CloseOverlays),
-	// and a reader who asked for reduced motion keeps it.
-	m.lightboxCanvas = c.Canvas()
-	if !m.reduceSaved {
-		m.reduceBefore, m.reduceSaved = m.lightboxCanvas.ReduceMotion(), true
-	}
-	m.lightboxCanvas.SetReduceMotion(true)
-	ui.ModalWith(c, &m.lightbox.open, "笔记图片", spec, func() {
-		view := ui.Control(c, "笔记图片预览", &m.lightbox.handlers).
-			FillWidth().Height(540).
-			Radius(theme.Metrics.RadiusSurface).Clip().
-			Draw(m.drawLightbox)
-		if sized {
-			view.Height(size.Height)
+	if m.lightbox.path != "" {
+		if bitmap, ok := m.noteImages[m.lightbox.path]; ok && bitmap.Width > 0 {
+			m.lightbox.bitmap = bitmap
+		} else {
+			ui.Effect(c, m.lightboxEffect, m.lightboxKey())
+			if bitmap, err, ok := m.lightboxEffect.Take(); ok && err == nil && bitmap.Width > 0 {
+				m.lightbox.bitmap = bitmap
+			}
 		}
-	}, nil)
-	if !m.lightbox.open {
-		m.closeLightbox()
+		m.viewer.Show(m.lightboxPicture())
 	}
-}
-
-// restoreMotion gives the canvas back the reduced-motion setting the lightbox
-// borrowed, so the rest of the application keeps its motion.
-func (m *Model) restoreMotion() {
-	if !m.reduceSaved || m.lightboxCanvas == nil {
-		return
+	if !m.viewer.View(c, imageviewer.Spec{Title: "笔记图片", Label: "笔记图片预览"}) {
+		// The dialog closed itself: Escape, a press on the dim, or the close.
+		m.lightbox = lightbox{}
 	}
-	m.lightboxCanvas.SetReduceMotion(m.reduceBefore)
-	m.reduceSaved = false
-}
-
-// lightboxFit is the size the picture takes in the lightbox: its own aspect
-// ratio inside lightboxShare of the window. The shape comes from the block's
-// pixel size, so it is known before the picture is decoded and does not change
-// when it arrives; a block that lost its size falls back to the bitmap.
-func (m *Model) lightboxFit(bounds gfx.Rect) (gfx.Size, bool) {
-	width, height := float32(m.lightbox.width), float32(m.lightbox.height)
-	if width <= 0 || height <= 0 {
-		width, height = float32(m.lightbox.bitmap.Width), float32(m.lightbox.bitmap.Height)
-	}
-	if width <= 0 || height <= 0 {
-		return gfx.Size{}, false
-	}
-	maxWidth, maxHeight := bounds.Width*lightboxShare, bounds.Height*lightboxShare
-	if maxWidth <= 0 || maxHeight <= 0 {
-		return gfx.Size{}, false
-	}
-	scale := min(maxWidth/width, maxHeight/height)
-	return gfx.Size{Width: width * scale, Height: height * scale}, true
-}
-
-// drawLightbox paints the picture at its zoom and pan.
-func (m *Model) drawLightbox(d *ui.DrawContext) {
-	theme := *d.Theme
-	d.Canvas.Fill(d.Rect, theme.Muted)
-	if !m.lightbox.loaded || m.lightbox.bitmap.Width == 0 {
-		d.Canvas.Label("正在载入图片……", gfx.Rect{X: d.Rect.X + 16, Y: d.Rect.Y + 16, Width: d.Rect.Width - 32, Height: 20},
-			gfx.TextStyle{Size: theme.Metrics.FontSizeM, Color: theme.MutedForeground})
-		return
-	}
-	drawZoomed(d.Canvas, m.lightbox.bitmap, d.Rect, m.lightbox.zoom, m.lightbox.pan)
-}
-
-// lightboxScroll zooms the picture with the wheel.
-func (m *Model) lightboxScroll(event gfx.ScrollEvent) gfx.EventResult {
-	zoom := m.lightbox.zoom * (1 - event.DeltaY*0.0015)
-	m.lightbox.zoom = clamp(zoom, 1, 6)
-	if m.lightbox.zoom <= 1 {
-		m.lightbox.pan = gfx.Point{}
-	}
-	return gfx.EventResult{Handled: true, Repaint: true}
-}
-
-// lightboxPointer drags the zoomed picture.
-func (m *Model) lightboxPointer(event gfx.PointerEvent) gfx.EventResult {
-	switch event.Kind {
-	case gfx.PointerDown:
-		m.lightbox.dragging = m.lightbox.zoom > 1
-		m.lightbox.dragFrom = gfx.Point{X: event.X, Y: event.Y}
-		if m.lightbox.dragging {
-			return gfx.EventResult{Handled: true}
-		}
-	case gfx.PointerMove:
-		if !m.lightbox.dragging {
-			return gfx.EventResult{}
-		}
-		m.lightbox.pan.X += event.X - m.lightbox.dragFrom.X
-		m.lightbox.pan.Y += event.Y - m.lightbox.dragFrom.Y
-		m.lightbox.dragFrom = gfx.Point{X: event.X, Y: event.Y}
-		return gfx.EventResult{Handled: true, Repaint: true}
-	case gfx.PointerUp:
-		if m.lightbox.dragging {
-			m.lightbox.dragging = false
-			return gfx.EventResult{Handled: true}
-		}
-	}
-	return gfx.EventResult{}
 }
 
 // pickPicture asks the shell for a picture and inserts it after the caret.
@@ -276,30 +173,4 @@ func (m *Model) dropImage(path string) {
 	if m.lightbox.path == path {
 		m.closeLightbox()
 	}
-}
-
-// drawZoomed draws the picture at fit × zoom, moved by pan, clamped so it cannot
-// be thrown clear of the pane.
-func drawZoomed(canvas *gfx.Canvas, bitmap gfx.Bitmap, bounds gfx.Rect, zoom float32, pan gfx.Point) {
-	width, height := float32(bitmap.Width), float32(bitmap.Height)
-	if width <= 0 || height <= 0 || bounds.Width <= 0 || bounds.Height <= 0 {
-		return
-	}
-	scale := min(bounds.Width/width, bounds.Height/height) * max(zoom, 1)
-	targetWidth, targetHeight := width*scale, height*scale
-	maxX := max((targetWidth-bounds.Width)/2, 0)
-	maxY := max((targetHeight-bounds.Height)/2, 0)
-	x := bounds.X + (bounds.Width-targetWidth)/2 + clamp(pan.X, -maxX, maxX)
-	y := bounds.Y + (bounds.Height-targetHeight)/2 + clamp(pan.Y, -maxY, maxY)
-	canvas.DrawBitmap(bitmap, gfx.Rect{X: x, Y: y, Width: targetWidth, Height: targetHeight})
-}
-
-func clamp(value, least, greatest float32) float32 {
-	if value < least {
-		return least
-	}
-	if value > greatest {
-		return greatest
-	}
-	return value
 }

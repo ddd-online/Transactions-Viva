@@ -6,6 +6,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/imageviewer"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 )
@@ -203,11 +204,28 @@ func (m *Model) openPreview() {
 	if !ok {
 		return
 	}
-	m.preview.open = true
 	m.preview.index = m.imageIndex(image.ID)
-	m.preview.zoom = 1
-	m.preview.pan = gfx.Point{}
-	m.preview.dragging = false
+	m.viewer.Show(m.previewPicture(image))
+}
+
+// previewPicture is what the viewer paints this paint: the display copy the stage
+// decoded, with the thumbnail as its stand-in and the blurred backdrop behind it.
+func (m *Model) previewPicture(image *domain.KeyEventImage) imageviewer.Picture {
+	picture := imageviewer.Picture{Path: image.FilePath}
+	if bitmap, ok := m.cached(image.FilePath); ok {
+		picture.Bitmap = bitmap
+		picture.Width, picture.Height = bitmap.Width, bitmap.Height
+	}
+	if thumb, ok := m.cached(image.ThumbPath); ok {
+		picture.Waiting = thumb
+		if picture.Width <= 0 {
+			picture.Width, picture.Height = thumb.Width, thumb.Height
+		}
+	}
+	if backdrop, ok := m.cachedBlur(*image); ok {
+		picture.Backdrop = backdrop
+	}
+	return picture
 }
 
 // stepPreview moves the lightbox to the next or previous picture, wrapping.
@@ -222,58 +240,14 @@ func (m *Model) stepPreview(delta int) {
 	m.preview.index = index
 	m.selectedImageID = m.images[index].ID
 	m.displaySerial++
-	m.preview.zoom = 1
-	m.preview.pan = gfx.Point{}
 	m.ensureBitmaps()
+	m.viewer.Show(m.previewPicture(&m.images[index]))
 }
 
-// previewPointer drags the zoomed lightbox picture.
-func (m *Model) previewPointer(event gfx.PointerEvent) gfx.EventResult {
-	switch event.Kind {
-	case gfx.PointerDown:
-		m.preview.dragging = true
-		m.preview.last = gfx.Point{X: event.X, Y: event.Y}
-		return gfx.EventResult{Handled: true}
-	case gfx.PointerMove:
-		if !m.preview.dragging {
-			return gfx.EventResult{}
-		}
-		m.preview.pan.X += event.X - m.preview.last.X
-		m.preview.pan.Y += event.Y - m.preview.last.Y
-		m.preview.last = gfx.Point{X: event.X, Y: event.Y}
-		return gfx.EventResult{Handled: true, Repaint: true}
-	case gfx.PointerUp:
-		if !m.preview.dragging {
-			return gfx.EventResult{}
-		}
-		m.preview.dragging = false
-		return gfx.EventResult{Handled: true, Repaint: true}
-	}
-	return gfx.EventResult{}
-}
-
-// previewScroll zooms the lightbox between fit (1×) and 6×; back at fit it also
-// recentres the picture.
-func (m *Model) previewScroll(event gfx.ScrollEvent) gfx.EventResult {
-	if !m.preview.open {
-		return gfx.EventResult{}
-	}
-	const step = 1.12
-	if event.DeltaY < 0 {
-		m.preview.zoom *= step
-	} else {
-		m.preview.zoom /= step
-	}
-	m.preview.zoom = clamp(m.preview.zoom, 1, 6)
-	if m.preview.zoom == 1 {
-		m.preview.pan = gfx.Point{}
-	}
-	return gfx.EventResult{Handled: true, Repaint: true}
-}
-
-// previewKey pages the lightbox with the arrow keys.
-func (m *Model) previewKey(event gfx.KeyEvent) gfx.EventResult {
-	if !m.preview.open {
+// previewKeys pages the lightbox with the arrow keys. The zoom, the pan and the
+// drag belong to the viewer.
+func (m *Model) previewKeys(event gfx.KeyEvent) gfx.EventResult {
+	if !m.viewer.Shown() {
 		return gfx.EventResult{}
 	}
 	switch event.Key {
@@ -285,31 +259,6 @@ func (m *Model) previewKey(event gfx.KeyEvent) gfx.EventResult {
 		return gfx.EventResult{Handled: true, Repaint: true}
 	}
 	return gfx.EventResult{}
-}
-
-// drawPreview paints the lightbox: a blurred backdrop, then the picture at the
-// user's zoom and pan.
-func (m *Model) drawPreview(d *ui.DrawContext) {
-	theme := *d.Theme
-	d.Canvas.Fill(d.Rect, theme.Muted)
-	image, ok := m.mainImage()
-	if !ok {
-		return
-	}
-	if backdrop, ok := m.cachedBlur(*image); ok {
-		d.Canvas.DrawBitmapRegion(backdrop, coverSource(backdrop, d.Rect), d.Rect)
-		d.Canvas.Fill(d.Rect, theme.Foreground.WithAlpha(0.45))
-	}
-	display, ok := m.cached(image.FilePath)
-	if !ok {
-		if thumb, ok := m.cached(image.ThumbPath); ok {
-			drawContained(d.Canvas, thumb, d.Rect)
-			return
-		}
-		m.paintMissing(d)
-		return
-	}
-	drawZoomed(d.Canvas, display, d.Rect, m.preview.zoom, m.preview.pan)
 }
 
 // coverSource is the centred source rectangle that fills bounds without
@@ -346,24 +295,6 @@ func drawContained(canvas *gfx.Canvas, bitmap gfx.Bitmap, bounds gfx.Rect) {
 	}
 	canvas.Clip(bounds)
 	canvas.DrawBitmap(bitmap, target)
-	canvas.Unclip()
-}
-
-// drawZoomed draws the picture at fit × zoom, moved by pan, clamped so it cannot
-// be thrown clear of the pane.
-func drawZoomed(canvas *gfx.Canvas, bitmap gfx.Bitmap, bounds gfx.Rect, zoom float32, pan gfx.Point) {
-	width, height := float32(bitmap.Width), float32(bitmap.Height)
-	if width <= 0 || height <= 0 || bounds.Width <= 0 || bounds.Height <= 0 {
-		return
-	}
-	scale := min(bounds.Width/width, bounds.Height/height) * max(zoom, 1)
-	targetWidth, targetHeight := width*scale, height*scale
-	maxX := max((targetWidth-bounds.Width)/2, 0)
-	maxY := max((targetHeight-bounds.Height)/2, 0)
-	x := bounds.X + (bounds.Width-targetWidth)/2 + clamp(pan.X, -maxX, maxX)
-	y := bounds.Y + (bounds.Height-targetHeight)/2 + clamp(pan.Y, -maxY, maxY)
-	canvas.Clip(bounds)
-	canvas.DrawBitmap(bitmap, gfx.Rect{X: x, Y: y, Width: targetWidth, Height: targetHeight})
 	canvas.Unclip()
 }
 
