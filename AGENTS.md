@@ -99,10 +99,13 @@ go test ./... -count=1              # 无窗口驱动测试 + 领域单测
 页面行为用 `app.NewDriver` 驱动真实 painter / 输入 / 焦点来验证，不要为了看一眼界面就开真实窗口；
 需要截图或布局检查时用 `building-with-viva` skill 里的 headless 协议。
 
-**跑 headless 之前必须把配置沙箱化**：`USERPROFILE=<临时目录>`。Windows 上 `os.UserHomeDir()`
-只读 `USERPROFILE`、不读 `HOME`，只设 `HOME` 等于没设：进程会读到真实的 `~/.transactions.json`，
-打开用户真实工作空间，把库迁移到新 schema 并写进测试数据（0.3.1 → 0.4.0 的事故就是这么来的）。
-跑完确认 `~/.transactions.json` 的修改时间没变。
+**headless 构建固定读开发配置**：`-tags vivahead` 的二进制把 `.transactions.dev.json` 当配置，并且
+拒绝打开生产配置里那个工作空间（`internal/desktop/headless.go`）；开发配置即使指向它，也只显示工作空间
+选择页，并在 stderr 说明跳过了哪个目录。
+
+仍要把家目录沙箱化：`USERPROFILE=<临时目录>`。Windows 上 `os.UserHomeDir()` 只读 `USERPROFILE`、
+不读 `HOME`，只设 `HOME` 等于没设，会读写真实的 `~/.transactions.dev.json`。跑完确认
+`~/.transactions.json` 和 `~/.transactions.dev.json` 的修改时间都没变。
 
 ## 提交
 

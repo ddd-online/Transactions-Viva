@@ -11,4 +11,13 @@ package main
 //	VIVA_HEADLESS=1 /tmp/transactions-headless
 //
 // Then send commands such as `tree`, `layout`, `texts`, `shot PATH` and `quit`.
-import _ "github.com/vivaui/viva/headless/auto"
+import (
+	_ "github.com/vivaui/viva/headless/auto"
+
+	"transactions/internal/desktop"
+)
+
+// init marks this build as a test instrument. It reads the development
+// configuration and refuses to open the production workspace, so a headless run
+// can never migrate a person's real workspace or write test data into it.
+func init() { desktop.UseHeadlessConfig() }

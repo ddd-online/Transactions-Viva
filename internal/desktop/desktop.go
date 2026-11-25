@@ -209,16 +209,23 @@ func NewWithConfig(cfg config.AppConfig, store *config.Store) *Model {
 // configuration, follows the system appearance while the configuration asks
 // for it, and keeps one status-area icon so closing to the tray has a way back.
 // dev selects the development config for a native window, as `go run . -dev`
-// does; the reload host (`viva dev`) always counts as development.
+// does; the reload host (`viva dev`) always counts as development, and so does a
+// headless test build, which additionally refuses the production workspace.
 func Run(dev bool) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
 	}
 	reloadHost := devMode()
-	development := dev || reloadHost
+	development := usesDevelopmentConfig(dev, reloadHost)
 	store := config.Load(config.Path(home, development))
-	model := NewWithConfig(store.Config(), store)
+	cfg := store.Config()
+	if headlessConfig {
+		// A test build never opens the workspace the production config names,
+		// even when the development config was pointed at it.
+		cfg = guardWorkspace(cfg, home)
+	}
+	model := NewWithConfig(cfg, store)
 	// Only the reload host needs its own close behavior: it paints on the
 	// host's schedule, so a native prompt could wait for an unrelated frame.
 	model.development = reloadHost
