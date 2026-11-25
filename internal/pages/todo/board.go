@@ -52,8 +52,13 @@ func (m *Model) board(c ui.C) {
 		m.boardHeader(c)
 		ui.Scroll(c).Grow(1).Children(func() {
 			ui.Column(c).FillWidth().PadSides(0, layout.Inset, layout.Inset, layout.Inset).Children(func() {
-				for index := range m.rows {
-					m.itemRow(c, &m.rows[index])
+				// The rows this frame started with: completing an item reloads the
+				// list, and a reload in the middle of this loop would leave the next
+				// index past the end of the shorter one. The change lands after the
+				// paint (see completeLater), and the next frame shows the new list.
+				rows := m.rows
+				for index := range rows {
+					m.itemRow(c, &rows[index])
 				}
 			})
 		})
@@ -109,7 +114,7 @@ func (m *Model) itemRow(c ui.C, row *todoRow) {
 				m.openItemForm(item.CardID, item)
 			}
 			if menu.Item("标记完成").Clicked() {
-				m.setStatus(item.ID, domain.TodoStatusDone)
+				m.completeLater(c, item.ID)
 			}
 			if menu.Item("删除事项").Destructive().Clicked() {
 				m.deleteItem = deleteItem{open: true, id: item.ID, title: item.Title}
@@ -129,7 +134,7 @@ func (m *Model) itemRow(c ui.C, row *todoRow) {
 					Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
 				}).Hover(ui.Look{}.Background(state.Hover(*theme))).Focus(ui.Look{}.Ring(2, theme.Ring))
 			if check.Clicked() {
-				m.setStatus(item.ID, domain.TodoStatusDone)
+				m.completeLater(c, item.ID)
 			}
 			ui.Row(c).Grow(1).Gap(6).Items(ui.Center).Children(func() {
 				typography.Body(c, item.Title).MaxLines(1).Ellipsis().Shrink(1).MinWidth(0)
@@ -148,6 +153,13 @@ func (m *Model) itemRow(c ui.C, row *todoRow) {
 			m.progressSection(c, item)
 		}
 	})
+}
+
+// completeLater marks an item done after the paint that asked for it. The board
+// paints its rows in one pass, and completing an item rebuilds the list under
+// that pass; doing it here keeps the loop over the list it started with.
+func (m *Model) completeLater(c ui.C, itemID string) {
+	c.After(func() { m.setStatus(itemID, domain.TodoStatusDone) })
 }
 
 func (m *Model) levelCell(c ui.C, width float32, level int) {

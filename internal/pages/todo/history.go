@@ -102,8 +102,11 @@ func (m *Model) historyView(c ui.C) {
 		ui.Column(c).FillWidth().MinWidth(historyTableMinWidth).
 			PadBottom(layout.Inset).Children(func() {
 			m.historyHeader(c)
-			for index := range m.history {
-				m.historyRow(c, &m.history[index])
+			// The rows this frame started with: restoring an item reloads the
+			// list under this loop (see historyRow).
+			entries := m.history
+			for index := range entries {
+				m.historyRow(c, &entries[index])
 			}
 		})
 	})
@@ -172,7 +175,9 @@ func (m *Model) historyRow(c ui.C, entry *domain.TodoHistory) {
 		})
 		ui.Row(c).Width(historyActionWidth).Justify(ui.Center).Gap(4).Items(ui.Center).Children(func() {
 			if ui.Button(c, "恢复").Outline().Small().Clicked() {
-				m.setStatus(item.ID, domain.TodoStatusDoing)
+				// Restoring rebuilds this list, so it lands after the paint that
+				// asked for it instead of under the loop above.
+				c.After(func() { m.setStatus(item.ID, domain.TodoStatusDoing) })
 			}
 			if ui.Button(c, "删除").Outline().Small().Clicked() {
 				m.deleteItem = deleteItem{open: true, id: item.ID, title: item.Title}
