@@ -955,7 +955,8 @@ func (m *Model) bodyPointer(event gfx.PointerEvent) gfx.EventResult {
 		y := offsetY + row.y
 		if event.Y >= y && event.Y <= y+row.height {
 			if m.selectedImage == row.block {
-				m.openLightbox(m.blocks[row.block].ImagePath)
+				block := m.blocks[row.block]
+				m.openLightbox(block.ImagePath, block.ImageWidth, block.ImageHeight)
 				return gfx.EventResult{Handled: true, Repaint: true}
 			}
 			m.selectedImage = row.block

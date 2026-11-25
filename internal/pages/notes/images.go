@@ -27,15 +27,20 @@ var errNoImage = errors.New("没有可显示的图片")
 // lightboxState is the one picture the user opened: its zoom and pan, and the
 // gestures over it.
 type lightboxState struct {
-	open     bool
-	path     string
-	loaded   bool
-	bitmap   gfx.Bitmap
-	zoom     float32
-	pan      gfx.Point
-	dragFrom gfx.Point
-	dragging bool
-	handlers ui.Handlers
+	open bool
+	path string
+	// width and height are the picture's own pixel size, taken from the block
+	// that holds it. The dialog takes its shape from them, not from the bitmap:
+	// a picture that is still decoding opens the dialog at its final size, so the
+	// frame never chases the picture a frame behind.
+	width, height int
+	loaded        bool
+	bitmap        gfx.Bitmap
+	zoom          float32
+	pan           gfx.Point
+	dragFrom      gfx.Point
+	dragging      bool
+	handlers      ui.Handlers
 }
 
 // loadNoteImages decodes the pictures of one note for the editor. It runs off
@@ -88,14 +93,18 @@ func (m *Model) lightboxKey() string {
 	return m.lightbox.path
 }
 
-// openLightbox shows one picture. The note already decoded it for its body —
-// same picture, same edge — so the dialog opens on those pixels; the effect below
-// only stands in when that decode has not landed yet.
-func (m *Model) openLightbox(path string) {
+// openLightbox shows one picture, whose pixel size the block already knows. The
+// note decoded it for its body too — same picture, same edge — so the dialog
+// opens on those pixels; the effect below only stands in when that decode has not
+// landed yet.
+func (m *Model) openLightbox(path string, width, height int) {
 	if path == "" {
 		return
 	}
-	state := lightboxState{open: true, path: path, zoom: 1, handlers: m.lightbox.handlers}
+	state := lightboxState{
+		open: true, path: path, width: width, height: height,
+		zoom: 1, handlers: m.lightbox.handlers,
+	}
 	if bitmap, ok := m.noteImages[path]; ok && bitmap.Width > 0 {
 		state.bitmap, state.loaded = bitmap, true
 	}
@@ -140,22 +149,23 @@ func (m *Model) lightboxView(c ui.C) {
 }
 
 // lightboxFit is the size the picture takes in the lightbox: its own aspect
-// ratio inside lightboxShare of the window. It reports false until the bitmap is
-// decoded, while the dialog is still the default size.
+// ratio inside lightboxShare of the window. The shape comes from the block's
+// pixel size, so it is known before the picture is decoded and does not change
+// when it arrives; a block that lost its size falls back to the bitmap.
 func (m *Model) lightboxFit(bounds gfx.Rect) (gfx.Size, bool) {
-	bitmap := m.lightbox.bitmap
-	if !m.lightbox.loaded || bitmap.Width <= 0 || bitmap.Height <= 0 {
+	width, height := float32(m.lightbox.width), float32(m.lightbox.height)
+	if width <= 0 || height <= 0 {
+		width, height = float32(m.lightbox.bitmap.Width), float32(m.lightbox.bitmap.Height)
+	}
+	if width <= 0 || height <= 0 {
 		return gfx.Size{}, false
 	}
 	maxWidth, maxHeight := bounds.Width*lightboxShare, bounds.Height*lightboxShare
 	if maxWidth <= 0 || maxHeight <= 0 {
 		return gfx.Size{}, false
 	}
-	scale := min(maxWidth/float32(bitmap.Width), maxHeight/float32(bitmap.Height))
-	return gfx.Size{
-		Width:  float32(bitmap.Width) * scale,
-		Height: float32(bitmap.Height) * scale,
-	}, true
+	scale := min(maxWidth/width, maxHeight/height)
+	return gfx.Size{Width: width * scale, Height: height * scale}, true
 }
 
 // drawLightbox paints the picture at its zoom and pan.
