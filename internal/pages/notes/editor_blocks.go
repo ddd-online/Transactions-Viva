@@ -25,11 +25,10 @@ const (
 	partDropBase = 100
 	// gripSize is the grip's box and gripGap the space between it and the text
 	// column. The grip is centred on its block's first line, so the taller line
-	// of a heading carries it down; gripImageTop instead holds a picture's grip
-	// on the picture's top edge, since a picture has no line.
-	gripSize     float32 = 18
-	gripGap      float32 = 6
-	gripImageTop float32 = 2
+	// of a heading carries it down; a picture has no line, so its grip holds the
+	// picture's top edge instead.
+	gripSize float32 = 18
+	gripGap  float32 = 6
 	// gripIconWidth and gripIconHeight are the icon inside the grip's box, and
 	// gripRadius its corner radius: tighter than a control's, so the small box
 	// reads as a grip and not as a button.
@@ -296,14 +295,15 @@ func (m *Model) firstRowOfBlock(block int) (bodyRow, bool) {
 // gripY is where a block's grip sits, from the start of the body content: centred
 // on the block's first line, so the grip of a heading comes down with the
 // heading's taller line and stays level with its text. The centre is the line
-// box's, which is where Viva puts the baseline of the label painted there.
+// box's, which is where Viva puts the baseline of the label painted there. A
+// picture has no line, so its grip holds the picture's top edge.
 func (m *Model) gripY(block int) (float32, bool) {
 	row, ok := m.firstRowOfBlock(block)
 	if !ok {
 		return 0, false
 	}
 	if block >= 0 && block < len(m.blocks) && m.blocks[block].Kind == domain.NoteBlockImage {
-		return row.y + gripImageTop, true
+		return row.y, true
 	}
 	return row.y + (row.height-gripSize)/2, true
 }
