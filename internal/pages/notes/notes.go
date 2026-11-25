@@ -963,7 +963,9 @@ func (m *Model) railButton(c ui.C) {
 	m.iconButton(c, label, icons.PanelLeft, m.toggleRail)
 }
 
-// titleField is the note's title, one field the band always shows.
+// titleField is the note's title, one field the band always shows. It keeps the
+// band's own step, as every page's band does: the document's hierarchy starts in
+// the body, where its first heading is larger than the band naming it.
 func (m *Model) titleField(c ui.C) {
 	c.Key("note-title")
 	m.titleID = ui.ID(c)

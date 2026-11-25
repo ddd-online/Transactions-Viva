@@ -10,6 +10,7 @@ import (
 	"github.com/vivaui/viva/ui"
 	"github.com/vivaui/viva/window"
 
+	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 )
 
@@ -31,10 +32,9 @@ const (
 	// bodyBottomSpace is the empty strip under the last block that a click
 	// turns into a new block.
 	bodyBottomSpace float32 = 140
-	// blockGap separates two blocks.
-	blockGap float32 = 4
-	// headingGap is the extra space above a heading.
-	headingGap float32 = 14
+	// blockGap separates two blocks: it is what a paragraph gets from the one
+	// beside it, so prose reads as paragraphs and not as one run of lines.
+	blockGap float32 = 8
 	// imageGap separates a picture from its neighbours.
 	imageGap float32 = 10
 	// historyLimit is how many undo snapshots one note keeps while it is open.
@@ -155,29 +155,50 @@ func (m *Model) bodyView(c ui.C) {
 	m.slashMenu(c, body)
 }
 
-// style is the text style of one block.
-func (m *Model) style(theme *ui.Theme, block domain.NoteBlock) gfx.TextStyle {
-	size := theme.Metrics.FontSizeM
-	weight := gfx.WeightRegular
-	if block.Kind == domain.NoteBlockHeading {
-		switch domain.NoteHeadingLevel(block.Level) {
-		case 1:
-			size, weight = theme.Metrics.FontSizeL, gfx.WeightBold
-		case 2:
-			size, weight = theme.Metrics.FontSizeL*0.85, gfx.WeightBold
-		case 3:
-			size, weight = theme.Metrics.FontSizeL*0.72, gfx.WeightSemibold
-		case 4:
-			size, weight = theme.Metrics.FontSizeM+1, gfx.WeightSemibold
-		default:
-			size, weight = theme.Metrics.FontSizeM, gfx.WeightSemibold
-		}
-	}
-	return gfx.TextStyle{Size: size, Weight: weight, Color: theme.Foreground}
+// headingStep is the type of one heading level: its size and weight, and the
+// space the heading takes above itself.
+//
+// The five levels sit on the application's own steps — 24, 20, 16, 14 and 12 —
+// so a note never shows a size the rest of the application does not have. The
+// last two share the body and the caption step and are told apart by weight,
+// which is how a document's deeper headings stand: a markdown H4 is a bold body
+// line, not a size between two steps. Weight is Bold at every level because
+// Chinese has no real semibold — 500 and 600 resolve to the regular face — so a
+// level is carried by size, then by the space above it.
+type headingStep struct {
+	size, space float32
+	weight      float32
 }
 
-// lineHeight is the row height of a style.
-func lineHeight(size float32) float32 { return size * 1.55 }
+// headingSteps is the ladder, one entry per level the block menu offers.
+var headingSteps = [5]headingStep{
+	{size: typography.SizeMetric, space: 24, weight: gfx.WeightBold},
+	{size: typography.SizeTitle, space: 20, weight: gfx.WeightBold},
+	{size: typography.SizeSection, space: 16, weight: gfx.WeightBold},
+	{size: typography.SizeBody, space: 12, weight: gfx.WeightBold},
+	{size: typography.SizeCaption, space: 10, weight: gfx.WeightBold},
+}
+
+// headingOf is the step of a block's heading level, clamped to the five levels.
+func headingOf(block domain.NoteBlock) headingStep {
+	return headingSteps[domain.NoteHeadingLevel(block.Level)-1]
+}
+
+// style is the text style of one block.
+func (m *Model) style(theme *ui.Theme, block domain.NoteBlock) gfx.TextStyle {
+	if block.Kind == domain.NoteBlockHeading {
+		step := headingOf(block)
+		return gfx.TextStyle{Size: step.size, Weight: step.weight, Color: theme.Foreground}
+	}
+	return gfx.TextStyle{Size: typography.SizeBody, Weight: gfx.WeightRegular, Color: theme.Foreground}
+}
+
+// lineHeight is the row height of a line of type at size: Viva's own leading,
+// seven pixels over the size, which every box in the application inherits (12 →
+// 19, 14 → 21, 16 → 23, 20 → 27, 24 → 31). The body's rows are the one place
+// that has to compute it, because they are painted on the canvas instead of laid
+// out by a box; every other page leaves its leading to the framework.
+func lineHeight(size float32) float32 { return size + 7 }
 
 // layoutBody lays the blocks out at width, rebuilding only when the text or the
 // width changed.
@@ -206,7 +227,7 @@ func (m *Model) layoutBody(canvas *gfx.Canvas, width float32, theme *ui.Theme) {
 		style := m.style(theme, block)
 		height := lineHeight(style.Size)
 		if block.Kind == domain.NoteBlockHeading {
-			top += headingGap
+			top += headingOf(block).space
 		}
 		line := ""
 		if index < len(m.lines) {
