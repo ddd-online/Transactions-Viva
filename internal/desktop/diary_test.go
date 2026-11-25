@@ -80,7 +80,9 @@ func TestDiaryPageWritesTheDay(t *testing.T) {
 		t.Fatalf("mood = %q, want 😊", entry.Mood)
 	}
 
-	click(t, driver, "删除日记")
+	// The delete key is the day row's own: it is showing because today is the day
+	// the page has selected.
+	click(t, driver, "删除日记 "+domain.DiaryDateCn(today))
 	if !shows(driver, "删除日记「") {
 		t.Fatal("the delete confirmation did not open")
 	}

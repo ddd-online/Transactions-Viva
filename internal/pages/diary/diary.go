@@ -27,7 +27,6 @@ import (
 	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
-	"transactions/internal/icons"
 	"transactions/internal/repository"
 )
 
@@ -301,7 +300,8 @@ func (m *Model) View(c ui.C) {
 }
 
 // toolbar is the band above the two columns: the diary book, 今天, the date field,
-// and the draft's state with the delete command at the right.
+// and the draft's state at the right. Deleting a day belongs to that day's row in
+// the tree, not to the band: the row is where the entry lives.
 func (m *Model) toolbar(c ui.C) {
 	layout.Toolbar(c, func() {
 		m.bookPicker(c)
@@ -316,18 +316,11 @@ func (m *Model) toolbar(c ui.C) {
 		})
 		ui.Spacer(c)
 		m.saveState(c)
-		// A quiet command at rest: the confirmation is where Danger belongs, and a
-		// red button in the toolbar would be the loudest thing on a page whose
-		// only color is the mood.
-		remove := ui.Button(c, "删除日记").Outline().Icon(icons.Trash2)
-		if remove.Clicked() {
-			m.askDelete()
-		}
 	})
 }
 
-// saveState is the quiet line beside the delete command: a normal state stays in
-// the muted tone, only a failure takes color.
+// saveState is the quiet line at the toolbar's trailing edge: a normal state stays
+// in the muted tone, only a failure takes color.
 func (m *Model) saveState(c ui.C) {
 	theme := c.Theme()
 	label, color := "已保存", theme.MutedForeground
@@ -526,12 +519,12 @@ func (m *Model) selectDate(date string) {
 	m.rebuildRows()
 }
 
-// askDelete opens the confirmation for the selected day.
-func (m *Model) askDelete() {
-	if m.bookID == "" {
+// askDeleteDate opens the confirmation for one day, the row it was asked from.
+func (m *Model) askDeleteDate(date string) {
+	if m.bookID == "" || date == "" {
 		return
 	}
-	m.deleting, m.deleteOpen = m.selected, true
+	m.deleting, m.deleteOpen = date, true
 }
 
 // deleteDialog confirms removing one day's entry, the question the page

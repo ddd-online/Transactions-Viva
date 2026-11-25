@@ -5,10 +5,13 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
+	"transactions/internal/icons"
 )
 
 // rowKind is what one visible tree row is: a year, a month or a day.
@@ -118,11 +121,63 @@ func (m *Model) rowContent(c ui.C, index int) {
 			Width(dayNumberWidth).TextEnd()
 		mood := domain.NormalizeDiaryMood(one.mood)
 		if mood == "" {
-			ui.Spacer(c).Width(moodWidth)
+			blank(c, moodWidth)
 		} else {
 			ui.Text(c, mood).FontSize(typography.SizeBody).Width(moodWidth)
 		}
 		number(fmt.Sprintf("%d 字", one.wordCount)).Grow(1).TextEnd()
+	}
+	m.rowTail(c, index, one)
+}
+
+// blank is an empty box that holds a column open. ui.Spacer is wrong here: it
+// grows, so an empty slot would take the room from the column beside it and a day
+// without a mood would push its word count out of line with the days that have one.
+func blank(c ui.C, width float32) ui.Box {
+	return ui.Row(c).Width(width).Shrink(0)
+}
+
+// rowTail is the trailing slot every row keeps: the day's delete key while the row
+// is lit, empty space the rest of the time. Year and month rows hold nothing to
+// delete, but they keep the slot too, so the counts above and below stay on one
+// right edge whether a key is showing or not.
+func (m *Model) rowTail(c ui.C, index int, one row) {
+	if one.kind != rowDay {
+		blank(c, rowTailWidth)
+		return
+	}
+	theme := c.Theme()
+	// The key's identity is named before it is declared, so that the row stays lit
+	// while the pointer is on the key: without it, moving onto the key un-hovers
+	// the row, the key disappears, and the pointer falls back on the row — the two
+	// flicker against each other and the click never lands.
+	c.Key("diary-row-delete-" + one.date)
+	keyID := ui.ID(c)
+	// The key is quiet until the row is lit: the pointer is on it, it has the
+	// keyboard, or it is the day the editor shows — the toolbar used to carry the
+	// delete command, and this is where the entry lives.
+	lit := one.date == m.selected || c.Canvas().Hovered() == keyID
+	if rowID := m.tree.RowID(index); !rowID.IsZero() {
+		lit = lit || c.Canvas().Hovered() == rowID || c.Canvas().FocusVisible() == rowID
+	}
+	if !lit {
+		blank(c, rowTailWidth)
+		return
+	}
+	button := ui.Row(c).Size(rowTailWidth, rowTailWidth).Center().
+		Radius(theme.Metrics.RadiusControl).
+		HitWith(keyID, "删除日记 "+domain.DiaryDateCn(one.date), gfx.HitOptions{
+			Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
+		}).
+		Hover(ui.Look{}.Background(state.Hover(*theme))).
+		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
+		Focus(ui.Look{}.Ring(2, theme.Ring)).
+		Tooltip("删除日记")
+	button.Children(func() {
+		ui.Icon(c, icons.Trash2).Size(15, 15).Color(theme.MutedForeground)
+	})
+	if button.Clicked() {
+		m.askDeleteDate(one.date)
 	}
 }
 
@@ -131,6 +186,8 @@ func (m *Model) rowContent(c ui.C, index int) {
 const (
 	dayNumberWidth float32 = 20
 	moodWidth      float32 = 20
+	// rowTailWidth is the trailing slot of a row: the delete key's box.
+	rowTailWidth float32 = 24
 )
 
 // rebuildRows flattens the dates into the visible rows: years newest first,
