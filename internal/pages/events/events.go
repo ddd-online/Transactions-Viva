@@ -338,9 +338,10 @@ func (m *Model) card(c ui.C, event *domain.KeyEvent) {
 		background = state.Selected(*theme)
 	}
 	c.Key(event.Date)
+	cardID := ui.ID(c)
 	row := ui.Row(c).MinHeight(cardMinHeight).FillWidth().
 		Background(background).
-		HitWith(ui.ID(c), title, gfx.HitOptions{Role: gfx.RoleButton, Selected: selected}).
+		HitWith(cardID, title, gfx.HitOptions{Role: gfx.RoleButton, Selected: selected}).
 		Hover(ui.Look{}.Background(state.Hover(*theme))).
 		Focus(ui.Look{}.Ring(2, theme.Ring))
 	row.Children(func() {
@@ -356,20 +357,41 @@ func (m *Model) card(c ui.C, event *domain.KeyEvent) {
 			})
 			typography.Caption(c, summary(event.Content)).Ellipsis()
 		})
-		remove := ui.ButtonBase(c, "删除事件「"+title+"」").Size(24, 24).Radius(6).
-			Hover(ui.Look{}.Background(state.Hover(*theme))).
-			Focus(ui.Look{}.Ring(2, theme.Ring)).
-			Tooltip("删除事件").
-			Absolute().Top(6).Right(6)
-		remove.Children(func() {
-			ui.Icon(c, icons.Trash2).Size(13, 13)
-		})
-		if remove.Clicked() {
-			m.askDeleteEvent(event.Date, title)
-		}
+		m.cardDelete(c, event, title, cardID, selected)
 	})
 	if row.Clicked() {
 		m.chooseEvent(event.Date)
+	}
+}
+
+// cardDelete is the card's own delete command, quiet until the card is lit — the
+// pointer on the card, the keyboard on it, or the event the page shows — the rule
+// every rail row follows here. The key names its identity before it is declared,
+// so moving the pointer onto the key keeps the card lit: without that the card
+// would un-hover, the key would vanish under the pointer, and the click would
+// never land.
+func (m *Model) cardDelete(c ui.C, event *domain.KeyEvent, title string, cardID gfx.ID, selected bool) {
+	theme := c.Theme()
+	c.Key("event-delete-" + event.Date)
+	keyID := ui.ID(c)
+	lit := selected || c.Canvas().Hovered() == cardID || c.Canvas().Hovered() == keyID ||
+		c.Canvas().FocusVisible() == cardID
+	if !lit {
+		return
+	}
+	remove := ui.ButtonBase(c, "删除事件「"+title+"」").Size(24, 24).Radius(6).
+		HitWith(keyID, "删除事件「"+title+"」", gfx.HitOptions{
+			Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
+		}).
+		Hover(ui.Look{}.Background(state.Hover(*theme))).
+		Focus(ui.Look{}.Ring(2, theme.Ring)).
+		Tooltip("删除事件").
+		Absolute().Top(6).Right(6)
+	remove.Children(func() {
+		ui.Icon(c, icons.Trash2).Size(13, 13)
+	})
+	if remove.Clicked() {
+		m.askDeleteEvent(event.Date, title)
 	}
 }
 
