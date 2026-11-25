@@ -22,9 +22,10 @@ import (
 // Undo is a stack of whole-document snapshots, so it restores both together.
 
 const (
-	// readingWidth is the widest the body runs; the text column is centred in
-	// the pane.
-	readingWidth float32 = 760
+	// bodyWidthShare is how much of the pane's width the body's text column
+	// takes: the column is 80% of the pane at every width, centred in it, so the
+	// text keeps its margins instead of running wide on a large window.
+	bodyWidthShare float32 = 0.8
 	// bodyTopInset is the gap between the band and the first block.
 	bodyTopInset float32 = 14
 	// bodyBottomSpace is the empty strip under the last block that a click
@@ -230,13 +231,10 @@ func (m *Model) layoutBody(canvas *gfx.Canvas, width float32, theme *ui.Theme) {
 }
 
 // bodyColumn is the width the body's text wraps at, and the offset of the text
-// column inside a pane of the given width: the column is centred, and no wider
-// than readingWidth.
+// column inside a pane of the given width: the column keeps bodyWidthShare of the
+// pane, centred in it.
 func bodyColumn(paneWidth float32) (width, offset float32) {
-	width = min(paneWidth, readingWidth)
-	if width < 80 {
-		width = 80
-	}
+	width = paneWidth * bodyWidthShare
 	return width, (paneWidth - width) / 2
 }
 

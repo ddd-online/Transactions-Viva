@@ -14,7 +14,7 @@ import (
 
 const (
 	// noteImageEdge is the longest edge a body picture is decoded at: the
-	// column is at most readingWidth wide.
+	// column takes bodyWidthShare of the pane.
 	noteImageEdge = 1600
 	// lightboxEdge is the longest edge the lightbox decodes at.
 	lightboxEdge = 2048
