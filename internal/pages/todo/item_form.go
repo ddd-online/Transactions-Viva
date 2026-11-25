@@ -47,6 +47,10 @@ func (m *Model) openItemForm(cardID string, item *domain.TodoItem) {
 	form := itemForm{
 		open: true, cardID: cardID,
 		urgency: domain.DefaultTodoLevel, importance: domain.DefaultTodoLevel,
+		// A new item starts today: most are written the day they begin, and the
+		// field is one press away from another day. An item being edited keeps the
+		// start it was saved with.
+		start: domain.Today(),
 	}
 	if item != nil {
 		form.id = item.ID

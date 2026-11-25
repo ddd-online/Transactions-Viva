@@ -1,25 +1,41 @@
 package desktop
 
 import (
+	"context"
 	"testing"
 
 	"github.com/vivaui/viva/app"
 	"github.com/vivaui/viva/gfx"
+
+	"transactions/internal/domain"
 )
 
 func TestTodoTableItemThemeProgressAndHistory(t *testing.T) {
-	driver, _ := open(t)
+	driver, model := open(t)
 	click(t, driver, "待办")
 
 	// The board is empty: the empty state's own 新建事项 button paints after the
-	// toolbar's, so clickLast takes it.
+	// toolbar's, so clickLast takes it. A new item starts today.
 	clickLast(t, driver, "新建事项")
+	if !shows(driver, domain.Today()) {
+		t.Fatalf("a new item does not start today (%s)", domain.Today())
+	}
 	startTheme(t, driver, "本周")
 	click(t, driver, "事项")
 	driver.Type("写周报")
 	click(t, driver, "创建")
 	if !shows(driver, "写周报") || !shows(driver, "本周") {
 		t.Fatal("the new item or its theme is not in the table")
+	}
+	cards, err := model.workspace.TodoCards(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cards) != 1 || len(cards[0].Items) != 1 {
+		t.Fatalf("the board holds %+v", cards)
+	}
+	if cards[0].Items[0].StartDate != domain.Today() {
+		t.Fatalf("the item starts %q, want today (%s)", cards[0].Items[0].StartDate, domain.Today())
 	}
 
 	// A second item under the existing theme: the table is newest first.
