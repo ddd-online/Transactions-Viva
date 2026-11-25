@@ -195,7 +195,7 @@ func (m *Model) themeManagerBody(c ui.C, form *itemForm) {
 					return
 				}
 				typography.Caption(c, fmt.Sprintf("%d 项", len(card.Items))).Mono().Muted()
-				if ui.Button(c, "删除").Small().DestructiveOutline().Clicked() {
+				if ui.Button(c, "删除").Small().Destructive().Clicked() {
 					form.confirmTheme = card.ID
 				}
 			})

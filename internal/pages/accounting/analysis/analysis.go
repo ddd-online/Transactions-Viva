@@ -366,7 +366,7 @@ func (m *Model) chartRow(row ui.ListRow) {
 		typography.Caption(row.C, "饼图")
 	}
 	remove := ui.Button(row.C, "删除图表 "+chart.Title).
-		Ghost().Icon(icons.Trash2).IconOnly().Tooltip("删除图表")
+		Destructive().Icon(icons.Trash2).IconOnly().Tooltip("删除图表")
 	if remove.Clicked() {
 		m.askDelete(chart)
 	}

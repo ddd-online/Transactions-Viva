@@ -182,7 +182,7 @@ func (m *Model) stockTagsRow(c ui.C, spec Spec, stock *StockConfig) {
 						if tag == domain.DefaultStockTradeTag {
 							return
 						}
-						if ui.Button(c, "删除标签 "+tag).Ghost().Icon(stockCloseIcon).
+						if ui.Button(c, "删除标签 "+tag).Destructive().Icon(stockCloseIcon).
 							IconOnly().Size(18, 18).Tooltip("删除标签「" + tag + "」").Clicked() {
 							m.saveStockTags(spec, withoutTag(stock.Tags, tag))
 						}

@@ -372,7 +372,7 @@ func (m *Model) row(row ui.ListRow) {
 
 	ui.Row(row.C).Width(actionColumnWidth).Justify(ui.Center).Children(func() {
 		remove := ui.Button(row.C, "删除模板 "+one.Name).
-			Ghost().Icon(icons.Trash2).IconOnly().Tooltip("删除模板")
+			Destructive().Icon(icons.Trash2).IconOnly().Tooltip("删除模板")
 		if remove.Clicked() {
 			m.askDelete(one)
 		}

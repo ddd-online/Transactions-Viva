@@ -182,7 +182,7 @@ func (m *Model) stage(c ui.C) {
 			m.openPreview()
 		}
 		ui.Row(c).Absolute().Right(layout.Gap).Bottom(layout.Gap).Gap(layout.Gap).Children(func() {
-			if ui.Button(c, "删除图片").Secondary().Small().Clicked() {
+			if ui.Button(c, "删除图片").Destructive().Small().Clicked() {
 				m.askDeleteImage(image.ID)
 			}
 			if ui.Button(c, "保存图片").Secondary().Small().Clicked() {

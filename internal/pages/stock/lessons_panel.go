@@ -254,7 +254,7 @@ func (p *lessonsPanel) actionsCell(c ui.C, lesson *domain.StockLesson) {
 		if jump.Clicked() && canJump {
 			p.onOpenRound(lesson.StockCode, lesson.RoundID)
 		}
-		remove := ui.Button(c, "删除心得").Ghost().Icon(icons.Trash2).
+		remove := ui.Button(c, "删除心得").Destructive().Icon(icons.Trash2).
 			XSmall().IconOnly().Tooltip("删除")
 		if remove.Clicked() {
 			p.askDelete(lesson)

@@ -107,7 +107,7 @@ func (m *Model) progressView(c ui.C) {
 									panel.editID, panel.editText = line.ID, line.Content
 								}
 							}
-							if ui.Button(c, "删除进度").Ghost().Icon(icons.Trash2).IconOnly().
+							if ui.Button(c, "删除进度").Destructive().Icon(icons.Trash2).IconOnly().
 								Tooltip("删除").Clicked() {
 								if err := m.todos.DeleteTodoProgress(m.context(), line.ID); err != nil {
 									panel.err = err.Error()

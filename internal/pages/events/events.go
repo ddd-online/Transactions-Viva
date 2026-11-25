@@ -356,13 +356,16 @@ func (m *Model) card(c ui.C, event *domain.KeyEvent) {
 			})
 			typography.Caption(c, summary(event.Content)).Ellipsis()
 		})
+		// A delete key, so it wears the destructive palette: the danger ink on
+		// the danger wash, a step stronger under the pointer.
 		remove := ui.ButtonBase(c, "删除事件「"+title+"」").Size(24, 24).Radius(6).
-			Hover(ui.Look{}.Background(state.Hover(*theme))).
+			Background(theme.Danger.WithAlpha(0.10)).
+			Hover(ui.Look{}.Background(theme.Danger.WithAlpha(0.20))).
 			Focus(ui.Look{}.Ring(2, theme.Ring)).
 			Tooltip("删除事件").
 			Absolute().Top(6).Right(6)
 		remove.Children(func() {
-			ui.Icon(c, icons.Trash2).Size(13, 13)
+			ui.Icon(c, icons.Trash2).Size(13, 13).Color(theme.Danger)
 		})
 		if remove.Clicked() {
 			m.askDeleteEvent(event.Date, title)
