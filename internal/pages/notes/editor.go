@@ -12,6 +12,7 @@ import (
 
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
+	"transactions/internal/icons"
 )
 
 // The body editor. The platform's text service owns input; this file owns the
@@ -69,22 +70,37 @@ type snapshot struct {
 	sel    text.Range
 }
 
-// bodyCommand is one command of the "/" menu.
+// bodyCommand is one command of a block menu: what it turns the block into (or
+// that it deletes it), with the icon and the chord both menus show for it. The
+// chord is declared where the action is (see blockShortcuts), so the hint on the
+// row is the shortcut that works, not a label of one.
 type bodyCommand struct {
 	label string
 	kind  string
 	level int
+	icon  gfx.Icon
+	// modifiers zero means the command has no chord of its own and shows none.
+	modifiers gfx.Modifiers
+	key       string
 }
 
-// bodyCommands are the menu's entries, in order.
+// bodyCommands are the "/" menu's entries, in order: the block kinds a line can
+// become, then the picture.
 var bodyCommands = []bodyCommand{
-	{"正文", domain.NoteBlockText, 0},
-	{"标题 1", domain.NoteBlockHeading, 1},
-	{"标题 2", domain.NoteBlockHeading, 2},
-	{"标题 3", domain.NoteBlockHeading, 3},
-	{"标题 4", domain.NoteBlockHeading, 4},
-	{"标题 5", domain.NoteBlockHeading, 5},
-	{"图片", domain.NoteBlockImage, 0},
+	{label: "正文", kind: domain.NoteBlockText, icon: icons.Pilcrow,
+		modifiers: ui.Primary | ui.Alt, key: "0"},
+	{label: "标题 1", kind: domain.NoteBlockHeading, level: 1, icon: icons.Heading1,
+		modifiers: ui.Primary | ui.Alt, key: "1"},
+	{label: "标题 2", kind: domain.NoteBlockHeading, level: 2, icon: icons.Heading2,
+		modifiers: ui.Primary | ui.Alt, key: "2"},
+	{label: "标题 3", kind: domain.NoteBlockHeading, level: 3, icon: icons.Heading3,
+		modifiers: ui.Primary | ui.Alt, key: "3"},
+	{label: "标题 4", kind: domain.NoteBlockHeading, level: 4, icon: icons.Heading4,
+		modifiers: ui.Primary | ui.Alt, key: "4"},
+	{label: "标题 5", kind: domain.NoteBlockHeading, level: 5, icon: icons.Heading5,
+		modifiers: ui.Primary | ui.Alt, key: "5"},
+	{label: "图片", kind: domain.NoteBlockImage, icon: icons.Image,
+		modifiers: ui.Primary | ui.Shift, key: "i"},
 }
 
 // slashState is the "/" command menu: it is open at a point of the body, for the
@@ -877,13 +893,16 @@ func (m *Model) slashMenu(c ui.C, body ui.Box) {
 	}
 	var first gfx.ID
 	ui.ContextMenuAt(c, body, &m.slash.open, m.slash.at, func(items *ui.MenuItems) {
-		for _, item := range bodyCommands {
-			entry := items.Item(item.label)
+		for _, command := range bodyCommands {
+			entry := items.Item(command.label).Icon(command.icon)
+			if command.modifiers != 0 {
+				entry = entry.Keys(command.modifiers, command.key)
+			}
 			if first.IsZero() {
 				first = entry.ID()
 			}
 			if entry.Clicked() {
-				m.chooseSlash(item)
+				m.chooseSlash(command)
 			}
 		}
 	})

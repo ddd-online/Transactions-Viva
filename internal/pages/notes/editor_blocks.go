@@ -56,16 +56,24 @@ type resizeState struct {
 
 // gripCommands are the menu's entries, in order: what a block can be turned into
 // and what is done to it. Every kind offers them today; a kind that needs its own
-// words writes them in blockMenuItems, which has the block.
+// words writes them in blockMenuItems, which has the block. The chords are the
+// same ones the "/" menu shows, so a heading is one chord away from either menu.
 var gripCommands = []bodyCommand{
-	{"转为正文", domain.NoteBlockText, 0},
-	{"转为标题 1", domain.NoteBlockHeading, 1},
-	{"转为标题 2", domain.NoteBlockHeading, 2},
-	{"转为标题 3", domain.NoteBlockHeading, 3},
-	{"转为标题 4", domain.NoteBlockHeading, 4},
-	{"转为标题 5", domain.NoteBlockHeading, 5},
-	{"插入图片", domain.NoteBlockImage, 0},
-	{"删除块", "", 0},
+	{label: "转为正文", kind: domain.NoteBlockText, icon: icons.Pilcrow,
+		modifiers: ui.Primary | ui.Alt, key: "0"},
+	{label: "转为标题 1", kind: domain.NoteBlockHeading, level: 1, icon: icons.Heading1,
+		modifiers: ui.Primary | ui.Alt, key: "1"},
+	{label: "转为标题 2", kind: domain.NoteBlockHeading, level: 2, icon: icons.Heading2,
+		modifiers: ui.Primary | ui.Alt, key: "2"},
+	{label: "转为标题 3", kind: domain.NoteBlockHeading, level: 3, icon: icons.Heading3,
+		modifiers: ui.Primary | ui.Alt, key: "3"},
+	{label: "转为标题 4", kind: domain.NoteBlockHeading, level: 4, icon: icons.Heading4,
+		modifiers: ui.Primary | ui.Alt, key: "4"},
+	{label: "转为标题 5", kind: domain.NoteBlockHeading, level: 5, icon: icons.Heading5,
+		modifiers: ui.Primary | ui.Alt, key: "5"},
+	{label: "插入图片", kind: domain.NoteBlockImage, icon: icons.Image,
+		modifiers: ui.Primary | ui.Shift, key: "i"},
+	{label: "删除块", icon: icons.Trash2},
 }
 
 // The three groups of the block menu, in the order it shows them.
@@ -185,7 +193,10 @@ func (m *Model) blockMenuItems(c ui.C, items *ui.MenuItems, block int) {
 			items.Separator()
 			group = command.group()
 		}
-		item := items.Item(command.label)
+		item := items.Item(command.label).Icon(command.icon)
+		if command.modifiers != 0 {
+			item = item.Keys(command.modifiers, command.key)
+		}
 		if group == commandGroupRemove {
 			item = item.Destructive()
 		}
@@ -193,6 +204,24 @@ func (m *Model) blockMenuItems(c ui.C, items *ui.MenuItems, block int) {
 			m.chooseBlockMenu(c, block, command)
 			return
 		}
+	}
+}
+
+// blockShortcuts declares the chords both block menus show, on the block the
+// caret is in: a heading is one chord from the keyboard exactly where the menu
+// says it is. Every paint declares them all, and Shortcut reports the one this
+// paint delivers.
+func (m *Model) blockShortcuts(c ui.C) {
+	if m.doc == nil {
+		return
+	}
+	for _, command := range gripCommands {
+		if command.modifiers == 0 || !ui.Shortcut(c, command.modifiers, command.key) {
+			continue
+		}
+		block, _ := m.position(m.doc.ByteOffset(m.doc.Caret()))
+		m.chooseBlockMenu(c, block, command)
+		return
 	}
 }
 

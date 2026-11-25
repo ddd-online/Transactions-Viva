@@ -501,6 +501,142 @@ var GripVertical = gfx.Icon{
 	},
 }
 
+// heading-1 is a compiled vector icon.
+var Heading1 = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(4.0, 12.0),
+		gfx.LineTo(12.0, 12.0),
+		gfx.MoveTo(4.0, 18.0),
+		gfx.LineTo(4.0, 6.0),
+		gfx.MoveTo(12.0, 18.0),
+		gfx.LineTo(12.0, 6.0),
+		gfx.MoveTo(17.0, 12.0),
+		gfx.LineTo(20.0, 10.0),
+		gfx.LineTo(20.0, 18.0),
+	},
+}
+
+// heading-2 is a compiled vector icon.
+var Heading2 = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(4.0, 12.0),
+		gfx.LineTo(12.0, 12.0),
+		gfx.MoveTo(4.0, 18.0),
+		gfx.LineTo(4.0, 6.0),
+		gfx.MoveTo(12.0, 18.0),
+		gfx.LineTo(12.0, 6.0),
+		gfx.MoveTo(21.0, 18.0),
+		gfx.LineTo(17.0, 18.0),
+		gfx.CubicTo(17.0, 14.0, 21.0, 15.0, 21.0, 12.0),
+		gfx.CubicTo(21.0, 10.5, 19.0, 9.5, 17.0, 11.0),
+	},
+}
+
+// heading-3 is a compiled vector icon.
+var Heading3 = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(4.0, 12.0),
+		gfx.LineTo(12.0, 12.0),
+		gfx.MoveTo(4.0, 18.0),
+		gfx.LineTo(4.0, 6.0),
+		gfx.MoveTo(12.0, 18.0),
+		gfx.LineTo(12.0, 6.0),
+		gfx.MoveTo(17.5, 10.5),
+		gfx.CubicTo(19.2, 9.5, 21.0, 10.5, 21.0, 12.0),
+		gfx.CubicTo(21.0, 13.1046, 20.1046, 14.0, 19.0, 14.0),
+		gfx.MoveTo(17.0, 17.5),
+		gfx.CubicTo(19.0, 19.0, 21.0, 17.8, 21.0, 16.0),
+		gfx.CubicTo(21.0, 14.8954, 20.1046, 14.0, 19.0, 14.0),
+	},
+}
+
+// heading-4 is a compiled vector icon.
+var Heading4 = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(12.0, 18.0),
+		gfx.LineTo(12.0, 6.0),
+		gfx.MoveTo(17.0, 10.0),
+		gfx.LineTo(17.0, 13.0),
+		gfx.CubicTo(17.0, 13.5523, 17.4477, 14.0, 18.0, 14.0),
+		gfx.LineTo(21.0, 14.0),
+		gfx.MoveTo(21.0, 10.0),
+		gfx.LineTo(21.0, 18.0),
+		gfx.MoveTo(4.0, 12.0),
+		gfx.LineTo(12.0, 12.0),
+		gfx.MoveTo(4.0, 18.0),
+		gfx.LineTo(4.0, 6.0),
+	},
+}
+
+// heading-5 is a compiled vector icon.
+var Heading5 = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(4.0, 12.0),
+		gfx.LineTo(12.0, 12.0),
+		gfx.MoveTo(4.0, 18.0),
+		gfx.LineTo(4.0, 6.0),
+		gfx.MoveTo(12.0, 18.0),
+		gfx.LineTo(12.0, 6.0),
+		gfx.MoveTo(17.0, 13.0),
+		gfx.LineTo(17.0, 10.0),
+		gfx.LineTo(21.0, 10.0),
+		gfx.MoveTo(17.0, 17.7),
+		gfx.CubicTo(17.4, 17.9, 17.8, 18.0, 18.3, 18.0),
+		gfx.CubicTo(19.8, 18.0, 21.0, 16.9, 21.0, 15.5),
+		gfx.CubicTo(21.0, 14.1, 19.8, 13.0, 18.3, 13.0),
+		gfx.LineTo(17.0, 13.0),
+	},
+}
+
+// image is a compiled vector icon.
+var Image = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(19.0, 3.0),
+		gfx.CubicTo(20.1046, 3.0, 21.0, 3.89543, 21.0, 5.0),
+		gfx.LineTo(21.0, 19.0),
+		gfx.CubicTo(21.0, 20.1046, 20.1046, 21.0, 19.0, 21.0),
+		gfx.LineTo(5.0, 21.0),
+		gfx.CubicTo(3.89543, 21.0, 3.0, 20.1046, 3.0, 19.0),
+		gfx.LineTo(3.0, 5.0),
+		gfx.CubicTo(3.0, 3.89543, 3.89543, 3.0, 5.0, 3.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(11.0, 9.0),
+		gfx.CubicTo(11.0, 10.1046, 10.1046, 11.0, 9.0, 11.0),
+		gfx.CubicTo(7.89543, 11.0, 7.0, 10.1046, 7.0, 9.0),
+		gfx.CubicTo(7.0, 7.89543, 7.89543, 7.0, 9.0, 7.0),
+		gfx.CubicTo(10.1046, 7.0, 11.0, 7.89543, 11.0, 9.0),
+		gfx.ClosePath(),
+		gfx.MoveTo(21.0, 15.0),
+		gfx.LineTo(17.914, 11.914),
+		gfx.CubicTo(17.133, 11.1332, 15.867, 11.1332, 15.086, 11.914),
+		gfx.LineTo(6.0, 21.0),
+	},
+}
+
 // list-tree is a compiled vector icon.
 var ListTree = gfx.Icon{
 	ViewBox: 24.0,
@@ -664,6 +800,25 @@ var Pencil = gfx.Icon{
 		gfx.ClosePath(),
 		gfx.MoveTo(15.0, 5.0),
 		gfx.LineTo(19.0, 9.0),
+	},
+}
+
+// pilcrow is a compiled vector icon.
+var Pilcrow = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(13.0, 4.0),
+		gfx.LineTo(13.0, 20.0),
+		gfx.MoveTo(17.0, 4.0),
+		gfx.LineTo(17.0, 20.0),
+		gfx.MoveTo(19.0, 4.0),
+		gfx.LineTo(9.5, 4.0),
+		gfx.CubicTo(7.01472, 4.0, 5.0, 6.01472, 5.0, 8.5),
+		gfx.CubicTo(5.0, 10.9853, 7.01472, 13.0, 9.5, 13.0),
+		gfx.LineTo(13.0, 13.0),
 	},
 }
 

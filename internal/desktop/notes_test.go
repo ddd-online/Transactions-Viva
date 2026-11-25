@@ -2,6 +2,7 @@ package desktop
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/vivaui/viva/app"
 	"github.com/vivaui/viva/gfx"
+	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/layout"
 	"transactions/internal/domain"
@@ -1194,5 +1196,51 @@ func TestNotesRowMenuOpensOnRightClick(t *testing.T) {
 	click(t, driver, "重命名")
 	if !hasControl(driver, "确定") {
 		t.Fatal("the rename dialog did not open")
+	}
+}
+
+// TestNotesBlockShortcuts is the chord the block menus print on their rows: the
+// block the caret is in becomes the kind the row promises, without touching the
+// menu. The rows and the shortcut read the same table, so they cannot disagree.
+func TestNotesBlockShortcuts(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	// The new note's band takes the keyboard; the body is the control the block
+	// commands act on, so the caret goes there first.
+	click(t, driver, "笔记正文")
+	if err := driver.Type("第一行"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	// A chord with Control is a raw key: it reaches the page's Shortcut and there is
+	// no terminal to type into, which the driver reports as ErrNoTerminal.
+	if err := driver.Chord(ui.Primary|ui.Alt, "2"); err != nil && !errors.Is(err, app.ErrNoTerminal) {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	nodes, err := model.workspace.NoteTree(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	noteID := ""
+	for _, node := range nodes {
+		if node.Kind == domain.NoteKindNote {
+			noteID = node.ID
+		}
+	}
+	if noteID == "" {
+		t.Fatalf("the tree holds no note: %+v", nodes)
+	}
+	note, err := model.workspace.Note(context.Background(), noteID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(note.Blocks) != 1 {
+		t.Fatalf("the note holds %+v", note.Blocks)
+	}
+	if block := note.Blocks[0]; block.Kind != domain.NoteBlockHeading || block.Level != 2 {
+		t.Fatalf("the block is %+v, want a level-2 heading", block)
 	}
 }

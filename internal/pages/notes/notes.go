@@ -427,10 +427,12 @@ func (m *Model) View(c ui.C) {
 		m.Reload()
 	}
 	m.now = c.Canvas().Now()
-	if m.selected != "" && !m.bodyKey.IsZero() && c.Canvas().Focused() == m.bodyKey &&
-		ui.Shortcut(c, ui.Primary, "z") && m.undoneAt != m.now {
-		m.undo()
-		m.undoneAt = m.now
+	if m.selected != "" && !m.bodyKey.IsZero() && c.Canvas().Focused() == m.bodyKey {
+		if ui.Shortcut(c, ui.Primary, "z") && m.undoneAt != m.now {
+			m.undo()
+			m.undoneAt = m.now
+		}
+		m.blockShortcuts(c)
 	}
 	m.noticeEdits(m.now)
 	m.settleDraft(c)
