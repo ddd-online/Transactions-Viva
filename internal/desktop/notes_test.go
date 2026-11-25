@@ -1174,3 +1174,25 @@ func insertPicture(t *testing.T, driver *app.Driver) {
 	click(t, driver, "图片")
 	advance(t, driver)
 }
+
+// TestNotesRowMenuOpensOnRightClick is the same command as the row's actions key:
+// a secondary press anywhere on the row opens the menu for that row.
+func TestNotesRowMenuOpensOnRightClick(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("右键的笔记"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	rightClickText(t, driver, "右键的笔记")
+	if !shows(driver, "重命名") || !shows(driver, "删除") {
+		t.Fatal("the row menu did not open on a right click")
+	}
+	// The menu belongs to the row that was pressed: its first command acts on it.
+	click(t, driver, "重命名")
+	if !hasControl(driver, "确定") {
+		t.Fatal("the rename dialog did not open")
+	}
+}

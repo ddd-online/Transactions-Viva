@@ -767,6 +767,16 @@ func (m *Model) rowContent(c ui.C, index int) {
 		ui.Icon(c, icon).Size(15, 15).Color(color).Shrink(0)
 		typography.Body(c, m.rowName(node)).Grow(1).MinWidth(0).MaxLines(1).Ellipsis()
 
+		// A right click on the row is the same command as the actions key: it opens
+		// the row's menu, and the key appears for it in the same paint, so the menu
+		// has its anchor. Consume keeps the tree from reading the press as a click.
+		if rowID := m.tree.RowID(index); !rowID.IsZero() {
+			if event, ok := c.Canvas().PointerOn(rowID); ok &&
+				event.Kind == gfx.PointerDown && event.Button == gfx.PointerButtonSecondary {
+				m.rowMenu = rowMenuState{open: true, node: node.ID}
+				c.Canvas().Consume()
+			}
+		}
 		// The key names its identity before it is declared: while the pointer is on
 		// the key itself the row is no longer the hovered target, and without this
 		// the row would un-light, the key would vanish under the pointer, the pointer
