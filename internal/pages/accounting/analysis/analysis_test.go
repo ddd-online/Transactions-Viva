@@ -305,3 +305,57 @@ func TestPresetCurveTableHasNoActionColumn(t *testing.T) {
 		t.Fatal("the preset curve table did not paint 合计")
 	}
 }
+
+// TestChartDeleteKeyShowsOnTheLitRow is the rail's delete key: the chart the page
+// shows keeps its own, and another row's appears only while the pointer is on it —
+// with its slot kept either way, so the row's text does not jump.
+func TestChartDeleteKeyShowsOnTheLitRow(t *testing.T) {
+	m := newTestModel(t)
+	page := ui.NewPage(ui.PageConfig{View: m.View})
+	driver, err := app.NewDriver(ui.Configure(page, app.Config{Width: 1500, Height: 1000}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(driver.Close)
+
+	shown, other := "删除图表 月度消费趋势", "删除图表 年度消费趋势"
+	if !hasControl(driver, shown) {
+		t.Fatal("the chart the page shows has no delete key")
+	}
+	if hasControl(driver, other) {
+		t.Fatal("a row nobody points at shows its delete key")
+	}
+
+	row := hitBounds(t, driver, "年度消费趋势")
+	if err := driver.Move(row.X+row.Width/2, row.Y+row.Height/2); err != nil {
+		t.Fatal(err)
+	}
+	if !hasControl(driver, other) {
+		t.Fatal("the delete key did not appear under the pointer")
+	}
+	if !hasControl(driver, shown) {
+		t.Fatal("hovering one row took the shown chart's delete key away")
+	}
+}
+
+// hasControl reports whether a control with exactly this name is painted.
+func hasControl(driver *app.Driver, name string) bool {
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == name && !hit.IsLabel {
+			return true
+		}
+	}
+	return false
+}
+
+// hitBounds finds one control by its name.
+func hitBounds(t *testing.T, driver *app.Driver, name string) gfx.Rect {
+	t.Helper()
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == name && !hit.IsLabel {
+			return hit.Bounds
+		}
+	}
+	t.Fatalf("no control named %q", name)
+	return gfx.Rect{}
+}

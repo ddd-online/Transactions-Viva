@@ -20,6 +20,7 @@ import (
 	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
 	"transactions/internal/components/selectbox"
+	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
@@ -365,8 +366,44 @@ func (m *Model) chartRow(row ui.ListRow) {
 	if chart.ChartType == chartPie {
 		typography.Caption(row.C, "饼图")
 	}
-	remove := ui.Button(row.C, "删除图表 "+chart.Title).
-		Ghost().Icon(icons.Trash2).IconOnly().Tooltip("删除图表")
+	m.chartDelete(row, chart)
+}
+
+// chartDeleteSize is the trailing slot of a chart row: the delete key's box while
+// the row is lit, and empty space the rest of the time, so the row's text does not
+// shift when the key appears.
+const chartDeleteSize float32 = 24
+
+// chartDelete is the row's own delete key, quiet until the row is lit — the
+// pointer on it, the keyboard on it, or the chart the page is showing — the same
+// rule the notes tree's row actions follow. The key names its identity before it
+// is declared, so moving the pointer onto the key keeps the row lit: otherwise the
+// row would un-hover, the key would vanish under the pointer, and the two would
+// flicker until the click never lands.
+func (m *Model) chartDelete(row ui.ListRow, chart domain.Chart) {
+	theme := row.C.Theme()
+	row.C.Key("chart-row-delete-" + chart.ChartID)
+	keyID := ui.ID(row.C)
+	lit := chart.ChartID == m.selectedID || row.C.Canvas().Hovered() == keyID
+	if id := m.list.RowID(row.Index); !id.IsZero() {
+		lit = lit || row.C.Canvas().Hovered() == id || row.C.Canvas().FocusVisible() == id
+	}
+	if !lit {
+		ui.Row(row.C).Width(chartDeleteSize).Shrink(0)
+		return
+	}
+	remove := ui.ButtonBase(row.C, "删除图表 "+chart.Title).Size(chartDeleteSize, chartDeleteSize).
+		Radius(theme.Metrics.RadiusItem()).
+		HitWith(keyID, "删除图表 "+chart.Title, gfx.HitOptions{
+			Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
+		}).
+		Hover(ui.Look{}.Background(state.Hover(*theme))).
+		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
+		Focus(ui.Look{}.Ring(2, theme.Ring)).
+		Tooltip("删除图表")
+	remove.Children(func() {
+		ui.Icon(row.C, icons.Trash2).Size(15, 15).Color(theme.MutedForeground)
+	})
 	if remove.Clicked() {
 		m.askDelete(chart)
 	}
