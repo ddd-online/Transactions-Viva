@@ -5,10 +5,12 @@ import (
 	"strings"
 
 	"github.com/vivaui/viva/gfx"
+	"github.com/vivaui/viva/keymap"
 	"github.com/vivaui/viva/text"
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/state"
+	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
 )
@@ -193,10 +195,7 @@ func (m *Model) blockMenuItems(c ui.C, items *ui.MenuItems, block int) {
 			items.Separator()
 			group = command.group()
 		}
-		item := items.Item(command.label).Icon(command.icon)
-		if command.modifiers != 0 {
-			item = item.Keys(command.modifiers, command.key)
-		}
+		item := shortcutHint(items.Item(command.label).Icon(command.icon), command)
 		if group == commandGroupRemove {
 			item = item.Destructive()
 		}
@@ -223,6 +222,30 @@ func (m *Model) blockShortcuts(c ui.C) {
 		m.chooseBlockMenu(c, block, command)
 		return
 	}
+}
+
+// shortcutHintWidth is the room a row reserves for its chord. The longest chord
+// here is Ctrl+Shift+I, which reads in about seventy of these eighty points.
+const shortcutHintWidth float32 = 80
+
+// shortcutHint writes the row's chord the way this application writes one — one
+// plain string, "Ctrl+Alt+1", in the muted tone — instead of the framework's row
+// of keycaps. 思源's menus are the reference: at a glance the right edge reads as
+// a column of names, not as a row of little keys.
+func shortcutHint(item ui.MenuItem, command bodyCommand) ui.MenuItem {
+	if command.modifiers == 0 {
+		return item
+	}
+	chord, ok := keymap.Parse(command.modifiers, command.key)
+	if !ok {
+		return item
+	}
+	label := chord.Label()
+	return item.Trailing(shortcutHintWidth, func(surface *gfx.Canvas, bounds gfx.Rect, theme gfx.Theme) {
+		surface.LabelAligned(label, bounds, gfx.TextStyle{
+			Size: typography.SizeCaption, Color: theme.MutedForeground,
+		}, gfx.AlignEnd)
+	})
 }
 
 // openBlockMenu opens the grip's menu for one block, or closes it when it is that

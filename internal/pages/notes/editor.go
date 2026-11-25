@@ -894,10 +894,7 @@ func (m *Model) slashMenu(c ui.C, body ui.Box) {
 	var first gfx.ID
 	ui.ContextMenuAt(c, body, &m.slash.open, m.slash.at, func(items *ui.MenuItems) {
 		for _, command := range bodyCommands {
-			entry := items.Item(command.label).Icon(command.icon)
-			if command.modifiers != 0 {
-				entry = entry.Keys(command.modifiers, command.key)
-			}
+			entry := shortcutHint(items.Item(command.label).Icon(command.icon), command)
 			if first.IsZero() {
 				first = entry.ID()
 			}
