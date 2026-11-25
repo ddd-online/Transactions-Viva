@@ -233,8 +233,13 @@ func (m *Model) backupRecentGroup(c ui.C, spec Spec) {
 			button = button.Disabled(true)
 		}
 		if button.Clicked() {
-			m.report("打开工作空间失败", spec.OnPickWorkspace)
-			m.backupLoaded = false
+			// The picker is a native modal: opened during the paint, its message
+			// loop re-dispatches this very click, and the dialog opens twice.
+			pick := spec.OnPickWorkspace
+			c.After(func() {
+				m.report("打开工作空间失败", pick)
+				m.backupLoaded = false
+			})
 		}
 	})
 }
