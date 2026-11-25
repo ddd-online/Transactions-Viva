@@ -379,7 +379,7 @@ func (m *Model) cardDelete(c ui.C, event *domain.KeyEvent, title string, cardID 
 	if !lit {
 		return
 	}
-	remove := ui.ButtonBase(c, "删除事件「"+title+"」").Size(24, 24).Radius(6).
+	remove := ui.ButtonBase(c, "删除事件「"+title+"」").Size(24, 24).Radius(theme.Metrics.RadiusControl).
 		HitWith(keyID, "删除事件「"+title+"」", gfx.HitOptions{
 			Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
 		}).

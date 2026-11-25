@@ -393,7 +393,7 @@ func (m *Model) chartDelete(row ui.ListRow, chart domain.Chart) {
 		return
 	}
 	remove := ui.ButtonBase(row.C, "删除图表 "+chart.Title).Size(chartDeleteSize, chartDeleteSize).
-		Radius(theme.Metrics.RadiusItem()).
+		Radius(theme.Metrics.RadiusControl).
 		HitWith(keyID, "删除图表 "+chart.Title, gfx.HitOptions{
 			Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
 		}).

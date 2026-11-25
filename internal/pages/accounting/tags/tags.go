@@ -470,7 +470,7 @@ func (m *Model) rowDelete(row ui.ListRow, list *ui.ListState, key, label, toolti
 		return
 	}
 	button := ui.ButtonBase(row.C, label).Size(rowDeleteSize, rowDeleteSize).
-		Radius(theme.Metrics.RadiusItem()).
+		Radius(theme.Metrics.RadiusControl).
 		HitWith(keyID, label, gfx.HitOptions{Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand}).
 		Hover(ui.Look{}.Background(theme.Hover)).
 		Pressed(ui.Look{}.Background(state.Pressed(*theme))).

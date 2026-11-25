@@ -207,10 +207,16 @@ func (p *lessonsPanel) tableHeader(c ui.C) {
 }
 
 func (p *lessonsPanel) lessonRow(c ui.C, lesson *domain.StockLesson) {
+	theme := c.Theme()
 	c.Key(lesson.ID)
+	// The wash and the ring are how the row says it takes the pointer and the
+	// keyboard: its commands are behind a right click, so the hover is the only
+	// hint there is, and a focused row must show it has the keyboard.
 	row := ui.Row(c).MinHeight(layout.RowHeight).FillWidth().PadX(layout.Inset).
 		Gap(layout.ColumnGap).Items(ui.Center).
-		Hit(ui.ID(c), lessonName(lesson))
+		Hit(ui.ID(c), lessonName(lesson)).
+		Hover(ui.Look{}.Background(theme.Hover)).
+		Focus(ui.Look{}.Ring(2, theme.Ring))
 	row.Children(func() {
 		ui.Text(c, lesson.Text).FontSize(typography.SizeBody).
 			Basis(0).Grow(1).MinWidth(0).MaxLines(2)
