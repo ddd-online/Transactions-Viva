@@ -709,7 +709,7 @@ func (p *recordsPanel) roundControls(c ui.C, round domain.StockRoundDetail) {
 			p.saveRoundTag(round.Round.ID, *tag)
 		}
 		if p.openRound != nil {
-			if ui.Button(c, "记心得").Small().Secondary().Clicked() {
+			if ui.Button(c, "记心得").Small().Outline().Clicked() {
 				p.openRound(round.Round.StockCode, round.Round.ID)
 			}
 		}
