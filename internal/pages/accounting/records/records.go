@@ -462,8 +462,7 @@ func (m *Model) table(c ui.C) {
 func (m *Model) row(r ui.ListRow) {
 	rec := &m.shown[m.pageStart+r.Index]
 	theme := r.C.Theme()
-	r.Element.Height(layout.RowHeight).PadX(layout.Inset).Gap(layout.ColumnGap).Items(ui.Center).
-		Hover(ui.Look{}.Background(theme.Hover))
+	r.Element = layout.TableRow(r.C, r.Element)
 	if r.Selected() {
 		r.Element.Background(theme.Accent)
 	}

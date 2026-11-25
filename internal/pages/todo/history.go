@@ -150,7 +150,9 @@ func (m *Model) historyRow(c ui.C, entry *domain.TodoHistory) {
 	theme := c.Theme()
 	item := entry.Item
 	c.Key("todo-history-" + item.ID)
-	ui.Row(c).MinHeight(layout.RowHeight).FillWidth().PadX(layout.Inset).
+	// The row takes the table's geometry but no pointer wash: nothing happens when
+	// it is clicked — its two buttons are the whole interaction.
+	ui.Row(c).Height(layout.RowHeight).FillWidth().PadX(layout.Inset).
 		Gap(layout.ColumnGap).Items(ui.Center).Children(func() {
 		ui.Row(c).Width(historyTimeWidth).Gap(6).Items(ui.Center).Children(func() {
 			ui.Icon(c, icons.CircleCheck).Size(historyCheckWidth, historyCheckWidth).

@@ -193,6 +193,20 @@ func TableHeader(c ui.C, spec TableHeaderSpec, body func(ui.C)) {
 		}).Children(func() { body(c) })
 }
 
+// TableRow is one row of a data table: the standard row height, the page's inset
+// as the row's own padding, the column gap, and the pointer wash across the row's
+// full width. Every table row takes it, so the same row reads the same on 记录,
+// 模板 and 待办. The wash is square and reaches the table's edges: a table that
+// insets its columns instead leaves a gap the wash cannot cross, and a rounded
+// wash turns the row into a card. A row that needs more vertical room (模板's
+// chips) adds its own PadY; a row that is chosen paints its fill after this. A
+// row that cannot be clicked gives this fill a Hit or leaves TableRow out: the
+// wash follows the pointer only on a control.
+func TableRow(c ui.C, element ui.Box) ui.Box {
+	return element.Height(RowHeight).PadX(Inset).Gap(ColumnGap).Items(ui.Center).
+		Hover(ui.Look{}.Background(c.Theme().Hover))
+}
+
 // Footer is the 40px band under a table that carries its totals: the page's
 // inset, GroupGap between the readings, one line, no surface of its own. A
 // band whose readings summarize the whole page (the stock records and the

@@ -51,7 +51,7 @@ func (m *Model) board(c ui.C) {
 	ui.Column(c).Fill().Children(func() {
 		m.boardHeader(c)
 		ui.Scroll(c).Grow(1).Children(func() {
-			ui.Column(c).FillWidth().PadSides(0, layout.Inset, layout.Inset, layout.Inset).Children(func() {
+			ui.Column(c).FillWidth().Children(func() {
 				// The rows this frame started with: completing an item reloads the
 				// list, and a reload in the middle of this loop would leave the next
 				// index past the end of the shorter one. The change lands after the
@@ -105,10 +105,8 @@ func (m *Model) itemRow(c ui.C, row *todoRow) {
 		if expanded {
 			label = "收起进度 " + item.Title
 		}
-		line := ui.Row(c).MinHeight(layout.RowHeight).FillWidth().Gap(layout.ColumnGap).
-			Items(ui.Center).Radius(theme.Metrics.RadiusItem()).
-			Hit(ui.ID(c), label).
-			Hover(ui.Look{}.Background(state.Hover(*theme)))
+		line := layout.TableRow(c, ui.Row(c)).FillWidth().
+			Hit(ui.ID(c), label)
 		ui.ContextMenu(c, line, func(menu *ui.MenuItems) {
 			if menu.Item("编辑事项").Clicked() {
 				m.openItemForm(item.CardID, item)

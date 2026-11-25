@@ -320,9 +320,7 @@ func (m *Model) row(row ui.ListRow) {
 	}
 	one := items[row.Index]
 	theme := row.C.Theme()
-	row.Element.FillWidth().MinHeight(rowHeight).PadSides(4, tablePadX, 4, tablePadX).
-		Gap(tableGap).Items(ui.Center).
-		Hover(ui.Look{}.Background(theme.Hover)).
+	row.Element = layout.TableRow(row.C, row.Element).FillWidth().PadY(4).
 		Focus(ui.Look{}.Ring(2, theme.Ring))
 
 	ui.Row(row.C).Width(dragColumnWidth).Justify(ui.Center).Children(func() {
