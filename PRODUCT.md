@@ -4,8 +4,11 @@
 
 ## Platform
 
-桌面原生窗口，由 Viva + Go 直接绘制：没有浏览器、没有 Node、没有内嵌运行时，也不发布网页或手机端。
-验证使用 `app.NewDriver` 无窗口驱动真实绘制与输入，或真实窗口截图。
+web
+
+设计语言是 web 的一套（shadcn 的 token 与 recipe），但渲染在桌面原生窗口里，由 Viva + Go 直接绘制：
+没有浏览器、没有 DOM、没有 Node、没有内嵌运行时，也不发布网页或手机端。验证使用 `app.NewDriver`
+无窗口驱动真实绘制与输入，或真实窗口截图。
 
 ## Users
 
