@@ -2,6 +2,7 @@ package stock
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/vivaui/viva/app"
@@ -289,17 +290,19 @@ func TestLessonsPanelFitsMinimumWindow(t *testing.T) {
 	if diff := indexNameY - roundY; diff > 1 || diff < -1 {
 		t.Fatalf("stock name and round are on different lines: %.1f vs %.1f", indexNameY, roundY)
 	}
-	var create, edit bool
+	// The row's commands are its context menu now, so the table carries the create
+	// button and a row to open them on, not an action key per row.
+	var create, row bool
 	for _, hit := range snapshot.Hits {
-		switch hit.Label {
-		case "新建心得":
+		switch {
+		case hit.Label == "新建心得":
 			create = true
-		case "编辑心得":
-			edit = true
+		case strings.Contains(hit.Label, "追高买入"):
+			row = true
 		}
 	}
-	if !create || !edit {
-		t.Fatalf("create=%v edit=%v, want both controls", create, edit)
+	if !create || !row {
+		t.Fatalf("create=%v row=%v, want both", create, row)
 	}
 }
 

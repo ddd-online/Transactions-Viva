@@ -25,7 +25,6 @@ const lessonTextLimit = 80
 // Column widths of the lesson table. The 心得 cell takes the rest.
 const (
 	lessonSourceWidth = float32(240)
-	lessonActionWidth = float32(112)
 )
 
 // lessonsPanel is 股票 · 心得: the account's one-sentence lessons, their linked
@@ -204,19 +203,46 @@ func (p *lessonsPanel) tableHeader(c ui.C) {
 	layout.TableHeader(c, layout.TableHeaderSpec{PadX: layout.Inset, Gap: layout.ColumnGap}, func(c ui.C) {
 		typography.Caption(c, "心得").Grow(1)
 		typography.Caption(c, "关联交易").Width(lessonSourceWidth)
-		typography.Caption(c, "操作").Width(lessonActionWidth).TextCenter()
 	})
 }
 
 func (p *lessonsPanel) lessonRow(c ui.C, lesson *domain.StockLesson) {
 	c.Key(lesson.ID)
-	ui.Row(c).MinHeight(layout.RowHeight).FillWidth().PadX(layout.Inset).
-		Gap(layout.ColumnGap).Items(ui.Center).Children(func() {
+	row := ui.Row(c).MinHeight(layout.RowHeight).FillWidth().PadX(layout.Inset).
+		Gap(layout.ColumnGap).Items(ui.Center).
+		Hit(ui.ID(c), lessonName(lesson))
+	row.Children(func() {
 		ui.Text(c, lesson.Text).FontSize(typography.SizeBody).
 			Basis(0).Grow(1).MinWidth(0).MaxLines(2)
 		p.sourceCell(c, lesson)
-		p.actionsCell(c, lesson)
 	})
+	// The row's commands are its context menu, as the 记录 and 待办 tables do: the
+	// table keeps no 操作 column, and the words get its width.
+	ui.ContextMenu(c, row, func(items *ui.MenuItems) {
+		if items.Item("编辑心得").Clicked() {
+			p.openEdit(lesson)
+		}
+		canJump := lesson.RoundID != "" && lesson.SourceAvailable && p.onOpenRound != nil
+		jump := items.Item("查看来源轮次").Disabled(!canJump).
+			Description(lessonJumpTip(lesson, p.onOpenRound != nil))
+		if jump.Clicked() && canJump {
+			p.onOpenRound(lesson.StockCode, lesson.RoundID)
+		}
+		items.Separator()
+		if items.Item("删除心得").Destructive().Clicked() {
+			p.askDelete(lesson)
+		}
+	})
+}
+
+// lessonName is the row's name for assistive technology and for the pointer that
+// opens its commands: its words, cut where the eye stops reading the line.
+func lessonName(lesson *domain.StockLesson) string {
+	runes := []rune(strings.TrimSpace(lesson.Text))
+	if len(runes) > 30 {
+		return string(runes[:30]) + "…"
+	}
+	return string(runes)
 }
 
 func (p *lessonsPanel) sourceCell(c ui.C, lesson *domain.StockLesson) {
@@ -235,29 +261,6 @@ func (p *lessonsPanel) sourceCell(c ui.C, lesson *domain.StockLesson) {
 		if !lesson.SourceAvailable {
 			typography.Caption(c, "来源轮次已删除").
 				Color(semantic.Outlier(*theme))
-		}
-	})
-}
-
-func (p *lessonsPanel) actionsCell(c ui.C, lesson *domain.StockLesson) {
-	canJump := lesson.RoundID != "" && lesson.SourceAvailable && p.onOpenRound != nil
-	ui.Row(c).Width(lessonActionWidth).MinWidth(lessonActionWidth).Shrink(0).
-		Gap(2).Items(ui.Center).Justify(ui.End).Children(func() {
-		edit := ui.Button(c, "编辑心得").Ghost().Icon(icons.Pencil).
-			XSmall().IconOnly().Tooltip("编辑")
-		if edit.Clicked() {
-			p.openEdit(lesson)
-		}
-		jump := ui.Button(c, "查看来源轮次").Ghost().Icon(icons.ExternalLink).
-			XSmall().IconOnly().Disabled(!canJump)
-		jump.Tooltip(lessonJumpTip(lesson, p.onOpenRound != nil))
-		if jump.Clicked() && canJump {
-			p.onOpenRound(lesson.StockCode, lesson.RoundID)
-		}
-		remove := ui.Button(c, "删除心得").Ghost().Icon(icons.Trash2).
-			XSmall().IconOnly().Tooltip("删除")
-		if remove.Clicked() {
-			p.askDelete(lesson)
 		}
 	})
 }
