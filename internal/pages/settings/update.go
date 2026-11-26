@@ -182,7 +182,7 @@ func (m *Model) checkedNote(spec Spec) string {
 	if m.updateCheckedAt.IsZero() {
 		return note
 	}
-	return note + " · 最后检查 " + m.updateCheckedAt.Format("01-02 15:04")
+	return note + " · 最后检查 " + m.updateCheckedAt.Format("2006-01-02 15:04")
 }
 
 // updateResultRow lays out a state with a leading success mark and its actions.

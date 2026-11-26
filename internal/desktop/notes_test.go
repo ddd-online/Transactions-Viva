@@ -508,9 +508,19 @@ func TestNotesBlockBandWaitsForTheGrip(t *testing.T) {
 	}
 }
 
-// rule finds the hairline the body paints for a divider: one logical pixel tall
-// and as wide as the text column.
-func rule(driver *app.Driver, column float32) (gfx.Rect, bool) {
+// typeDivider types the three marks that turn an empty block into a rule.
+func typeDivider(t *testing.T, driver *app.Driver) {
+	t.Helper()
+	for range 3 {
+		if err := driver.Type("-"); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// dividerRule finds the hairline the body paints for a divider: one logical pixel
+// tall and as wide as the text column.
+func dividerRule(driver *app.Driver, column float32) (gfx.Rect, bool) {
 	for _, primitive := range driver.Snapshot().Primitives {
 		bounds := primitive.Bounds
 		if primitive.Kind != app.RectanglePrimitive || bounds.Height > 1.5 {
@@ -571,11 +581,7 @@ func TestNotesDividerFromMarks(t *testing.T) {
 		t.Fatal(err)
 	}
 	click(t, driver, "笔记正文")
-	for range 3 {
-		if err := driver.Type("-"); err != nil {
-			t.Fatal(err)
-		}
-	}
+	typeDivider(t, driver)
 	if err := driver.Type("下一段"); err != nil {
 		t.Fatalf("typing under the rule: %v", err)
 	}
@@ -637,17 +643,13 @@ func TestNotesDividerTakesTheCaretBelowIt(t *testing.T) {
 	if err := driver.Key(gfx.KeyEnter, 0); err != nil {
 		t.Fatal(err)
 	}
-	for range 3 {
-		if err := driver.Type("-"); err != nil {
-			t.Fatal(err)
-		}
-	}
+	typeDivider(t, driver)
 	if err := driver.Type("下"); err != nil {
 		t.Fatal(err)
 	}
 	advance(t, driver)
 
-	line, ok := rule(driver, noteTextBounds(t, driver, "上").Width)
+	line, ok := dividerRule(driver, noteTextBounds(t, driver, "上").Width)
 	if !ok {
 		t.Fatal("a divider should paint one hairline across the text column")
 	}
@@ -678,11 +680,7 @@ func TestNotesDividerKeepsTheTextUnderIt(t *testing.T) {
 		t.Fatal(err)
 	}
 	click(t, driver, "笔记正文")
-	for range 3 {
-		if err := driver.Type("-"); err != nil {
-			t.Fatal(err)
-		}
-	}
+	typeDivider(t, driver)
 	if err := driver.Type("保住了"); err != nil {
 		t.Fatal(err)
 	}

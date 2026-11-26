@@ -1,6 +1,7 @@
 package notes
 
 import (
+	"math"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -466,7 +467,10 @@ func (m *Model) paintDividers(canvas *gfx.Canvas, theme *ui.Theme, rect gfx.Rect
 		if y+row.height < rect.Y || y > rect.Y+rect.Height {
 			continue
 		}
-		canvas.Fill(gfx.Rect{X: column, Y: y + (row.height-1)/2, Width: width, Height: 1}, theme.Border)
+		// The rule is one pixel tall and sits on a whole pixel: half a pixel
+		// would spread it over two rows at half strength.
+		top := float32(math.Round(float64(y + row.height/2 - 0.5)))
+		canvas.Fill(gfx.Rect{X: column, Y: top, Width: width, Height: 1}, theme.Border)
 	}
 }
 
@@ -628,7 +632,7 @@ func (m *Model) bodyEvent(event window.TextEvent) (window.TextState, error) {
 	}
 	// A picture and a rule hold no words: a keystroke aimed at one goes to the
 	// nearest text block first, so their line never keeps a letter.
-	m.skipColdCaret()
+	m.moveCaretToText()
 	switch event.Kind {
 	case window.TextPasteNoText:
 		m.pastePicture()
@@ -682,7 +686,7 @@ func (m *Model) bodyEvent(event window.TextEvent) (window.TextState, error) {
 			return m.state(), nil
 		default:
 			event.Apply(m.doc)
-			m.skipColdCaret()
+			m.moveCaretToText()
 			m.linesDirty = true
 			return m.state(), nil
 		}
@@ -710,7 +714,7 @@ func (m *Model) applyEvent(event window.TextEvent, startBlock int) {
 			m.removeBlock(startBlock + 1)
 		}
 	}
-	m.skipColdCaret()
+	m.moveCaretToText()
 }
 
 // backspaceStart is the block a backspace joins into: the one holding the
@@ -766,7 +770,7 @@ func (m *Model) pasteText(event window.TextEvent) {
 
 // afterEdit records the change and moves the caret off a picture.
 func (m *Model) afterEdit() {
-	m.skipColdCaret()
+	m.moveCaretToText()
 	m.syncLines()
 	m.linesDirty = false
 	m.bodyLayout = bodyLayout{}
@@ -774,10 +778,10 @@ func (m *Model) afterEdit() {
 	m.markEdited(m.now)
 }
 
-// skipColdCaret moves the caret out of a block that holds no words — a picture
-// or a rule: their line is the document's, not the text's, so the caret belongs on
-// the nearest text line.
-func (m *Model) skipColdCaret() {
+// moveCaretToText puts the caret in the nearest block that takes text: a picture
+// and a rule own a line of the document but not its letters, so the caret never
+// stops on them.
+func (m *Model) moveCaretToText() {
 	for passes := 0; passes < len(m.blocks)+1; passes++ {
 		block, _ := m.position(m.doc.ByteOffset(m.doc.Caret()))
 		if block < 0 || block >= len(m.blocks) || takesText(m.blocks[block].Kind) {
@@ -1115,7 +1119,7 @@ func (m *Model) bodyPointer(event gfx.PointerEvent) gfx.EventResult {
 func (m *Model) caretAfterDivider(block int) {
 	if block+1 < len(m.blocks) {
 		m.doc.MoveTo(m.bytesToRune(m.blockStart(block+1)), false)
-		m.skipColdCaret()
+		m.moveCaretToText()
 		return
 	}
 	m.appendBlockAtEnd()
