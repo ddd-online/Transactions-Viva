@@ -162,6 +162,9 @@ func NewWithStores(ledgers *ledger.Store, templates *tpl.Cache) *Model {
 		form:       composer.New(),
 		rangePick:  datepicker.NewState(),
 	}
+	// The name is spoken, not typed into: the rows are a sentence each, so a
+	// list that named them by their label would also turn typing into a search.
+	m.list.Name = m.rowName
 	m.formSpec = composer.Spec{
 		Categories: m.categoryNames,
 		TagOptions: m.tagOptions,
@@ -462,7 +465,8 @@ func (m *Model) table(c ui.C) {
 func (m *Model) row(r ui.ListRow) {
 	rec := &m.shown[m.pageStart+r.Index]
 	theme := r.C.Theme()
-	r.Element = layout.TableRow(r.C, r.Element)
+	r.Element = layout.TableRow(r.C, r.Element).
+		Focus(ui.Look{}.Background(state.Selected(*theme)))
 	if r.Selected() {
 		r.Element.Background(theme.Accent)
 	}
@@ -515,6 +519,34 @@ func (m *Model) row(r ui.ListRow) {
 			m.deletingID, m.deleteConfirm = id, true
 		}
 	})
+}
+
+// rowName is row i's name for assistive technology: the date, type, category,
+// description and amount, read as the sentence the row shows. A row keeps no
+// label of its own — the table is not a search field — so this is the one place
+// the columns become words.
+func (m *Model) rowName(i int) string {
+	at := m.pageStart + i
+	if at < 0 || at >= len(m.shown) {
+		return ""
+	}
+	rec := &m.shown[at]
+	parts := []string{rec.at.Format(dateLayout), kindLabel(rec.kind)}
+	for _, part := range append([]string{rec.category}, rec.tags...) {
+		if part != "" {
+			parts = append(parts, part)
+		}
+	}
+	if rec.description != "" {
+		parts = append(parts, rec.description)
+	}
+	if rec.outlier {
+		parts = append(parts, "离群值")
+	}
+	if rec.keyEventDate != "" {
+		parts = append(parts, "关联事件")
+	}
+	return strings.Join(append(parts, rec.signedAmount()), " ")
 }
 
 // empty is what the content area says when the time range matches nothing: the
