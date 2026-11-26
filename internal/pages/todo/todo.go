@@ -236,6 +236,11 @@ func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
 		m.itemForm.startPick.Open, m.itemForm.duePick.Open = false, false
 		return gfx.EventResult{Handled: true, Repaint: true}
 	}
+	if m.itemForm.open {
+		if result := m.itemForm.Key(event); result.Handled {
+			return result
+		}
+	}
 	return m.pageScroll.Key(event)
 }
 

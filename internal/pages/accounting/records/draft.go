@@ -15,7 +15,14 @@ import (
 )
 
 // Key routes the dialog's canvas controls from the shell's Config.OnKey.
-func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult { return m.form.Key(event) }
+func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
+	if m.rangePick.Open {
+		if result := m.rangePick.Key(event); result.Handled {
+			return result
+		}
+	}
+	return m.form.Key(event)
+}
 
 // Scroll routes the dialog's popups' wheel from the shell's Config.OnScroll.
 func (m *Model) Scroll(event gfx.ScrollEvent) gfx.EventResult { return m.form.Scroll(event) }

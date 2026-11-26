@@ -79,6 +79,12 @@ type State struct {
 	// has the month (or period) arrows above the grid instead.
 	yearPrev, yearNext gfx.ID
 	presets            [datePresetCount]gfx.ID
+
+	// columns and cellCount are the grid as the last paint laid it out. The
+	// arrow keys read them, so a panel needs no key route of its own beyond the
+	// page's: the page gives it the keys it would give any control.
+	columns   int
+	cellCount int
 }
 
 // NewState returns an empty picker state. Its cell identities are bound from
@@ -386,6 +392,10 @@ func (state *State) paintGrid(canvas *gfx.Canvas, theme gfx.Theme, spec Spec, pl
 	}
 	visible := state.visibleMonth()
 	today := dateText(time.Now())
+	state.columns, state.cellCount = columns, columns*rows
+	// One stop of Tab for the whole grid: the cell the keyboard is in, else the
+	// chosen end, else today. The arrows walk the rest (see Key).
+	tab := state.tabCell(canvas, spec, columns*rows)
 	for row := 0; row < rows; row++ {
 		for column := 0; column < columns; column++ {
 			index := row*columns + column
@@ -395,7 +405,7 @@ func (state *State) paintGrid(canvas *gfx.Canvas, theme gfx.Theme, spec Spec, pl
 				Width: cellWidth, Height: place.cell,
 			}
 			from, to, label := state.cellValue(spec.Grain, index, visible)
-			state.paintCell(canvas, theme, spec, cell, index, from, to, label, today)
+			state.paintCell(canvas, theme, spec, cell, index, from, to, label, today, index != tab)
 		}
 	}
 }
@@ -403,10 +413,20 @@ func (state *State) paintGrid(canvas *gfx.Canvas, theme gfx.Theme, spec Spec, pl
 // paintCell paints one cell as the theme's button: filled for the ends of the
 // range, muted inside it, bordered for today, plain otherwise.
 func (state *State) paintCell(canvas *gfx.Canvas, theme gfx.Theme, spec Spec,
-	cell gfx.Rect, index int, from, to, label, today string) {
-	button := viva.BeginButton(canvas, theme, state.cells[index], cell)
+	cell gfx.Rect, index int, from, to, label, today string, skipTab bool) {
+	// The button paints; the hit is the cell's, declared below. A ghost cell's
+	// own hit would be as wide as its label, so pressing beside the digits would
+	// miss — and the cell's name would be a bare number.
+	id := state.cells[index]
+	button := viva.BeginButton(canvas, theme, gfx.ID{}, cell).WithState(viva.ButtonState{
+		Hovered: canvas.Hovered() == id,
+		Pressed: canvas.Pressed() == id,
+		Focused: canvas.FocusVisible() == id,
+	})
+	disabled := false
 	switch {
 	case spec.MaxDate != "" && to > spec.MaxDate:
+		disabled = true
 		button.Disabled().Ghost(label)
 	case from == spec.Start || to == spec.End:
 		button.Default(label)
@@ -417,6 +437,88 @@ func (state *State) paintCell(canvas *gfx.Canvas, theme gfx.Theme, spec Spec,
 	default:
 		button.Ghost(label)
 	}
+	canvas.HitWithOptions(id, cell, state.cellName(spec.Grain, from, label), gfx.HitOptions{
+		Role: gfx.RoleButton, Disabled: disabled, SkipTab: skipTab,
+	})
+}
+
+// cellName is the day, month or year the cell stands for, spelled out: a grid of
+// "5"s says nothing to a screen reader about which month it is in.
+func (state *State) cellName(grain Grain, from, label string) string {
+	day, ok := parseDate(from)
+	if !ok {
+		return label
+	}
+	switch grain {
+	case ByYear:
+		return strconv.Itoa(day.Year()) + " 年"
+	case ByMonth:
+		return strconv.Itoa(day.Year()) + " 年 " + strconv.Itoa(int(day.Month())) + " 月"
+	}
+	return strconv.Itoa(day.Year()) + " 年 " + strconv.Itoa(int(day.Month())) + " 月 " +
+		strconv.Itoa(day.Day()) + " 日"
+}
+
+// tabCell is the grid's one stop of Tab: the cell the keyboard is on, else the
+// chosen end, else today, else the first cell.
+func (state *State) tabCell(canvas *gfx.Canvas, spec Spec, count int) int {
+	for index := 0; index < count && index < len(state.cells); index++ {
+		if canvas.FocusVisible() == state.cells[index] {
+			return index
+		}
+	}
+	visible := state.visibleMonth()
+	today := dateText(time.Now())
+	for index := 0; index < count && index < len(state.cells); index++ {
+		from, to, _ := state.cellValue(spec.Grain, index, visible)
+		if from == spec.Start || to == spec.End ||
+			(spec.Grain == ByDay && from == today) || (spec.Grain != ByDay && from == spec.Start) {
+			return index
+		}
+	}
+	return 0
+}
+
+// Key moves the grid's focus by the arrows. The page gives it the keys it gives
+// its other controls, before it handles them itself. Home and End go to the ends
+// of the row, and a key at the edge keeps the focus where it is.
+func (state *State) Key(event gfx.KeyEvent) gfx.EventResult {
+	if !state.Open || event.Release || event.Modifiers != 0 {
+		return gfx.EventResult{}
+	}
+	at := -1
+	for index := 0; index < state.cellCount && index < len(state.cells); index++ {
+		if state.cells[index] == event.Target {
+			at = index
+			break
+		}
+	}
+	if at < 0 {
+		return gfx.EventResult{}
+	}
+	columns := max(state.columns, 1)
+	count := state.cellCount
+	next := at
+	switch event.Key {
+	case gfx.KeyLeft:
+		next = max(at-1, at-at%columns)
+	case gfx.KeyRight:
+		next = min(at+1, at-at%columns+columns-1)
+	case gfx.KeyUp:
+		next = max(at-columns, 0)
+	case gfx.KeyDown:
+		next = min(at+columns, count-1)
+	case gfx.KeyHome:
+		next = at - at%columns
+	case gfx.KeyEnd:
+		next = min(at-at%columns+columns-1, count-1)
+	default:
+		return gfx.EventResult{}
+	}
+	if next < 0 || next >= len(state.cells) {
+		next = at
+	}
+	return gfx.EventResult{Handled: true, Repaint: true, Focus: state.cells[next], FocusVisible: true}
 }
 
 // paintPresets paints the shortcuts under the grid as the theme's link buttons.

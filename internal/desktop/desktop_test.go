@@ -1,6 +1,7 @@
 package desktop
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -650,8 +651,9 @@ func TestRecordDatePicker(t *testing.T) {
 	if moved := labelBoundsOf(t, driver, "取消"); moved != still {
 		t.Fatalf("opening the panel moved the form: %v -> %v", still, moved)
 	}
-	click(t, driver, "15")
-	want := time.Now().Format("2006-01") + "-15"
+	now := time.Now()
+	click(t, driver, fmt.Sprintf("%d 年 %d 月 15 日", now.Year(), int(now.Month())))
+	want := now.Format("2006-01") + "-15"
 	if !shows(driver, want) {
 		t.Fatalf("the date picker did not write %s", want)
 	}

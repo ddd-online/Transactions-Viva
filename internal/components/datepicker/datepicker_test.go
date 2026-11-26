@@ -1,6 +1,7 @@
 package datepicker
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -74,8 +75,9 @@ func TestDayCellPicksDate(t *testing.T) {
 	t.Cleanup(driver.Close)
 
 	clickLabel(t, driver, "不填")
-	want := time.Now().Format("2006-01") + "-15"
-	clickLabel(t, driver, "15")
+	now := time.Now()
+	want := now.Format("2006-01") + "-15"
+	clickLabel(t, driver, fmt.Sprintf("%d 年 %d 月 15 日", now.Year(), int(now.Month())))
 	if start != want {
 		t.Fatalf("picked = %q, want %q", start, want)
 	}

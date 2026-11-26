@@ -260,6 +260,11 @@ func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
 		m.add.pick.Open = false
 		return gfx.EventResult{Handled: true, Repaint: true}
 	}
+	if m.add.open {
+		if result := m.add.pick.Key(event); result.Handled {
+			return result
+		}
+	}
 	return m.pageScroll.Key(event)
 }
 

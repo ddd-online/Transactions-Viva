@@ -332,6 +332,10 @@ Windows 打开「高对比度」时，`highContrastTheme` 在所选外观之上�
 - **Ghost / Icon:** 无底无边框，悬停才有 Highlight 底；图标键 24–32px 见方。
 - **States:** 悬停加深底色，按下再深一档；没有位移、缩放或涟漪。焦点是 2px 环。
 
+### Date panel
+
+日期面板（`internal/components/datepicker`）整个网格是**一个 Tab 站**：Tab 落在选中的那一天（没有选中就落在今天），方向键在日 / 月 / 年三种粒度里按网格走，Home / End 到行首行尾，Enter 或空格选中。每一格的读法是完整的日期（「2026 年 11 月 27 日」），不是孤零零的「27」；格子的命中区就是格子本身，不随数字宽度缩水。快捷键在页面层收到（`State.Key` 由记录、待办、事件与记账弹窗各自的 `Key` 转交），面板自己不再需要页级路由。
+
 ### Inputs / Fields
 
 - **Style:** 纸白底、1px `field` 描边、7.5px 圆角、32px 高、左右 12px 内边距。

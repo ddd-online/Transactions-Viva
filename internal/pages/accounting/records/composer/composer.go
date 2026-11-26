@@ -371,6 +371,13 @@ func (state *State) Key(event gfx.KeyEvent) gfx.EventResult {
 		state.datePick.Open, state.eventPick.Open = false, false
 		return gfx.EventResult{Handled: true, Repaint: true}
 	}
+	for _, pick := range []*datepicker.State{&state.datePick, &state.eventPick} {
+		if pick.Open {
+			if result := pick.Key(event); result.Handled {
+				return result
+			}
+		}
+	}
 	if event.Target != state.tags.input &&
 		(!state.tags.state.Open || event.Key != gfx.KeyEscape && event.Key != gfx.KeyTab) {
 		return gfx.EventResult{}

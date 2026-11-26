@@ -3,6 +3,7 @@ package todo
 import (
 	"strings"
 
+	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/datepicker"
@@ -145,6 +146,19 @@ func (m *Model) itemFields(c ui.C, form *itemForm) {
 			})
 		}
 	})
+}
+
+// Key gives the form's date panels their arrows before the page handles the
+// keys. The panel owns no key route of its own: it is painted on the canvas.
+func (form *itemForm) Key(event gfx.KeyEvent) gfx.EventResult {
+	for _, pick := range []*datepicker.State{&form.startPick, &form.duePick} {
+		if pick.Open {
+			if result := pick.Key(event); result.Handled {
+				return result
+			}
+		}
+	}
+	return gfx.EventResult{}
 }
 
 // themeField is the theme row: a Combobox over the board's themes that also takes
