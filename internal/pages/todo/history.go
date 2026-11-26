@@ -131,6 +131,10 @@ func (m *Model) historyView(c ui.C) {
 			Page:     m.historyPage,
 			PageSize: m.historyPageSize,
 			OnPage:   func(page int) { m.historyPage = page },
+			OnPageSize: func(size int) {
+				m.historyPageSize = size
+				m.historyPage = 1
+			},
 		})
 	})
 }

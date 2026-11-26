@@ -84,7 +84,7 @@ func New() *Model {
 		expanded:        map[string]bool{},
 		progressDraft:   map[string]string{},
 		historyPage:     1,
-		historyPageSize: 20,
+		historyPageSize: 15,
 	}
 }
 
