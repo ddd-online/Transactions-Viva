@@ -252,8 +252,14 @@ func (m *Model) CloseOverlays() {
 }
 
 // View paints the toolbar and the three panes.
-// Key gives the page's scroller PageUp and PageDown.
+// Key gives the page's scroller PageUp and PageDown, and gives an open date
+// panel Escape before the dialog takes it: closing the dialog would throw away
+// the title being typed.
 func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
+	if event.Key == gfx.KeyEscape && m.add.open && m.add.pick.Open {
+		m.add.pick.Open = false
+		return gfx.EventResult{Handled: true, Repaint: true}
+	}
 	return m.pageScroll.Key(event)
 }
 

@@ -151,3 +151,32 @@ func paintedAbove(t *testing.T, driver *app.Driver, first, second string) bool {
 	}
 	return a < b
 }
+
+// TestTodoFormKeepsItselfWhenTheDatePanelCloses: Escape belongs to the open date
+// panel first. Closing the form instead would throw away the title being typed,
+// which is what the dialog's own Escape does.
+func TestTodoFormKeepsItselfWhenTheDatePanelCloses(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "待办")
+	clickLast(t, driver, "新建事项")
+	click(t, driver, "事项")
+	if err := driver.Type("写周报"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, domain.Today())
+	if !hasControl(driver, "关闭日期选择") {
+		t.Fatal("the date panel did not open")
+	}
+	if err := driver.Key(gfx.KeyEscape, 0); err != nil {
+		t.Fatal(err)
+	}
+	if hasControl(driver, "关闭日期选择") {
+		t.Fatal("Escape left the date panel open")
+	}
+	if !inDialog(driver, "创建") {
+		t.Fatal("Escape closed the whole form, not just the date panel")
+	}
+	if !shows(driver, "写周报") {
+		t.Fatal("the typed title was lost")
+	}
+}

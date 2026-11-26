@@ -220,8 +220,14 @@ func (m *Model) activeCount() int {
 }
 
 // Key gives the board or the history PageUp and PageDown; arrows stay with the
-// row that has the focus.
+// row that has the focus. Escape belongs to an open date panel before it belongs
+// to the form: closing the whole form would throw away what was typed.
 func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
+	if event.Key == gfx.KeyEscape && m.itemForm.open &&
+		(m.itemForm.startPick.Open || m.itemForm.duePick.Open) {
+		m.itemForm.startPick.Open, m.itemForm.duePick.Open = false, false
+		return gfx.EventResult{Handled: true, Repaint: true}
+	}
 	return m.pageScroll.Key(event)
 }
 

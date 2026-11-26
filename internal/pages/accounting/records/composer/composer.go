@@ -11,6 +11,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/datepicker"
+	"transactions/internal/components/layout"
 	"transactions/internal/components/selectbox"
 	"transactions/internal/components/typography"
 	tpl "transactions/internal/pages/accounting/template"
@@ -186,7 +187,9 @@ func (state *State) View(c ui.C, spec Spec) {
 				ui.TextField(c, &state.draft.Amount, "金额", "0.00").Mono()
 			})
 			if state.err != "" {
-				typography.Caption(c, state.err).Color(c.Theme().Danger)
+				layout.StatusLine(c, state.err, func(c ui.C) {
+					typography.Caption(c, state.err).Color(c.Theme().Danger)
+				})
 			}
 			ui.Divider(c)
 		})

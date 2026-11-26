@@ -6,6 +6,7 @@ import (
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/datepicker"
+	"transactions/internal/components/layout"
 	"transactions/internal/components/selectbox"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
@@ -139,7 +140,9 @@ func (m *Model) itemFields(c ui.C, form *itemForm) {
 			})
 		})
 		if form.err != "" {
-			typography.Caption(c, form.err).Color(c.Theme().Danger)
+			layout.StatusLine(c, form.err, func(c ui.C) {
+				typography.Caption(c, form.err).Color(c.Theme().Danger)
+			})
 		}
 	})
 }
