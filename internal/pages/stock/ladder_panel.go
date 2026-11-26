@@ -82,6 +82,18 @@ type ladderPanel struct {
 
 	pick   datepicker.State
 	bounds gfx.Rect
+
+	// view is what the paint reads, worked out when the ladder loads: the board
+	// counts and every rung's rows in their order. Building them per frame sorted
+	// the whole day again for a page that had not changed.
+	view ladderView
+}
+
+// ladderView is one day's ladder, arranged for painting.
+type ladderView struct {
+	date   string
+	boards []domain.BoardCount
+	rungs  [][]domain.LadderRow
 }
 
 func newLadderPanel(limits *stocklimit.Service) *ladderPanel {
@@ -122,6 +134,7 @@ func (p *ladderPanel) Reload() {
 	p.request = ladderRequest{}
 	p.ladder = domain.StockLimitLadder{}
 	p.have = false
+	p.view = ladderView{}
 	p.pending = false
 	p.errorMessage = ""
 	p.actionError = ""
@@ -209,6 +222,7 @@ func (p *ladderPanel) ensure(c ui.C) {
 		p.ladder = result
 		p.have = true
 		p.errorMessage = ""
+		p.buildView()
 	}
 }
 
@@ -303,8 +317,27 @@ func (p *ladderPanel) body(c ui.C) {
 	})
 }
 
+// buildView arranges the ladder once, for the paints that read it.
+func (p *ladderPanel) buildView() {
+	p.view = ladderView{date: p.ladder.Date}
+	p.view.boards = domain.BoardCounts(ladderEntries(p.ladder))
+	p.view.rungs = make([][]domain.LadderRow, len(p.ladder.Rungs))
+	for index := range p.ladder.Rungs {
+		p.view.rungs[index] = domain.LadderRows(p.ladder.Rungs[index])
+	}
+}
+
+// ensureView builds the view for a ladder that arrived without one: the page
+// builds it when the effect lands, and a test or a restored value may not have.
+func (p *ladderPanel) ensureView() {
+	if p.view.date != p.ladder.Date || len(p.view.rungs) != len(p.ladder.Rungs) {
+		p.buildView()
+	}
+}
+
 func (p *ladderPanel) boards(c ui.C) {
-	boards := domain.BoardCounts(ladderEntries(p.ladder))
+	p.ensureView()
+	boards := p.view.boards
 	if len(boards) == 0 {
 		return
 	}
@@ -322,6 +355,7 @@ func (p *ladderPanel) boards(c ui.C) {
 }
 
 func (p *ladderPanel) rungs(c ui.C) {
+	p.ensureView()
 	rungs := p.ladder.Rungs
 	if len(rungs) == 0 {
 		return
@@ -341,7 +375,7 @@ func (p *ladderPanel) rungs(c ui.C) {
 						}
 						rung := rungs[index]
 						c.Key("rung-" + strconv.Itoa(rung.Level))
-						p.rung(c, rung)
+						p.rung(c, rung, p.view.rungs[index])
 					}
 				})
 			}
@@ -358,7 +392,7 @@ func ladderColumns(width float32) int {
 	return max(1, int((width+layout.Gap)/(rungMinWidth+layout.Gap)))
 }
 
-func (p *ladderPanel) rung(c ui.C, rung domain.StockLimitRung) {
+func (p *ladderPanel) rung(c ui.C, rung domain.StockLimitRung, rows []domain.LadderRow) {
 	theme := c.Theme()
 	isTop := p.ladder.Metrics.MaxLevel != nil && *p.ladder.Metrics.MaxLevel == rung.Level
 	// The card fills its row; the level and its rate stay put while the stocks
@@ -391,7 +425,6 @@ func (p *ladderPanel) rung(c ui.C, rung domain.StockLimitRung) {
 		}
 		typography.Caption(c, rate)
 		ui.Divider(c)
-		rows := domain.LadderRows(rung)
 		ui.Scroll(c).Grow(1).MinHeight(0).FillWidth().Children(func() {
 			for index := range rows {
 				row := rows[index]

@@ -58,12 +58,23 @@ type bodyRow struct {
 
 // bodyLayout is the laid-out body at one width.
 type bodyLayout struct {
-	width  float32
-	value  string
-	rows   []bodyRow
-	tops   []float32 // top of each block, from the start of the content
-	height float32   // of the content, before the bottom space
-	column float32   // x of the text column inside the pane
+	width float32
+	value string
+	rows  []bodyRow
+	tops  []float32 // top of each block, from the start of the content
+	// extent is one entry per block: where its first row is and how tall the
+	// block paints. The paint asks for it per block, so a long note is not
+	// scanned once per line (see blockDrops).
+	extent []blockExtent
+	height float32 // of the content, before the bottom space
+	column float32 // x of the text column inside the pane
+}
+
+// blockExtent is one block's painted box, in the body's own coordinates.
+type blockExtent struct {
+	top       float32 // the first row's y
+	rowHeight float32 // the first row's line box, which the grip centres on
+	height    float32 // the block's whole height
 }
 
 // snapshot is one undo step: the text, the block attributes beside it and the
@@ -248,6 +259,9 @@ func (m *Model) layoutBody(canvas *gfx.Canvas, width float32, theme *ui.Theme) {
 		layout.tops = append(layout.tops, top)
 		if block.Kind == domain.NoteBlockDivider {
 			layout.rows = append(layout.rows, bodyRow{block: index, y: top, height: dividerHeight})
+			layout.extent = append(layout.extent, blockExtent{
+				top: top, rowHeight: dividerHeight, height: dividerHeight,
+			})
 			y = top + dividerHeight + blockGap
 			continue
 		}
@@ -258,6 +272,9 @@ func (m *Model) layoutBody(canvas *gfx.Canvas, width float32, theme *ui.Theme) {
 				height = 120
 			}
 			layout.rows = append(layout.rows, bodyRow{block: index, y: top, height: height})
+			layout.extent = append(layout.extent, blockExtent{
+				top: top, rowHeight: height, height: height,
+			})
 			y = top + height + imageGap
 			continue
 		}
@@ -266,6 +283,7 @@ func (m *Model) layoutBody(canvas *gfx.Canvas, width float32, theme *ui.Theme) {
 		if block.Kind == domain.NoteBlockHeading {
 			top += headingOf(block).space
 		}
+		first := top
 		line := ""
 		if index < len(m.lines) {
 			line = m.lines[index]
@@ -282,6 +300,9 @@ func (m *Model) layoutBody(canvas *gfx.Canvas, width float32, theme *ui.Theme) {
 			}
 			from = next
 		}
+		layout.extent = append(layout.extent, blockExtent{
+			top: first, rowHeight: height, height: top - first,
+		})
 		y = top + blockGap
 	}
 	layout.height = y

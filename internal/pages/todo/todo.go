@@ -70,13 +70,21 @@ type Model struct {
 	// pageScroll is the keyboard's handle on the board or the history, whichever
 	// is on screen: PageUp and PageDown move it.
 	pageScroll layout.PageScroll
+
+	// historyPage is the 1-based page of the completed list. The log only grows,
+	// so it is paged rather than painted whole: the store keeps every entry, the
+	// window shows a page of it.
+	historyPage     int
+	historyPageSize int
 }
 
 // New returns the empty section; the workspace is connected by SetRepository.
 func New() *Model {
 	return &Model{
-		expanded:      map[string]bool{},
-		progressDraft: map[string]string{},
+		expanded:        map[string]bool{},
+		progressDraft:   map[string]string{},
+		historyPage:     1,
+		historyPageSize: 20,
 	}
 }
 

@@ -9,11 +9,22 @@ import (
 
 	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
+	"transactions/internal/components/pagination"
 	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
 	"transactions/internal/icons"
 )
+
+// historyPages is how many pages the completed list takes at its page size. The
+// page it is on is clamped to this, so restoring the last row of the last page
+// leaves the list on a page that exists.
+func (m *Model) historyPages() int {
+	if m.historyPageSize <= 0 {
+		return 1
+	}
+	return max((len(m.history)+m.historyPageSize-1)/m.historyPageSize, 1)
+}
 
 // quadrant is the four-box view of doing items by urgency and importance.
 func (m *Model) quadrant(c ui.C) {
@@ -98,17 +109,28 @@ func (m *Model) historyView(c ui.C) {
 			"在待办里勾选完成，它会出现在这里。", nil)
 		return
 	}
-	area := m.pageScroll.Area(ui.Scroll(c).Grow(1).Sideways().Scrollbars())
-	area.Children(func() {
-		ui.Column(c).FillWidth().MinWidth(historyTableMinWidth).
-			PadBottom(layout.Inset).Children(func() {
-			m.historyHeader(c)
-			// The rows this frame started with: restoring an item reloads the
-			// list under this loop (see historyRow).
-			entries := m.history
-			for index := range entries {
-				m.historyRow(c, &entries[index])
-			}
+	m.historyPage = min(max(m.historyPage, 1), m.historyPages())
+	start := (m.historyPage - 1) * m.historyPageSize
+	end := min(start+m.historyPageSize, len(m.history))
+	ui.Column(c).Fill().Children(func() {
+		area := m.pageScroll.Area(ui.Scroll(c).Grow(1).Sideways().Scrollbars())
+		area.Children(func() {
+			ui.Column(c).FillWidth().MinWidth(historyTableMinWidth).
+				PadBottom(layout.Inset).Children(func() {
+				m.historyHeader(c)
+				// The rows this frame started with: restoring an item reloads the
+				// list under this loop (see historyRow).
+				entries := m.history[start:end]
+				for index := range entries {
+					m.historyRow(c, &entries[index])
+				}
+			})
+		})
+		pagination.Bar(c, pagination.Spec{
+			Total:    len(m.history),
+			Page:     m.historyPage,
+			PageSize: m.historyPageSize,
+			OnPage:   func(page int) { m.historyPage = page },
 		})
 	})
 }

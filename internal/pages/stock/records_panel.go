@@ -58,9 +58,14 @@ type recordsPanel struct {
 	histories   []domain.StockHistoryItem
 	historyView []int
 	historyFind ui.Field
-	details     map[string]*domain.StockHistoryDetail
-	summary     domain.StockHistorySummary
-	selected    string
+	// historyRev changes when histories do; the rail's search and the quote
+	// request key off it, so they are not rebuilt on every paint.
+	historyRev      int
+	historyQuery    string
+	historySearched int
+	details         map[string]*domain.StockHistoryDetail
+	summary         domain.StockHistorySummary
+	selected        string
 	// accountID is the account the loaded data belongs to; a reload after a
 	// switch elsewhere in the section drops the selection and overlays.
 	accountID string
@@ -218,6 +223,7 @@ func (p *recordsPanel) Reload() {
 		return
 	}
 	p.histories, p.details, p.summary = assembleRecordHistory(histories, trades, rounds, days, ledgers)
+	p.historyRev++
 	p.rebuildHistoryView(p.historyFind.Text())
 	if tags, err := p.repo.StockTradeTags(ctx, active); err == nil {
 		p.tags = tags
@@ -235,6 +241,7 @@ func (p *recordsPanel) Reload() {
 func (p *recordsPanel) fail(message string) {
 	p.errorMessage = message
 	p.histories, p.details = nil, nil
+	p.historyRev++
 	p.historyView = nil
 	p.summary = domain.StockHistorySummary{}
 	p.selected, p.defaultedFor, p.arrivedRound, p.scrollRound = "", "", "", ""
@@ -243,6 +250,7 @@ func (p *recordsPanel) fail(message string) {
 
 func (p *recordsPanel) clear() {
 	p.histories, p.details = nil, nil
+	p.historyRev++
 	p.historyView = nil
 	p.summary = domain.StockHistorySummary{}
 	p.selected, p.defaultedFor, p.arrivedRound, p.scrollRound = "", "", "", ""
@@ -329,6 +337,10 @@ func (p *recordsPanel) syncHistorySelection() {
 // 浦发 narrows the rail on the next paint.
 func (p *recordsPanel) rebuildHistoryView(query string) {
 	query = strings.ToLower(strings.TrimSpace(query))
+	if p.historyRev != 0 && query == p.historyQuery && p.historyRev == p.historySearched {
+		return
+	}
+	p.historyQuery, p.historySearched = query, p.historyRev
 	p.historyView = p.historyView[:0]
 	for index := range p.histories {
 		history := p.histories[index].History
@@ -1135,20 +1147,22 @@ func (p *recordsPanel) ensureQuotes(c ui.C) {
 	if p.quotes == nil || p.quoteEffect == nil {
 		return
 	}
+	if len(p.histories) == 0 {
+		p.quoteMap = map[string]domain.StockQuote{}
+		p.quoteKey = ""
+		return
+	}
+	key := p.active() + "|" + strconv.Itoa(p.historyRev) + "|" + strconv.Itoa(p.quoteSerial)
+	if key == p.quoteKey {
+		return
+	}
+	// The codes are only gathered for a request that will be made: the key
+	// above already says whether this list is the one that was asked for.
 	codes := make([]string, 0, len(p.histories))
 	for _, item := range p.histories {
 		codes = append(codes, item.History.StockCode)
 	}
 	sort.Strings(codes)
-	if len(codes) == 0 {
-		p.quoteMap = map[string]domain.StockQuote{}
-		p.quoteKey = ""
-		return
-	}
-	key := p.active() + "|" + strings.Join(codes, ",") + "|" + strconv.Itoa(p.quoteSerial)
-	if key == p.quoteKey {
-		return
-	}
 	ui.Effect(c, p.quoteEffect, quoteRequest{Key: key, Codes: strings.Join(codes, ",")})
 	if result, _, ok := p.quoteEffect.Take(); ok {
 		p.quoteKey = key

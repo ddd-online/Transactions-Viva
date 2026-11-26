@@ -393,22 +393,24 @@ func (m *Model) blockDrops(d *ui.DrawContext) {
 	column := m.bodyLayout.column
 	offsetY := bodyOffset(rect)
 	// Every visible block takes a drop, so a block can be dragged above or below
-	// another one.
-	for index := range m.bodyLayout.rows {
-		row := m.bodyLayout.rows[index]
-		if row.block >= len(m.blocks) {
+	// another one. The loop walks blocks, not rows: a block with twenty wrapped
+	// lines is still one target, and its box is read from the layout instead of
+	// scanned for.
+	for block := range m.bodyLayout.extent {
+		if block >= len(m.blocks) {
+			break
+		}
+		extent := m.bodyLayout.extent[block]
+		if extent.height <= 0 {
 			continue
 		}
-		if first, ok := m.firstRowOfBlock(row.block); !ok || first.y != row.y {
-			continue
-		}
-		y := offsetY + row.y
-		height := m.blockHeight(row.block)
+		y := offsetY + extent.top
+		height := extent.height
 		blockRect := gfx.Rect{X: column, Y: y, Width: width, Height: height}
 		if blockRect.Y+blockRect.Height < rect.Y || blockRect.Y > rect.Y+rect.Height {
 			continue
 		}
-		d.DropTarget(&m.blockDrag, m.bodyInput.Parts().At(partDropBase+row.block), blockRect,
+		d.DropTarget(&m.blockDrag, m.bodyInput.Parts().At(partDropBase+block), blockRect,
 			func(source, target gfx.ID) bool {
 				from, to := m.dragBlock, m.blockPart(target)
 				if from < 0 || to < 0 || from == to {
@@ -430,12 +432,11 @@ func (m *Model) blockDrops(d *ui.DrawContext) {
 
 // firstRowOfBlock is the first painted row of a block.
 func (m *Model) firstRowOfBlock(block int) (bodyRow, bool) {
-	for _, row := range m.bodyLayout.rows {
-		if row.block == block {
-			return row, true
-		}
+	if block < 0 || block >= len(m.bodyLayout.extent) {
+		return bodyRow{}, false
 	}
-	return bodyRow{}, false
+	extent := m.bodyLayout.extent[block]
+	return bodyRow{block: block, y: extent.top, height: extent.rowHeight}, true
 }
 
 // gripY is where a block's grip sits, from the start of the body content: centred
@@ -456,13 +457,10 @@ func (m *Model) gripY(block int) (float32, bool) {
 
 // blockHeight is the painted height of a block.
 func (m *Model) blockHeight(block int) float32 {
-	var height float32
-	for _, row := range m.bodyLayout.rows {
-		if row.block == block {
-			height += row.height
-		}
+	if block < 0 || block >= len(m.bodyLayout.extent) {
+		return 0
 	}
-	return height
+	return m.bodyLayout.extent[block].height
 }
 
 // blockPart decodes a block's drop target part back into its index.

@@ -103,7 +103,11 @@ type statisticsPanel struct {
 	metric domain.StockMetric
 	page   int
 
-	stats        domain.StockStatistics
+	stats domain.StockStatistics
+	// detailRows is stats' points newest first, sorted when the statistics
+	// load: the detail table reads it every paint, and sorting there would
+	// cost as much as the history is long.
+	detailRows   []domain.StockStatisticsPoint
 	errorMessage string
 	bounds       gfx.Rect
 
@@ -160,6 +164,7 @@ func (p *statisticsPanel) Reload() {
 	p.chartVersion++
 	if p.repo == nil || p.active() == "" {
 		p.stats = domain.StockStatistics{}
+		p.detailRows = nil
 		p.tagOptions = nil
 		return
 	}
@@ -179,6 +184,7 @@ func (p *statisticsPanel) Reload() {
 		return
 	}
 	p.stats = stats
+	p.detailRows = domain.DetailRowsNewestFirst(stats.Points)
 }
 
 // query is the request the filters add up to. The repository takes whole
@@ -758,7 +764,7 @@ func detailTableSize(available float32) (table float32, widths [detailColumnCoun
 
 // detail is the newest-first table of every settlement, 15 rows a page.
 func (p *statisticsPanel) detail(c ui.C) {
-	rows := domain.DetailRowsNewestFirst(p.stats.Points)
+	rows := p.detailRows
 	pages := max((len(rows)+statisticsDetailSize-1)/statisticsDetailSize, 1)
 	page := min(max(p.page, 1), pages)
 	start := (page - 1) * statisticsDetailSize
