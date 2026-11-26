@@ -232,7 +232,8 @@ func (m *Model) thumb(c ui.C, index int) {
 		ui.Stack(c).Fill().Clip().Radius(theme.Metrics.RadiusItem()).Children(func() {
 			slot := ui.Slot(c).Fill().HitWith(ui.ID(c), fmt.Sprintf("查看第 %d 张图片，共 %d 张%s",
 				index+1, len(m.images), liveSuffix(image)),
-				gfx.HitOptions{Role: gfx.RoleButton, Selected: selected})
+				gfx.HitOptions{Role: gfx.RoleButton, Selected: selected}).
+				Focus(ui.Look{}.Ring(2, theme.Ring))
 			slot.Draw(func(d *ui.DrawContext) {
 				m.drawThumb(d, image)
 			})

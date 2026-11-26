@@ -71,7 +71,8 @@ func (m *Model) progressView(c ui.C) {
 								Border(1, c.Theme().Border).Center().
 								HitWith(ui.ID(c), "勾选进度", gfx.HitOptions{
 									Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
-								}).Hover(ui.Look{}.Background(state.Hover(*c.Theme())))
+								}).Hover(ui.Look{}.Background(state.Hover(*c.Theme()))).
+								Focus(ui.Look{}.Ring(2, c.Theme().Ring))
 							check.Children(func() {
 								if line.Done {
 									ui.Icon(c, icons.CircleCheck).Size(14, 14).Color(c.Theme().Success)

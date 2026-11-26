@@ -106,7 +106,8 @@ func (m *Model) itemRow(c ui.C, row *todoRow) {
 			label = "收起进度 " + item.Title
 		}
 		line := layout.TableRow(c, ui.Row(c)).FillWidth().
-			Hit(ui.ID(c), label)
+			Hit(ui.ID(c), label).
+			Focus(ui.Look{}.Background(state.Selected(*theme)))
 		ui.ContextMenu(c, line, func(menu *ui.MenuItems) {
 			if menu.Item("编辑事项").Clicked() {
 				m.openItemForm(item.CardID, item)
@@ -240,7 +241,8 @@ func (m *Model) progressRow(c ui.C, progress *domain.TodoProgress) {
 		check := ui.Row(c).Size(14, 14).Shrink(0).Radius(7).Border(1, theme.Border).Center().
 			HitWith(ui.ID(c), "勾选进度", gfx.HitOptions{
 				Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
-			}).Hover(ui.Look{}.Background(state.Hover(*theme)))
+			}).Hover(ui.Look{}.Background(state.Hover(*theme))).
+			Focus(ui.Look{}.Ring(2, theme.Ring))
 		check.Children(func() {
 			if progress.Done {
 				ui.Icon(c, icons.CircleCheck).Size(12, 12).Color(theme.Success)

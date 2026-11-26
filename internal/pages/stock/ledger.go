@@ -143,6 +143,7 @@ func ledgerEmpty(c ui.C, theme *ui.Theme, onEdit func()) {
 		PadX(4).Gap(layout.Gap).Items(ui.Center).
 		HitWith(ui.ID(c), "填写交易台账", gfx.HitOptions{Cursor: gfx.PointerCursorHand}).
 		Hover(ui.Look{}.Background(theme.Hover)).
+		Focus(ui.Look{}.Ring(2, theme.Ring)).
 		Radius(theme.Metrics.RadiusControl)
 	row.Children(func() {
 		typography.Body(c, "还没有填写台账，记下买入理由、止损与止盈。").Muted()

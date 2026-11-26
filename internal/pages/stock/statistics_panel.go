@@ -861,7 +861,8 @@ func (p *statisticsPanel) detailStock(c ui.C, point domain.StockStatisticsPoint,
 		return
 	}
 	cell.Color(c.Theme().Primary)
-	cell.HitWith(id, "查看这一轮交易", gfx.HitOptions{Cursor: gfx.PointerCursorHand})
+	cell.HitWith(id, "查看这一轮交易", gfx.HitOptions{Cursor: gfx.PointerCursorHand}).
+		Focus(ui.Look{}.Ring(2, c.Theme().Ring))
 	if cell.Clicked() {
 		code, roundID := point.StockCode, point.RoundID
 		c.After(func() { p.onOpenRound(code, roundID) })

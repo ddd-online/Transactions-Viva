@@ -435,7 +435,8 @@ func (p *positionsPanel) positionCard(c ui.C, position *domain.StockPosition) {
 		HitWith(ui.ID(c), position.StockName+" "+position.StockCode, gfx.HitOptions{
 			Cursor: gfx.PointerCursorHand, Selected: selected,
 		}).
-		Hover(ui.Look{}.Background(state.Hover(*theme)))
+		Hover(ui.Look{}.Background(state.Hover(*theme))).
+		Focus(ui.Look{}.Ring(2, theme.Ring))
 	if selected {
 		card = card.Background(state.Selected(*theme))
 	}
@@ -688,6 +689,7 @@ func (p *positionsPanel) dailySection(c ui.C, position *domain.StockPosition) {
 					Gap(layout.Gap).Items(ui.Center).
 					HitWith(ui.ID(c), "写今日的每日复盘", gfx.HitOptions{Cursor: gfx.PointerCursorHand}).
 					Hover(ui.Look{}.Background(theme.Hover)).
+					Focus(ui.Look{}.Ring(2, theme.Ring)).
 					Radius(theme.Metrics.RadiusControl)
 				row.Children(func() {
 					typography.Body(c, "还没有写每日复盘，点「写今日」记下今天的盘面和判断。").
@@ -705,6 +707,7 @@ func (p *positionsPanel) dailySection(c ui.C, position *domain.StockPosition) {
 					HitWith(ui.ID(c), "查看 "+review.ReviewDate+" 的每日复盘",
 						gfx.HitOptions{Cursor: gfx.PointerCursorHand}).
 					Hover(ui.Look{}.Background(theme.Hover)).
+					Focus(ui.Look{}.Ring(2, theme.Ring)).
 					Radius(theme.Metrics.RadiusControl)
 				row.Children(func() {
 					ui.Text(c, review.ReviewDate).FontSize(typography.SizeBody).Mono().Width(88)
@@ -737,6 +740,7 @@ func (p *positionsPanel) roundSection(c ui.C, position *domain.StockPosition) {
 				Gap(layout.Gap).Items(ui.Center).
 				HitWith(ui.ID(c), "查看本轮复盘", gfx.HitOptions{Cursor: gfx.PointerCursorHand}).
 				Hover(ui.Look{}.Background(theme.Hover)).
+				Focus(ui.Look{}.Ring(2, theme.Ring)).
 				Radius(theme.Metrics.RadiusControl)
 			row.Children(func() {
 				preview := ui.Text(c, text).FontSize(typography.SizeBody).Grow(1).Ellipsis()

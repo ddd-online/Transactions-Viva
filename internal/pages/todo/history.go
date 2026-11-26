@@ -76,7 +76,8 @@ func (m *Model) quadrantPane(c ui.C, title string, items []quadrantItem) {
 					row := items[index]
 					action := ui.Column(c).FillWidth().PadSides(10, 10, 8, 10).Gap(2).
 						Radius(theme.Metrics.RadiusItem()).Hover(ui.Look{}.Background(state.Hover(*theme))).
-						Hit(ui.ID(c), "编辑 "+row.Item.Title).Children(func() {
+						Hit(ui.ID(c), "编辑 "+row.Item.Title).
+						Focus(ui.Look{}.Ring(2, theme.Ring)).Children(func() {
 						typography.Body(c, row.Item.Title).MaxLines(1).Ellipsis()
 						typography.Caption(c, row.Card)
 					})
