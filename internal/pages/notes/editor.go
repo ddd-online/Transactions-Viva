@@ -84,7 +84,7 @@ type bodyCommand struct {
 	key       string
 }
 
-// bodyCommands are the "/" menu's entries, in order: the block kinds a line can
+// bodyCommands are the command menu's entries, in order: the block kinds a line can
 // become, then the picture.
 var bodyCommands = []bodyCommand{
 	{label: "正文", kind: domain.NoteBlockText, icon: icons.Pilcrow,
@@ -116,7 +116,7 @@ type slashState struct {
 }
 
 // bodyView declares the body: its column of blocks — the text control and the
-// grip of the block it shows — and the "/" menu that hangs off the text. A menu
+// grip of the block it shows — and the command menu that hangs off the text. A menu
 // is the framework's, so its panel, rows, hover, clicks and keys are the app's
 // everywhere else too.
 func (m *Model) bodyView(c ui.C) {
@@ -595,7 +595,7 @@ func (m *Model) bodyEvent(event window.TextEvent) (window.TextState, error) {
 		m.pasteText(event)
 		return m.state(), nil
 	case window.TextInsert:
-		if event.Text == "/" && m.slashStart() {
+		if slashTrigger(event.Text) && m.slashStart() {
 			m.openSlash()
 			return m.state(), nil
 		}
@@ -856,6 +856,13 @@ func (m *Model) undo() {
 	m.flush()
 }
 
+// slashTrigger reports whether the text just typed asks for the block menu: the
+// ASCII slash, and the 顿号 "、" that Chinese prose puts between items. Someone
+// writing 中文 reaches for 顿号 without leaving the input method, so both open the
+// menu; neither mark is inserted, and both count only at the start of an empty
+// block (see slashStart).
+func slashTrigger(text string) bool { return text == "/" || text == "、" }
+
 // slashStart reports whether a slash typed now should open the block menu: the
 // block is empty text and the caret is at its start.
 func (m *Model) slashStart() bool {
@@ -884,7 +891,8 @@ func (m *Model) openSlash() {
 // closeSlash closes the menu.
 func (m *Model) closeSlash() { m.slash = slashState{} }
 
-// slashMenu declares the "/" command menu as a Viva context menu at the caret.
+// slashMenu declares the command menu as a Viva context menu at the caret. It is the
+// same table the grip opens, raised by typing "/" or "、" at the start of a block.
 // It is declared after the body, so the body is the control the menu hangs off
 // and the press that chooses a row lands in the menu rather than the text.
 func (m *Model) slashMenu(c ui.C, body ui.Box) {
@@ -929,7 +937,7 @@ func (m *Model) chooseSlash(item bodyCommand) {
 	m.flush()
 }
 
-// bodyPointer handles presses on pictures, on the "/" menu and on the strip
+// bodyPointer handles presses on pictures, on the command menu and on the strip
 // under the last block; text presses go to the placement.
 func (m *Model) bodyPointer(event gfx.PointerEvent) gfx.EventResult {
 	if m.selected == "" {

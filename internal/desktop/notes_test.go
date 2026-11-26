@@ -410,6 +410,40 @@ func TestNotesSlashMenuPicksAHeading(t *testing.T) {
 	}
 }
 
+// TestNotesCommandMenuOpensOnTheDunhao types "、" in an empty block: Chinese
+// prose reaches for 顿号 where a form reaches for "/", so the same menu opens,
+// the mark itself is never inserted, and the note keeps its text.
+func TestNotesCommandMenuOpensOnTheDunhao(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("顿号"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("、"); err != nil {
+		t.Fatal(err)
+	}
+	if !shows(driver, "标题 1") {
+		t.Fatal("typing 、 should open the command menu")
+	}
+	if err := driver.Key(gfx.KeyDown, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Key(gfx.KeyEnter, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Type("小节"); err != nil {
+		t.Fatalf("typing after the command menu: %v", err)
+	}
+	advance(t, driver)
+	note := noteByTitle(t, model, "顿号")
+	if len(note.Blocks) != 1 || note.Blocks[0].Kind != domain.NoteBlockHeading ||
+		note.Blocks[0].Level != 1 || note.Blocks[0].Text != "小节" {
+		t.Fatalf("blocks after the command menu = %+v", note.Blocks)
+	}
+}
+
 // writeLongNote writes a note whose body is taller than its pane: title, then
 // lines of text, one per block.
 func writeLongNote(t *testing.T, driver *app.Driver, title string, lines int) {
