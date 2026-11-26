@@ -151,6 +151,7 @@ func (m *Model) bodyView(c ui.C) {
 	}
 	m.column.m, m.column.block = m, m.litBlock()
 	m.gripID = gfx.ID{}
+	m.gripHover = -1
 	var body ui.Box
 	// The note is a document taller than its pane: the area clips it at the
 	// offset the note gives, draws its scrollbar and hands the wheel back to the
@@ -309,6 +310,7 @@ func (m *Model) drawBody(d *ui.DrawContext) {
 	offsetY := bodyOffset(rect)
 
 	canvas.Clip(rect)
+	m.paintBlockWash(canvas, theme, column, offsetY, width)
 	m.paintImages(canvas, theme, rect, column, offsetY)
 	m.paintText(canvas, theme, rect, column, offsetY, width)
 	m.paintCaret(canvas, theme, column, offsetY, focused)

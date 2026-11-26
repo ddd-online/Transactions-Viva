@@ -193,10 +193,13 @@ type Model struct {
 	blockDrag  ui.DragState
 	hoverBlock int
 	dragBlock  int
-	dropAfter  bool
-	blockMenu  blockMenuState
-	resize     resizeState
-	column     blockColumn
+	// gripHover is the block whose grip the pointer is on, or -1: the handle
+	// marks its block (see blockWash).
+	gripHover int
+	dropAfter bool
+	blockMenu blockMenuState
+	resize    resizeState
+	column    blockColumn
 	// area is the body's scroll area as the last paint declared it: the wheel and
 	// a drag on its bar reach it between paints.
 	area *ui.ScrollState
@@ -268,6 +271,7 @@ func New() *Model {
 		selectedImage: -1,
 		caretShown:    -1,
 		hoverBlock:    -1,
+		gripHover:     -1,
 		dragBlock:     -1,
 		blockMenu:     blockMenuState{block: -1},
 		resize:        resizeState{block: -1},

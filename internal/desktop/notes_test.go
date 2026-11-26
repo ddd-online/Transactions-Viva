@@ -444,6 +444,70 @@ func TestNotesCommandMenuOpensOnTheDunhao(t *testing.T) {
 	}
 }
 
+// blockBand finds the wash the body paints behind a block: a rounded rectangle
+// that starts left of the block's painted row and reaches past it, one line tall.
+// The grip's own box is square and narrow, so it cannot pass for one.
+func blockBand(driver *app.Driver, row gfx.Rect) (gfx.Rect, bool) {
+	for _, primitive := range driver.Snapshot().Primitives {
+		if primitive.Kind != app.RectanglePrimitive || primitive.Radius <= 0 {
+			continue
+		}
+		bounds := primitive.Bounds
+		if bounds.X >= row.X || bounds.Width <= row.Width || bounds.Height != row.Height {
+			continue
+		}
+		if bounds.Y > row.Y || bounds.Y+bounds.Height < row.Y+row.Height {
+			continue
+		}
+		return bounds, true
+	}
+	return gfx.Rect{}, false
+}
+
+// TestNotesBlockBandWaitsForTheGrip: a pointer over a block paints its grip and
+// nothing else; only a pointer on the grip itself washes the block, and the wash
+// covers that block alone.
+func TestNotesBlockBandWaitsForTheGrip(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("底色"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("甲"); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Key(gfx.KeyEnter, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Type("乙"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	first := noteTextBounds(t, driver, "甲")
+	if err := driver.Move(first.X+first.Width/2, first.Y+first.Height/2); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	if band, ok := blockBand(driver, first); ok {
+		t.Fatalf("the band %v should wait for the pointer to reach the grip", band)
+	}
+
+	hoverBlock(t, driver, "甲")
+	band, ok := blockBand(driver, first)
+	if !ok {
+		t.Fatal("a pointer on the grip should wash the block it drags")
+	}
+	second := noteTextBounds(t, driver, "乙")
+	if band.Y+band.Height > second.Y {
+		t.Fatalf("the band %v runs into the block below it %v", band, second)
+	}
+}
+
 // writeLongNote writes a note whose body is taller than its pane: title, then
 // lines of text, one per block.
 func writeLongNote(t *testing.T, driver *app.Driver, title string, lines int) {

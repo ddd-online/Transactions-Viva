@@ -35,6 +35,9 @@ const (
 	// the picture's resize bar, so the two read as one control family.
 	gripMarkSize float32 = 12
 	gripRadius   float32 = 4
+	// blockWashInset is how far the band behind a marked block reaches past its
+	// text column on each side: the wash holds the block, it does not wrap it.
+	blockWashInset float32 = 8
 )
 
 // blockMenuState is the grip's menu: whether it is open, which block it commands,
@@ -147,7 +150,6 @@ func (b *blockColumn) PlaceHeight(ctx *ui.LayoutContext, bounds gfx.Rect) {
 func (m *Model) blockGrip(c ui.C, block int) {
 	theme := c.Theme()
 	c.Key("note-block-grip-" + strconv.Itoa(block))
-	m.gripID = ui.ID(c)
 	grip := ui.ButtonBase(c, "块操作").Size(gripSize, gripSize).
 		Radius(gripRadius).
 		Background(theme.Hover).
@@ -162,6 +164,15 @@ func (m *Model) blockGrip(c ui.C, block int) {
 			Color(theme.MutedForeground)
 	})
 	grip.DragSource(&m.blockDrag)
+	// The button's identity is the one the canvas reports: a widget names itself,
+	// and ui.ID(c) would name a custom control declared next, not this button.
+	m.gripID = grip.N().ID
+	// The grip lights the block it belongs to: the handle says a block can be
+	// dragged, and the band behind the block says which block that is (painted in
+	// drawBody, which runs after this declaration).
+	if c.Canvas().Hovered() == m.gripID {
+		m.gripHover = block
+	}
 	if grip.Clicked() {
 		m.openBlockMenu(block)
 	}
@@ -184,6 +195,45 @@ func (m *Model) litBlock() int {
 		return m.hoverBlock
 	}
 	return -1
+}
+
+// blockWash is the block the body marks: the one whose grip the pointer is on, or
+// the one whose block menu is open. The grip says a block can be dragged; the band
+// says which block is meant, and it stays while the menu commands that block.
+func (m *Model) blockWash() int {
+	if m.gripHover >= 0 && m.gripHover < len(m.blocks) {
+		return m.gripHover
+	}
+	if m.blockMenu.open && m.blockMenu.block >= 0 && m.blockMenu.block < len(m.blocks) {
+		return m.blockMenu.block
+	}
+	return -1
+}
+
+// paintBlockWash paints the band behind the marked block, under its text and its
+// picture. It is the wash a hovered row wears — theme.Hover, the ink at 5% —
+// rounded like a row in a popup and held off the text by blockWashInset, so the
+// first and last glyph of a line never touch the band's edge. The block stays
+// where it is: the band is the only thing that changes.
+func (m *Model) paintBlockWash(canvas *gfx.Canvas, theme *ui.Theme, column, offsetY, width float32) {
+	block := m.blockWash()
+	if block < 0 {
+		return
+	}
+	row, ok := m.firstRowOfBlock(block)
+	if !ok {
+		return
+	}
+	band := gfx.Rect{
+		X:      column - blockWashInset,
+		Y:      offsetY + row.y,
+		Width:  width + 2*blockWashInset,
+		Height: m.blockHeight(block),
+	}
+	if band.Width <= 0 || band.Height <= 0 {
+		return
+	}
+	canvas.Rounded(band, theme.Metrics.RadiusItem(), theme.Hover)
 }
 
 // blockMenuItems declares one block's commands. Every kind offers gripCommands
