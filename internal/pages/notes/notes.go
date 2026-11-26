@@ -523,9 +523,13 @@ func (m *Model) rail(c ui.C) {
 		if len(m.rows) == 0 && m.filterText != "" {
 			emptystate.Notice(c, "没有匹配的笔记")
 		} else {
-			ui.Tree(c, &m.tree, len(m.rows), m.rowLabel, func(index int) {
-				m.rowContent(c, index)
-			}).Label("笔记列表").Grow(1)
+			// The tree keeps the page's inset on both sides, so a row's highlight
+			// floats inside the rail instead of touching its edges.
+			ui.Column(c).Grow(1).FillWidth().PadX(layout.Inset).Children(func() {
+				ui.Tree(c, &m.tree, len(m.rows), m.rowLabel, func(index int) {
+					m.rowContent(c, index)
+				}).Label("笔记列表").Grow(1)
+			})
 			m.treeChanges()
 		}
 	})

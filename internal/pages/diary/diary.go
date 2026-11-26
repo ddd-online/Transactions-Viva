@@ -348,9 +348,13 @@ func (m *Model) rail(c ui.C) {
 		case len(m.dates) == 0:
 			emptystate.Notice(c, "暂无日记")
 		default:
-			ui.Tree(c, &m.tree, len(m.rows), m.tree.Label, func(i int) {
-				m.rowContent(c, i)
-			}).Label("日记列表").Grow(1)
+			// The tree keeps the page's inset on both sides: its rows are a
+			// column inside the panel, not bands welded to the rail's edges.
+			ui.Column(c).Grow(1).FillWidth().PadX(layout.Inset).Children(func() {
+				ui.Tree(c, &m.tree, len(m.rows), m.tree.Label, func(i int) {
+					m.rowContent(c, i)
+				}).Label("日记列表").Grow(1)
+			})
 			m.treeDone()
 		}
 	})
