@@ -78,6 +78,7 @@ var gripCommands = []bodyCommand{
 		modifiers: ui.Primary | ui.Alt, key: "5"},
 	{label: "插入图片", kind: domain.NoteBlockImage, icon: icons.Image,
 		modifiers: ui.Primary | ui.Shift, key: "i"},
+	{label: "插入分隔线", kind: domain.NoteBlockDivider, icon: icons.Minus, hint: "---"},
 	{label: "删除块", icon: icons.Trash2},
 }
 
@@ -89,13 +90,13 @@ const (
 )
 
 // group is which group of the menu a command belongs to: the table above carries
-// it in what the command does — a kind converts, a picture is inserted, no kind
-// removes.
+// it in what the command does — a kind converts, a picture or a rule is put at the
+// block, no kind removes.
 func (command bodyCommand) group() int {
 	switch {
 	case command.kind == "":
 		return commandGroupRemove
-	case command.kind == domain.NoteBlockImage:
+	case command.kind == domain.NoteBlockImage, command.kind == domain.NoteBlockDivider:
 		return commandGroupInsert
 	}
 	return commandGroupTurn
@@ -284,16 +285,20 @@ const shortcutHintWidth float32 = 80
 // shortcutHint writes the row's chord the way this application writes one — one
 // plain string, "Ctrl+Alt+1", in the muted tone — instead of the framework's row
 // of keycaps. 思源's menus are the reference: at a glance the right edge reads as
-// a column of names, not as a row of little keys.
+// a column of names, not as a row of little keys. A command with no chord shows
+// its own marks there instead: the divider's row ends in the "---" that makes one.
 func shortcutHint(item ui.MenuItem, command bodyCommand) ui.MenuItem {
-	if command.modifiers == 0 {
+	label := command.hint
+	if command.modifiers != 0 {
+		chord, ok := keymap.Parse(command.modifiers, command.key)
+		if !ok {
+			return item
+		}
+		label = chord.Label()
+	}
+	if label == "" {
 		return item
 	}
-	chord, ok := keymap.Parse(command.modifiers, command.key)
-	if !ok {
-		return item
-	}
-	label := chord.Label()
 	return item.Trailing(shortcutHintWidth, func(surface *gfx.Canvas, bounds gfx.Rect, theme gfx.Theme) {
 		surface.LabelAligned(label, bounds, gfx.TextStyle{
 			Size: typography.SizeCaption, Color: theme.MutedForeground,
@@ -327,6 +332,10 @@ func (m *Model) chooseBlockMenu(c ui.C, block int, item bodyCommand) {
 	}
 	if item.kind == domain.NoteBlockImage {
 		m.pickPicture()
+		return
+	}
+	if item.kind == domain.NoteBlockDivider {
+		m.insertDivider()
 		return
 	}
 	m.newHistoryStep()

@@ -643,6 +643,9 @@ func normalizeNoteBlock(block domain.NoteBlock) (domain.NoteBlock, error) {
 		block.Level = 0
 		block.ImagePath = strings.TrimSpace(block.ImagePath)
 		block.ImageScale = domain.NoteImageScale(block.ImageScale)
+	case domain.NoteBlockDivider:
+		// A rule carries nothing but its place: no level, no words, no picture.
+		block.Level = 0
 	default:
 		return domain.NoteBlock{}, invalidf("未知的块类型：%s", block.Kind)
 	}

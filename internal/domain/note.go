@@ -4,7 +4,7 @@ import "strings"
 
 // 笔记：工作空间里的一棵树。文件夹可以装文件夹和笔记，笔记永远是叶子；
 // 根级只放文件夹。一篇笔记有一个标题和一串从上到下的块：标题块（h1-h5）、
-// 文本块、图片块。标题不是块：它存在节点行上，树里也用它当名字。
+// 文本块、图片块、分隔线块。标题不是块：它存在节点行上，树里也用它当名字。
 //
 // 块的顺序由 sort_order 决定，0 在最上面。图片的尺寸如实存下来：原图宽高、
 // 用户拖出来的缩放比例；显示宽度以正文宽度为上限，超过时按比例缩到正文宽。
@@ -20,6 +20,9 @@ const (
 	NoteBlockText    = "text"
 	NoteBlockHeading = "heading"
 	NoteBlockImage   = "image"
+	// NoteBlockDivider 是一条通栏的横线。它不装文字：行还留着（块和行一一
+	// 对应），但正文不长字，光标也从不落在它上面。
+	NoteBlockDivider = "divider"
 )
 
 const (
@@ -56,7 +59,7 @@ type NoteNode struct {
 type NoteBlock struct {
 	ID          string
 	NoteID      string
-	Kind        string // text / heading / image
+	Kind        string // text / heading / image / divider
 	Level       int    // 标题块 1..5；其它为 0
 	Text        string // 标题块与文本块的文字
 	ImagePath   string

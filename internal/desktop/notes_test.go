@@ -508,6 +508,167 @@ func TestNotesBlockBandWaitsForTheGrip(t *testing.T) {
 	}
 }
 
+// rule finds the hairline the body paints for a divider: one logical pixel tall
+// and as wide as the text column.
+func rule(driver *app.Driver, column float32) (gfx.Rect, bool) {
+	for _, primitive := range driver.Snapshot().Primitives {
+		bounds := primitive.Bounds
+		if primitive.Kind != app.RectanglePrimitive || bounds.Height > 1.5 {
+			continue
+		}
+		if bounds.Width < column*0.9 || bounds.Width > column*1.1 {
+			continue
+		}
+		return bounds, true
+	}
+	return gfx.Rect{}, false
+}
+
+// TestNotesDividerFromMarks types "---" on an empty line: the marks are the
+// command, so the block becomes a rule, the text keeps no dashes, a text line
+// opens under it, and the next keystroke lands there.
+func TestNotesDividerFromMarks(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("横线"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	for range 3 {
+		if err := driver.Type("-"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := driver.Type("下一段"); err != nil {
+		t.Fatalf("typing under the rule: %v", err)
+	}
+	advance(t, driver)
+	blocks := noteByTitle(t, model, "横线").Blocks
+	if len(blocks) != 2 || blocks[0].Kind != domain.NoteBlockDivider || blocks[0].Text != "" {
+		t.Fatalf("blocks after --- = %+v", blocks)
+	}
+	if blocks[1].Kind != domain.NoteBlockText || blocks[1].Text != "下一段" {
+		t.Fatalf("the text under the rule = %+v", blocks[1])
+	}
+}
+
+// TestNotesDividerFromTheCommandMenu chooses 分隔线 in the "/" menu: the block it
+// was opened on becomes a rule, and the note takes the keyboard back for the line
+// under it.
+func TestNotesDividerFromTheCommandMenu(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("斜线"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("/"); err != nil {
+		t.Fatal(err)
+	}
+	if !shows(driver, "分隔线") {
+		t.Fatal("the command menu should offer 分隔线")
+	}
+	click(t, driver, "分隔线")
+	if err := driver.Type("下一段"); err != nil {
+		t.Fatalf("typing after the command menu: %v", err)
+	}
+	advance(t, driver)
+	blocks := noteByTitle(t, model, "斜线").Blocks
+	if len(blocks) != 2 || blocks[0].Kind != domain.NoteBlockDivider {
+		t.Fatalf("blocks after the menu = %+v", blocks)
+	}
+	if blocks[1].Kind != domain.NoteBlockText || blocks[1].Text != "下一段" {
+		t.Fatalf("the text under the rule = %+v", blocks[1])
+	}
+}
+
+// TestNotesDividerTakesTheCaretBelowIt: a rule holds no caret, so a press on it
+// puts the caret at the start of the text line under it, and the next word goes
+// there rather than into the rule's own line.
+func TestNotesDividerTakesTheCaretBelowIt(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("点击"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("上"); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Key(gfx.KeyEnter, 0); err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		if err := driver.Type("-"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := driver.Type("下"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	line, ok := rule(driver, noteTextBounds(t, driver, "上").Width)
+	if !ok {
+		t.Fatal("a divider should paint one hairline across the text column")
+	}
+	if err := driver.Click(line.X+40, line.Y+0.5); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Type("先"); err != nil {
+		t.Fatalf("typing after a press on the rule: %v", err)
+	}
+	advance(t, driver)
+	blocks := noteByTitle(t, model, "点击").Blocks
+	if len(blocks) != 3 || blocks[1].Kind != domain.NoteBlockDivider || blocks[1].Text != "" {
+		t.Fatalf("blocks around the rule = %+v", blocks)
+	}
+	if blocks[2].Text != "先下" {
+		t.Fatalf("the word typed after the press landed in %q", blocks[2].Text)
+	}
+}
+
+// TestNotesDividerKeepsTheTextUnderIt: the line of a rule holds no words, so a
+// backspace at the start of the text under one may not join the two — that would
+// give the rule a line nothing paints.
+func TestNotesDividerKeepsTheTextUnderIt(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("退格"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	for range 3 {
+		if err := driver.Type("-"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := driver.Type("保住了"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	text := noteTextBounds(t, driver, "保住了")
+	if err := driver.Click(text.X+2, text.Y+text.Height/2); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Key(gfx.KeyBackspace, 0); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	blocks := noteByTitle(t, model, "退格").Blocks
+	if len(blocks) != 2 || blocks[0].Kind != domain.NoteBlockDivider || blocks[0].Text != "" {
+		t.Fatalf("blocks after the backspace = %+v", blocks)
+	}
+	if blocks[1].Kind != domain.NoteBlockText || blocks[1].Text != "保住了" {
+		t.Fatalf("the text under the rule = %+v", blocks[1])
+	}
+}
+
 // writeLongNote writes a note whose body is taller than its pane: title, then
 // lines of text, one per block.
 func writeLongNote(t *testing.T, driver *app.Driver, title string, lines int) {

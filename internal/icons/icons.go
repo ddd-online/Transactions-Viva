@@ -680,6 +680,18 @@ var ListX = gfx.Icon{
 	},
 }
 
+// minus is a compiled vector icon.
+var Minus = gfx.Icon{
+	ViewBox: 24.0,
+	Stroke:  2.0,
+	Cap:     gfx.CapRound,
+	Join:    gfx.JoinRound,
+	Commands: []gfx.PathCommand{
+		gfx.MoveTo(5.0, 12.0),
+		gfx.LineTo(19.0, 12.0),
+	},
+}
+
 // moon is a compiled vector icon.
 var Moon = gfx.Icon{
 	ViewBox: 24.0,

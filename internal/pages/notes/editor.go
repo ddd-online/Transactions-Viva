@@ -38,6 +38,9 @@ const (
 	blockGap float32 = 8
 	// imageGap separates a picture from its neighbours.
 	imageGap float32 = 10
+	// dividerHeight is the band a rule takes: the line sits in the middle of it,
+	// with the air a section break needs above and below.
+	dividerHeight float32 = 24
 	// historyLimit is how many undo snapshots one note keeps while it is open.
 	historyLimit = 200
 	// historyGroup is how long consecutive keystrokes share one snapshot.
@@ -79,9 +82,12 @@ type bodyCommand struct {
 	kind  string
 	level int
 	icon  gfx.Icon
-	// modifiers zero means the command has no chord of its own and shows none.
+	// modifiers zero means the command has no chord of its own; hint is then what
+	// the row shows at its trailing edge — the marks that are the command, as the
+	// "---" that makes a divider is, or nothing at all.
 	modifiers gfx.Modifiers
 	key       string
+	hint      string
 }
 
 // bodyCommands are the command menu's entries, in order: the block kinds a line can
@@ -101,6 +107,7 @@ var bodyCommands = []bodyCommand{
 		modifiers: ui.Primary | ui.Alt, key: "5"},
 	{label: "图片", kind: domain.NoteBlockImage, icon: icons.Image,
 		modifiers: ui.Primary | ui.Shift, key: "i"},
+	{label: "分隔线", kind: domain.NoteBlockDivider, icon: icons.Minus, hint: "---"},
 }
 
 // slashState is the "/" command menu: it is open at a point of the body, for the
@@ -210,6 +217,13 @@ func (m *Model) style(theme *ui.Theme, block domain.NoteBlock) gfx.TextStyle {
 	return gfx.TextStyle{Size: typography.SizeBody, Weight: gfx.WeightRegular, Color: theme.Foreground}
 }
 
+// takesText reports whether a block kind holds words: the two kinds whose line is
+// painted text. A picture and a rule own a line of the document but not its
+// letters, so the caret never stops on them.
+func takesText(kind string) bool {
+	return kind == domain.NoteBlockText || kind == domain.NoteBlockHeading
+}
+
 // lineHeight is the row height of a line of type at size: Viva's own leading,
 // seven pixels over the size, which every box in the application inherits (12 →
 // 19, 14 → 21, 16 → 23, 20 → 27, 24 → 31). The body's rows are the one place
@@ -231,6 +245,11 @@ func (m *Model) layoutBody(canvas *gfx.Canvas, width float32, theme *ui.Theme) {
 		block := m.blocks[index]
 		top := y + blockGap
 		layout.tops = append(layout.tops, top)
+		if block.Kind == domain.NoteBlockDivider {
+			layout.rows = append(layout.rows, bodyRow{block: index, y: top, height: dividerHeight})
+			y = top + dividerHeight + blockGap
+			continue
+		}
 		if block.Kind == domain.NoteBlockImage {
 			_, rawHeight := domain.NoteImageSize(block.ImageWidth, block.ImageHeight, block.ImageScale, float64(width))
 			height := float32(rawHeight)
@@ -312,6 +331,7 @@ func (m *Model) drawBody(d *ui.DrawContext) {
 	canvas.Clip(rect)
 	m.paintBlockWash(canvas, theme, column, offsetY, width)
 	m.paintImages(canvas, theme, rect, column, offsetY)
+	m.paintDividers(canvas, theme, rect, column, offsetY, width)
 	m.paintText(canvas, theme, rect, column, offsetY, width)
 	m.paintCaret(canvas, theme, column, offsetY, focused)
 	canvas.Unclip()
@@ -348,7 +368,7 @@ func (m *Model) paintText(canvas *gfx.Canvas, theme *ui.Theme, rect gfx.Rect,
 			continue
 		}
 		block := m.blocks[row.block]
-		if block.Kind == domain.NoteBlockImage {
+		if !takesText(block.Kind) {
 			continue
 		}
 		line := ""
@@ -430,6 +450,23 @@ func (m *Model) paintImages(canvas *gfx.Canvas, theme *ui.Theme, rect gfx.Rect,
 			// the page never rounds a corner the picture has.
 			canvas.Border(target, 2, theme.Primary, gfx.Color{})
 		}
+	}
+}
+
+// paintDividers paints every rule in view: one hairline across the text column,
+// the line ui.Divider draws in the rest of the application, centred in its band.
+func (m *Model) paintDividers(canvas *gfx.Canvas, theme *ui.Theme, rect gfx.Rect,
+	column, offsetY, width float32) {
+	for index := range m.bodyLayout.rows {
+		row := m.bodyLayout.rows[index]
+		if row.block >= len(m.blocks) || m.blocks[row.block].Kind != domain.NoteBlockDivider {
+			continue
+		}
+		y := offsetY + row.y
+		if y+row.height < rect.Y || y > rect.Y+rect.Height {
+			continue
+		}
+		canvas.Fill(gfx.Rect{X: column, Y: y + (row.height-1)/2, Width: width, Height: 1}, theme.Border)
 	}
 }
 
@@ -589,6 +626,9 @@ func (m *Model) bodyEvent(event window.TextEvent) (window.TextState, error) {
 		m.afterEdit()
 		return m.state(), nil
 	}
+	// A picture and a rule hold no words: a keystroke aimed at one goes to the
+	// nearest text block first, so their line never keeps a letter.
+	m.skipColdCaret()
 	switch event.Kind {
 	case window.TextPasteNoText:
 		m.pastePicture()
@@ -597,6 +637,9 @@ func (m *Model) bodyEvent(event window.TextEvent) (window.TextState, error) {
 		m.pasteText(event)
 		return m.state(), nil
 	case window.TextInsert:
+		if m.dividerMarks(event.Text) {
+			return m.state(), nil
+		}
 		if slashTrigger(event.Text) && m.slashStart() {
 			m.openSlash()
 			return m.state(), nil
@@ -622,8 +665,14 @@ func (m *Model) bodyEvent(event window.TextEvent) (window.TextState, error) {
 			m.afterEdit()
 			return m.state(), nil
 		case window.TextDeleteBackward:
+			start := m.backspaceStart()
+			if start < 0 || start >= len(m.blocks) || !takesText(m.blocks[start].Kind) {
+				// A picture's or a rule's line cannot take the words under it: a
+				// backspace there would join them into a line nothing paints.
+				return m.state(), nil
+			}
 			m.newHistoryStep()
-			m.applyEvent(event, m.backspaceStart())
+			m.applyEvent(event, start)
 			m.afterEdit()
 			return m.state(), nil
 		case window.TextDeleteForward:
@@ -633,7 +682,7 @@ func (m *Model) bodyEvent(event window.TextEvent) (window.TextState, error) {
 			return m.state(), nil
 		default:
 			event.Apply(m.doc)
-			m.skipImageCaret()
+			m.skipColdCaret()
 			m.linesDirty = true
 			return m.state(), nil
 		}
@@ -661,7 +710,7 @@ func (m *Model) applyEvent(event window.TextEvent, startBlock int) {
 			m.removeBlock(startBlock + 1)
 		}
 	}
-	m.skipImageCaret()
+	m.skipColdCaret()
 }
 
 // backspaceStart is the block a backspace joins into: the one holding the
@@ -717,7 +766,7 @@ func (m *Model) pasteText(event window.TextEvent) {
 
 // afterEdit records the change and moves the caret off a picture.
 func (m *Model) afterEdit() {
-	m.skipImageCaret()
+	m.skipColdCaret()
 	m.syncLines()
 	m.linesDirty = false
 	m.bodyLayout = bodyLayout{}
@@ -725,12 +774,13 @@ func (m *Model) afterEdit() {
 	m.markEdited(m.now)
 }
 
-// skipImageCaret moves the caret out of a picture's line: a picture block holds
-// no text, so the caret belongs on the nearest text line.
-func (m *Model) skipImageCaret() {
+// skipColdCaret moves the caret out of a block that holds no words — a picture
+// or a rule: their line is the document's, not the text's, so the caret belongs on
+// the nearest text line.
+func (m *Model) skipColdCaret() {
 	for passes := 0; passes < len(m.blocks)+1; passes++ {
 		block, _ := m.position(m.doc.ByteOffset(m.doc.Caret()))
-		if block < 0 || block >= len(m.blocks) || m.blocks[block].Kind != domain.NoteBlockImage {
+		if block < 0 || block >= len(m.blocks) || takesText(m.blocks[block].Kind) {
 			return
 		}
 		if block+1 < len(m.blocks) {
@@ -766,24 +816,75 @@ func (m *Model) pastePicture() {
 	})
 }
 
-// insertPicture puts a picture block after the block the caret is in, or turns
-// the empty block it is in into the picture.
+// insertPicture puts a picture block at the caret and remembers that the note's
+// pictures changed, so the effect that decodes them runs again.
 func (m *Model) insertPicture(block domain.NoteBlock) {
 	if m.selected == "" {
 		return
 	}
 	m.newHistoryStep()
+	m.insertColdBlock(block)
+	m.imageRev++
+	m.imageKey = noteImageKey{note: m.selected, rev: m.imageRev}
+}
+
+// insertDivider puts a rule at the caret: it takes the empty block's place, or a
+// line of its own under the text, and a text block follows it.
+func (m *Model) insertDivider() {
+	if m.selected == "" {
+		return
+	}
+	m.newHistoryStep()
+	m.insertColdBlock(domain.NoteBlock{Kind: domain.NoteBlockDivider})
+}
+
+// dividerMarks turns the "--" that a third dash completes into a divider: the
+// marks are the command, so they leave the text and the block becomes the rule,
+// with a text line under it where the next word goes. Undo brings the dashes back.
+func (m *Model) dividerMarks(typed string) bool {
+	if typed != "-" {
+		return false
+	}
+	block, inLine := m.position(m.doc.ByteOffset(m.doc.Caret()))
+	if block < 0 || block >= len(m.blocks) || block >= len(m.lines) ||
+		m.blocks[block].Kind != domain.NoteBlockText {
+		return false
+	}
+	line := m.lines[block]
+	if line != "--" || inLine != len(line) {
+		return false
+	}
+	m.newHistoryStep()
+	m.doc.ReplaceRange(text.Range{
+		Start: m.bytesToRune(m.blockStart(block)),
+		End:   m.bytesToRune(m.blockStart(block) + len(line)),
+	}, "")
+	m.syncLines()
+	m.insertColdBlock(domain.NoteBlock{Kind: domain.NoteBlockDivider})
+	return true
+}
+
+// insertColdBlock puts a block that holds no words — a picture or a rule — at the
+// caret: it takes the empty block's place, or a line of its own under the text,
+// and a text block always follows it, so the caret never stops on it. The caller
+// records the history step, so one gesture stays one undo.
+func (m *Model) insertColdBlock(block domain.NoteBlock) {
+	if m.selected == "" {
+		return
+	}
 	m.syncLines()
 	offset := m.doc.ByteOffset(m.doc.Caret())
 	current, inLine := m.position(offset)
+	if current < 0 || current >= len(m.blocks) {
+		return
+	}
 	line := ""
 	if current < len(m.lines) {
 		line = m.lines[current]
 	}
-	empty := inLine == 0 && strings.TrimSpace(line) == "" &&
-		m.blocks[current].Kind != domain.NoteBlockImage
-	// The picture occupies a line of its own and an empty text block follows
-	// it, so the caret and the next keystroke never land on the picture.
+	empty := inLine == 0 && strings.TrimSpace(line) == "" && takesText(m.blocks[current].Kind)
+	// The picture or the rule occupies a line of its own and an empty text block
+	// follows it, so the caret and the next keystroke never land on it.
 	end := m.blockStart(current) + len(line)
 	if empty {
 		m.blocks[current] = block
@@ -805,8 +906,6 @@ func (m *Model) insertPicture(block domain.NoteBlock) {
 	m.markEdited(m.now)
 	m.focusBody = true
 	m.flush()
-	m.imageRev++
-	m.imageKey = noteImageKey{note: m.selected, rev: m.imageRev}
 }
 
 // pushHistory keeps the state before a keystroke. Consecutive keystrokes share
@@ -870,7 +969,7 @@ func slashTrigger(text string) bool { return text == "/" || text == "、" }
 func (m *Model) slashStart() bool {
 	offset := m.doc.ByteOffset(m.doc.Caret())
 	block, inLine := m.position(offset)
-	if block < 0 || block >= len(m.blocks) || m.blocks[block].Kind == domain.NoteBlockImage {
+	if block < 0 || block >= len(m.blocks) || !takesText(m.blocks[block].Kind) {
 		return false
 	}
 	if block >= len(m.lines) {
@@ -927,6 +1026,10 @@ func (m *Model) chooseSlash(item bodyCommand) {
 		m.pickPicture()
 		return
 	}
+	if item.kind == domain.NoteBlockDivider {
+		m.insertDivider()
+		return
+	}
 	if block < 0 || block >= len(m.blocks) {
 		return
 	}
@@ -975,17 +1078,27 @@ func (m *Model) bodyPointer(event gfx.PointerEvent) gfx.EventResult {
 	offsetY := bodyOffset(m.bodyPane)
 	for index := range m.bodyLayout.rows {
 		row := m.bodyLayout.rows[index]
-		if m.blocks[row.block].Kind != domain.NoteBlockImage {
+		if row.block >= len(m.blocks) {
 			continue
 		}
 		y := offsetY + row.y
-		if event.Y >= y && event.Y <= y+row.height {
+		if event.Y < y || event.Y > y+row.height {
+			continue
+		}
+		switch m.blocks[row.block].Kind {
+		case domain.NoteBlockImage:
 			if m.selectedImage == row.block {
 				block := m.blocks[row.block]
 				m.openLightbox(block.ImagePath, block.ImageWidth, block.ImageHeight)
 				return gfx.EventResult{Handled: true, Repaint: true}
 			}
 			m.selectedImage = row.block
+			return gfx.EventResult{Handled: true, Repaint: true}
+		case domain.NoteBlockDivider:
+			// A rule holds no caret: a press on it puts the caret in the text
+			// line under it, which is where the next word would go.
+			m.selectedImage = -1
+			m.caretAfterDivider(row.block)
 			return gfx.EventResult{Handled: true, Repaint: true}
 		}
 	}
@@ -995,6 +1108,17 @@ func (m *Model) bodyPointer(event gfx.PointerEvent) gfx.EventResult {
 	}
 	m.selectedImage = -1
 	return gfx.EventResult{}
+}
+
+// caretAfterDivider puts the caret in the text line under a rule, or opens one
+// when the rule is the last block: a press on a rule means the words after it.
+func (m *Model) caretAfterDivider(block int) {
+	if block+1 < len(m.blocks) {
+		m.doc.MoveTo(m.bytesToRune(m.blockStart(block+1)), false)
+		m.skipColdCaret()
+		return
+	}
+	m.appendBlockAtEnd()
 }
 
 // appendBlockAtEnd adds or focuses the empty block under the last block.
@@ -1068,7 +1192,7 @@ func (m *Model) moveVertical(direction int, extend bool) {
 			return
 		}
 		row = next
-		if m.blocks[block].Kind != domain.NoteBlockImage {
+		if takesText(m.blocks[block].Kind) {
 			break
 		}
 	}
@@ -1161,7 +1285,7 @@ func (m *Model) OffsetAt(point gfx.Point) (int, bool) {
 		rowText = line[row.start:min(row.end, len(line))]
 	}
 	inLine := row.start
-	if m.blocks[row.block].Kind != domain.NoteBlockImage {
+	if takesText(m.blocks[row.block].Kind) {
 		inRow := m.canvas.TextOffsetAtStyle(rowText, style, point.X-m.bodyLayout.column)
 		inLine = row.start + inRow
 	}
