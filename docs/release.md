@@ -78,5 +78,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File build/release.ps1 -Tag vX.Y.
 ## 5. 发布后
 
 - 打开 GitHub Release，确认只有一个 `.exe` 资产，正文只有当前版本。
-- 在已安装的上一版本应用里检查一次更新：应识别新 tag、显示同一份 release 正文，并下载校验安装器。
 - 不要修改已发布标签或已上传的安装器；有问题就发下一版。
