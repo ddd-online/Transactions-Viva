@@ -524,6 +524,42 @@ func rule(driver *app.Driver, column float32) (gfx.Rect, bool) {
 	return gfx.Rect{}, false
 }
 
+// TestNotesGripStandsClearOfTheBlockWash: the handle and the band behind its block
+// are two shapes. The band starts to the right of the grip's box, so nothing of the
+// wash runs under the handle and cuts its corner off.
+func TestNotesGripStandsClearOfTheBlockWash(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("间隙"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("甲"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	// The pointer comes onto the block first, so its grip is declared, and then
+	// onto the grip itself.
+	row := noteTextBounds(t, driver, "甲")
+	if err := driver.Move(row.X+row.Width/2, row.Y+row.Height/2); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	hoverBlock(t, driver, "甲")
+	band, ok := blockBand(driver, noteTextBounds(t, driver, "甲"))
+	if !ok {
+		t.Fatal("a pointer on the grip should wash the block it drags")
+	}
+	grip := noteControlBounds(t, driver, "块操作")
+	if band.X < grip.X+grip.Width {
+		t.Fatalf("the band %v runs under the grip %v", band, grip)
+	}
+}
+
 // TestNotesDividerFromMarks types "---" on an empty line: the marks are the
 // command, so the block becomes a rule, the text keeps no dashes, a text line
 // opens under it, and the next keystroke lands there.

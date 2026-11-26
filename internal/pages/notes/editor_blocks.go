@@ -25,19 +25,21 @@ const (
 	partImageGrip = 20
 	// partDropBase is the first block drop target's part number.
 	partDropBase = 100
+	// blockWashInset is how far the band behind a marked block reaches past its
+	// text column on each side: the wash holds the block, it does not wrap it.
+	blockWashInset float32 = 8
 	// gripSize is the grip's box and gripGap the space between it and the text
 	// column. The grip is centred on its block's first line, so the taller line
 	// of a heading carries it down; a picture has no line, so its grip holds the
-	// picture's top edge instead.
+	// picture's top edge instead. The gap also keeps the grip clear of the wash:
+	// the handle and the band are two shapes, and the four pixels of air between
+	// them are what says so.
 	gripSize float32 = 18
-	gripGap  float32 = 6
+	gripGap  float32 = blockWashInset + 4
 	// gripRadius is the corner of both handles in the body: the grip's box and
 	// the picture's resize bar, so the two read as one control family.
 	gripMarkSize float32 = 12
 	gripRadius   float32 = 4
-	// blockWashInset is how far the band behind a marked block reaches past its
-	// text column on each side: the wash holds the block, it does not wrap it.
-	blockWashInset float32 = 8
 )
 
 // blockMenuState is the grip's menu: whether it is open, which block it commands,
