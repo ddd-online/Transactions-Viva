@@ -74,7 +74,7 @@ func (m *Model) chartTable(c ui.C, chart *domain.Chart) {
 		if chart.IsPreset {
 			minWidth = curveTableMinWidthPreset
 		}
-		ui.Scroll(c).Grow(1).FillWidth().Sideways().Scrollbars().Children(func() {
+		m.pageScroll.Area(ui.Scroll(c).Grow(1).FillWidth().Sideways().Scrollbars()).Children(func() {
 			ui.Column(c).FillWidth().MinWidth(minWidth).Children(func() {
 				if chart.ChartType == chartPie {
 					m.pieTable(c, chart)

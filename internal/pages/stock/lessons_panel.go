@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
 	"transactions/internal/components/emptystate"
@@ -31,10 +32,14 @@ const (
 // closed round, and the new / edit dialog. The active account is read from the
 // shared accountStore and never changed here.
 type lessonsPanel struct {
-	accounts *accountStore
-	repo     repository.StockRepository
-	onChange func()
-	toaster  *ui.Toaster
+
+	// pageScroll is the keyboard's handle on this tab's scroller: PageUp and
+	// PageDown move it, so the rows below the fold are reachable without a pointer.
+	pageScroll layout.PageScroll
+	accounts   *accountStore
+	repo       repository.StockRepository
+	onChange   func()
+	toaster    *ui.Toaster
 	// onOpenRound is the 查看来源轮次 jump. The shell points it at the records
 	// panel's FocusRound and the 记录 tab; nil disables the action.
 	onOpenRound func(code, roundID string)
@@ -148,6 +153,11 @@ func (p *lessonsPanel) CloseOverlays() {
 }
 
 // View declares the screen: toolbar, table and dialogs.
+// Key gives this tab's scroller PageUp and PageDown.
+func (p *lessonsPanel) Key(event gfx.KeyEvent) gfx.EventResult {
+	return p.pageScroll.Key(event)
+}
+
 func (p *lessonsPanel) View(c ui.C) {
 	if p.repo == nil || p.active() == "" {
 		emptyAccountPage(c)
@@ -168,7 +178,7 @@ func (p *lessonsPanel) View(c ui.C) {
 		}
 		ui.Column(c).Grow(1).Children(func() {
 			p.tableHeader(c)
-			ui.Scroll(c).Grow(1).Children(func() {
+			p.pageScroll.Area(ui.Scroll(c).Grow(1)).Children(func() {
 				for index := range p.lessons {
 					p.lessonRow(c, &p.lessons[index])
 				}

@@ -39,10 +39,14 @@ const (
 )
 
 type accountPanel struct {
-	accounts *accountStore
-	quotes   stockquote.Fetcher
-	repo     repository.StockRepository
-	onChange func()
+
+	// pageScroll is the keyboard's handle on this tab's scroller: PageUp and
+	// PageDown move it, so the rows below the fold are reachable without a pointer.
+	pageScroll layout.PageScroll
+	accounts   *accountStore
+	quotes     stockquote.Fetcher
+	repo       repository.StockRepository
+	onChange   func()
 
 	summary   domain.StockAccountSummary
 	positions []domain.StockPosition
@@ -146,6 +150,11 @@ func (p *accountPanel) Reload() {
 
 func (p *accountPanel) CloseOverlays() { p.amountOpen = false }
 
+// Key gives this tab's scroller PageUp and PageDown.
+func (p *accountPanel) Key(event gfx.KeyEvent) gfx.EventResult {
+	return p.pageScroll.Key(event)
+}
+
 func (p *accountPanel) View(c ui.C) {
 	if p.repo == nil || p.active() == "" {
 		emptyAccountPage(c)
@@ -240,7 +249,7 @@ func (p *accountPanel) fundSection(c ui.C) {
 			return
 		}
 		fundHeader(c)
-		ui.Scroll(c).Grow(1).MinHeight(0).Children(func() {
+		p.pageScroll.Area(ui.Scroll(c).Grow(1).MinHeight(0)).Children(func() {
 			for _, record := range p.fund.Items {
 				fundRow(c, record)
 			}

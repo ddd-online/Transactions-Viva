@@ -281,7 +281,7 @@ func (m *Model) description(c ui.C, grow float32) {
 				Radius(theme.Metrics.RadiusSurface)
 			return
 		}
-		ui.Scroll(c).Grow(1).Pad(layout.BlockGap).Children(func() {
+		m.pageScroll.Area(ui.Scroll(c).Grow(1).Pad(layout.BlockGap)).Children(func() {
 			if strings.TrimSpace(m.event.Content) == "" {
 				typography.Body(c, "暂无描述").Muted()
 				return

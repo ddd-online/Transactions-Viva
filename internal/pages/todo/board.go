@@ -20,7 +20,8 @@ import (
 // item's commands live on the row's context menu, so there is no action column.
 const (
 	boardThemeWidth     = float32(132)
-	boardCheckWidth     = float32(16)
+	boardCheckWidth     = float32(24)
+	boardMarkWidth      = float32(16)
 	boardUrgencyWidth   = float32(64)
 	boardImportantWidth = float32(64)
 	boardDueWidth       = float32(104)
@@ -50,7 +51,7 @@ func (m *Model) board(c ui.C) {
 	}
 	ui.Column(c).Fill().Children(func() {
 		m.boardHeader(c)
-		ui.Scroll(c).Grow(1).Children(func() {
+		m.pageScroll.Area(ui.Scroll(c).Grow(1)).Children(func() {
 			ui.Column(c).FillWidth().Children(func() {
 				// The rows this frame started with: completing an item reloads the
 				// list, and a reload in the middle of this loop would leave the next
@@ -127,11 +128,16 @@ func (m *Model) itemRow(c ui.C, row *todoRow) {
 			ui.Row(c).Width(boardThemeWidth).Children(func() {
 				typography.Body(c, row.CardTitle).MaxLines(1).Ellipsis()
 			})
-			check := ui.Row(c).Size(boardCheckWidth, boardCheckWidth).Shrink(0).Radius(8).
-				Border(1, theme.Border).Center().
+			check := ui.Row(c).Size(boardCheckWidth, boardCheckWidth).Shrink(0).Center().
 				HitWith(ui.ID(c), "标记完成："+item.Title, gfx.HitOptions{
 					Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
 				}).Hover(ui.Look{}.Background(state.Hover(*theme))).Focus(ui.Look{}.Ring(2, theme.Ring))
+			check.Children(func() {
+				// The circle keeps its 16 px face; the box around it is the 24 px
+				// target, so a press near the circle lands on it too.
+				ui.Row(c).Size(boardMarkWidth, boardMarkWidth).Radius(boardMarkWidth/2).
+					Border(1, theme.Border)
+			})
 			if check.Clicked() {
 				m.completeLater(c, item.ID)
 			}
@@ -238,11 +244,19 @@ func (m *Model) progressRow(c ui.C, progress *domain.TodoProgress) {
 	theme := c.Theme()
 	c.Key("todo-progress-" + progress.ID)
 	ui.Row(c).FillWidth().Gap(6).Items(ui.Center).Children(func() {
-		check := ui.Row(c).Size(14, 14).Shrink(0).Radius(7).Border(1, theme.Border).Center().
+		check := ui.Row(c).Size(boardCheckWidth, boardCheckWidth).Shrink(0).Center().
 			HitWith(ui.ID(c), "勾选进度", gfx.HitOptions{
 				Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
 			}).Hover(ui.Look{}.Background(state.Hover(*theme))).
 			Focus(ui.Look{}.Ring(2, theme.Ring))
+		check.Children(func() {
+			ui.Row(c).Size(14, 14).Shrink(0).Radius(7).Border(1, theme.Border).Center().
+				Children(func() {
+					if progress.Done {
+						ui.Icon(c, icons.CircleCheck).Size(12, 12).Color(theme.Success)
+					}
+				})
+		})
 		check.Children(func() {
 			if progress.Done {
 				ui.Icon(c, icons.CircleCheck).Size(12, 12).Color(theme.Success)

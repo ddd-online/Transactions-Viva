@@ -81,7 +81,7 @@ func (m *Model) stockSettingsSection(c ui.C, spec Spec) {
 				typography.Caption(c, spec.StockError).Color(c.Theme().Danger)
 			}})
 		}
-		controls.Page(c, "股票设置", groups...)
+		controls.Page(c, &m.pageScroll, "股票设置", groups...)
 		return
 	}
 	stock := spec.Stock
@@ -93,7 +93,7 @@ func (m *Model) stockSettingsSection(c ui.C, spec Spec) {
 			m.stockDataSettings(c, spec, stock)
 		}},
 	)
-	controls.Page(c, "股票设置", groups...)
+	controls.Page(c, &m.pageScroll, "股票设置", groups...)
 }
 
 func (m *Model) stockTradeSettings(c ui.C, spec Spec, stock *StockConfig) {

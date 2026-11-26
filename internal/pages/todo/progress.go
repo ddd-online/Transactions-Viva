@@ -67,16 +67,20 @@ func (m *Model) progressView(c ui.C) {
 					c.Key("progress-" + line.ID)
 					ui.Column(c).FillWidth().Gap(4).Children(func() {
 						ui.Row(c).FillWidth().Gap(8).Items(ui.Center).Children(func() {
-							check := ui.Row(c).Size(16, 16).Shrink(0).Radius(8).
-								Border(1, c.Theme().Border).Center().
+							check := ui.Row(c).Size(boardCheckWidth, boardCheckWidth).Shrink(0).Center().
 								HitWith(ui.ID(c), "勾选进度", gfx.HitOptions{
 									Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
 								}).Hover(ui.Look{}.Background(state.Hover(*c.Theme()))).
 								Focus(ui.Look{}.Ring(2, c.Theme().Ring))
 							check.Children(func() {
-								if line.Done {
-									ui.Icon(c, icons.CircleCheck).Size(14, 14).Color(c.Theme().Success)
-								}
+								// The circle keeps its 16 px face; the box around it is the
+								// 24 px target the pointer and the keyboard aim at.
+								ui.Row(c).Size(16, 16).Shrink(0).Radius(8).
+									Border(1, c.Theme().Border).Center().Children(func() {
+									if line.Done {
+										ui.Icon(c, icons.CircleCheck).Size(14, 14).Color(c.Theme().Success)
+									}
+								})
 							})
 							if check.Clicked() {
 								if err := m.todos.SetTodoProgressDone(m.context(), line.ID, !line.Done); err != nil {

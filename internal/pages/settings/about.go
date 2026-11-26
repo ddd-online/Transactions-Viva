@@ -34,7 +34,7 @@ const (
 // scale and its own links.
 func (m *Model) about(c ui.C, spec Spec) {
 	facts := buildinfo.Read()
-	controls.Page(c, "关于软件",
+	controls.Page(c, &m.pageScroll, "关于软件",
 		controls.GroupSpec{Raw: true, Body: func() { m.aboutHeader(c, spec, facts) }},
 		controls.GroupSpec{Raw: true, Body: func() {
 			controls.Section(c, "版本信息", func() { m.aboutFacts(c, facts) })

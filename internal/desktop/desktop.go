@@ -321,8 +321,17 @@ func newConfig(m *Model) app.Config {
 // key gives the records page's canvas controls (the tags multi-select) the
 // keys the page itself did not take.
 func (m *Model) key(event gfx.KeyEvent) gfx.EventResult {
-	if m.section == SectionAccounting {
+	switch m.section {
+	case SectionAccounting:
 		return m.accounting.Key(event)
+	case SectionStock:
+		return m.stock.Key(event)
+	case SectionTodo:
+		return m.todo.Key(event)
+	case SectionEvents:
+		return m.events.Key(event)
+	case SectionSettings:
+		return m.settings.Key(event)
 	}
 	return gfx.EventResult{}
 }

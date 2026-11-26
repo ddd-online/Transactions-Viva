@@ -66,6 +66,10 @@ type Model struct {
 
 	bounds  gfx.Rect
 	toaster ui.Toaster
+
+	// pageScroll is the keyboard's handle on the board or the history, whichever
+	// is on screen: PageUp and PageDown move it.
+	pageScroll layout.PageScroll
 }
 
 // New returns the empty section; the workspace is connected by SetRepository.
@@ -213,6 +217,12 @@ func (m *Model) activeCount() int {
 		count += len(card.Items)
 	}
 	return count
+}
+
+// Key gives the board or the history PageUp and PageDown; arrows stay with the
+// row that has the focus.
+func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
+	return m.pageScroll.Key(event)
 }
 
 func (m *Model) View(c ui.C) {

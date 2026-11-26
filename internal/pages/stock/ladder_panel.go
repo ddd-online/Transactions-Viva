@@ -53,7 +53,11 @@ type ladderRequest struct {
 
 // ladderPanel is the 天梯 screen: market data, so it has no account selector.
 type ladderPanel struct {
-	limits *stocklimit.Service
+
+	// pageScroll is the keyboard's handle on this tab's scroller: PageUp and
+	// PageDown move it, so the rows below the fold are reachable without a pointer.
+	pageScroll layout.PageScroll
+	limits     *stocklimit.Service
 
 	date  string
 	force bool
@@ -128,6 +132,11 @@ func (p *ladderPanel) Reload() {
 func (p *ladderPanel) CloseOverlays() { p.pick.Open = false }
 
 // View declares the screen.
+// Key gives this tab's scroller PageUp and PageDown.
+func (p *ladderPanel) Key(event gfx.KeyEvent) gfx.EventResult {
+	return p.pageScroll.Key(event)
+}
+
 func (p *ladderPanel) View(c ui.C) {
 	p.bounds = c.Bounds()
 	p.ensure(c)
@@ -321,7 +330,7 @@ func (p *ladderPanel) rungs(c ui.C) {
 	// The rows share the height the page leaves: each card takes its row's
 	// height and scrolls its own stocks. The grid only scrolls as a whole when
 	// the window is too short to keep a row readable at rungMinHeight.
-	ui.Scroll(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
+	p.pageScroll.Area(ui.Scroll(c).Grow(1).FillWidth().MinHeight(0)).Children(func() {
 		ui.Column(c).FillWidth().Grow(1).Gap(layout.Gap).Children(func() {
 			for start := 0; start < len(rungs); start += cols {
 				ui.Row(c).FillWidth().Grow(1).Gap(layout.Gap).Children(func() {

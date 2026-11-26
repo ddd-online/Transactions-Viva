@@ -166,7 +166,7 @@ func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
 		return m.chartKey(event)
 	}
 	if !m.dialogOpen || m.modal != modalLine {
-		return gfx.EventResult{}
+		return m.pageScroll.Key(event)
 	}
 	if event.Target != m.tagSelect.input &&
 		(!m.tagSelect.state.Open || event.Key != gfx.KeyEscape && event.Key != gfx.KeyTab) {

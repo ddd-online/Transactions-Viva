@@ -74,8 +74,12 @@ const (
 // statisticsPanel is the 统计 screen: eight settlement cards over a switchable
 // seven-metric curve, and the newest-first table of every settlement.
 type statisticsPanel struct {
-	accounts *accountStore
-	repo     repository.StockRepository
+
+	// pageScroll is the keyboard's handle on this tab's scroller: PageUp and
+	// PageDown move it, so the rows below the fold are reachable without a pointer.
+	pageScroll layout.PageScroll
+	accounts   *accountStore
+	repo       repository.StockRepository
 
 	// The section wires these: an account switch asks every tab to reload, and
 	// a stock name in the detail table opens its round on the 记录 screen.
@@ -233,6 +237,11 @@ func (p *statisticsPanel) CloseOverlays() { p.rangePick.Open = false }
 
 // View declares the screen: the shared account picker and filters in the
 // toolbar, then the summary or the detail table.
+// Key gives this tab's scroller PageUp and PageDown.
+func (p *statisticsPanel) Key(event gfx.KeyEvent) gfx.EventResult {
+	return p.pageScroll.Key(event)
+}
+
 func (p *statisticsPanel) View(c ui.C) {
 	p.bounds = c.Bounds()
 	if p.repo == nil || p.active() == "" {
@@ -369,7 +378,7 @@ func (p *statisticsPanel) summary(c ui.C) {
 		p.chartSection(c, fill)
 	}
 	if !fill {
-		ui.Scroll(c).Grow(1).Children(func() {
+		p.pageScroll.Area(ui.Scroll(c).Grow(1)).Children(func() {
 			ui.Column(c).FillWidth().PadX(layout.Inset).PadY(layout.BlockGap).
 				Gap(layout.GroupGap).Children(content)
 		})

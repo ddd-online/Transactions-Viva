@@ -270,6 +270,11 @@ type Model struct {
 	tab     tab
 	toaster ui.Toaster
 
+	// pageScroll is the keyboard's handle on the section's scroller: PageUp and
+	// PageDown move it, so the controls below the fold are reachable without a
+	// pointer.
+	pageScroll layout.PageScroll
+
 	// ledgerForm is the 新增 / 编辑账本 dialog; id empty means create.
 	ledgerForm ledgerForm
 	// ledgerDelete is the confirmation for removing one ledger.
@@ -417,6 +422,12 @@ func New() *Model {
 	return m
 }
 
+// Key gives the section's scroller PageUp and PageDown, so a window too short
+// for the page still reaches every control on it.
+func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
+	return m.pageScroll.Key(event)
+}
+
 // View declares the page: the category list, a divider and the chosen section.
 func (m *Model) View(c ui.C, spec Spec) {
 	// The update's work is declared here and by the shell on every paint, so
@@ -518,7 +529,7 @@ func (m *Model) page(c ui.C, entry section, spec Spec) {
 // than on a page of it, so they belong beside the other things the application
 // itself sets.
 func (m *Model) general(c ui.C, spec Spec) {
-	controls.Page(c, "通用设置",
+	controls.Page(c, &m.pageScroll, "通用设置",
 		controls.GroupSpec{Title: "常规", Body: func() { m.generalPreferences(c, spec) }},
 		controls.GroupSpec{Title: "网络代理", Body: func() { m.proxy(c, spec) }},
 		controls.GroupSpec{Title: "功能开关", Body: func() { m.featureSwitches(c, spec) }},
@@ -579,7 +590,7 @@ func (m *Model) featureSwitches(c ui.C, spec Spec) {
 // card's last row. A ledger the accounting pages are reading is marked 当前; the
 // last one cannot be deleted, because accounting always needs one to read.
 func (m *Model) ledgers(c ui.C, spec Spec) {
-	controls.Page(c, "账本管理", controls.GroupSpec{Body: func() { m.ledgerRows(c, spec) }})
+	controls.Page(c, &m.pageScroll, "账本管理", controls.GroupSpec{Body: func() { m.ledgerRows(c, spec) }})
 }
 
 func (m *Model) ledgerRows(c ui.C, spec Spec) {
@@ -903,7 +914,7 @@ func workspaceNote(workspace string) string {
 // 工作空间: the icon-free buttons are quiet, and a finished batch reports itself
 // on the line under the card.
 func (m *Model) diaryConfig(c ui.C, spec Spec) {
-	controls.Page(c, "日记配置",
+	controls.Page(c, &m.pageScroll, "日记配置",
 		controls.GroupSpec{Title: "日记本", Body: func() { m.diaryBooks(c, spec) }},
 		controls.GroupSpec{Title: "导入导出", Body: func() { m.diaryTransfer(c, spec) }},
 	)
@@ -1219,7 +1230,7 @@ func (m *Model) exportDiary(spec Spec) {
 // pending is a section whose controls are implemented in a later stage: each row
 // reports that rather than pretending to work.
 func (m *Model) pending(c ui.C, entry section) {
-	controls.Page(c, entry.title, controls.GroupSpec{Body: func() {
+	controls.Page(c, &m.pageScroll, entry.title, controls.GroupSpec{Body: func() {
 		for index := range entry.rows {
 			if index > 0 {
 				ui.Divider(c)

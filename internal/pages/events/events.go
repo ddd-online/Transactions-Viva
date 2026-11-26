@@ -167,6 +167,11 @@ type Model struct {
 
 	errorMessage string
 	bounds       gfx.Rect
+
+	// pageScroll is the keyboard's handle on the page's scroller: PageUp and
+	// PageDown move it, so the year's list and a long description are readable
+	// without the pointer.
+	pageScroll layout.PageScroll
 }
 
 // New returns the page on the current year with nothing selected.
@@ -247,6 +252,11 @@ func (m *Model) CloseOverlays() {
 }
 
 // View paints the toolbar and the three panes.
+// Key gives the page's scroller PageUp and PageDown.
+func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
+	return m.pageScroll.Key(event)
+}
+
 func (m *Model) View(c ui.C) {
 	m.bounds = c.Bounds()
 	layout.Page(c, m.toolbar, func(c ui.C) {
@@ -317,7 +327,7 @@ func (m *Model) rail(c ui.C, width float32) {
 			emptystate.Notice(c, "暂无事件")
 			return
 		}
-		ui.Scroll(c).Grow(1).Children(func() {
+		m.pageScroll.Area(ui.Scroll(c).Grow(1)).Children(func() {
 			for index := range m.events {
 				m.card(c, &m.events[index])
 				ui.Divider(c)

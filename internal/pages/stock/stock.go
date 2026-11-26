@@ -398,6 +398,23 @@ func (m *Model) Pointer(event gfx.PointerEvent) gfx.EventResult {
 	return m.statistics.Pointer(event)
 }
 
+// Key gives the visible tab's scroller PageUp and PageDown.
+func (m *Model) Key(event gfx.KeyEvent) gfx.EventResult {
+	switch m.tab {
+	case tabAccount:
+		return m.accountPanel.Key(event)
+	case tabPositions:
+		return m.positions.Key(event)
+	case tabLessons:
+		return m.lessons.Key(event)
+	case tabStatistics:
+		return m.statistics.Key(event)
+	case tabLadder:
+		return m.ladder.Key(event)
+	}
+	return gfx.EventResult{}
+}
+
 // View declares the page.
 func (m *Model) View(c ui.C) {
 	switch m.tab {

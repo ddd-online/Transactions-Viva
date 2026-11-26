@@ -30,9 +30,13 @@ import (
 // trades. Every write goes through the account's repository; the panel keeps no
 // second copy of the active account, it reads accountStore.
 type positionsPanel struct {
-	accounts *accountStore
-	quotes   stockquote.Fetcher
-	repo     repository.StockRepository
+
+	// pageScroll is the keyboard's handle on this tab's scroller: PageUp and
+	// PageDown move it, so the rows below the fold are reachable without a pointer.
+	pageScroll layout.PageScroll
+	accounts   *accountStore
+	quotes     stockquote.Fetcher
+	repo       repository.StockRepository
 	// onChange is set by stock.Model to refresh the section after a write or an
 	// account switch. toaster is the section's toast stack.
 	onChange func()
@@ -343,6 +347,11 @@ func (p *positionsPanel) loadLedger() {
 }
 
 // View declares the 持仓 screen.
+// Key gives this tab's scroller PageUp and PageDown.
+func (p *positionsPanel) Key(event gfx.KeyEvent) gfx.EventResult {
+	return p.pageScroll.Key(event)
+}
+
 func (p *positionsPanel) View(c ui.C) {
 	if p.repo == nil || p.active() == "" {
 		emptyAccountPage(c)
@@ -393,7 +402,7 @@ func (p *positionsPanel) rail(c ui.C) {
 			emptystate.Notice(c, "暂无持仓")
 			return
 		}
-		ui.Scroll(c).Grow(1).Children(func() {
+		p.pageScroll.Area(ui.Scroll(c).Grow(1)).Children(func() {
 			ui.Column(c).Gap(4).PadSides(4, 8, 4, 4).Children(func() {
 				for i := range p.positions {
 					position := &p.positions[i]

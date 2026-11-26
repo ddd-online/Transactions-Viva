@@ -68,7 +68,10 @@ type Model struct {
 	rangePick  datepicker.State
 	rangeStale bool
 
-	charts     []domain.Chart
+	charts []domain.Chart
+	// pageScroll is the keyboard's handle on the curve detail table: PageUp and
+	// PageDown move it.
+	pageScroll layout.PageScroll
 	selectedID string
 	lines      []domain.ChartLine
 	lineData   []repository.ChartLineData

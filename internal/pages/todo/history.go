@@ -98,7 +98,7 @@ func (m *Model) historyView(c ui.C) {
 			"在待办里勾选完成，它会出现在这里。", nil)
 		return
 	}
-	area := ui.Scroll(c).Grow(1).Sideways().Scrollbars()
+	area := m.pageScroll.Area(ui.Scroll(c).Grow(1).Sideways().Scrollbars())
 	area.Children(func() {
 		ui.Column(c).FillWidth().MinWidth(historyTableMinWidth).
 			PadBottom(layout.Inset).Children(func() {

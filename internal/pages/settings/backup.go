@@ -47,7 +47,7 @@ func (m *Model) dataBackup(c ui.C, spec Spec) {
 			}
 		}
 	}
-	controls.Page(c, "数据备份",
+	controls.Page(c, &m.pageScroll, "数据备份",
 		controls.GroupSpec{Title: "手动备份", Body: func() { m.backupManualGroup(c, spec) }},
 		controls.GroupSpec{Title: "备份设置", Body: func() { m.backupSettingsGroup(c, spec) }},
 		controls.GroupSpec{Title: "从备份恢复", Body: func() { m.backupRestoreGroup(c, spec) }},

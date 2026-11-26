@@ -32,7 +32,7 @@ type GroupSpec struct {
 //
 // The page owns the scroll viewport, not the window: a long section scrolls
 // under the fixed title and the fixed left navigation.
-func Page(c ui.C, title string, groups ...GroupSpec) {
+func Page(c ui.C, scroll *layout.PageScroll, title string, groups ...GroupSpec) {
 	ui.Column(c).Grow(1).FillHeight().Children(func() {
 		// The section name stays put; only the groups below it scroll.
 		ui.Column(c).FillWidth().Items(ui.Center).Children(func() {
@@ -43,7 +43,7 @@ func Page(c ui.C, title string, groups ...GroupSpec) {
 					typography.Title(c, title)
 				})
 		})
-		ui.Scroll(c).Grow(1).FillWidth().Items(ui.Center).Children(func() {
+		scroll.Area(ui.Scroll(c).Grow(1).FillWidth().Items(ui.Center)).Children(func() {
 			ui.Column(c).FillWidth().MaxWidth(PageMaxWidth).
 				MarginSides(0, pageSide, pageBottom, pageSide).
 				Children(func() {
