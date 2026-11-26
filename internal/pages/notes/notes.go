@@ -169,6 +169,10 @@ type Model struct {
 	bodyDraw   func(*ui.DrawContext)
 	bodyInput  ui.Handlers
 	bodyLayout bodyLayout
+	// wraps caches each line's row breaks from the last layout, keyed by block, so
+	// typing in one block re-measures that block and nothing else. It is dropped
+	// when the column's width changes, the only other thing the breaks depend on.
+	wraps map[int]lineWrap
 	// scroll is the body's offset, as the scroll area last had it; the caret moves
 	// it before the area places the blocks. caretShown is the caret the body last
 	// brought into view, and caretViewport the height it brought it into: a caret

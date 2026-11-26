@@ -70,6 +70,14 @@ type bodyLayout struct {
 	column float32 // x of the text column inside the pane
 }
 
+// lineWrap is one line's row breaks, and the face they were measured in.
+type lineWrap struct {
+	text   string
+	size   float32
+	weight float32
+	spans  [][2]int32
+}
+
 // blockExtent is one block's painted box, in the body's own coordinates.
 type blockExtent struct {
 	top       float32 // the first row's y
@@ -251,6 +259,9 @@ func (m *Model) layoutBody(canvas *gfx.Canvas, width float32, theme *ui.Theme) {
 		return
 	}
 	m.syncLines()
+	if width != m.bodyLayout.width {
+		m.wraps = nil
+	}
 	layout := bodyLayout{width: width, value: value}
 	y := bodyTopInset
 	for index := range m.blocks {
@@ -288,17 +299,29 @@ func (m *Model) layoutBody(canvas *gfx.Canvas, width float32, theme *ui.Theme) {
 		if index < len(m.lines) {
 			line = m.lines[index]
 		}
-		from := 0
-		for {
-			row, next := canvas.WrapRow(line, from, style.Size, style.Weight, width)
+		wrap, cached := m.wraps[index]
+		if !cached || wrap.text != line || wrap.size != style.Size || wrap.weight != style.Weight {
+			spans := make([][2]int32, 0, 1)
+			from := 0
+			for {
+				row, next := canvas.WrapRow(line, from, style.Size, style.Weight, width)
+				spans = append(spans, [2]int32{int32(row.Start), int32(row.End)})
+				if next < 0 {
+					break
+				}
+				from = next
+			}
+			wrap = lineWrap{text: line, size: style.Size, weight: style.Weight, spans: spans}
+			if m.wraps == nil {
+				m.wraps = map[int]lineWrap{}
+			}
+			m.wraps[index] = wrap
+		}
+		for _, span := range wrap.spans {
 			layout.rows = append(layout.rows, bodyRow{
-				block: index, start: row.Start, end: row.End, y: top, height: height,
+				block: index, start: int(span[0]), end: int(span[1]), y: top, height: height,
 			})
 			top += height
-			if next < 0 {
-				break
-			}
-			from = next
 		}
 		layout.extent = append(layout.extent, blockExtent{
 			top: first, rowHeight: height, height: top - first,
