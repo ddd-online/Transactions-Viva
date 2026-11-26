@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/vivaui/viva/ui"
 
@@ -54,6 +55,7 @@ func (m *Model) KeepUpdate(c ui.C) {
 	if m.updateCheckToken > 0 {
 		ui.Effect(c, m.updateCheckState, m.updateCheckToken)
 		if result, err, ok := m.updateCheckState.Take(); ok {
+			m.updateCheckedAt = time.Now()
 			if err != nil {
 				m.updateStatus = updateFailed
 				m.updateError = err.Error()
@@ -113,8 +115,10 @@ func (m *Model) update(c ui.C, spec Spec) {
 				typography.Body(c, "正在检查更新…")
 			})
 		case updateNoUpdate:
-			m.updateResultRow(c, true, "已是最新版本", "当前版本 "+spec.UpdateVersion, func() {
-				ui.Button(c, "重新检查").Outline().Clicked()
+			m.updateResultRow(c, true, "已是最新版本", m.checkedNote(spec), func() {
+				if ui.Button(c, "重新检查").Outline().Clicked() {
+					m.startUpdateCheck()
+				}
 			})
 		case updateAvailable:
 			m.updateResultRow(c, false, "发现新版本 v"+m.updateRelease.Version,
@@ -168,6 +172,17 @@ func (m *Model) update(c ui.C, spec Spec) {
 			})
 		}
 	})
+}
+
+// checkedNote is the quiet line under 已是最新版本: the version this copy is, and
+// when the answer was fetched. A re-check that finds nothing new changes no word of
+// the title, so the time is what says it ran.
+func (m *Model) checkedNote(spec Spec) string {
+	note := "当前版本 " + spec.UpdateVersion
+	if m.updateCheckedAt.IsZero() {
+		return note
+	}
+	return note + " · 最后检查 " + m.updateCheckedAt.Format("01-02 15:04")
 }
 
 // updateResultRow lays out a state with a leading success mark and its actions.

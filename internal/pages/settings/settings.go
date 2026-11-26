@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
@@ -324,6 +325,9 @@ type Model struct {
 	updateInvalidate    func()
 	updateCheckState    *ui.EffectState[UpdateRelease, int]
 	updateDownloadState *ui.EffectState[string, updateDownloadRequest]
+	// updateCheckedAt is when the last answer came back: the row keeps it, so a
+	// re-check that finds nothing new still says that it ran.
+	updateCheckedAt time.Time
 
 	// diary is 日记配置's own state: what an export covers, the period it
 	// picked, and the last command's status or failures.

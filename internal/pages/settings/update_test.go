@@ -68,6 +68,53 @@ func TestUpdateFlow(t *testing.T) {
 	clickLabel(t, driver, "开始更新")
 }
 
+// TestUpdateRecheckAsksAgain: 重新检查 on a finished check asks GitHub again, and
+// the row keeps when the answer came back — a check that finds nothing new changes
+// no word of the title, so the time is what says it ran.
+func TestUpdateRecheckAsksAgain(t *testing.T) {
+	model := New()
+	model.tab = tabAbout
+	asked := make(chan struct{}, 4)
+	spec := Spec{
+		UpdateVersion: "0.4.1",
+		UpdateCheck: func(context.Context) (UpdateRelease, error) {
+			asked <- struct{}{}
+			return UpdateRelease{}, nil
+		},
+	}
+	page := ui.NewPage(ui.PageConfig{View: func(c ui.C) { model.View(c, spec) }})
+	driver, err := app.NewDriver(ui.Configure(page, app.Config{}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer driver.Close()
+
+	clickLabel(t, driver, "检查更新")
+	waitFor(t, driver, "已是最新版本")
+	waitFor(t, driver, "最后检查")
+	drain(t, asked)
+
+	clickLabel(t, driver, "重新检查")
+	select {
+	case <-asked:
+	case <-time.After(2 * time.Second):
+		t.Fatal("重新检查 did not ask GitHub again")
+	}
+	waitFor(t, driver, "当前版本 0.4.1")
+}
+
+// drain empties the channel of answers already received.
+func drain(t *testing.T, answers chan struct{}) {
+	t.Helper()
+	for {
+		select {
+		case <-answers:
+		default:
+			return
+		}
+	}
+}
+
 func waitForHit(t *testing.T, driver *app.Driver, name string) {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
