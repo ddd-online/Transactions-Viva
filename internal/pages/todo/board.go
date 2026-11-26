@@ -106,9 +106,9 @@ func (m *Model) itemRow(c ui.C, row *todoRow) {
 		if expanded {
 			label = "收起进度 " + item.Title
 		}
-		line := layout.TableRow(c, ui.Row(c)).FillWidth().
-			Hit(ui.ID(c), label).
-			Focus(ui.Look{}.Background(state.Selected(*theme)))
+		lineID := ui.ID(c)
+		line := layout.FocusRing(c, layout.TableRow(c, ui.Row(c)).FillWidth().
+			Hit(lineID, label), c.Canvas().FocusVisible() == lineID)
 		ui.ContextMenu(c, line, func(menu *ui.MenuItems) {
 			if menu.Item("编辑事项").Clicked() {
 				m.openItemForm(item.CardID, item)

@@ -465,8 +465,7 @@ func (m *Model) table(c ui.C) {
 func (m *Model) row(r ui.ListRow) {
 	rec := &m.shown[m.pageStart+r.Index]
 	theme := r.C.Theme()
-	r.Element = layout.TableRow(r.C, r.Element).
-		Focus(ui.Look{}.Background(state.Selected(*theme)))
+	r.Element = layout.FocusRing(r.C, layout.TableRow(r.C, r.Element), r.Focused())
 	if r.Selected() {
 		r.Element.Background(theme.Accent)
 	}

@@ -6,8 +6,6 @@ import (
 
 	"github.com/vivaui/viva/app"
 	"github.com/vivaui/viva/gfx"
-
-	"transactions/internal/components/state"
 )
 
 // firstRecordRow is the table's first row: the only list options on the records
@@ -41,9 +39,8 @@ func focusByTab(t *testing.T, driver *app.Driver, id gfx.ID, limit int) bool {
 
 // TestRecordsRowsAreNamedAndShowFocus: a record's row is a list option with a
 // spoken name — the columns read as the sentence the row paints — and the
-// keyboard's focus on it is visible as the chosen row's wash. The row spans the
-// table's full width, so the 2px ring the other controls wear would be clipped
-// by the table's own edge.
+// keyboard's focus on it is a 2px ring drawn inside the row. The row spans the
+// table's full width, so a ring around it would be cut by the table's own edge.
 func TestRecordsRowsAreNamedAndShowFocus(t *testing.T) {
 	driver, model := open(t)
 	if err := driver.Paint(); err != nil {
@@ -79,20 +76,21 @@ func TestRecordsRowsAreNamedAndShowFocus(t *testing.T) {
 	if !focusByTab(t, driver, row.ID, 40) {
 		t.Fatal("tabbing never reached the record row")
 	}
-	wash := state.Selected(model.theme)
+	// The ring is inset: a ring drawn outside the row would be cut by the table's
+	// own edge, since the row runs from that edge to the other.
 	found := false
 	for _, primitive := range driver.Snapshot().Primitives {
-		if primitive.Kind != app.RectanglePrimitive || primitive.Color != wash {
+		if primitive.Color != model.theme.Ring {
 			continue
 		}
 		bounds := primitive.Bounds
-		if bounds.X > row.Bounds.X || bounds.Width < row.Bounds.Width ||
-			bounds.Y > row.Bounds.Y || bounds.Y+bounds.Height < row.Bounds.Y+row.Bounds.Height {
+		if bounds.X < row.Bounds.X-4 || bounds.X > row.Bounds.X+row.Bounds.Width+4 ||
+			bounds.Y < row.Bounds.Y-4 || bounds.Y > row.Bounds.Y+row.Bounds.Height+4 {
 			continue
 		}
 		found = true
 	}
 	if !found {
-		t.Fatal("the focused row paints no chosen-row wash")
+		t.Fatal("the focused row paints no focus ring")
 	}
 }
