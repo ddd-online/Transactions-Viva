@@ -33,8 +33,8 @@ const (
 	gripGap  float32 = 6
 	// gripRadius is the corner of both handles in the body: the grip's box and
 	// the picture's resize bar, so the two read as one control family.
-	gripIconWidth, gripIconHeight float32 = 10, 12
-	gripRadius                    float32 = 4
+	gripMarkSize float32 = 12
+	gripRadius   float32 = 4
 )
 
 // blockMenuState is the grip's menu: whether it is open, which block it commands,
@@ -155,7 +155,10 @@ func (m *Model) blockGrip(c ui.C, block int) {
 		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
 		Focus(ui.Look{}.Ring(2, theme.Ring))
 	grip.Children(func() {
-		ui.Icon(c, icons.GripVertical).Size(gripIconWidth, gripIconHeight).
+		// The mark is the paragraph sign, the same one both block menus print for
+		// 正文: a block's handle says what a block is, and the ¶ is the one glyph
+		// this application already uses for a run of prose.
+		ui.Icon(c, icons.Pilcrow).Size(gripMarkSize, gripMarkSize).
 			Color(theme.MutedForeground)
 	})
 	grip.DragSource(&m.blockDrag)
