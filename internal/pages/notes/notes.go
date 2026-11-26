@@ -525,7 +525,7 @@ func (m *Model) rail(c ui.C) {
 		// the header and its tree are one block with no gap between them.
 		ui.Divider(c)
 		if len(m.rows) == 0 && m.filterText != "" {
-			emptystate.Notice(c, "没有匹配的笔记")
+			emptystate.Notice(c, "没有匹配的笔记或文件夹")
 		} else {
 			// The tree keeps the page's inset on both sides, so a row's highlight
 			// floats inside the rail instead of touching its edges.
@@ -1034,6 +1034,11 @@ func (m *Model) saveState(c ui.C) {
 
 // rebuildRows flattens the tree into the visible rows, honouring the folded
 // folders and the title filter.
+//
+// The filter reads every title, folders included: a folder that matches brings
+// the notes inside it, because searching a folder's name is how a person opens it
+// — a folder standing alone in the results would be a door with nothing behind
+// it. A note that matches brings its way in: the folders above it, opened.
 func (m *Model) rebuildRows() {
 	m.rowsDirty = false
 	rows := m.rows[:0]
@@ -1041,17 +1046,28 @@ func (m *Model) rebuildRows() {
 	forced := map[string]bool{}
 	if m.filterText != "" {
 		needle := strings.ToLower(m.filterText)
-		for id, node := range m.nodes {
-			if node.Kind != domain.NoteKindNote {
-				continue
-			}
-			if !strings.Contains(strings.ToLower(domain.NoteDisplayTitle(node.Title)), needle) {
-				continue
-			}
+		// walked keeps a folder's subtree from being marked twice: a folder can be
+		// both a match and the way to another one.
+		walked := map[string]bool{}
+		var mark func(id string)
+		mark = func(id string) {
 			visible[id] = true
-			for parent := node.ParentID; parent != ""; parent = m.nodes[parent].ParentID {
+			for parent := m.nodes[id].ParentID; parent != ""; parent = m.nodes[parent].ParentID {
 				visible[parent] = true
 				forced[parent] = true
+			}
+			if m.nodes[id].Kind != domain.NoteKindFolder || walked[id] {
+				return
+			}
+			walked[id] = true
+			forced[id] = true
+			for _, child := range m.children[id] {
+				mark(child)
+			}
+		}
+		for id, node := range m.nodes {
+			if strings.Contains(strings.ToLower(domain.NoteDisplayTitle(node.Title)), needle) {
+				mark(id)
 			}
 		}
 	}

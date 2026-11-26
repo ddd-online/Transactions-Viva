@@ -1156,6 +1156,57 @@ func TestNotesFilterShowsTheMatchingNotes(t *testing.T) {
 	}
 }
 
+// TestNotesFilterFindsFolders: the field searches folder names too. A folder that
+// matches stays, opened, with the notes inside it; a note outside it goes.
+func TestNotesFilterFindsFolders(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("周报"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	createNote(t, driver)
+	if err := driver.Type("月报"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	click(t, driver, "新建文件夹")
+	if err := driver.Type("工作"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "确定")
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	dragRow(t, driver, "笔记 周报", "文件夹 工作", 0.5)
+	advance(t, driver)
+	// Fold the folder, so the search has to open the way to its notes itself.
+	for hasControl(driver, "笔记 周报") {
+		click(t, driver, "文件夹 工作")
+		if err := driver.Paint(); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	click(t, driver, "搜索笔记")
+	if err := driver.Type("工作"); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	if !hasControl(driver, "文件夹 工作") {
+		t.Fatal("the filter should keep the folder whose name matches")
+	}
+	if !hasControl(driver, "笔记 周报") {
+		t.Fatal("a folder that matches should bring the notes inside it")
+	}
+	if hasControl(driver, "笔记 月报") {
+		t.Fatal("the filter should hide the notes outside the matched folder")
+	}
+}
+
 // openRowMenu presses the actions button of the tree row named name, which the
 // row shows under the pointer: the pointer goes onto the row first, then onto
 // the button that appears at its right.
