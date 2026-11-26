@@ -530,4 +530,7 @@ func (m *Model) effectiveDark() bool {
 func (m *Model) refreshTheme() {
 	m.dark = m.effectiveDark()
 	m.theme = newTheme(m.dark)
+	if app.HighContrast() {
+		m.theme = highContrastTheme(m.theme)
+	}
 }

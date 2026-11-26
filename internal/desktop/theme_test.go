@@ -215,3 +215,39 @@ func TestInteractionStatesReadOnBothSurfaces(t *testing.T) {
 		}
 	}
 }
+
+// TestHighContrastThemeLeavesNoFaintDifference: for a high-contrast user every
+// secondary ink becomes text, every hairline a visible line, and a selection a
+// solid inverse bar. The four data hues stay: an amount's direction is content.
+func TestHighContrastThemeLeavesNoFaintDifference(t *testing.T) {
+	for _, appearance := range []struct {
+		name  string
+		theme gfx.Theme
+	}{
+		{"light", highContrastTheme(newTheme(false))},
+		{"dark", highContrastTheme(newTheme(true))},
+	} {
+		theme := appearance.theme
+		for _, pair := range []struct {
+			name string
+			got  gfx.Color
+			want gfx.Color
+		}{
+			{"muted foreground", theme.MutedForeground, theme.Foreground},
+			{"border", theme.Border, theme.Foreground},
+			{"field stroke", theme.Input, theme.Foreground},
+			{"ring", theme.Ring, theme.Foreground},
+			{"selection", theme.Selection, theme.Foreground},
+		} {
+			if pair.got != pair.want {
+				t.Errorf("%s: %s is %+v, want the ink %+v", appearance.name, pair.name, pair.got, pair.want)
+			}
+		}
+		if got := contrast(theme.SelectionForeground, theme.Selection); got < 7 {
+			t.Errorf("%s: selected text is %.2f:1 on its bar, want at least 7:1", appearance.name, got)
+		}
+		if got := contrast(theme.Foreground, theme.Background); got < 7 {
+			t.Errorf("%s: text is %.2f:1 on the paper, want at least 7:1", appearance.name, got)
+		}
+	}
+}

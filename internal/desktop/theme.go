@@ -41,6 +41,37 @@ func newTheme(dark bool) gfx.Theme {
 	return coolGraphite()
 }
 
+// highContrastTheme raises a palette for a Windows high-contrast user: every ink
+// becomes the text color, every hairline becomes a line that can be seen, and the
+// state washes step up so a chosen row still reads. The surfaces keep the
+// appearance's own paper — the system chooses white-on-black or black-on-white,
+// and this application's two appearances already are those two.
+//
+// Colour is not removed: the four data hues stay, because an amount's direction is
+// content. What changes is that nothing is told apart by a faint difference any
+// more.
+func highContrastTheme(base gfx.Theme) gfx.Theme {
+	ink := base.Foreground
+	base.MutedForeground = ink
+	base.Border = ink
+	base.Input = ink
+	base.Ring = ink
+	base.Hover = ink.WithAlpha(0.12)
+	base.Accent = ink.WithAlpha(0.22)
+	base.AccentForeground = ink
+	base.Card = base.Background
+	base.CardForeground = ink
+	base.CardElevated = base.Muted
+	base.Popover = base.Background
+	base.PopoverForeground = ink
+	base.SecondaryForeground = ink
+	// A selection is a solid inverse bar, the way a high-contrast desktop shows
+	// one: the wash a quiet theme uses does not survive at these settings.
+	base.Selection = ink
+	base.SelectionForeground = base.Background
+	return base
+}
+
 // coolGraphite is the light appearance: white paper on a cool grey shell, with
 // graphite text and a single precise blue.
 func coolGraphite() gfx.Theme {

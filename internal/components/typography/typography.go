@@ -10,16 +10,15 @@
 // figure do, because the money face already tells them apart — but no role has
 // a step of its own, and nothing is written at 13, 15 or 19.
 //
-// The steps are the reference application's tokens (its 11/12/13/14/16/18/20/24
-// ladder, see D:\github\Transactions\src\styles\tokens.css), cut down to the five
-// this application uses: the reference's 12/13/14 sat one pixel apart, so caption
-// and reading text were the only two jobs they could name here, and the dense
-// template table reads at the body size like every other table. Their measurement
-// of the platform faces holds here too: Chinese ships only Regular and B— 500
-// and 600 resolve to the same face as 400 and 700 — so a Chinese heading is Bold
-// and the step from body to label comes from size and colour, never from a half
-// weight. Medium (500) is kept for Latin, digits and the mono face, where a real
-// face exists.
+// The steps are the reference application's 11/12/13/14/16/18/20/24 ladder, cut
+// down to the five this application uses: the reference's 12/13/14 sat one pixel
+// apart, so caption and reading text were the only two jobs they could name here,
+// and the dense template table reads at the body size like every other table. Its
+// measurement of the platform faces holds here too: Chinese ships only Regular and
+// Bold — 500 and 600 resolve to the same face as 400 and 700 — so a Chinese heading
+// is Bold and the step from body to label comes from size and colour, never from a
+// half weight. Medium (500) is kept for Latin, digits and the mono face, where a
+// real face exists.
 package typography
 
 import "github.com/vivaui/viva/ui"
