@@ -129,12 +129,15 @@ func (m *Model) itemRow(c ui.C, row *todoRow) {
 				typography.Body(c, row.CardTitle).MaxLines(1).Ellipsis()
 			})
 			check := ui.Row(c).Size(boardCheckWidth, boardCheckWidth).Shrink(0).Center().
+				Radius(boardCheckWidth/2).
 				HitWith(ui.ID(c), "标记完成："+item.Title, gfx.HitOptions{
 					Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
 				}).Hover(ui.Look{}.Background(state.Hover(*theme))).Focus(ui.Look{}.Ring(2, theme.Ring))
 			check.Children(func() {
 				// The circle keeps its 16 px face; the box around it is the 24 px
-				// target, so a press near the circle lands on it too.
+				// target, so a press near the circle lands on it too. The target is
+				// round like the circle, so its wash and its ring are discs around
+				// the mark instead of a square behind it.
 				ui.Row(c).Size(boardMarkWidth, boardMarkWidth).Radius(boardMarkWidth/2).
 					Border(1, theme.Border)
 			})
@@ -245,6 +248,7 @@ func (m *Model) progressRow(c ui.C, progress *domain.TodoProgress) {
 	c.Key("todo-progress-" + progress.ID)
 	ui.Row(c).FillWidth().Gap(6).Items(ui.Center).Children(func() {
 		check := ui.Row(c).Size(boardCheckWidth, boardCheckWidth).Shrink(0).Center().
+			Radius(boardCheckWidth/2).
 			HitWith(ui.ID(c), "勾选进度", gfx.HitOptions{
 				Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
 			}).Hover(ui.Look{}.Background(state.Hover(*theme))).

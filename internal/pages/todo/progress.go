@@ -68,6 +68,7 @@ func (m *Model) progressView(c ui.C) {
 					ui.Column(c).FillWidth().Gap(4).Children(func() {
 						ui.Row(c).FillWidth().Gap(8).Items(ui.Center).Children(func() {
 							check := ui.Row(c).Size(boardCheckWidth, boardCheckWidth).Shrink(0).Center().
+								Radius(boardCheckWidth/2).
 								HitWith(ui.ID(c), "勾选进度", gfx.HitOptions{
 									Role: gfx.RoleButton, Cursor: gfx.PointerCursorHand,
 								}).Hover(ui.Look{}.Background(state.Hover(*c.Theme()))).

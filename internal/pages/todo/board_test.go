@@ -163,6 +163,49 @@ func TestRestoringAHistoryItemKeepsTheHistoryPainting(t *testing.T) {
 	}
 }
 
+// TestCompletionFaceHoversAsACircle: the 24 px face around a row's completion
+// circle is round like the circle, so the wash under the pointer is a disc around
+// the mark instead of a square behind it, and the focus ring follows the same
+// corner.
+func TestCompletionFaceHoversAsACircle(t *testing.T) {
+	driver, _ := paint(t, 0, nil)
+	var face struct{ X, Y, W, H float32 }
+	found := false
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label != "标记完成：第一件" {
+			continue
+		}
+		face.X, face.Y, face.W, face.H = hit.Bounds.X, hit.Bounds.Y, hit.Bounds.Width, hit.Bounds.Height
+		found = true
+	}
+	if !found {
+		t.Fatal("the first row has no completion control")
+	}
+	if err := driver.Move(face.X+face.W/2, face.Y+face.H/2); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	washed := false
+	for _, primitive := range driver.Snapshot().Primitives {
+		if primitive.Kind != app.RectanglePrimitive {
+			continue
+		}
+		b := primitive.Bounds
+		if b.X != face.X || b.Y != face.Y || b.Width != face.W || b.Height != face.H {
+			continue
+		}
+		washed = true
+		if primitive.Radius != boardCheckWidth/2 {
+			t.Fatalf("the completion face's wash is rounded %g, want %g", primitive.Radius, boardCheckWidth/2)
+		}
+	}
+	if !washed {
+		t.Fatal("hovering the completion control painted no wash")
+	}
+}
+
 // TestProgressRecordsWrapInsteadOfTruncating pins the fix for the progress log: a
 // record is a sentence, so it wraps inside its row instead of running under the
 // time and the two buttons. A wrapped line is painted as its own piece of text, so
