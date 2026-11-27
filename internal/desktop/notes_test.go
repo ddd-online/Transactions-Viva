@@ -881,6 +881,54 @@ func TestNotesBandInsertsADivider(t *testing.T) {
 	}
 }
 
+// TestNotesBandKeepsThePathInANarrowWindow: the band's path keeps its column when the
+// window narrows — the block commands give up the centre line instead — so a narrow
+// editor still has room for the folders the note lives in.
+func TestNotesBandKeepsThePathInANarrowWindow(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("窄窗"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	if err := driver.Resize(900, 760); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	button := noteControlBounds(t, driver, "块类型")
+	bodyX := float32(0)
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == "笔记正文" {
+			bodyX = hit.Bounds.X
+		}
+	}
+	left := float32(-1)
+	for _, label := range driver.Snapshot().Labels {
+		// The band is the strip the block commands sit in, and it starts where the
+		// note's own pane does: the tree's rows paint the same names beside it.
+		if label.Bounds.Y < button.Y || label.Bounds.Y > button.Y+button.Height {
+			continue
+		}
+		if label.Bounds.X < bodyX {
+			continue
+		}
+		if left < 0 || label.Bounds.X < left {
+			left = label.Bounds.X
+		}
+	}
+	if left < 0 {
+		t.Fatal("the band painted no path")
+	}
+	// 200 points is the band's floor for the path's column (band.go): the commands
+	// stand after three short names instead of cutting them in half.
+	if width := button.X - left; width < 200 {
+		t.Fatalf("the path's column is %.0f wide, want at least 200", width)
+	}
+}
+
 // TestNotesDividerTakesTheCaretBelowIt: a rule holds no caret, so a press on it
 // puts the caret at the start of the text line under it, and the next word goes
 // there rather than into the rule's own line.

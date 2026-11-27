@@ -24,6 +24,10 @@ const (
 	// bandRuleHeight is the hairline that separates the kind of the block from the
 	// two blocks a note adds. It is the page bands' own separator height.
 	bandRuleHeight float32 = 24
+	// pathMinWidth is the least room the band keeps for the path: three short names
+	// fit, so a narrow window slides the block commands off the band's centre line
+	// instead of cutting the folders a note lives in down to their first glyph.
+	pathMinWidth float32 = 200
 )
 
 // typeMenuState is the band's block-type menu: the block it will change, and
@@ -40,13 +44,13 @@ type typeMenuState struct {
 // commands that change the block being written in the middle, and the right half
 // left for what comes next.
 //
-// The three columns weigh the same, so the commands stay on the band's centre line
-// however long the path beside them grows; the path is the one that gives up room
-// when the window narrows, because a name may ellipsize and a control may not.
+// The three columns weigh the same, so the commands sit on the band's centre line
+// while the path fits in its half; the path's column keeps a floor below that, so
+// the path is the last thing to give up its names when the window narrows.
 func (m *Model) editorBand(c ui.C) {
 	ui.Row(c).Height(layout.SectionHeaderHeight).FillWidth().PadX(layout.Inset).
 		Items(ui.Center).Children(func() {
-		ui.Row(c).Grow(1).Basis(0).MinWidth(0).Items(ui.Center).Children(func() {
+		ui.Row(c).Grow(1).Basis(0).MinWidth(pathMinWidth).Items(ui.Center).Children(func() {
 			breadcrumb.Path(c, m.breadcrumbNames())
 		})
 		m.blockCommands(c)
