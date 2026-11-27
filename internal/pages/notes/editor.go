@@ -192,6 +192,7 @@ func (m *Model) bodyView(c ui.C) {
 			body = ui.Control(c, "笔记正文", &m.bodyInput).Draw(m.bodyDraw)
 			if m.column.block >= 0 {
 				m.blockGrip(c, m.column.block)
+				m.headingMark(c, m.column.block)
 			}
 		})
 	})

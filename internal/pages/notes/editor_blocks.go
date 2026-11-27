@@ -19,7 +19,8 @@ import (
 // grip in the gutter beside it. The grip and the block are one component
 // (blockColumn declares the one, blockGrip the other), so the grip is the
 // block's own: the menu it opens is that block's commands, which a kind may
-// change, and the drag it starts moves that block.
+// change, and the drag it starts moves that block. A heading adds one mark to
+// that gutter: the icon of its level, left of the grip (headingMark).
 const (
 	// partImageGrip is the picture's resize handle inside the body control.
 	partImageGrip = 20
@@ -40,6 +41,12 @@ const (
 	// the picture's resize bar, so the two read as one control family.
 	gripMarkSize float32 = 12
 	gripRadius   float32 = 4
+	// headingMarkSize is the box of the mark that names a heading's level beside
+	// the grip, and headingMarkGap the air between the two. The mark stands in the
+	// gutter left of the handle, so a heading says what it is where it is dragged
+	// from instead of only in its menu.
+	headingMarkSize float32 = 16
+	headingMarkGap  float32 = 4
 )
 
 // blockMenuState is the grip's menu: whether it is open, which block it commands,
@@ -129,8 +136,15 @@ func (b *blockColumn) PlaceWidth(ctx *ui.LayoutContext, bounds gfx.Rect) {
 	ctx.SetWidth(0, bounds.Width)
 	ctx.SetX(0, bounds.X)
 	if ctx.Count() > 1 {
+		gripX := bounds.X + offset - gripGap - gripSize
 		ctx.SetWidth(1, gripSize)
-		ctx.SetX(1, bounds.X+offset-gripGap-gripSize)
+		ctx.SetX(1, gripX)
+		if ctx.Count() > 2 {
+			// A heading's mark stands left of the grip, and stays inside the pane
+			// even when the gutter is at its narrowest.
+			ctx.SetWidth(2, headingMarkSize)
+			ctx.SetX(2, max(bounds.X, gripX-headingMarkGap-headingMarkSize))
+		}
 	}
 }
 
@@ -142,8 +156,13 @@ func (b *blockColumn) PlaceHeight(ctx *ui.LayoutContext, bounds gfx.Rect) {
 		return
 	}
 	if y, ok := b.m.gripY(b.block); ok {
+		top := bodyOffset(bounds) + y
 		ctx.SetHeight(1, gripSize)
-		ctx.SetY(1, bodyOffset(bounds)+y)
+		ctx.SetY(1, top)
+		if ctx.Count() > 2 {
+			ctx.SetHeight(2, headingMarkSize)
+			ctx.SetY(2, top+(gripSize-headingMarkSize)/2)
+		}
 	}
 }
 
@@ -184,6 +203,33 @@ func (m *Model) blockGrip(c ui.C, block int) {
 	ui.Menu(c, grip, &m.blockMenu.open, func(items *ui.MenuItems) {
 		m.blockMenuItems(c, items, block)
 	})
+}
+
+// headingMark names a heading's level beside its grip: the level's own icon in the
+// gutter, left of the handle, so the block says what it is where it is dragged
+// from instead of only in its menu. A paragraph declares no mark, so the column
+// carries two children and the layout leaves the room for the mark unused.
+func (m *Model) headingMark(c ui.C, block int) {
+	if block < 0 || block >= len(m.blocks) {
+		return
+	}
+	heading := m.blocks[block]
+	if heading.Kind != domain.NoteBlockHeading {
+		return
+	}
+	ui.Icon(c, headingIcon(heading.Level)).Size(headingMarkSize, headingMarkSize).
+		Color(c.Theme().MutedForeground)
+}
+
+// headingIcons are the marks of the five heading levels: the glyphs both block
+// menus already print beside their names, so the gutter and the menu say one word.
+var headingIcons = [5]gfx.Icon{
+	icons.Heading1, icons.Heading2, icons.Heading3, icons.Heading4, icons.Heading5,
+}
+
+// headingIcon is the mark of a heading level, clamped to the five like headingOf.
+func headingIcon(level int) gfx.Icon {
+	return headingIcons[domain.NoteHeadingLevel(level)-1]
 }
 
 // litBlock is the block whose grip is shown: the one being dragged, the one whose

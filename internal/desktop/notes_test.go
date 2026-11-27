@@ -132,6 +132,83 @@ func noteHitRole(t *testing.T, driver *app.Driver, name string) gfx.Role {
 	return 0
 }
 
+// markLeftOfGrip is the icon painted in the gutter just left of a grip, as the
+// box the triangles of its strokes cover. The grip's own mark sits inside the
+// grip's box; vector text paints triangles too, so the search stays in the few
+// points of gutter between the grip and the pane's edge, where only this mark
+// stands.
+func markLeftOfGrip(driver *app.Driver, grip gfx.Rect) (gfx.Rect, bool) {
+	left, top := float32(1e9), float32(1e9)
+	right, bottom := float32(-1e9), float32(-1e9)
+	found := false
+	for _, primitive := range driver.Snapshot().Primitives {
+		if primitive.Kind != app.TrianglePrimitive {
+			continue
+		}
+		x0, y0 := primitive.Points[0].X, primitive.Points[0].Y
+		x1, y1 := x0, y0
+		for _, point := range primitive.Points[1:] {
+			x0, y0 = min(x0, point.X), min(y0, point.Y)
+			x1, y1 = max(x1, point.X), max(y1, point.Y)
+		}
+		if x1 > grip.X || x0 < grip.X-40 || y1 < grip.Y-8 || y0 > grip.Y+grip.Height+8 {
+			continue
+		}
+		left, top = min(left, x0), min(top, y0)
+		right, bottom = max(right, x1), max(bottom, y1)
+		found = true
+	}
+	return gfx.Rect{X: left, Y: top, Width: right - left, Height: bottom - top}, found
+}
+
+// TestNotesHeadingMarkNamesTheLevel: a heading's grip carries the icon of its
+// level in the gutter left of it, and a paragraph's grip carries none.
+func TestNotesHeadingMarkNamesTheLevel(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("标题标"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("小节"); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Key(gfx.KeyEnter, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Type("正文"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	hoverBlock(t, driver, "小节")
+	click(t, driver, "块操作")
+	click(t, driver, "转为标题 2")
+	advance(t, driver)
+
+	// The pointer over the heading paints its grip and the mark beside it.
+	hoverBlock(t, driver, "小节")
+	grip := noteControlBounds(t, driver, "块操作")
+	mark, ok := markLeftOfGrip(driver, grip)
+	if !ok {
+		t.Fatal("a heading's grip should carry a mark left of it")
+	}
+	if mark.Width < 8 || mark.Height < 8 || mark.Width > grip.Width || mark.Height > grip.Width {
+		t.Fatalf("the heading mark = %v, want an icon in the gutter left of the grip", mark)
+	}
+	if mark.X+mark.Width > grip.X+1 {
+		t.Fatalf("the heading mark %v runs into the grip %v", mark, grip)
+	}
+
+	// The paragraph under it has no mark.
+	hoverBlock(t, driver, "正文")
+	grip = noteControlBounds(t, driver, "块操作")
+	if mark, ok := markLeftOfGrip(driver, grip); ok {
+		t.Fatalf("a paragraph should carry no mark, got %v", mark)
+	}
+}
+
 // TestNotesTitleIsAField drives the band's title: it is a field from the start,
 // Enter in it leaves for the body, and what is typed is the note's title.
 func TestNotesTitleIsAField(t *testing.T) {
