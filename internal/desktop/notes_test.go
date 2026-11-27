@@ -428,6 +428,18 @@ func TestNotesImageBlockIsStored(t *testing.T) {
 	}
 }
 
+// painted reports whether a line of text is painted exactly as want. It is shows
+// for a menu row: the band carries controls whose names contain the menu's words —
+// 插入分隔线 beside 分隔线 — so a menu's offer has to read as that exact row.
+func painted(driver *app.Driver, want string) bool {
+	for _, label := range driver.Snapshot().Labels {
+		if label.Value == want {
+			return true
+		}
+	}
+	return false
+}
+
 // noteTextBounds finds the painted text equal to value, which locates a block or
 // a picture on the body.
 func noteTextBounds(t *testing.T, driver *app.Driver, value string) gfx.Rect {
@@ -467,7 +479,7 @@ func TestNotesSlashMenuPicksAHeading(t *testing.T) {
 	if err := driver.Type("/"); err != nil {
 		t.Fatal(err)
 	}
-	if !shows(driver, "标题 1") {
+	if !painted(driver, "标题 1") {
 		t.Fatal("typing / should open the command menu")
 	}
 	if err := driver.Key(gfx.KeyDown, 0); err != nil {
@@ -501,7 +513,7 @@ func TestNotesCommandMenuOpensOnTheDunhao(t *testing.T) {
 	if err := driver.Type("、"); err != nil {
 		t.Fatal(err)
 	}
-	if !shows(driver, "标题 1") {
+	if !painted(driver, "标题 1") {
 		t.Fatal("typing 、 should open the command menu")
 	}
 	if err := driver.Key(gfx.KeyDown, 0); err != nil {
@@ -686,7 +698,7 @@ func TestNotesDividerFromTheCommandMenu(t *testing.T) {
 	if err := driver.Type("/"); err != nil {
 		t.Fatal(err)
 	}
-	if !shows(driver, "分隔线") {
+	if !painted(driver, "分隔线") {
 		t.Fatal("the command menu should offer 分隔线")
 	}
 	click(t, driver, "分隔线")
@@ -729,7 +741,7 @@ func TestNotesDividerInTheMiddleKeepsTheLineUnderIt(t *testing.T) {
 	if err := driver.Type("/"); err != nil {
 		t.Fatal(err)
 	}
-	if !shows(driver, "分隔线") {
+	if !painted(driver, "分隔线") {
 		t.Fatal("the command menu should offer 分隔线")
 	}
 	click(t, driver, "分隔线")
@@ -775,7 +787,9 @@ func TestNotesDividerAfterALineKeepsTheNextLine(t *testing.T) {
 	}
 	hoverBlock(t, driver, "甲")
 	click(t, driver, "块操作")
-	click(t, driver, "插入分隔线")
+	// The band carries its own 插入分隔线 button; the menu row that belongs to
+	// this block is the one painted last.
+	clickLast(t, driver, "插入分隔线")
 	advance(t, driver)
 
 	blocks := noteByTitle(t, model, "分界").Blocks
@@ -793,6 +807,77 @@ func TestNotesDividerAfterALineKeepsTheNextLine(t *testing.T) {
 	blocks = noteByTitle(t, model, "分界").Blocks
 	if len(blocks) != 3 || blocks[2].Text != "下乙" {
 		t.Fatalf("the word typed under the rule landed in %+v", blocks)
+	}
+}
+
+// TestNotesBandChangesTheBlockKind: the band under the title names where the note
+// lives and changes the kind of the block the caret is in without touching its
+// words; the note takes the keyboard back after the choice.
+func TestNotesBandChangesTheBlockKind(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("带子"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("小节"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	if !painted(driver, "我的笔记") {
+		t.Fatal("the band should name the folder the note lives in")
+	}
+	click(t, driver, "块类型")
+	if !painted(driver, "转为标题 2") {
+		t.Fatal("the band's type menu should offer 转为标题 2")
+	}
+	click(t, driver, "转为标题 2")
+	advance(t, driver)
+
+	blocks := noteByTitle(t, model, "带子").Blocks
+	if len(blocks) != 1 || blocks[0].Kind != domain.NoteBlockHeading ||
+		blocks[0].Level != 2 || blocks[0].Text != "小节" {
+		t.Fatalf("blocks after the band's menu = %+v", blocks)
+	}
+	// The keyboard comes back to the note: the next word joins the same block.
+	if err := driver.Type("续"); err != nil {
+		t.Fatalf("typing after the band's menu: %v", err)
+	}
+	advance(t, driver)
+	blocks = noteByTitle(t, model, "带子").Blocks
+	if len(blocks) != 1 || blocks[0].Text != "小节续" {
+		t.Fatalf("the word typed after the menu landed in %+v", blocks)
+	}
+}
+
+// TestNotesBandInsertsADivider: the band's 插入分隔线 is the block menu's command
+// without leaving the text: the rule lands under the line being written, and the
+// band also offers the picture beside it.
+func TestNotesBandInsertsADivider(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("带线"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("上"); err != nil {
+		t.Fatal(err)
+	}
+	if !hasControl(driver, "插入图片") {
+		t.Fatal("the band should offer 插入图片")
+	}
+	click(t, driver, "插入分隔线")
+	advance(t, driver)
+
+	blocks := noteByTitle(t, model, "带线").Blocks
+	if len(blocks) != 3 || blocks[0].Text != "上" ||
+		blocks[1].Kind != domain.NoteBlockDivider || blocks[1].Text != "" {
+		t.Fatalf("blocks after the band's rule = %+v", blocks)
+	}
+	if blocks[2].Kind != domain.NoteBlockText {
+		t.Fatalf("the rule should end with a text line under it: %+v", blocks)
 	}
 }
 

@@ -202,8 +202,11 @@ type Model struct {
 	gripHover int
 	dropAfter bool
 	blockMenu blockMenuState
-	resize    resizeState
-	column    blockColumn
+	// typeMenu is the band's block-type menu, which changes the block at the caret
+	// rather than the block a grip belongs to.
+	typeMenu typeMenuState
+	resize   resizeState
+	column   blockColumn
 	// area is the body's scroll area as the last paint declared it: the wheel and
 	// a drag on its bar reach it between paints.
 	area *ui.ScrollState
@@ -278,6 +281,7 @@ func New() *Model {
 		gripHover:     -1,
 		dragBlock:     -1,
 		blockMenu:     blockMenuState{block: -1},
+		typeMenu:      typeMenuState{block: -1},
 		resize:        resizeState{block: -1},
 		doc:           text.NewEditor(""),
 		viewer:        imageviewer.New(),
@@ -451,6 +455,12 @@ func (m *Model) View(c ui.C) {
 		m.focusBody = true
 	}
 	m.blockMenu.wasOpen = m.blockMenu.open
+	// The band's menu is Viva's too, and it closes the same ways: a choice, Escape,
+	// or a press outside it all give the keyboard back to the note next paint.
+	if m.typeMenu.wasOpen && !m.typeMenu.open {
+		m.focusBody = true
+	}
+	m.typeMenu.wasOpen = m.typeMenu.open
 	if m.focusBody && !m.bodyKey.IsZero() {
 		c.Canvas().RequestFocus(m.bodyKey)
 		m.focusBody = false
@@ -976,6 +986,7 @@ func (m *Model) detail(c ui.C) {
 			m.titleBar(c)
 		})
 		ui.Divider(c)
+		m.editorBand(c)
 		ui.Column(c).Grow(1).FillWidth().PadX(layout.Inset).Children(func() {
 			m.bodyView(c)
 		})
