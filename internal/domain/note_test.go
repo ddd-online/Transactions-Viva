@@ -32,6 +32,33 @@ func TestNoteHeadingLevel(t *testing.T) {
 	}
 }
 
+// TestNoteWordCount: 字数 is the count a person writing 中文 expects — one per Han
+// character, one per run of Latin letters or digits, and nothing for the spaces and
+// punctuation between them.
+func TestNoteWordCount(t *testing.T) {
+	cases := map[string]int{
+		"":              0,
+		"   ":           0,
+		"，。！":           0,
+		"你好世界":          4,
+		"hello world":   2,
+		"hello，world":   2,
+		"第1章":           3,
+		"a1b2":          1,
+		"中文 English 混排": 5,
+		"中abc文":         3,
+		"2026年11月27日":   6,
+		"😐":             0,
+		"好😐坏":           2,
+		"一句话，两个词。":      6,
+	}
+	for text, want := range cases {
+		if got := NoteWordCount(text); got != want {
+			t.Fatalf("NoteWordCount(%q) = %d, want %d", text, got, want)
+		}
+	}
+}
+
 func TestNoteImageSize(t *testing.T) {
 	// A small image keeps its pixel size at scale 1.
 	if width, height := NoteImageSize(400, 300, 1, 720); width != 400 || height != 300 {

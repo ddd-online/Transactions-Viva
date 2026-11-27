@@ -1,6 +1,9 @@
 package domain
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+)
 
 // 笔记：工作空间里的一棵树。文件夹可以装文件夹和笔记，笔记永远是叶子；
 // 根级只放文件夹。一篇笔记有一个标题和一串从上到下的块：标题块（h1-h5）、
@@ -116,6 +119,37 @@ func NoteHeadingLevel(level int) int {
 		return NoteHeadingMaxLevel
 	}
 	return level
+}
+
+// NoteWordCount 数一段笔记正文里的字：一个汉字（以及假名、谚文）算一个字，一串
+// 连续的字母或数字算一个词，空格、标点与符号都不算。页脚的「字数」用它，和把空格
+// 标点都数进去的「字符数」是两个数。
+func NoteWordCount(text string) int {
+	words := 0
+	inWord := false
+	for _, r := range text {
+		switch {
+		case unicode.IsSpace(r):
+			inWord = false
+		case noteCJK(r):
+			words++
+			inWord = false
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			if !inWord {
+				words++
+				inWord = true
+			}
+		default:
+			// 标点与符号分开两个词，自己不算一个字。
+			inWord = false
+		}
+	}
+	return words
+}
+
+// noteCJK 判断一个字符是不是来自不空格分词的文字，那种文字一个字就是一个词。
+func noteCJK(r rune) bool {
+	return unicode.In(r, unicode.Han, unicode.Hiragana, unicode.Katakana, unicode.Hangul, unicode.Bopomofo)
 }
 
 // NoteImageScale 把拖拽比例收进可显示的范围；0 或负数当作默认比例。

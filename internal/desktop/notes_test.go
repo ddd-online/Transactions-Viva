@@ -391,6 +391,9 @@ func TestNotesImageBlockIsStored(t *testing.T) {
 	model.pickNoteFile = func() (string, error) { return source, nil }
 
 	insertPicture(t, driver)
+	if got := footerReading(t, driver, "图片数"); got != "1" {
+		t.Fatalf("图片数 after a picture = %s, want 1", got)
+	}
 	note := noteByTitle(t, model, "配图")
 	found := false
 	for _, block := range note.Blocks {
@@ -421,6 +424,9 @@ func TestNotesImageBlockIsStored(t *testing.T) {
 		t.Fatal(err)
 	}
 	advance(t, driver)
+	if got := footerReading(t, driver, "字符数"); got != "4" {
+		t.Fatalf("字符数 after a caption = %s, want 4: the picture is not a character", got)
+	}
 	note = noteByTitle(t, model, "配图")
 	last := note.Blocks[len(note.Blocks)-1]
 	if last.Kind != domain.NoteBlockText || last.Text != "插图说明" {
@@ -926,6 +932,78 @@ func TestNotesBandKeepsThePathInANarrowWindow(t *testing.T) {
 	// stand after three short names instead of cutting them in half.
 	if width := button.X - left; width < 200 {
 		t.Fatalf("the path's column is %.0f wide, want at least 200", width)
+	}
+}
+
+// footerReading reads the figure the note's footer paints after a label: the next
+// text on the label's own line.
+func footerReading(t *testing.T, driver *app.Driver, label string) string {
+	t.Helper()
+	var line gfx.Rect
+	found := false
+	for _, painted := range driver.Snapshot().Labels {
+		if painted.Value == label {
+			line, found = painted.Bounds, true
+		}
+	}
+	if !found {
+		t.Fatalf("the footer does not name %q", label)
+	}
+	value, valueX := "", float32(1e9)
+	for _, painted := range driver.Snapshot().Labels {
+		if painted.Bounds.Y-line.Y > 2 || line.Y-painted.Bounds.Y > 2 {
+			continue
+		}
+		if painted.Bounds.X < line.X+line.Width-1 || painted.Bounds.X >= valueX {
+			continue
+		}
+		value, valueX = painted.Value, painted.Bounds.X
+	}
+	if value == "" {
+		t.Fatalf("the footer paints no figure after %q", label)
+	}
+	return value
+}
+
+// TestNotesFooterCountsTheNote: the footer under the body reports the note's own
+// size — characters, words and pictures — and follows what is written there.
+func TestNotesFooterCountsTheNote(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("计数"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	advance(t, driver)
+	if got := footerReading(t, driver, "字符数"); got != "0" {
+		t.Fatalf("an empty body reports %s characters, want 0", got)
+	}
+	if err := driver.Type("你好 world"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	if got := footerReading(t, driver, "字符数"); got != "8" {
+		t.Fatalf("字符数 = %s, want 8", got)
+	}
+	if got := footerReading(t, driver, "字数"); got != "3" {
+		t.Fatalf("字数 = %s, want 3", got)
+	}
+	if got := footerReading(t, driver, "图片数"); got != "0" {
+		t.Fatalf("图片数 = %s, want 0", got)
+	}
+	if err := driver.Key(gfx.KeyEnter, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Type("第二段"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	if got := footerReading(t, driver, "字符数"); got != "11" {
+		t.Fatalf("字符数 after a second block = %s, want 11", got)
+	}
+	if got := footerReading(t, driver, "字数"); got != "6" {
+		t.Fatalf("字数 after a second block = %s, want 6", got)
 	}
 }
 

@@ -191,6 +191,11 @@ type Model struct {
 	phase    savePhase
 	dirty    bool
 	editedAt time.Duration
+	// chars, words and images are what the footer reads, kept from the last change:
+	// countsDirty says a write happened since, so the paint recounts once instead of
+	// walking the whole note every frame.
+	chars, words, images int
+	countsDirty          bool
 
 	// drag and drop between blocks. column is the body's layout: the text
 	// control and the grip of the block it shows.
@@ -990,6 +995,8 @@ func (m *Model) detail(c ui.C) {
 		ui.Column(c).Grow(1).FillWidth().PadX(layout.Inset).Children(func() {
 			m.bodyView(c)
 		})
+		ui.Divider(c)
+		m.footer(c)
 	})
 }
 
@@ -1180,6 +1187,7 @@ func (m *Model) openNote(id string) {
 // loadBlocks copies a note's blocks into the editor. The editor keeps the text
 // in doc and the block attributes beside it, one block per line.
 func (m *Model) loadBlocks(blocks []domain.NoteBlock) {
+	m.countsDirty = true
 	if len(blocks) == 0 {
 		blocks = []domain.NoteBlock{{Kind: domain.NoteBlockText}}
 	}
@@ -1450,6 +1458,7 @@ func (m *Model) noticeEdits(now time.Duration) {
 func (m *Model) markEdited(now time.Duration) {
 	m.phase, m.dirty = savePending, true
 	m.editedAt = now
+	m.countsDirty = true
 }
 
 // markDirty marks a change for the next flush.
