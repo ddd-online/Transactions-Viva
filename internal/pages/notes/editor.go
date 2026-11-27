@@ -871,19 +871,21 @@ func (m *Model) insertPicture(block domain.NoteBlock) {
 		return
 	}
 	m.newHistoryStep()
-	m.insertColdBlock(block)
+	m.insertColdBlock(block, true)
 	m.imageRev++
 	m.imageKey = noteImageKey{note: m.selected, rev: m.imageRev}
 }
 
 // insertDivider puts a rule at the caret: it takes the empty block's place, or a
-// line of its own under the text, and a text block follows it.
+// line of its own under the text. A rule ends the note only sometimes, so only
+// then does an empty line of its own follow it: where the note already has a line
+// under it, those are the words the caret goes to.
 func (m *Model) insertDivider() {
 	if m.selected == "" {
 		return
 	}
 	m.newHistoryStep()
-	m.insertColdBlock(domain.NoteBlock{Kind: domain.NoteBlockDivider})
+	m.insertColdBlock(domain.NoteBlock{Kind: domain.NoteBlockDivider}, false)
 }
 
 // dividerMarks turns the "--" that a third dash completes into a divider: the
@@ -908,15 +910,17 @@ func (m *Model) dividerMarks(typed string) bool {
 		End:   m.bytesToRune(m.blockStart(block) + len(line)),
 	}, "")
 	m.syncLines()
-	m.insertColdBlock(domain.NoteBlock{Kind: domain.NoteBlockDivider})
+	m.insertColdBlock(domain.NoteBlock{Kind: domain.NoteBlockDivider}, false)
 	return true
 }
 
 // insertColdBlock puts a block that holds no words — a picture or a rule — at the
-// caret: it takes the empty block's place, or a line of its own under the text,
-// and a text block always follows it, so the caret never stops on it. The caller
-// records the history step, so one gesture stays one undo.
-func (m *Model) insertColdBlock(block domain.NoteBlock) {
+// caret: it takes the empty block's place, or a line of its own under the text.
+// The caret never stops on it, so a line follows it: trail opens a fresh one right
+// under it, which is what a picture needs; a rule is left to caretUnderCold, which
+// keeps the line the note already has under it and opens one only at the end. The
+// caller records the history step, so one gesture stays one undo.
+func (m *Model) insertColdBlock(block domain.NoteBlock, trail bool) {
 	if m.selected == "" {
 		return
 	}
@@ -931,21 +935,23 @@ func (m *Model) insertColdBlock(block domain.NoteBlock) {
 		line = m.lines[current]
 	}
 	empty := inLine == 0 && strings.TrimSpace(line) == "" && takesText(m.blocks[current].Kind)
-	// The picture or the rule occupies a line of its own and an empty text block
-	// follows it, so the caret and the next keystroke never land on it.
+	// The picture or the rule occupies a line of its own and no letter lands on
+	// it: the caret goes to a text line near it, never to the block itself.
 	end := m.blockStart(current) + len(line)
+	at := current
 	if empty {
 		m.blocks[current] = block
-		m.doc.MoveTo(m.bytesToRune(end), false)
-		m.doc.Insert("\n")
-		m.insertBlock(current+1, domain.NoteBlock{Kind: domain.NoteBlockText})
-		m.doc.MoveTo(m.bytesToRune(m.blockStart(current+1)), false)
 	} else {
 		m.doc.MoveTo(m.bytesToRune(end), false)
-		m.doc.Insert("\n\n")
+		m.doc.Insert("\n")
+		m.syncLines()
 		m.insertBlock(current+1, block)
-		m.insertBlock(current+2, domain.NoteBlock{Kind: domain.NoteBlockText})
-		m.doc.MoveTo(m.bytesToRune(m.blockStart(current+2)), false)
+		at = current + 1
+	}
+	if trail {
+		m.openTextLine(at)
+	} else {
+		m.caretUnderCold(at)
 	}
 	m.syncLines()
 	m.linesDirty = false
@@ -954,6 +960,46 @@ func (m *Model) insertColdBlock(block domain.NoteBlock) {
 	m.markEdited(m.now)
 	m.focusBody = true
 	m.flush()
+}
+
+// openTextLine opens a new empty text block right under the cold block at index
+// at and puts the caret in it.
+func (m *Model) openTextLine(at int) {
+	if at+1 >= len(m.blocks) {
+		m.appendTextBlock()
+		return
+	}
+	m.doc.MoveTo(m.bytesToRune(m.blockStart(at+1)), false)
+	m.doc.Insert("\n")
+	m.syncLines()
+	m.insertBlock(at+1, domain.NoteBlock{Kind: domain.NoteBlockText})
+	m.doc.MoveTo(m.bytesToRune(m.blockStart(at+1)), false)
+}
+
+// caretUnderCold puts the caret on the nearest text line under the cold block at
+// index at. A rule leaves the note's own line under it alone; only when every
+// block under it is cold too — the rule ends the note — does an empty text block
+// open at the end, so the next word has a line of its own.
+func (m *Model) caretUnderCold(at int) {
+	index := at + 1
+	for index < len(m.blocks) && !takesText(m.blocks[index].Kind) {
+		index++
+	}
+	if index < len(m.blocks) {
+		m.doc.MoveTo(m.bytesToRune(m.blockStart(index)), false)
+		return
+	}
+	m.appendTextBlock()
+}
+
+// appendTextBlock adds an empty text block under the last one and puts the caret
+// in it.
+func (m *Model) appendTextBlock() {
+	m.doc.MoveTo(m.bytesToRune(len(m.doc.String())), false)
+	m.doc.Insert("\n")
+	m.syncLines()
+	m.insertBlock(len(m.blocks), domain.NoteBlock{Kind: domain.NoteBlockText})
+	m.doc.MoveTo(m.bytesToRune(m.blockStart(len(m.blocks)-1)), false)
 }
 
 // pushHistory keeps the state before a keystroke. Consecutive keystrokes share

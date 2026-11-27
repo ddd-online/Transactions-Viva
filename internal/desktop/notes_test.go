@@ -626,6 +626,99 @@ func TestNotesDividerFromTheCommandMenu(t *testing.T) {
 	}
 }
 
+// TestNotesDividerInTheMiddleKeepsTheLineUnderIt: a rule made on an empty line
+// between two lines takes that line's place. The line under it is the note's own,
+// so no empty block follows the rule, and the next word goes to that line.
+func TestNotesDividerInTheMiddleKeepsTheLineUnderIt(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("夹线"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("上"); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := driver.Key(gfx.KeyEnter, 0); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The caret goes back to the empty block between 上 and the one below it.
+	if err := driver.Key(gfx.KeyUp, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Type("/"); err != nil {
+		t.Fatal(err)
+	}
+	if !shows(driver, "分隔线") {
+		t.Fatal("the command menu should offer 分隔线")
+	}
+	click(t, driver, "分隔线")
+	if err := driver.Type("下"); err != nil {
+		t.Fatalf("typing under the rule: %v", err)
+	}
+	advance(t, driver)
+	blocks := noteByTitle(t, model, "夹线").Blocks
+	if len(blocks) != 3 || blocks[1].Kind != domain.NoteBlockDivider || blocks[1].Text != "" {
+		t.Fatalf("blocks around the rule = %+v", blocks)
+	}
+	if blocks[2].Kind != domain.NoteBlockText || blocks[2].Text != "下" {
+		t.Fatalf("the word under the rule landed in %+v", blocks[2])
+	}
+}
+
+// TestNotesDividerAfterALineKeepsTheNextLine: a rule put under a line of text
+// leaves the line under it alone, so the note gains the rule and nothing else.
+func TestNotesDividerAfterALineKeepsTheNextLine(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("分界"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("甲"); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Key(gfx.KeyEnter, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Type("乙"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	// The caret goes to the end of 甲, then the grip's menu inserts the rule
+	// there: between the two lines.
+	line := noteTextBounds(t, driver, "甲")
+	if err := driver.Click(line.X+line.Width-1, line.Y+line.Height/2); err != nil {
+		t.Fatal(err)
+	}
+	hoverBlock(t, driver, "甲")
+	click(t, driver, "块操作")
+	click(t, driver, "插入分隔线")
+	advance(t, driver)
+
+	blocks := noteByTitle(t, model, "分界").Blocks
+	if len(blocks) != 3 {
+		t.Fatalf("blocks = %+v, want 甲, the rule and 乙", blocks)
+	}
+	if blocks[0].Text != "甲" || blocks[1].Kind != domain.NoteBlockDivider ||
+		blocks[1].Text != "" || blocks[2].Text != "乙" {
+		t.Fatalf("blocks = %+v, want 甲, the rule and 乙", blocks)
+	}
+	if err := driver.Type("下"); err != nil {
+		t.Fatalf("typing under the rule: %v", err)
+	}
+	advance(t, driver)
+	blocks = noteByTitle(t, model, "分界").Blocks
+	if len(blocks) != 3 || blocks[2].Text != "下乙" {
+		t.Fatalf("the word typed under the rule landed in %+v", blocks)
+	}
+}
+
 // TestNotesDividerTakesTheCaretBelowIt: a rule holds no caret, so a press on it
 // puts the caret at the start of the text line under it, and the next word goes
 // there rather than into the rule's own line.
