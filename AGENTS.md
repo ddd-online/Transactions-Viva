@@ -139,4 +139,6 @@ go test ./... -count=1
 ## 参考
 
 - Viva 框架：`D:\github\viva`，版本以 `go.mod` 为准，只读。
+  热重载用 `go tool viva dev .`：它跟着 `go.mod` 的版本走。全局 `viva` 与 `go.mod` 版本不一致时
+  `viva dev` 会直接失败——两者说的是不同的 reload 协议版本（0.6.7 是 30，0.6.10 是 31）。
 - 参考应用：`D:\github\motty`，Viva 应用的目录与工程实践样板，只读。
