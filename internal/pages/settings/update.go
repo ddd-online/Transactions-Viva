@@ -156,7 +156,10 @@ func (m *Model) update(c ui.C, spec Spec) {
 			})
 		case updateFailed:
 			m.updateResultRow(c, false, "更新失败", m.updateError, func() {
-				if ui.Button(c, "重新检查").Outline().Clicked() {
+				// The retry is the only thing to do on a failed check, so it wears the
+				// filled secondary the card's actions wear; the quiet outline stays for
+				// the retry beside a finished check that has nothing to offer.
+				if ui.Button(c, "重新检查").Secondary().Clicked() {
 					m.startUpdateCheck()
 				}
 			})
