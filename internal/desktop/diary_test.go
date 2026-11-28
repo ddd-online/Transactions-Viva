@@ -118,6 +118,45 @@ func containsLabel(driver *app.Driver, want string) bool {
 	return false
 }
 
+// TestDiaryTreeExpandsAndCollapsesAll: the one command in the tree's header opens
+// every year and month, or closes them back to the years, like the notes tree's; a
+// diary with no entries keeps no key, because it has nothing to open.
+func TestDiaryTreeExpandsAndCollapsesAll(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "日记")
+	if hasControl(driver, "展开全部") {
+		t.Fatal("an empty diary should keep no expand key")
+	}
+	click(t, driver, "日记正文")
+	if err := driver.Type("一段"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	today := domain.Today()
+	parsed, ok := domain.ParseDiaryDate(today)
+	if !ok {
+		t.Fatalf("bad today %q", today)
+	}
+	day, month, year := fmt.Sprintf("%d", parsed.Day()), fmt.Sprintf("%d月", parsed.Month()), fmt.Sprintf("%d年", parsed.Year())
+	if !containsLabel(driver, day) {
+		t.Fatal("the written day should be in the tree")
+	}
+
+	click(t, driver, "收起全部")
+	if containsLabel(driver, day) || containsLabel(driver, month) {
+		t.Fatal("收起全部 should leave the months and days closed")
+	}
+	if !containsLabel(driver, year) {
+		t.Fatal("the years stay in the tree when the branches close")
+	}
+
+	click(t, driver, "展开全部")
+	if !containsLabel(driver, day) || !containsLabel(driver, month) {
+		t.Fatal("展开全部 should open the month and the written day again")
+	}
+}
+
 // TestDiaryBooksHoldTheirOwnDays checks the point of the diary book: diaries are
 // no longer tied to ledgers, a workspace keeps as many books as it wants, and the
 // toolbar switches between them.

@@ -27,6 +27,7 @@ import (
 	"transactions/internal/components/state"
 	"transactions/internal/components/typography"
 	"transactions/internal/domain"
+	"transactions/internal/icons"
 	"transactions/internal/repository"
 )
 
@@ -333,13 +334,43 @@ func (m *Model) saveState(c ui.C) {
 	typography.Caption(c, label).Color(color)
 }
 
-// rail is the date tree column: its own header with the count, then the tree.
+// expandAllButton is the one command of the tree header: it opens every year and
+// month, or closes them back to the years. It is the notes tree's key with the same
+// two labels and the same two marks, so the two rails are read the same way.
+func (m *Model) expandAllButton(c ui.C) {
+	theme := c.Theme()
+	label, icon := "展开全部", icons.ListTree
+	if m.allExpanded() {
+		label, icon = "收起全部", icons.ListX
+	}
+	button := ui.ButtonBase(c, label).Size(28, 28).
+		Radius(theme.Metrics.RadiusControl).
+		Hover(ui.Look{}.Background(state.Hover(*theme))).
+		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
+		Focus(ui.Look{}.Ring(2, theme.Ring)).
+		Tooltip(label)
+	button.Children(func() {
+		ui.Icon(c, icon).Size(15, 15)
+	})
+	if button.Clicked() {
+		m.toggleExpandAll()
+	}
+}
+
+// rail is the date tree column: its own header with the count, the command that
+// opens or closes every branch, then the tree.
 func (m *Model) rail(c ui.C) {
 	layout.Rail(c, layout.RailWidth, func(c ui.C) {
 		layout.SectionHeader(c, layout.Inset).Children(func() {
 			typography.Section(c, "日记")
 			layout.SectionCount(c, strconv.Itoa(len(m.dates)))
 			ui.Spacer(c)
+			// A diary with a year of entries is a long way down when every month has
+			// to be opened by hand, so the tree carries the notes tree's one command.
+			// A tree with nothing in it has nothing to open, so it keeps no key.
+			if len(m.dates) > 0 {
+				m.expandAllButton(c)
+			}
 		})
 		ui.Divider(c)
 		switch {

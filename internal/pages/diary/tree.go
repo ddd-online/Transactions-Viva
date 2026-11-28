@@ -260,6 +260,42 @@ func (m *Model) rebuildRows() {
 	}
 }
 
+// allExpanded reports whether every year and month that holds an entry shows its
+// children: the state 收起全部 leaves the tree in. An empty diary counts as not
+// expanded, because there is nothing open in it.
+func (m *Model) allExpanded() bool {
+	open := false
+	for _, item := range m.dates {
+		if !domain.IsDiaryDate(item.Date) {
+			continue
+		}
+		open = true
+		if !m.expanded[domain.DiaryYearKey(item.Date)] || !m.expanded[domain.DiaryMonthKey(item.Date)] {
+			return false
+		}
+	}
+	return open
+}
+
+// toggleExpandAll opens every year and month, or closes them back to the years: the
+// tree header's one command. It is the notes tree's command in the shape of dates —
+// branches are derived from the entries, so the open set is built from the dates
+// rather than from a list of folders.
+func (m *Model) toggleExpandAll() {
+	open := !m.allExpanded()
+	m.expanded = map[string]bool{}
+	if open {
+		for _, item := range m.dates {
+			if !domain.IsDiaryDate(item.Date) {
+				continue
+			}
+			m.expanded[domain.DiaryYearKey(item.Date)] = true
+			m.expanded[domain.DiaryMonthKey(item.Date)] = true
+		}
+	}
+	m.rebuildRows()
+}
+
 // toggleRow opens or closes the year or month at a row index.
 func (m *Model) toggleRow(index int) {
 	if index < 0 || index >= len(m.rows) {
