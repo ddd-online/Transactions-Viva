@@ -80,7 +80,7 @@ type ladderPanel struct {
 	openKey    *domain.StockLimitLadder
 	openEffect *ui.EffectState[string, *domain.StockLimitLadder]
 
-	pick   datepicker.State
+	day    datepicker.Day
 	bounds gfx.Rect
 
 	// view is what the paint reads, worked out when the ladder loads: the board
@@ -100,7 +100,6 @@ func newLadderPanel(limits *stocklimit.Service) *ladderPanel {
 	p := &ladderPanel{
 		limits: limits,
 		date:   latestTradingDay(todayYMD()),
-		pick:   datepicker.NewState(),
 	}
 	p.effect = ui.NewEffectKeyed(func(ctx context.Context, request ladderRequest) (domain.StockLimitLadder, error) {
 		if p.limits == nil {
@@ -128,7 +127,7 @@ func (p *ladderPanel) Reload() {
 	if p.date == "" || p.date > today {
 		p.date = latestTradingDay(today)
 	}
-	p.pick.Open = false
+	p.day.Close()
 	p.force = false
 	p.serial++
 	p.request = ladderRequest{}
@@ -142,7 +141,7 @@ func (p *ladderPanel) Reload() {
 }
 
 // CloseOverlays closes the date picker's panel.
-func (p *ladderPanel) CloseOverlays() { p.pick.Open = false }
+func (p *ladderPanel) CloseOverlays() { p.day.Close() }
 
 // View declares the screen.
 // Key gives this tab's scroller PageUp and PageDown.
@@ -173,11 +172,9 @@ func (p *ladderPanel) toolbar(c ui.C) {
 		if ui.Button(c, "前一天").Ghost().Icon(icons.ChevronLeft).IconOnly().Clicked() {
 			p.shiftDate(-1)
 		}
-		datepicker.Picker(c, &p.pick, datepicker.Spec{
-			Label: "天梯日期", Start: p.date, End: p.date,
-			Grain: datepicker.ByDay, CloseOnPick: true,
-			Width: 148, MaxDate: p.today(), Viewport: p.bounds,
-			OnRange: func(start, _ string) { p.selectDate(start) },
+		p.day.Field(c, &p.date, datepicker.DaySpec{
+			Label: "天梯日期", Width: 148, Max: p.today(),
+			OnPick: p.selectDate,
 		})
 		next := ui.Button(c, "后一天").Ghost().Icon(icons.ChevronRight).IconOnly().
 			Disabled(p.date >= p.today())

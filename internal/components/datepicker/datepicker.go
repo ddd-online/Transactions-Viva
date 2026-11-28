@@ -2,6 +2,11 @@
 // shows the value next to a clock, and the panel under it with a day grid, a
 // month grid or a decade of years. The parameters decide its chrome, so a
 // toolbar's range and a form's single date are the same component.
+//
+// Pages take a toolbar's single date from Day below: Viva's own date field
+// wearing this package's words, one day and one month grid. Picker keeps its own
+// single-date mode for a range narrowed to one day and for a dialog's field,
+// where Viva 0.6.10's popover does not take presses (see Day's package note).
 package datepicker
 
 import (

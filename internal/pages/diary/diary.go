@@ -97,7 +97,7 @@ type Model struct {
 	nextRowKey int
 
 	tree ui.TreeState
-	pick datepicker.State
+	day  datepicker.Day
 
 	// deleting names the day the delete confirmation is open for.
 	deleting   string
@@ -115,7 +115,6 @@ func New() *Model {
 		selected: domain.Today(),
 		expanded: map[string]bool{},
 		rowKeys:  map[string]int{},
-		pick:     datepicker.NewState(),
 	}
 	m.tree.Key = m.rowKey
 	m.tree.Node = m.node
@@ -282,7 +281,7 @@ func (m *Model) DeleteBook(id string) error {
 // closes the date panel and the confirmation.
 func (m *Model) CloseOverlays() {
 	m.flush()
-	m.pick.Open = false
+	m.day.Close()
 	m.deleteOpen = false
 }
 
@@ -317,10 +316,8 @@ func (m *Model) toolbar(c ui.C) {
 		if ui.Button(c, "今天").Secondary().Clicked() {
 			m.selectDate(domain.Today())
 		}
-		datepicker.Picker(c, &m.pick, datepicker.Spec{
-			Label: "日记日期", Start: m.selected, Grain: datepicker.ByDay,
-			Placeholder: "选择日期", CloseOnPick: true, Viewport: m.bounds,
-			OnRange: func(start, _ string) { m.selectDate(start) },
+		m.day.Field(c, &m.selected, datepicker.DaySpec{
+			Label: "日记日期", Placeholder: "选择日期", OnPick: m.selectDate,
 		})
 		ui.Spacer(c)
 		m.saveState(c)
