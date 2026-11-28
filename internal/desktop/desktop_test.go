@@ -448,6 +448,44 @@ func TestRecordsPage(t *testing.T) {
 	})
 }
 
+// TestRecordsComposerStartsInTheVisibleRange checks where 记一笔 puts its date:
+// the page's time range decides, not the clock.
+func TestRecordsComposerStartsInTheVisibleRange(t *testing.T) {
+	driver, _ := open(t)
+	now := time.Now()
+	stamp := func(day time.Time) string { return day.Format("2006-01-02") }
+	today := stamp(now)
+
+	// A day the page was moved to: the dialog opens on that day, so a past
+	// expense does not have to be re-dated by hand.
+	click(t, driver, "今天")
+	click(t, driver, "上一周期")
+	yesterday := stamp(now.AddDate(0, 0, -1))
+	click(t, driver, "记一笔")
+	if !shows(driver, yesterday) || shows(driver, today) {
+		t.Fatalf("the dialog did not start on %s", yesterday)
+	}
+	click(t, driver, "取消")
+
+	// The whole current month: its last day has not arrived, so the dialog keeps
+	// today instead of dating the record ahead of the calendar.
+	click(t, driver, "今天")
+	click(t, driver, "月")
+	click(t, driver, "记一笔")
+	if !shows(driver, today) {
+		t.Fatal("the current month did not start the dialog on today")
+	}
+	click(t, driver, "取消")
+
+	// A month that is over starts on its last day, the range's nearer end.
+	click(t, driver, "上一周期")
+	previousEnd := stamp(time.Date(now.Year(), now.Month(), 0, 0, 0, 0, 0, time.Local))
+	click(t, driver, "记一笔")
+	if !shows(driver, previousEnd) {
+		t.Fatalf("the closed month did not start the dialog on %s", previousEnd)
+	}
+}
+
 // TestRecordsLedgerSelect switches the toolbar's 账本 Select and expects the
 // table, the statistics and the pager to follow the chosen ledger.
 func TestRecordsLedgerSelect(t *testing.T) {

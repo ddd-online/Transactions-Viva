@@ -31,12 +31,28 @@ func (m *Model) Scroll(event gfx.ScrollEvent) gfx.EventResult { return m.form.Sc
 // focus, for Config.TextInput.
 func (m *Model) TagsEditor(id gfx.ID) *text.Editor { return m.form.Editor(id) }
 
-// openComposer starts a new record on today's date.
+// openComposer starts a new record on the day the page is looking at.
 func (m *Model) openComposer() {
 	m.form.Open(composer.Draft{
 		Kind: "支出",
-		Date: todayDate(),
+		Date: m.composerDate(),
 	})
+}
+
+// composerDate is the day a new record starts on: the visible range decides it,
+// so 记一笔 lands in the period the user is reading instead of always in the
+// clock's today. Today itself while the range holds it; otherwise the range's
+// nearer end — under 日 granularity that is the day picked, under 月 or 年 the
+// past period's last day, so a record is never dated ahead of the calendar.
+func (m *Model) composerDate() string {
+	today := todayDate()
+	if m.rangeStart != "" && today < m.rangeStart {
+		return m.rangeStart
+	}
+	if m.rangeEnd != "" && today > m.rangeEnd {
+		return m.rangeEnd
+	}
+	return today
 }
 
 // openEdit fills the same dialog from an existing row.
