@@ -101,8 +101,11 @@ func (m *Model) proxy(c ui.C, spec Spec) {
 			// the card keeps the two-line rhythm its neighbours have, and the reading
 			// itself never gives way — the aside is the part that shortens.
 			ui.Row(c).FillWidth().Gap(2).Items(ui.Center).Children(func() {
-				typography.Caption(c, "当前："+spec.ProxyResolved).Mono().Shrink(0)
-				typography.Caption(c, "（自动探测先读环境变量，再读系统代理）").Muted().Ellipsis()
+				// The reading gives way last: the aside shrinks first, and the value
+				// itself only ellipsizes when even it alone is longer than the row.
+				typography.Caption(c, "当前："+spec.ProxyResolved).Mono().
+					Shrink(1).MinWidth(0).Ellipsis()
+				typography.Caption(c, "（自动探测先读环境变量，再读系统代理）").Muted().Shrink(4).Ellipsis()
 			})
 		case config.ProxyManual:
 			ui.Row(c).FillWidth().Items(ui.Center).Gap(metrics.GapItem).Children(func() {
