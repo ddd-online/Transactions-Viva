@@ -140,10 +140,12 @@ func (b *blockColumn) PlaceWidth(ctx *ui.LayoutContext, bounds gfx.Rect) {
 		ctx.SetWidth(1, gripSize)
 		ctx.SetX(1, gripX)
 		if ctx.Count() > 2 {
-			// A heading's mark stands left of the grip, and stays inside the pane
-			// even when the gutter is at its narrowest.
+			// A heading's mark stands left of the grip. The view declares it from the
+			// gutter the last paint had, so a paint in the middle of a resize can still
+			// carry one with no room for it: then it goes past the pane's left edge,
+			// where the scroll's clip takes it, instead of onto the grip.
 			ctx.SetWidth(2, headingMarkSize)
-			ctx.SetX(2, max(bounds.X, gripX-headingMarkGap-headingMarkSize))
+			ctx.SetX(2, gripX-headingMarkGap-headingMarkSize)
 		}
 	}
 }
@@ -210,6 +212,11 @@ func (m *Model) blockGrip(c ui.C, block int) {
 // instead of only in its menu. A paragraph declares no mark, and neither does a
 // heading whose gutter is too narrow for one, so the column carries the second child
 // only when there is room for it.
+//
+// The mark is confirmation, not the only name of the level: the heading's own size
+// says which level it is, its block menu writes it out, and the band's key is the
+// caret's kind rather than the hovered block's. When a narrow window takes the mark
+// away, nothing is left unexplained — it is simply one less echo.
 func (m *Model) headingMark(c ui.C, block int) {
 	if block < 0 || block >= len(m.blocks) {
 		return
@@ -219,9 +226,8 @@ func (m *Model) headingMark(c ui.C, block int) {
 		return
 	}
 	// The gutter has to hold the mark, the air beside the grip and the grip itself.
-	// In a narrow editor it does not, and a mark clamped against the pane's edge would
-	// sit on the grip instead of beside it — there the band's lit type key names the
-	// level, so the mark steps aside rather than collide.
+	// In a narrow editor it does not, and a mark pushed against the pane's edge would
+	// sit on the grip instead of beside it, so it steps aside.
 	if _, offset := bodyColumn(m.bodyPane.Width); offset < gripGap+gripSize+headingMarkGap+headingMarkSize {
 		return
 	}

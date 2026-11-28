@@ -97,12 +97,12 @@ func (m *Model) proxy(c ui.C, spec Spec) {
 		typography.CaptionParagraph(c, "只有更新检查与下载走代理；行情与涨停池直连。", 2)
 		switch mode {
 		case config.ProxyAuto:
-			// The value and the way it was found read as one line, so the card keeps
-			// the two-line rhythm its neighbours have; the dot is the separator the
-			// rest of the settings use between two readings.
-			ui.Row(c).FillWidth().Gap(6).Items(ui.Center).Children(func() {
-				typography.Caption(c, "当前："+spec.ProxyResolved).Mono().Ellipsis()
-				typography.Caption(c, "· 自动探测先读环境变量，再读系统代理。").Muted().Ellipsis()
+			// The value, with the way it was found in brackets behind it: one line, so
+			// the card keeps the two-line rhythm its neighbours have, and the reading
+			// itself never gives way — the aside is the part that shortens.
+			ui.Row(c).FillWidth().Gap(2).Items(ui.Center).Children(func() {
+				typography.Caption(c, "当前："+spec.ProxyResolved).Mono().Shrink(0)
+				typography.Caption(c, "（自动探测先读环境变量，再读系统代理）").Muted().Ellipsis()
 			})
 		case config.ProxyManual:
 			ui.Row(c).FillWidth().Items(ui.Center).Gap(metrics.GapItem).Children(func() {
