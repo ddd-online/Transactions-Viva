@@ -273,6 +273,11 @@ func resize(picture *image.RGBA, width, height int) *image.RGBA {
 	return target
 }
 
+// Fit scales a picture down until its longest edge is at most maxEdge, with the
+// same filter the workspace's view copies use: the clipboard's picture should look
+// like the one the page shows. A picture that already fits is returned unchanged.
+func Fit(picture image.Image, maxEdge int) image.Image { return fitEdge(picture, maxEdge) }
+
 // fitEdge scales a picture down until its longest edge is at most maxEdge. A
 // picture that already fits is returned unchanged.
 func fitEdge(picture image.Image, maxEdge int) image.Image {

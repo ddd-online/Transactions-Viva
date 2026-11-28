@@ -73,9 +73,9 @@ type Commands struct {
 	ImportImage func(noteID, source string) (string, int, int, error)
 	// PasteImage stores the clipboard's picture the way ImportImage does.
 	PasteImage func(noteID string) (string, int, int, error)
-	// CopyImage puts a stored picture on the system clipboard. The picture travels
-	// as its own file, which is the form the platform's clipboard takes, so it can
-	// be pasted into a folder as the file or into an editor as the picture.
+	// CopyImage puts a stored picture on the system clipboard as the picture
+	// itself, so any application's Paste inserts it. The shell decodes and writes
+	// what the clipboard takes; the page only names the stored file.
 	CopyImage func(relative string) error
 	// LoadImage decodes a stored picture for painting.
 	LoadImage func(relative string, maxEdge int) (gfx.Bitmap, error)

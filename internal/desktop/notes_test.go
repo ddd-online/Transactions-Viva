@@ -1,11 +1,13 @@
 package desktop
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"image"
 	"image/color"
+	"image/jpeg"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -2003,8 +2005,8 @@ func TestNotesFeatureSwitchHidesTheSection(t *testing.T) {
 }
 
 // TestNotesImageContextMenu: a secondary press on a picture opens its menu; 复制图片到
-// 剪贴板 puts the picture's own file on the clipboard, and 删除图片块 takes the block
-// out with one undo behind it.
+// 剪贴板 puts the picture itself (its PNG) on the clipboard, and 删除图片块 takes the
+// block out with one undo behind it.
 func TestNotesImageContextMenu(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "笔记")
@@ -2049,9 +2051,12 @@ func TestNotesImageContextMenu(t *testing.T) {
 	}
 
 	click(t, driver, "复制图片到剪贴板")
-	files, err := app.ClipboardFiles()
-	if err != nil || len(files) != 1 || files[0] != picture {
-		t.Fatalf("clipboard files = %q, %v; want %q", files, err, picture)
+	stored, err := os.ReadFile(picture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := driver.ClipboardImage(); !bytes.Equal(got, stored) {
+		t.Fatalf("clipboard image = %d bytes, want the stored PNG's %d", len(got), len(stored))
 	}
 
 	// The menu comes back for the same picture, and its delete takes the block out.
@@ -2148,6 +2153,61 @@ func insertPicture(t *testing.T, driver *app.Driver) {
 	}
 	click(t, driver, "图片")
 	advance(t, driver)
+}
+
+// TestNotesImageCopyReEncodesAPicture: a stored JPEG has to be decoded and written
+// once as PNG for the clipboard. The copy is still the same picture, not the file.
+func TestNotesImageCopyReEncodesAPicture(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("JPEG 图片"); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(t.TempDir(), "photo.jpg")
+	picture := image.NewRGBA(image.Rect(0, 0, 90, 40))
+	for y := 0; y < 40; y++ {
+		for x := 0; x < 90; x++ {
+			picture.Set(x, y, color.RGBA{R: 200, G: 60, B: 20, A: 255})
+		}
+	}
+	file, err := os.Create(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := jpeg.Encode(file, picture, nil); err != nil {
+		t.Fatal(err)
+	}
+	file.Close()
+	model.pickNoteFile = func() (string, error) { return source, nil }
+	insertPicture(t, driver)
+	advance(t, driver)
+
+	blocks := noteByTitle(t, model, "JPEG 图片").Blocks
+	if len(blocks) == 0 || blocks[0].Kind != domain.NoteBlockImage {
+		t.Fatalf("blocks = %+v, want the picture first", blocks)
+	}
+	if !strings.HasSuffix(blocks[0].ImagePath, ".jpg") {
+		t.Fatalf("stored path = %q, want the JPEG the note keeps", blocks[0].ImagePath)
+	}
+
+	body := noteControlBounds(t, driver, "笔记正文")
+	x, y := body.X+body.Width/2, body.Y+60
+	if err := driver.ClickButton(x, y, gfx.PointerButtonSecondary); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "复制图片到剪贴板")
+	data := driver.ClipboardImage()
+	if !bytes.HasPrefix(data, []byte("\x89PNG\r\n\x1a\n")) {
+		t.Fatalf("the clipboard holds %d bytes that are not a PNG", len(data))
+	}
+	copied, err := png.Decode(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bounds := copied.Bounds(); bounds.Dx() != 90 || bounds.Dy() != 40 {
+		t.Fatalf("copied picture = %v, want the 90×40 stored JPEG", bounds)
+	}
 }
 
 // TestNotesRowMenuOpensOnRightClick is the same command as the row's actions key:

@@ -56,9 +56,8 @@ func (m *Model) openImageMenu(block int, at gfx.Point) {
 	m.selectedImage = block
 }
 
-// copyImage puts the picture's file on the clipboard and says so. A file is what the
-// platform's clipboard holds: pasting it into a folder copies the file, and pasting
-// it into an editor that takes files inserts the picture.
+// copyImage puts the picture on the clipboard as the picture itself and says so:
+// any application's Paste inserts it, the way copying one from a photo viewer does.
 func (m *Model) copyImage(block int) {
 	m.imageMenu = imageMenuState{block: -1}
 	if block < 0 || block >= len(m.blocks) || m.blocks[block].Kind != domain.NoteBlockImage ||

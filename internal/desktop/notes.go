@@ -1,8 +1,11 @@
 package desktop
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"image"
+	"image/png"
 	"os"
 
 	"github.com/vivaui/viva/app"
@@ -79,10 +82,10 @@ func (m *Model) pasteNoteImage(noteID string) (string, int, int, error) {
 	return path, bounds.Dx(), bounds.Dy(), nil
 }
 
-// copyNoteImage puts a stored picture on the clipboard as its own file: the platform
-// clipboard takes files, and a picture file is what an explorer copies and what an
-// editor that accepts dropped files inserts. The lightbox and the editor keep
-// decoding the same file; nothing is re-encoded for the clipboard.
+// copyNoteImage puts a stored picture on the clipboard as the picture itself, the
+// way a photo viewer's Copy does: any application's Paste inserts it. A stored PNG
+// goes over byte for byte; another format is decoded and written once as PNG, and a
+// picture the clipboard refuses as too large is scaled down until it fits.
 func (m *Model) copyNoteImage(relative string) error {
 	if m.workspace == nil {
 		return errNoNoteWorkspace
@@ -91,10 +94,43 @@ func (m *Model) copyNoteImage(relative string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(full); err != nil {
-		return fmt.Errorf("图片文件不存在：%w", err)
+	data, err := os.ReadFile(full)
+	if err != nil {
+		return fmt.Errorf("读取图片失败：%w", err)
 	}
-	return app.SetClipboardFiles([]string{full})
+	if assets.Sniff(data) == assets.FormatPNG {
+		if err := app.SetClipboardImage(data); !errors.Is(err, app.ErrTooLarge) {
+			return err
+		}
+	}
+	picture, err := assets.Decode(data)
+	if err != nil {
+		return err
+	}
+	return putClipboardPicture(picture)
+}
+
+// putClipboardPicture writes a decoded picture to the clipboard as PNG. The
+// clipboard takes 32 MiB of PNG within 32 megapixels, which a stored photograph can
+// exceed, so a picture it refuses is scaled down and written again: half a photograph
+// still pastes, where an entry that only ever reports "too large" does not.
+func putClipboardPicture(picture image.Image) error {
+	for {
+		var buffer bytes.Buffer
+		if err := png.Encode(&buffer, picture); err != nil {
+			return fmt.Errorf("生成图片失败：%w", err)
+		}
+		err := app.SetClipboardImage(buffer.Bytes())
+		if !errors.Is(err, app.ErrTooLarge) {
+			return err
+		}
+		bounds := picture.Bounds()
+		edge := max(bounds.Dx(), bounds.Dy())
+		if edge < 64 {
+			return err
+		}
+		picture = assets.Fit(picture, edge*3/4)
+	}
 }
 
 // loadNoteImage decodes one stored picture for painting.
