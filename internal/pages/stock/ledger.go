@@ -362,7 +362,7 @@ func (e *ledgerEditor) dialog(c ui.C, repo repository.StockRepository, accountID
 		title = "编辑台账"
 	}
 	levels := domain.PlanLevelsOf(e.sheet.BuyPrice, e.draft.stopLoss, e.draft.takeProfit)
-	ui.ModalWith(c, &e.open, title, ui.ModalSpec{Width: 680}, func() {
+	ui.Modal(c, &e.open, title, ui.ModalSpec{Width: 680}, func() {
 		ui.Column(c).FillWidth().Gap(layout.GroupGap).Children(func() {
 			ledgerGroup(c, "买入计划", func() {
 				ledgerTextArea(c, "为什么买", &e.draft.whyBuy,

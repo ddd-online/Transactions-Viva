@@ -469,7 +469,7 @@ func (p *lessonsPanel) formModal(c ui.C) {
 		title = "编辑心得"
 	}
 	stockCodes, stockLabels := p.stockChoices()
-	ui.ModalWith(c, &p.formOpen, title, ui.ModalSpec{Width: 560}, func() {
+	ui.Modal(c, &p.formOpen, title, ui.ModalSpec{Width: 560}, func() {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 			ui.Column(c).Gap(4).Children(func() {
 				typography.Caption(c, "心得")
@@ -534,7 +534,7 @@ func (p *lessonsPanel) deleteModal(c ui.C) {
 	if !p.deleteOpen {
 		return
 	}
-	ui.ModalWith(c, &p.deleteOpen, "删除这条心得？", ui.ModalSpec{
+	ui.Modal(c, &p.deleteOpen, "删除这条心得？", ui.ModalSpec{
 		Width:       380,
 		Description: "关联的交易轮次不会被删除。",
 	}, func() {

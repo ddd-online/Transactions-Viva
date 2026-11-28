@@ -665,7 +665,7 @@ func (m *Model) ledgerDialog(c ui.C, spec Spec) {
 	// use; pinning each field to the control's own two-row height keeps the
 	// dialog compact, as the record composer does.
 	fieldHeight := c.Theme().Metrics.ControlHeight * 2
-	ui.ModalWith(c, &m.ledgerForm.open, title, ui.ModalSpec{Width: 420}, func() {
+	ui.Modal(c, &m.ledgerForm.open, title, ui.ModalSpec{Width: 420}, func() {
 		ui.Column(c).Children(func() {
 			ui.FormField(c, &m.ledgerForm.nameField, "名称").Height(fieldHeight).Children(func() {
 				ui.TextField(c, &m.ledgerForm.name, "名称", "例如：家庭账本").AutoFocus()
@@ -726,7 +726,7 @@ func (m *Model) ledgerDeleteDialog(c ui.C, spec Spec) {
 	if !m.ledgerDelete.open {
 		return
 	}
-	ui.ModalWith(c, &m.ledgerDelete.open, "删除账本「"+m.ledgerDelete.name+"」？", ui.ModalSpec{
+	ui.Modal(c, &m.ledgerDelete.open, "删除账本「"+m.ledgerDelete.name+"」？", ui.ModalSpec{
 		Width:       420,
 		Description: "记录、分类标签、模板与图表会一起删除，无法恢复。",
 	}, nil, func() {
@@ -819,7 +819,7 @@ func (m *Model) stockAccountDialog(c ui.C, spec Spec) {
 		title, submit = "编辑股票账户", "保存"
 	}
 	fieldHeight := c.Theme().Metrics.ControlHeight * 2
-	ui.ModalWith(c, &m.stockForm.open, title, ui.ModalSpec{Width: 420}, func() {
+	ui.Modal(c, &m.stockForm.open, title, ui.ModalSpec{Width: 420}, func() {
 		ui.Column(c).Children(func() {
 			ui.FormField(c, &m.stockForm.nameField, "名称").Height(fieldHeight).Children(func() {
 				ui.TextField(c, &m.stockForm.name, "名称", "例如：主账户").AutoFocus()
@@ -876,7 +876,7 @@ func (m *Model) stockAccountDeleteDialog(c ui.C, spec Spec) {
 	if !m.stockDelete.open {
 		return
 	}
-	ui.ModalWith(c, &m.stockDelete.open, "删除股票账户「"+m.stockDelete.name+"」？", ui.ModalSpec{
+	ui.Modal(c, &m.stockDelete.open, "删除股票账户「"+m.stockDelete.name+"」？", ui.ModalSpec{
 		Width:       420,
 		Description: "账户里的本金、资金记录、持仓、成交、轮次、心得与设置会一起删除，无法恢复。",
 	}, nil, func() {
@@ -987,7 +987,7 @@ func (m *Model) bookDialog(c ui.C, spec Spec) {
 		title, submit = "编辑日记本", "保存"
 	}
 	fieldHeight := c.Theme().Metrics.ControlHeight * 2
-	ui.ModalWith(c, &m.bookForm.open, title, ui.ModalSpec{Width: 420}, func() {
+	ui.Modal(c, &m.bookForm.open, title, ui.ModalSpec{Width: 420}, func() {
 		ui.Column(c).Children(func() {
 			ui.FormField(c, &m.bookForm.nameField, "名称").Height(fieldHeight).Children(func() {
 				ui.TextField(c, &m.bookForm.name, "名称", "例如：旅行日记").AutoFocus()
@@ -1048,7 +1048,7 @@ func (m *Model) bookDeleteDialog(c ui.C, spec Spec) {
 	if !m.bookDelete.open {
 		return
 	}
-	ui.ModalWith(c, &m.bookDelete.open, "删除日记本「"+m.bookDelete.name+"」？", ui.ModalSpec{
+	ui.Modal(c, &m.bookDelete.open, "删除日记本「"+m.bookDelete.name+"」？", ui.ModalSpec{
 		Width:       420,
 		Description: "这本日记本里的所有日记会一起删除，无法恢复。",
 	}, nil, func() {

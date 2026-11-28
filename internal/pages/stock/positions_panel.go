@@ -918,7 +918,7 @@ func (p *positionsPanel) dailyDialog(c ui.C) {
 	if p.dailyEditDate != "" {
 		title = "每日复盘 · " + p.dailyEditDate
 	}
-	ui.ModalWith(c, &p.dailyOpen, title, ui.ModalSpec{Width: 560}, func() {
+	ui.Modal(c, &p.dailyOpen, title, ui.ModalSpec{Width: 560}, func() {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 			if p.dailyEditDate != "" {
 				ui.Text(c, p.dailyEditDate).FontSize(typography.SizeBody).Mono()
@@ -951,7 +951,7 @@ func (p *positionsPanel) dailyReadDialog(c ui.C) {
 		return
 	}
 	title := "每日复盘 · " + p.dailyRead.ReviewDate
-	ui.ModalWith(c, &p.dailyReadOpen, title, ui.ModalSpec{Width: 560}, func() {
+	ui.Modal(c, &p.dailyReadOpen, title, ui.ModalSpec{Width: 560}, func() {
 		positionsTextBlock(c, p.dailyRead.Review)
 	}, func() {
 		if ui.Button(c, "关闭").Outline().Clicked() {
@@ -971,7 +971,7 @@ func (p *positionsPanel) roundEditDialog(c ui.C) {
 	if !p.roundEditOpen {
 		return
 	}
-	ui.ModalWith(c, &p.roundEditOpen, "本轮复盘", ui.ModalSpec{Width: 560}, func() {
+	ui.Modal(c, &p.roundEditOpen, "本轮复盘", ui.ModalSpec{Width: 560}, func() {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 			ui.TextArea(c, &p.roundDraft, "复盘",
 				"买入理由 / 卖出理由 / 买点审视 / 卖点审视 / 交易心得").Height(180)
@@ -993,7 +993,7 @@ func (p *positionsPanel) roundReadDialog(c ui.C) {
 	if !p.roundReadOpen {
 		return
 	}
-	ui.ModalWith(c, &p.roundReadOpen, "本轮复盘", ui.ModalSpec{Width: 560}, func() {
+	ui.Modal(c, &p.roundReadOpen, "本轮复盘", ui.ModalSpec{Width: 560}, func() {
 		positionsTextBlock(c, p.roundReadText)
 	}, func() {
 		if ui.Button(c, "关闭").Outline().Clicked() {
@@ -1016,7 +1016,7 @@ func (p *positionsPanel) tradeDialog(c ui.C) {
 	fixedLots := p.tradeType == domain.TradeClose && position != nil && position.Quantity > 0
 	isOpen := p.tradeType == domain.TradeOpen
 
-	ui.ModalWith(c, &p.tradeOpen, title, ui.ModalSpec{Width: 640}, func() {
+	ui.Modal(c, &p.tradeOpen, title, ui.ModalSpec{Width: 640}, func() {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 			ui.Row(c).Gap(layout.BlockGap).Children(func() {
 				positionsFormColumn(c, "股票名称", func() {
@@ -1188,7 +1188,7 @@ func (p *positionsPanel) tradeEditDialog(c ui.C) {
 	if !p.editOpen {
 		return
 	}
-	ui.ModalWith(c, &p.editOpen, "编辑成交", ui.ModalSpec{Width: 420}, func() {
+	ui.Modal(c, &p.editOpen, "编辑成交", ui.ModalSpec{Width: 420}, func() {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 			positionsFormField(c, "价格（元）", func() {
 				ui.TextField(c, &p.editPrice, "价格（元）", "0.00").Mono()
@@ -1214,7 +1214,7 @@ func (p *positionsPanel) deleteDialog(c ui.C) {
 	if !p.deleteOpen {
 		return
 	}
-	ui.ModalWith(c, &p.deleteOpen, "删除整笔委托", ui.ModalSpec{Width: 420}, func() {
+	ui.Modal(c, &p.deleteOpen, "删除整笔委托", ui.ModalSpec{Width: 420}, func() {
 		ui.Column(c).Gap(layout.BlockGap).Children(func() {
 			typography.Body(c, "删除后持仓与资金会按重放结果回滚，确定继续？")
 			if p.deleteError != "" {

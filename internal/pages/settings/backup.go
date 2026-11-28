@@ -263,7 +263,7 @@ func (m *Model) backupRestoreDialog(c ui.C, spec Spec) {
 		return
 	}
 	entry := m.backupRestore
-	ui.ModalWith(c, &m.backupRestoreOn, "恢复这份备份？", ui.ModalSpec{
+	ui.Modal(c, &m.backupRestoreOn, "恢复这份备份？", ui.ModalSpec{
 		Width:       460,
 		Description: "当前数据会先另存为恢复前备份，然后替换当前工作空间。恢复后工作空间会在当前窗口中重新打开。",
 	}, func() {
@@ -297,7 +297,7 @@ func (m *Model) backupDeleteDialog(c ui.C, spec Spec) {
 		return
 	}
 	entry := m.backupDelete
-	ui.ModalWith(c, &m.backupDeleteOn, "删除这份备份？", ui.ModalSpec{
+	ui.Modal(c, &m.backupDeleteOn, "删除这份备份？", ui.ModalSpec{
 		Width:       460,
 		Description: "只删除这一份备份，不会影响当前工作空间。",
 	}, func() {

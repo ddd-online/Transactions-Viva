@@ -529,7 +529,7 @@ func (m *Model) rail(c ui.C) {
 					c.Canvas().RequestFocus(m.filterID)
 					m.findFocus = false
 				}
-				field := ui.TextFieldID(c, m.filterID, &m.filter, "过滤笔记", "搜索文件夹、笔记").FillWidth()
+				field := ui.TextField(c, &m.filter, "过滤笔记", "搜索文件夹、笔记", ui.WithID(m.filterID)).FillWidth()
 				field.OnKey(func(event gfx.KeyEvent) gfx.EventResult {
 					if event.Key != gfx.KeyEscape {
 						return gfx.EventResult{}
@@ -1010,7 +1010,7 @@ func (m *Model) railButton(c ui.C) {
 func (m *Model) titleField(c ui.C) {
 	c.Key("note-title")
 	m.titleID = ui.ID(c)
-	field := ui.TextFieldID(c, m.titleID, &m.title, "笔记标题", "未命名笔记").
+	field := ui.TextField(c, &m.title, "笔记标题", "未命名笔记", ui.WithID(m.titleID)).
 		FontSize(typography.SizeSection).Weight(gfx.WeightBold).Grow(1).MinWidth(0)
 	if m.focusTitle {
 		c.Canvas().RequestFocus(m.titleID)
@@ -1291,7 +1291,7 @@ func (m *Model) formDialog(c ui.C) {
 		m.form.err, m.form.errOn = "", ""
 	}
 	theme := c.Theme()
-	ui.ModalWith(c, &m.form.open, title, ui.ModalSpec{Width: 380}, func() {
+	ui.Modal(c, &m.form.open, title, ui.ModalSpec{Width: 380}, func() {
 		ui.Column(c).FillWidth().Gap(6).Children(func() {
 			typography.Caption(c, "名称")
 			field := ui.TextField(c, &m.form.field, "名称", placeholder).AutoFocus()
@@ -1367,7 +1367,7 @@ func (m *Model) deleteDialog(c ui.C) {
 	if node, ok := m.nodes[m.remove.node]; ok && node.Kind == domain.NoteKindFolder {
 		sentence = "文件夹里的笔记和图片会一并删除，无法恢复。"
 	}
-	ui.ModalWith(c, &m.remove.open, "删除「"+m.remove.title+"」？",
+	ui.Modal(c, &m.remove.open, "删除「"+m.remove.title+"」？",
 		ui.ModalSpec{Width: 420, Description: sentence}, nil, func() {
 			ui.Row(c).Gap(layout.Gap).Justify(ui.End).Children(func() {
 				if ui.Button(c, "取消").Secondary().Clicked() {

@@ -14,7 +14,7 @@ import (
 // addDialog is 新增事件: a day and an optional title. 新增 without a day is
 // disabled, as the dialog's confirm was.
 func (m *Model) addDialog(c ui.C) {
-	ui.ModalWith(c, &m.add.open, "新增事件", ui.ModalSpec{Width: 420}, func() {
+	ui.Modal(c, &m.add.open, "新增事件", ui.ModalSpec{Width: 420}, func() {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 			ui.Column(c).FillWidth().Gap(4).Children(func() {
 				typography.Caption(c, "日期")
@@ -49,7 +49,7 @@ func (m *Model) addDialog(c ui.C) {
 
 // deleteEventDialog confirms deleting a day's event, including its pictures.
 func (m *Model) deleteEventDialog(c ui.C) {
-	ui.ModalWith(c, &m.deleteEvent.open, "删除事件「"+m.deleteEvent.title+"」？",
+	ui.Modal(c, &m.deleteEvent.open, "删除事件「"+m.deleteEvent.title+"」？",
 		ui.ModalSpec{Width: 420, Description: "事件里的图片会一并删除。"}, nil, func() {
 			ui.Row(c).Gap(layout.Gap).Justify(ui.End).Children(func() {
 				if ui.Button(c, "取消").Secondary().Clicked() {
@@ -64,7 +64,7 @@ func (m *Model) deleteEventDialog(c ui.C) {
 
 // deleteImageDialog confirms deleting one picture.
 func (m *Model) deleteImageDialog(c ui.C) {
-	ui.ModalWith(c, &m.deleteImage.open, "删除这张图片？",
+	ui.Modal(c, &m.deleteImage.open, "删除这张图片？",
 		ui.ModalSpec{Width: 420}, nil, func() {
 			ui.Row(c).Gap(layout.Gap).Justify(ui.End).Children(func() {
 				if ui.Button(c, "取消").Secondary().Clicked() {

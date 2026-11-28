@@ -473,7 +473,7 @@ func (p *recordsPanel) historyRail(c ui.C) {
 			return
 		}
 		ui.Column(c).FillWidth().PadX(layout.Inset).PadY(8).Children(func() {
-			ui.TextFieldID(c, ui.ID(c), &p.historyFind, "搜索股票", "股票名称或代码").
+			ui.TextField(c, &p.historyFind, "搜索股票", "股票名称或代码", ui.WithID(ui.ID(c))).
 				FillWidth()
 		})
 		if len(p.historyView) == 0 {
@@ -1043,7 +1043,7 @@ func (p *recordsPanel) reviewModal(c ui.C) {
 		return
 	}
 	theme := c.Theme()
-	ui.ModalWith(c, &p.reviewOpen, "本轮复盘", ui.ModalSpec{Width: 560}, func() {
+	ui.Modal(c, &p.reviewOpen, "本轮复盘", ui.ModalSpec{Width: 560}, func() {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 			typography.Caption(c, "复盘")
 			ui.TextArea(c, &p.reviewDraft, "复盘",
@@ -1068,7 +1068,7 @@ func (p *recordsPanel) readModal(c ui.C) {
 	if !p.readOpen {
 		return
 	}
-	ui.ModalWith(c, &p.readOpen, p.readTitle, ui.ModalSpec{Width: 560}, func() {
+	ui.Modal(c, &p.readOpen, p.readTitle, ui.ModalSpec{Width: 560}, func() {
 		ui.Wrap(c, p.readText).FontSize(typography.SizeBody)
 	}, func() {
 		if ui.Button(c, "关闭").Outline().Clicked() {
@@ -1082,7 +1082,7 @@ func (p *recordsPanel) editModal(c ui.C) {
 		return
 	}
 	theme := c.Theme()
-	ui.ModalWith(c, &p.editOpen, "编辑成交", ui.ModalSpec{
+	ui.Modal(c, &p.editOpen, "编辑成交", ui.ModalSpec{
 		Width:       400,
 		Description: "改动后会按成交重算这一笔的手续费、持仓与资金。",
 	}, func() {
@@ -1109,7 +1109,7 @@ func (p *recordsPanel) deleteModal(c ui.C) {
 	if !p.deleteOpen {
 		return
 	}
-	ui.ModalWith(c, &p.deleteOpen, "删除整笔委托", ui.ModalSpec{
+	ui.Modal(c, &p.deleteOpen, "删除整笔委托", ui.ModalSpec{
 		Width:       380,
 		Description: "删除后持仓与资金会按重放结果回滚，确定继续？",
 	}, func() {

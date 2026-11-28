@@ -566,7 +566,7 @@ func (m *Model) deleteDialog(c ui.C) {
 	if !m.deleteOpen {
 		return
 	}
-	ui.ModalWith(c, &m.deleteOpen, "删除日记「"+domain.DiaryDateCn(m.deleting)+"」？", ui.ModalSpec{
+	ui.Modal(c, &m.deleteOpen, "删除日记「"+domain.DiaryDateCn(m.deleting)+"」？", ui.ModalSpec{
 		Width: 400, Description: "这一天的正文会一起删除，无法恢复。",
 	}, nil, func() {
 		if ui.Button(c, "取消").Outline().Clicked() {

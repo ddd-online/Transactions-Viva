@@ -428,7 +428,7 @@ func (m *Model) page(c ui.C) {
 	// The update keeps running while another section is shown: an effect the
 	// paint stops declaring is cancelled, so the shell declares it every paint.
 	m.settings.KeepUpdate(c)
-	leading, trailing := app.TitlebarInsets()
+	leading, trailing := c.TitlebarInsets()
 	theme := c.Theme()
 	ui.Column(c).Fill().Background(theme.Muted).Children(func() {
 		m.titlebar(c, leading, trailing)

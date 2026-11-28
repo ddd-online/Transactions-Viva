@@ -317,7 +317,7 @@ func (m *Model) modals(c ui.C) {
 	}
 	if m.modal == modalDelete {
 		chart := m.deleting
-		ui.ModalWith(c, &m.dialogOpen, "删除图表「"+chart.Title+"」？", ui.ModalSpec{
+		ui.Modal(c, &m.dialogOpen, "删除图表「"+chart.Title+"」？", ui.ModalSpec{
 			Width:       380,
 			Description: "只删除这张图表，记录不受影响。",
 		}, nil, func() {
@@ -344,7 +344,7 @@ func (m *Model) modals(c ui.C) {
 			title = "编辑曲线"
 		}
 	}
-	ui.ModalWith(c, &m.dialogOpen, title, ui.ModalSpec{Width: 540}, func() {
+	ui.Modal(c, &m.dialogOpen, title, ui.ModalSpec{Width: 540}, func() {
 		ui.Column(c).FillWidth().Gap(12).Children(func() {
 			switch m.modal {
 			case modalCreate:

@@ -511,7 +511,7 @@ func (m *Model) formModal(c ui.C) {
 	}
 	theme := c.Theme()
 	m.syncTagOptions()
-	ui.ModalWith(c, &m.formOpen, "新建模板", ui.ModalSpec{Width: 520}, func() {
+	ui.Modal(c, &m.formOpen, "新建模板", ui.ModalSpec{Width: 520}, func() {
 		ui.Column(c).FillWidth().Gap(14).Children(func() {
 			ui.FormField(c, &m.fields.name, "模板名称").FillWidth().Height(64).Children(func() {
 				ui.TextField(c, &m.form.name, "模板名称", "例如：工作日午餐").FillWidth()
@@ -669,7 +669,7 @@ func (m *Model) deleteModal(c ui.C) {
 	if !m.deleteOpen {
 		return
 	}
-	ui.ModalWith(c, &m.deleteOpen, "删除模板「"+m.deleteName+"」？", ui.ModalSpec{
+	ui.Modal(c, &m.deleteOpen, "删除模板「"+m.deleteName+"」？", ui.ModalSpec{
 		Width:       380,
 		Description: "只删除模板，已经记下的记录不受影响。",
 	}, nil, func() {

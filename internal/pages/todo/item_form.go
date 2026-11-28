@@ -84,7 +84,7 @@ func (m *Model) itemFormView(c ui.C) {
 	if form.id != "" {
 		title = "编辑事项"
 	}
-	ui.ModalWith(c, &form.open, title, ui.ModalSpec{Width: 560}, func() {
+	ui.Modal(c, &form.open, title, ui.ModalSpec{Width: 560}, func() {
 		m.itemFields(c, form)
 	}, func() {
 		if ui.Button(c, "取消").Outline().Clicked() {
@@ -240,7 +240,7 @@ func (m *Model) deleteCardView(c ui.C) {
 	if !m.deleteCard.open {
 		return
 	}
-	ui.ModalWith(c, &m.deleteCard.open, "删除主题「"+m.deleteCard.title+"」？", ui.ModalSpec{Width: 420}, func() {
+	ui.Modal(c, &m.deleteCard.open, "删除主题「"+m.deleteCard.title+"」？", ui.ModalSpec{Width: 420}, func() {
 		typography.Body(c, "下面的所有事项和进度都会一起删除。")
 	}, func() {
 		if ui.Button(c, "取消").Outline().Clicked() {
@@ -261,7 +261,7 @@ func (m *Model) deleteItemView(c ui.C) {
 	if !m.deleteItem.open {
 		return
 	}
-	ui.ModalWith(c, &m.deleteItem.open, "删除事项「"+m.deleteItem.title+"」？", ui.ModalSpec{Width: 420}, func() {
+	ui.Modal(c, &m.deleteItem.open, "删除事项「"+m.deleteItem.title+"」？", ui.ModalSpec{Width: 420}, func() {
 		typography.Body(c, "进度记录也会一起删除。")
 	}, func() {
 		if ui.Button(c, "取消").Outline().Clicked() {

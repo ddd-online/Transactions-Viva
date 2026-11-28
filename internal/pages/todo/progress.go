@@ -49,7 +49,7 @@ func (m *Model) progressView(c ui.C) {
 	if panel.item.Title != "" {
 		title = "进度 · " + panel.item.Title
 	}
-	ui.ModalWith(c, &panel.open, title, ui.ModalSpec{Width: 560}, func() {
+	ui.Modal(c, &panel.open, title, ui.ModalSpec{Width: 560}, func() {
 		ui.Column(c).FillWidth().Gap(10).Children(func() {
 			meta := time.Unix(panel.item.CompletedAt, 0).Format("2006-01-02 15:04")
 			typography.Caption(c, panel.cardTitle+" · 完成于 "+meta).Mono()

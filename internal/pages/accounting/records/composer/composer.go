@@ -151,7 +151,7 @@ func (state *State) View(c ui.C, spec Spec) {
 	if state.draft.EditingID != "" {
 		title = "编辑记录"
 	}
-	ui.ModalWith(c, &state.open, title, ui.ModalSpec{Width: 640}, func() {
+	ui.Modal(c, &state.open, title, ui.ModalSpec{Width: 640}, func() {
 		ui.Column(c).FillWidth().Gap(14).Children(func() {
 			state.templateField(c, spec)
 			ui.Row(c).Gap(12).Children(func() {

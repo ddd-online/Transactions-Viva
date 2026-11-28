@@ -410,7 +410,7 @@ func (p *accountPanel) amountModal(c ui.C) {
 	if !p.amountOpen {
 		return
 	}
-	ui.Modal(c, &p.amountOpen, p.amountTitle(), func() {
+	ui.Modal(c, &p.amountOpen, p.amountTitle(), ui.ModalSpec{}, func() {
 		ui.Column(c).Gap(layout.BlockGap).Children(func() {
 			typography.Caption(c, "金额（元）")
 			ui.TextField(c, &p.amount, "金额（元）", "0.00").Grow(1).Mono()

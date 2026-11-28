@@ -153,7 +153,7 @@ func (v *Viewer) View(c ui.C, spec Spec) bool {
 		v.reduceBefore, v.reduceSaved = v.canvas.ReduceMotion(), true
 	}
 	v.canvas.SetReduceMotion(true)
-	ui.ModalWith(c, &v.open, spec.Title, modal, func() {
+	ui.Modal(c, &v.open, spec.Title, modal, func() {
 		ui.Control(c, spec.Label, &v.handlers).
 			FillWidth().Height(height).
 			Radius(theme.Metrics.RadiusSurface).Clip().

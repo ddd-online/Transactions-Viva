@@ -747,7 +747,7 @@ func (m *Model) categoryModal(c ui.C) {
 		return
 	}
 	theme := c.Theme()
-	ui.ModalWith(c, &m.categoryOpen, "新增分类", ui.ModalSpec{Width: 400}, func() {
+	ui.Modal(c, &m.categoryOpen, "新增分类", ui.ModalSpec{Width: 400}, func() {
 		field := ui.TextField(c, &m.categoryName, "分类名称", "例如：餐饮美食").
 			AutoFocus().FillWidth()
 		if m.categoryError != "" {
@@ -776,7 +776,7 @@ func (m *Model) tagModal(c ui.C) {
 		return
 	}
 	theme := c.Theme()
-	ui.ModalWith(c, &m.tagOpen, "新增标签", ui.ModalSpec{Width: 400}, func() {
+	ui.Modal(c, &m.tagOpen, "新增标签", ui.ModalSpec{Width: 400}, func() {
 		field := ui.TextField(c, &m.tagName, "标签名称", "例如：三餐").
 			AutoFocus().FillWidth()
 		if m.tagError != "" {
@@ -810,7 +810,7 @@ func (m *Model) deleteModal(c ui.C) {
 		title = "删除标签「" + m.deleteName + "」？"
 		description = "记录上的这个标签会一起移除，记录本身不受影响。"
 	}
-	ui.ModalWith(c, &m.deleteOpen, title, ui.ModalSpec{
+	ui.Modal(c, &m.deleteOpen, title, ui.ModalSpec{
 		Width:       380,
 		Description: description,
 	}, nil, func() {

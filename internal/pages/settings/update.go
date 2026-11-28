@@ -288,7 +288,7 @@ func (m *Model) updateNotesModal(c ui.C) {
 	if m.updateRelease.Version != "" {
 		title += " · v" + m.updateRelease.Version
 	}
-	ui.ModalWith(c, &m.updateNotesOpen, title, ui.ModalSpec{Width: 640}, func() {
+	ui.Modal(c, &m.updateNotesOpen, title, ui.ModalSpec{Width: 640}, func() {
 		blocks := releaseBlocks(m.updateRelease.Body)
 		if len(blocks) == 0 {
 			typography.Body(c, "这次发布没有填写更新内容。").Muted()

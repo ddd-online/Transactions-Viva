@@ -73,7 +73,7 @@ func (m *Model) closeModal(c ui.C) {
 	if !m.closeAsk {
 		return
 	}
-	ui.ModalWith(c, &m.closeAsk, "关闭窗口", ui.ModalSpec{Width: 440}, func() {
+	ui.Modal(c, &m.closeAsk, "关闭窗口", ui.ModalSpec{Width: 440}, func() {
 		if m.trayOK {
 			typography.CaptionParagraph(c, "可在「设置 → 通用设置 → 关闭行为」里固定这个选择。", 2)
 		} else {

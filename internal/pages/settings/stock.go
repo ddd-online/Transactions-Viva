@@ -262,7 +262,7 @@ func (m *Model) stockTemplateDialogFor(c ui.C, spec Spec, daily bool) {
 	if !*open {
 		return
 	}
-	ui.ModalWith(c, open, title, ui.ModalSpec{Width: 720}, func() {
+	ui.Modal(c, open, title, ui.ModalSpec{Width: 720}, func() {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 			ui.TextArea(c, draft, title, "留空使用内置模板").Height(height)
 			ui.Row(c).Gap(layout.Gap).Items(ui.Center).Children(func() {
@@ -349,7 +349,7 @@ func (m *Model) stockFeeDialog(c ui.C, spec Spec) {
 	if !m.stock.feeOpen {
 		return
 	}
-	ui.ModalWith(c, &m.stock.feeOpen, "交易费用", ui.ModalSpec{Width: 640}, func() {
+	ui.Modal(c, &m.stock.feeOpen, "交易费用", ui.ModalSpec{Width: 640}, func() {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 			ui.Grid(c, 250).FillWidth().Gap(layout.BlockGap).Children(func() {
 				stockFeeField(c, "佣金费率", "万分之", &m.stock.feeForm.commission, "2.354")
@@ -435,7 +435,7 @@ func (m *Model) stockOperationsDialog(c ui.C, spec Spec) {
 	if !m.stock.operationsOpen || spec.Stock == nil {
 		return
 	}
-	ui.ModalWith(c, &m.stock.operationsOpen, "操作记录", ui.ModalSpec{Width: 640}, func() {
+	ui.Modal(c, &m.stock.operationsOpen, "操作记录", ui.ModalSpec{Width: 640}, func() {
 		if len(spec.Stock.Operations) == 0 {
 			typography.Body(c, "暂无可回滚的操作").Muted().PadY(8)
 			return
@@ -476,7 +476,7 @@ func (m *Model) stockArchiveDialog(c ui.C, spec Spec) {
 	if !m.stock.archiveOpen {
 		return
 	}
-	ui.ModalWith(c, &m.stock.archiveOpen, "归档到新账户", ui.ModalSpec{Width: 420}, func() {
+	ui.Modal(c, &m.stock.archiveOpen, "归档到新账户", ui.ModalSpec{Width: 420}, func() {
 		ui.Column(c).FillWidth().Gap(layout.BlockGap).Children(func() {
 			ui.Column(c).Gap(4).Children(func() {
 				typography.Caption(c, "新账户名称")
@@ -520,7 +520,7 @@ func (m *Model) stockResetDialog(c ui.C, spec Spec) {
 	if !m.stock.resetOpen {
 		return
 	}
-	ui.ModalWith(c, &m.stock.resetOpen, "重置股票数据", ui.ModalSpec{
+	ui.Modal(c, &m.stock.resetOpen, "重置股票数据", ui.ModalSpec{
 		Width:       420,
 		Description: "清空当前账户的全部股票数据（本金、资金、持仓、成交、轮次、复盘、心得与设置），且不可恢复。",
 	}, nil, func() {
