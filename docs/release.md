@@ -53,9 +53,6 @@ build/release/transactions-X.Y.Z-windows-amd64-setup.exe
 build/release/transactions-X.Y.Z-windows-amd64.zip
 ```
 
-安装器是用户级安装，不需要管理员权限。生成后先本地安装 / 卸载一次，确认版本与
-「关于软件」一致，再发布。
-
 ## 4. 发布
 
 确保工作树干净，然后打标签、跑发布脚本：
