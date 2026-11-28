@@ -376,8 +376,10 @@ func (m *Model) rail(c ui.C) {
 			emptystate.Notice(c, "暂无日记")
 		default:
 			// The tree keeps the page's inset on both sides: its rows are a
-			// column inside the panel, not bands welded to the rail's edges.
-			ui.Column(c).Grow(1).FillWidth().PadX(layout.Inset).Children(func() {
+			// column inside the panel, not bands welded to the rail's edges. It keeps
+			// the trees' inset above too, so the first year starts below the header's
+			// rule.
+			ui.Column(c).Grow(1).FillWidth().PadX(layout.Inset).PadTop(layout.TreeTopInset).Children(func() {
 				ui.Tree(c, &m.tree, len(m.rows), m.tree.Label, func(i int) {
 					m.rowContent(c, i)
 				}).Label("日记列表").Grow(1)

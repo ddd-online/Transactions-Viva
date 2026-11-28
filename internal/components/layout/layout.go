@@ -52,6 +52,11 @@ const (
 	// the reference application uses for the same trees.
 	TreeRowHeight float32 = 30
 
+	// TreeTopInset is the air between a rail header's rule and the tree's first row.
+	// A tree row is only 30px tall and centres its name, so without it the first row
+	// starts against the rule and the tree reads as if it were welded to the header.
+	TreeTopInset float32 = 4
+
 	// FooterHeight is the band under a table that carries its totals.
 	FooterHeight float32 = 40
 
