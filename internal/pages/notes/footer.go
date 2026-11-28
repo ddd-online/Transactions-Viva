@@ -13,6 +13,8 @@ import (
 // footer is the note's status bar: how much the note holds, at the quiet right end
 // of the window. It is chrome like every page footer — the caption step, the mono
 // grid, one right-aligned row — so it reads as the page's, not as the document's.
+// It draws no rule above itself: the writing surface runs into it, and the numbers
+// sit far enough below the last line to stay out of the way.
 //
 // The three figures are the note's own, not the selection's: 字符数 counts every
 // character the blocks carry (spaces and punctuation included, the line breaks

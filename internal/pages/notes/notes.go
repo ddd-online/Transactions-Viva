@@ -995,7 +995,6 @@ func (m *Model) detail(c ui.C) {
 		ui.Column(c).Grow(1).FillWidth().PadX(layout.Inset).Children(func() {
 			m.bodyView(c)
 		})
-		ui.Divider(c)
 		m.footer(c)
 	})
 }
