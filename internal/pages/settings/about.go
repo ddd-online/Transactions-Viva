@@ -27,11 +27,11 @@ const (
 	aboutGlyphSize = float32(27)
 )
 
-// about is 关于软件: what this copy is, how to keep it up to date, the proxy the
-// update goes through, where the project lives. The composition follows motty's
-// about page — an identity header with one copy action, the build's facts as a tile
-// grid, the update row, the update proxy, two places to go and the framework's
-// colophon — carried by this application's type scale and its own links.
+// about is 关于软件: what this copy is, how to keep it up to date, where the
+// project lives. The composition follows motty's about page — an identity header
+// with one copy action, the build's facts as a tile grid, the update card with its
+// proxy row, two places to go and the framework's colophon — carried by this
+// application's type scale and its own links.
 func (m *Model) about(c ui.C, spec Spec) {
 	facts := buildinfo.Read()
 	controls.Page(c, &m.pageScroll, "关于软件",
@@ -39,8 +39,11 @@ func (m *Model) about(c ui.C, spec Spec) {
 		controls.GroupSpec{Raw: true, Body: func() {
 			controls.Section(c, "版本信息", func() { m.aboutFacts(c, facts) })
 		}},
-		controls.GroupSpec{Title: "更新", Body: func() { m.update(c, spec) }},
-		controls.GroupSpec{Title: "更新代理", Body: func() { m.proxy(c, spec) }},
+		controls.GroupSpec{Title: "更新", Body: func() {
+			m.update(c, spec)
+			ui.Divider(c)
+			m.proxy(c, spec)
+		}},
 		controls.GroupSpec{Raw: true, Body: func() {
 			controls.Section(c, "项目", func() { m.aboutLinks(c, spec) })
 		}},

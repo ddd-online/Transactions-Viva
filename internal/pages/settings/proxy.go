@@ -32,12 +32,12 @@ func proxyModeLabel(mode config.ProxyMode) string {
 	return "自动探测"
 }
 
-// proxy is 更新代理: the proxy the update check and the download go through, on
-// 关于软件 beside the update row. Quotes and the ladder connect directly, so this
-// setting is only about reaching GitHub. The mode is written as soon as it is
-// chosen; a manual address is edited locally and saved, then tested through the same
-// client the update uses. The previous test result is dropped when the setting
-// changes.
+// proxy is the 更新代理 row of the 更新 card: the proxy the update check and the
+// download go through, under the update row. Quotes and the ladder connect
+// directly, so this setting is only about reaching GitHub. The mode is written as
+// soon as it is chosen; a manual address is edited locally and saved, then tested
+// through the same client the update uses. The previous test result is dropped
+// when the setting changes.
 func (m *Model) proxy(c ui.C, spec Spec) {
 	theme := c.Theme()
 	metrics := theme.Metrics
@@ -58,7 +58,7 @@ func (m *Model) proxy(c ui.C, spec Spec) {
 	ui.Column(c).FillWidth().Shrink(0).PadX(metrics.PadSurface).
 		PadY(metrics.GapItem * 2).Gap(metrics.GapItem).Children(func() {
 		ui.Row(c).FillWidth().Items(ui.Center).Gap(metrics.GapItem).Children(func() {
-			typography.Body(c, "代理")
+			typography.Body(c, "更新代理")
 			if m.proxyState != "" {
 				color := theme.Success
 				tip := "上次检测：连通"
