@@ -192,9 +192,9 @@ func (w *Workspace) DiaryEntry(ctx context.Context, bookID, date string) (domain
 
 // SaveDiary writes one day's entry and returns the row as stored.
 //
-// Same book and date is an update: the row keeps its id, created_at and
-// updated_at (the DAO's ON CONFLICT clause listed only content, word_count
-// and mood), and the word count is the text's length in code points. The mood is
+// Same book and date is an update: the row keeps its id and created_at (the day it
+// was first written) and moves updated_at to this write, so the two times mean what
+// their names say. The word count is the text's length in code points. The mood is
 // written as the page holds it; a Chinese mood is normalized by
 // domain.NormalizeDiaryMood where it is shown, not here.
 func (w *Workspace) SaveDiary(ctx context.Context, bookID, date, content, mood string) (domain.DiaryEntry, error) {
@@ -222,7 +222,8 @@ func (w *Workspace) SaveDiary(ctx context.Context, bookID, date, content, mood s
 	if _, err := db.ExecContext(ctx,
 		"INSERT INTO diary_entry ("+diaryColumns+") VALUES (?, ?, ?, ?, ?, ?, ?, ?) "+
 			"ON CONFLICT(book_id, date) DO UPDATE SET "+
-			"content = excluded.content, word_count = excluded.word_count, mood = excluded.mood",
+			"content = excluded.content, word_count = excluded.word_count, mood = excluded.mood, "+
+			"updated_at = excluded.updated_at",
 		newID(), date, content, domain.DiaryWordCount(content), mood, now, now, bookID,
 	); err != nil {
 		return domain.DiaryEntry{}, err

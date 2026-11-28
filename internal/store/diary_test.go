@@ -42,8 +42,9 @@ func TestDiarySaveReadAndDelete(t *testing.T) {
 		t.Fatalf("read = %+v, saved = %+v", read, saved)
 	}
 
-	// Saving the same day again replaces the text but keeps the row's identity
-	// and its timestamps.
+	// Saving the same day again replaces the text but keeps the row's identity and
+	// the day it was first written; the update time moves to this write (the same
+	// second here, so the focused test below proves the move).
 	again, err := workspace.SaveDiary(ctx, bookID, "2026-01-15", "今天很好，明天继续", "😊")
 	if err != nil {
 		t.Fatalf("SaveDiary again: %v", err)
@@ -54,8 +55,8 @@ func TestDiarySaveReadAndDelete(t *testing.T) {
 	if again.WordCount != 9 || again.Mood != "😊" {
 		t.Fatalf("updated = %+v", again)
 	}
-	if again.CreatedAt != saved.CreatedAt || again.UpdatedAt != saved.UpdatedAt {
-		t.Fatalf("timestamps changed on update: %+v then %+v", saved, again)
+	if again.CreatedAt != saved.CreatedAt || again.UpdatedAt < saved.UpdatedAt {
+		t.Fatalf("timestamps moved back on update: %+v then %+v", saved, again)
 	}
 
 	dates, err := workspace.DiaryDates(ctx, bookID)
@@ -72,6 +73,53 @@ func TestDiarySaveReadAndDelete(t *testing.T) {
 	// Deleting a day twice is not an error.
 	if err := workspace.DeleteDiary(ctx, bookID, "2026-01-15"); err != nil {
 		t.Fatalf("second DeleteDiary: %v", err)
+	}
+}
+
+// TestDiaryEditMovesTheUpdateTime: writing a day again keeps its created_at — the
+// day it was first written — and moves updated_at to the last write. The row is
+// backdated first, so a second write in the same second still shows the move.
+func TestDiaryEditMovesTheUpdateTime(t *testing.T) {
+	ctx := context.Background()
+	workspace := testWorkspace(t)
+	bookID := testDiaryBook(t, workspace)
+
+	saved, err := workspace.SaveDiary(ctx, bookID, "2026-01-15", "初稿", "")
+	if err != nil {
+		t.Fatalf("SaveDiary: %v", err)
+	}
+	db, err := workspace.dbHandle()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx,
+		"UPDATE diary_entry SET updated_at = 1 WHERE book_id = ? AND date = ?",
+		bookID, "2026-01-15"); err != nil {
+		t.Fatalf("backdate: %v", err)
+	}
+
+	again, err := workspace.SaveDiary(ctx, bookID, "2026-01-15", "第二稿", "😊")
+	if err != nil {
+		t.Fatalf("SaveDiary again: %v", err)
+	}
+	if again.CreatedAt != saved.CreatedAt {
+		t.Fatalf("created_at moved: %d then %d", saved.CreatedAt, again.CreatedAt)
+	}
+	if again.UpdatedAt <= 1 {
+		t.Fatalf("updated_at = %d, want the write's own time", again.UpdatedAt)
+	}
+	// The mood alone is a write too.
+	if _, err := db.ExecContext(ctx,
+		"UPDATE diary_entry SET updated_at = 1 WHERE book_id = ? AND date = ?",
+		bookID, "2026-01-15"); err != nil {
+		t.Fatalf("backdate: %v", err)
+	}
+	moodOnly, err := workspace.SaveDiary(ctx, bookID, "2026-01-15", "第二稿", "😐")
+	if err != nil {
+		t.Fatalf("SaveDiary for the mood: %v", err)
+	}
+	if moodOnly.UpdatedAt <= 1 || moodOnly.CreatedAt != saved.CreatedAt {
+		t.Fatalf("mood-only write: %+v", moodOnly)
 	}
 }
 

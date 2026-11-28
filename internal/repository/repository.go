@@ -192,8 +192,9 @@ type Repository interface {
 	DiaryDates(ctx context.Context, bookID string) ([]domain.DiaryDateItem, error)
 	// DiaryEntry reads one day; a day without an entry is ErrNotFound.
 	DiaryEntry(ctx context.Context, bookID, date string) (domain.DiaryEntry, error)
-	// SaveDiary writes one day, replacing the day's entry when it exists (the
-	// row keeps its id and timestamps) and counting the text's code points.
+	// SaveDiary writes one day, replacing the day's entry when it exists (the row
+	// keeps its id and created_at, and updated_at moves to this write) and counting
+	// the text's code points.
 	SaveDiary(ctx context.Context, bookID, date, content, mood string) (domain.DiaryEntry, error)
 	DeleteDiary(ctx context.Context, bookID, date string) error
 	// DiaryEntries is one book's whole diary, oldest first, for an export.
