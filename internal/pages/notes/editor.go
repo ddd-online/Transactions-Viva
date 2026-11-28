@@ -715,9 +715,16 @@ func (m *Model) bodyEvent(event window.TextEvent) (window.TextState, error) {
 			return m.state(), nil
 		case window.TextDeleteBackward:
 			start := m.backspaceStart()
-			if start < 0 || start >= len(m.blocks) || !takesText(m.blocks[start].Kind) {
-				// A picture's or a rule's line cannot take the words under it: a
-				// backspace there would join them into a line nothing paints.
+			if start < 0 || start >= len(m.blocks) {
+				return m.state(), nil
+			}
+			if !takesText(m.blocks[start].Kind) {
+				// A rule has no words to join, so a backspace at the start of the line
+				// under it takes the rule away instead. A picture's line keeps its guard:
+				// one keystroke is not how a picture is deleted.
+				if m.blocks[start].Kind == domain.NoteBlockDivider {
+					m.deleteDivider(start)
+				}
 				return m.state(), nil
 			}
 			m.newHistoryStep()
@@ -887,6 +894,32 @@ func (m *Model) insertDivider() {
 	}
 	m.newHistoryStep()
 	m.insertColdBlock(domain.NoteBlock{Kind: domain.NoteBlockDivider}, false)
+}
+
+// deleteDivider takes a rule away from under the caret, the backspace at the start of
+// the line beneath it: the line that was under the rule keeps its words and its place,
+// and the caret stays at its start. It is one undo step, like the rule's insertion.
+func (m *Model) deleteDivider(index int) {
+	if index < 0 || index >= len(m.blocks) || index+1 >= len(m.blocks) ||
+		m.blocks[index].Kind != domain.NoteBlockDivider {
+		return
+	}
+	m.newHistoryStep()
+	// The rule owns one empty line: from its start to the start of the line under it is
+	// the whole of what goes.
+	start := m.blockStart(index)
+	m.doc.ReplaceRange(text.Range{
+		Start: m.bytesToRune(start),
+		End:   m.bytesToRune(m.blockStart(index + 1)),
+	}, "")
+	m.syncLines()
+	m.removeBlock(index)
+	m.doc.MoveTo(m.bytesToRune(start), false)
+	m.linesDirty = false
+	m.bodyLayout = bodyLayout{}
+	m.selectedImage = -1
+	m.markEdited(m.now)
+	m.flush()
 }
 
 // dividerMarks turns the "--" that a third dash completes into a divider: the

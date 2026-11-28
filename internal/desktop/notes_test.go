@@ -1154,10 +1154,10 @@ func TestNotesDividerTakesTheCaretBelowIt(t *testing.T) {
 	}
 }
 
-// TestNotesDividerKeepsTheTextUnderIt: the line of a rule holds no words, so a
-// backspace at the start of the text under one may not join the two — that would
-// give the rule a line nothing paints.
-func TestNotesDividerKeepsTheTextUnderIt(t *testing.T) {
+// TestNotesBackspaceUnderADividerTakesTheRule: a rule holds no words, so a backspace
+// at the start of the line under it cannot join the two — it takes the rule away
+// instead, leaving the line and its words where they were, and undo brings it back.
+func TestNotesBackspaceUnderADividerTakesTheRule(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "笔记")
 	createNote(t, driver)
@@ -1180,11 +1180,80 @@ func TestNotesDividerKeepsTheTextUnderIt(t *testing.T) {
 	}
 	advance(t, driver)
 	blocks := noteByTitle(t, model, "退格").Blocks
-	if len(blocks) != 2 || blocks[0].Kind != domain.NoteBlockDivider || blocks[0].Text != "" {
+	if len(blocks) != 1 || blocks[0].Kind != domain.NoteBlockText || blocks[0].Text != "保住了" {
 		t.Fatalf("blocks after the backspace = %+v", blocks)
 	}
-	if blocks[1].Kind != domain.NoteBlockText || blocks[1].Text != "保住了" {
-		t.Fatalf("the text under the rule = %+v", blocks[1])
+
+	// Undo puts the rule back under the same line.
+	if err := driver.Chord(gfx.ModifierControl, "z"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	blocks = noteByTitle(t, model, "退格").Blocks
+	if len(blocks) != 2 || blocks[0].Kind != domain.NoteBlockDivider || blocks[1].Text != "保住了" {
+		t.Fatalf("blocks after the undo = %+v", blocks)
+	}
+
+	// Take it away again: the caret comes back to the start of the line it was over,
+	// so the next word lands before the words already there.
+	text = noteTextBounds(t, driver, "保住了")
+	if err := driver.Click(text.X+2, text.Y+text.Height/2); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Key(gfx.KeyBackspace, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Type("前"); err != nil {
+		t.Fatalf("typing after the backspace: %v", err)
+	}
+	advance(t, driver)
+	blocks = noteByTitle(t, model, "退格").Blocks
+	if len(blocks) != 1 || blocks[0].Text != "前保住了" {
+		t.Fatalf("the word typed after the backspace landed in %+v", blocks)
+	}
+}
+
+// TestNotesBackspaceUnderAMiddleDivider: a rule between two lines goes the same way,
+// and the two lines are left as neighbours.
+func TestNotesBackspaceUnderAMiddleDivider(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("夹住"); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "笔记正文")
+	if err := driver.Type("上"); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Key(gfx.KeyEnter, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Type("下"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+
+	// The rule is put after 上, so it lands between the two lines and the caret comes
+	// to rest at the start of 下.
+	line := noteTextBounds(t, driver, "上")
+	if err := driver.Click(line.X+line.Width-1, line.Y+line.Height/2); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "插入分隔线")
+	advance(t, driver)
+	blocks := noteByTitle(t, model, "夹住").Blocks
+	if len(blocks) != 3 || blocks[1].Kind != domain.NoteBlockDivider {
+		t.Fatalf("blocks before the backspace = %+v", blocks)
+	}
+
+	if err := driver.Key(gfx.KeyBackspace, 0); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	blocks = noteByTitle(t, model, "夹住").Blocks
+	if len(blocks) != 2 || blocks[0].Text != "上" || blocks[1].Text != "下" {
+		t.Fatalf("blocks after the backspace = %+v", blocks)
 	}
 }
 
