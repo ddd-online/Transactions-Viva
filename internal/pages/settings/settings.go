@@ -297,7 +297,7 @@ type Model struct {
 	backupDelete    BackupEntry
 	backupDeleteOn  bool
 
-	// 网络代理 draft: the URL is edited locally until 保存, while the mode is
+	// 更新代理 draft: the URL is edited locally until 保存, while the mode is
 	// written immediately like the other segmented controls.
 	proxyLoaded bool
 	proxyURL    string
