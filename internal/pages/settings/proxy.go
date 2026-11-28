@@ -32,9 +32,12 @@ func proxyModeLabel(mode config.ProxyMode) string {
 	return "自动探测"
 }
 
-// proxy is 网络代理: the mode is written as soon as it is chosen; a manual
-// address is edited locally and saved, then tested through the same client the
-// stock pages use. The previous test result is dropped when the setting changes.
+// proxy is 更新代理: the proxy the update check and the download go through, on
+// 关于软件 beside the update row. Quotes and the ladder connect directly, so this
+// setting is only about reaching GitHub. The mode is written as soon as it is
+// chosen; a manual address is edited locally and saved, then tested through the same
+// client the update uses. The previous test result is dropped when the setting
+// changes.
 func (m *Model) proxy(c ui.C, spec Spec) {
 	theme := c.Theme()
 	metrics := theme.Metrics
@@ -91,7 +94,7 @@ func (m *Model) proxy(c ui.C, spec Spec) {
 				}
 			}
 		})
-		typography.CaptionParagraph(c, "行情、涨停池与更新检查走代理；自动探测先读环境变量，再读系统代理。", 2)
+		typography.CaptionParagraph(c, "只有更新检查与下载走代理；行情与涨停池直连。自动探测先读环境变量，再读系统代理。", 2)
 		switch mode {
 		case config.ProxyAuto:
 			typography.Caption(c, "当前："+spec.ProxyResolved).Mono().Ellipsis()
@@ -107,7 +110,7 @@ func (m *Model) proxy(c ui.C, spec Spec) {
 				}
 			})
 		default:
-			typography.Caption(c, "所有联网都直连，不读取环境变量里的代理设置。").Muted()
+			typography.Caption(c, "更新检查与下载直连，不读取环境变量里的代理设置。").Muted()
 		}
 	})
 }

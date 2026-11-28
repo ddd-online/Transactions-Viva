@@ -1,6 +1,7 @@
-// Package proxy holds the HTTP proxy rules: the three modes, manual address
-// normalization, automatic detection (environment, then the platform's system
-// proxy) and one outbound client for stocks and update checks.
+// Package proxy holds the update's HTTP proxy rules: the three modes, manual
+// address normalization, automatic detection (environment, then the platform's
+// system proxy) and the outbound client the update check and its download use.
+// Nothing else goes through it — quotes and the ladder connect directly.
 package proxy
 
 import (

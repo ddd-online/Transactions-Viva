@@ -17,6 +17,9 @@ import (
 // panicked the paint the moment a result arrived.
 func TestProxyTestResultPaintsItsStatusDot(t *testing.T) {
 	model := New()
+	// The proxy lives on 关于软件 beside the update row: only the update check and
+	// the download go through it.
+	model.tab = tabAbout
 	var tested int
 	spec := Spec{
 		Proxy:         config.ProxySetting{Mode: config.ProxyAuto},

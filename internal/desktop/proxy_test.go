@@ -1,14 +1,32 @@
 package desktop
 
 import (
+	"net/http"
 	"testing"
 
 	"transactions/internal/config"
 )
 
+// TestStockClientsIgnoreTheUpdateProxy: quotes and the ladder connect directly —
+// the configured proxy is the update check's alone — and a proxy named by the
+// environment does not reach them either.
+func TestStockClientsIgnoreTheUpdateProxy(t *testing.T) {
+	t.Setenv("HTTP_PROXY", "http://127.0.0.1:9")
+	t.Setenv("HTTPS_PROXY", "http://127.0.0.1:9")
+	client := stockHTTPClient()
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok || transport.Proxy != nil {
+		t.Fatalf("the stock client keeps a proxy: %+v", client.Transport)
+	}
+	if client.Timeout != stockRequestTimeout {
+		t.Fatalf("stock timeout = %v, want %v", client.Timeout, stockRequestTimeout)
+	}
+}
+
 func TestProxyModeAndManualAddress(t *testing.T) {
 	driver, model := open(t)
 	click(t, driver, "设置")
+	click(t, driver, "关于软件")
 	click(t, driver, "手动")
 	click(t, driver, "代理地址")
 	driver.Type("127.0.0.1:7890")

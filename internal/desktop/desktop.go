@@ -129,7 +129,7 @@ func NewWithConfig(cfg config.AppConfig, store *config.Store) *Model {
 	// The 记账 pages and the 日记 page read one ledger list, so switching 账本 on
 	// either one is the same choice.
 	ledgers := ledger.NewStore()
-	quotes := &stockquote.TencentFetcher{Client: stockHTTPClient(cfg.Proxy)}
+	quotes := &stockquote.TencentFetcher{Client: stockHTTPClient()}
 	m := &Model{
 		config:      cfg,
 		configStore: store,

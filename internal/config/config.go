@@ -136,7 +136,9 @@ func (f *FeatureFlags) set(key FeatureKey, enabled bool) bool {
 	return true
 }
 
-// ProxySetting is the outbound proxy configuration.
+// ProxySetting is the proxy the update check and its download go through. Quotes
+// and the ladder never use it: they connect directly. The JSON key keeps its old
+// name, because it is user data.
 type ProxySetting struct {
 	Mode ProxyMode `json:"mode"`
 	URL  string    `json:"url"`

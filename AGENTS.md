@@ -38,7 +38,7 @@ internal/diary/          日记文件导入导出
 internal/assets/         图片资产：路径校验、落盘、删除、解码、缩略图
 internal/events/         事件图片导入 / 删除编排
 internal/backup/         备份命名、保留、快照 / 恢复与列表
-internal/proxy/          代理三态、地址归一化与 HTTP client
+internal/proxy/          更新代理三态、地址归一化与 HTTP client（只有更新走它）
 internal/update/         GitHub release 检查、下载 / 校验与安装
 internal/stockquote/     腾讯行情
 internal/stocklimit/     东财涨停池与天梯缓存
@@ -85,7 +85,8 @@ config 不依赖 UI；domain 不依赖 UI、数据库或操作系统；repositor
 - 新库 schema 版本在 `app_meta.schema_version`；打开时检查版本与 `quick_check`，拒绝损坏、陌生或
   更高版本的库。恢复前先把当前数据另存为 `pre-restore-*`。
 - 图表预设（月度 / 年度）只可删除，不可改名 / 改粒度；自建图表整行回写。
-- 联网能力仅限股票行情、涨停池和更新检查，且都可由用户配置 HTTP 代理；其余功能离线可用。
+- 联网能力仅限股票行情、涨停池和更新检查；只有更新检查与下载走用户配置的代理（关于软件 › 更新代理），
+  行情与涨停池一律直连，其余功能离线可用。
 
 ## 验证
 

@@ -951,10 +951,14 @@ func TestSettingsCategoriesSwitchThePage(t *testing.T) {
 	if hasControl(driver, "功能开关") {
 		t.Fatal("功能开关 is still a section of the settings rail")
 	}
-	for _, name := range []string{"常规", "网络代理", "功能开关"} {
+	for _, name := range []string{"常规", "功能开关"} {
 		if !shows(driver, name) {
 			t.Fatalf("通用设置 has no %q group", name)
 		}
+	}
+	// The proxy belongs to updating, so it is on 关于软件 as 更新代理, not here.
+	if shows(driver, "网络代理") {
+		t.Fatal("网络代理 should have moved to 关于软件 as 更新代理")
 	}
 
 	click(t, driver, "数据备份")
@@ -963,8 +967,10 @@ func TestSettingsCategoriesSwitchThePage(t *testing.T) {
 	}
 
 	click(t, driver, "关于软件")
-	if !shows(driver, "检查更新") {
-		t.Fatal("关于软件 did not show its settings rows")
+	for _, name := range []string{"检查更新", "更新代理", "检测"} {
+		if !shows(driver, name) {
+			t.Fatalf("关于软件 did not show its %q row", name)
+		}
 	}
 }
 
