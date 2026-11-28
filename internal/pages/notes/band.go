@@ -30,16 +30,6 @@ const (
 	pathMinWidth float32 = 200
 )
 
-// typeMenuState is the band's block-type menu: the block it will change, and
-// whether the last paint had it open. It is Viva's menu, anchored to the band's
-// button, and it is kept apart from the grip's blockMenu so the two never both
-// claim one menu.
-type typeMenuState struct {
-	open    bool
-	block   int
-	wasOpen bool
-}
-
 // editorBand is the strip under the title: where the note lives on the left, the
 // commands that change the block being written in the middle, and the right half
 // left for what comes next.
@@ -58,79 +48,74 @@ func (m *Model) editorBand(c ui.C) {
 	})
 }
 
-// blockCommands is the band's middle: the kind the block is, then the picture and
-// the rule a note adds rather than converts. The hairline keeps "what this block
-// is" apart from "what goes into the note", the way a page band separates the
-// ledger from the page's own filters.
+// blockCommands is the band's middle: the kinds the block can take, then the picture
+// and the rule a note adds rather than converts. The hairline keeps "what this block
+// is" apart from "what goes into the note", the way a page band separates the ledger
+// from the page's own filters.
 func (m *Model) blockCommands(c ui.C) {
 	ui.Row(c).Shrink(0).Gap(2).Items(ui.Center).Children(func() {
-		m.blockTypeButton(c)
+		m.typeButton(c, domain.NoteBlockText, 0, icons.Pilcrow, "正文")
+		m.typeButton(c, domain.NoteBlockHeading, 1, icons.Heading1, "标题 1")
+		m.typeButton(c, domain.NoteBlockHeading, 2, icons.Heading2, "标题 2")
+		m.typeButton(c, domain.NoteBlockHeading, 3, icons.Heading3, "标题 3")
 		ui.Divider(c).Height(bandRuleHeight).MarginX(4)
 		m.iconButton(c, "插入图片", icons.Image, m.pickPicture)
 		m.iconButton(c, "插入分隔线", icons.Minus, m.insertDivider)
 	})
 }
 
-// blockTypeButton is the band's menu: it wears the kind of the block the caret is
-// in — ¶ for prose, H1–H5 for a heading, and the insert marks for a picture and a
-// rule — and opens the kinds that block can become. The grip's menu offers the same
-// list with the same chords; the band is the same command without leaving the text.
-func (m *Model) blockTypeButton(c ui.C) {
+// typeButton is one kind in the band's set: it turns the block the caret is in into
+// its kind, and it wears the selected fill while the caret is in that kind, so the
+// band answers "what is this line" as well as "make it that".
+//
+// The set stops at level 3: deeper headings are a rarer hand and stay in the grip's
+// menu and the "/" menu, which list all five levels and their chords.
+func (m *Model) typeButton(c ui.C, kind string, level int, icon gfx.Icon, label string) {
 	theme := c.Theme()
-	block := domain.NoteBlock{Kind: domain.NoteBlockText}
+	active := false
 	if index := m.caretBlock(); index >= 0 {
-		block = m.blocks[index]
+		block := m.blocks[index]
+		active = block.Kind == kind && (kind != domain.NoteBlockHeading || block.Level == level)
 	}
-	button := ui.ButtonBase(c, "块类型").Height(bandControlHeight).PadX(6).Gap(2).
+	button := ui.ButtonBase(c, label).Size(bandControlHeight, bandControlHeight).
 		Radius(theme.Metrics.RadiusControl).
 		Hover(ui.Look{}.Background(state.Hover(*theme))).
 		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
 		Focus(ui.Look{}.Ring(2, theme.Ring)).
-		Tooltip("块类型").Shrink(0)
+		Tooltip(label).Shrink(0)
+	if active {
+		// The chosen kind keeps its wash under the pointer: the fill is a state, not
+		// a hover that can wash it away.
+		button = button.Background(theme.Accent).
+			Hover(ui.Look{}.Background(theme.Accent.Over(theme.Hover))).
+			Pressed(ui.Look{}.Background(theme.Accent.Over(state.Pressed(*theme))))
+	}
 	button.Children(func() {
-		ui.Icon(c, blockKindIcon(block)).Size(15, 15)
-		// The chevron is the only word the band spends on saying "this opens a list":
-		// the face is the value, the mark is the affordance.
-		ui.Icon(c, icons.ChevronDown).Size(10, 10).Color(theme.MutedForeground)
+		ui.Icon(c, icon).Size(15, 15)
 	})
 	if button.Clicked() {
-		m.typeMenu.block = m.caretBlock()
-		m.typeMenu.open = !m.typeMenu.open
+		m.setBlockType(kind, level)
 	}
-	ui.Menu(c, button, &m.typeMenu.open, func(items *ui.MenuItems) {
-		for _, command := range gripCommands {
-			if command.group() != commandGroupTurn {
-				continue
-			}
-			// The chord is in the row, so the menu teaches the shortcut the body
-			// already declares: what the band does with the pointer, the keyboard
-			// does without leaving the line.
-			if shortcutHint(items.Item(command.label).Icon(command.icon), command).Clicked() {
-				m.chooseBlockType(command)
-				return
-			}
-		}
-	})
 }
 
-// chooseBlockType turns the block the menu was opened on into the command's kind.
-// Its words stay where they are — only the block's shape changes — and the switch
-// is the same one undo step the grip menu's 转为 row records.
-func (m *Model) chooseBlockType(command bodyCommand) {
-	index := m.typeMenu.block
-	m.typeMenu.open = false
+// setBlockType turns the block the caret is in into a text block or a heading level.
+// Its words stay where they are — only the block's shape changes — and the switch is
+// the same one undo step the grip menu's 转为 row records.
+func (m *Model) setBlockType(kind string, level int) {
+	index := m.caretBlock()
 	if index < 0 || index >= len(m.blocks) {
 		return
 	}
 	block := m.blocks[index]
-	if block.Kind == command.kind && block.Level == command.level {
+	if block.Kind == kind && block.Level == level {
 		return
 	}
 	m.newHistoryStep()
-	m.blocks[index].Kind = command.kind
-	m.blocks[index].Level = command.level
+	m.blocks[index].Kind = kind
+	m.blocks[index].Level = level
 	m.bodyLayout = bodyLayout{}
 	m.selectedImage = -1
+	m.focusBody = true
 	m.markEdited(m.now)
 	m.flush()
 }
@@ -145,21 +130,6 @@ func (m *Model) caretBlock() int {
 		return -1
 	}
 	return index
-}
-
-// blockKindIcon is the mark of a block's kind: the paragraph sign for prose, the
-// level's own H for a heading, and the marks the insert commands carry for a
-// picture and a rule, so the band's face says what the block is.
-func blockKindIcon(block domain.NoteBlock) gfx.Icon {
-	switch block.Kind {
-	case domain.NoteBlockHeading:
-		return headingIcon(block.Level)
-	case domain.NoteBlockImage:
-		return icons.Image
-	case domain.NoteBlockDivider:
-		return icons.Minus
-	}
-	return icons.Pilcrow
 }
 
 // breadcrumbNames is where the note lives: the folders that hold it from the root

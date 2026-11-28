@@ -233,16 +233,13 @@ func headingIcon(level int) gfx.Icon {
 }
 
 // litBlock is the block whose grip is shown: the one being dragged, the one whose
-// menu is open, the one the band's type menu will change, or the one under the
-// pointer.
+// menu is open, or the one under the pointer.
 func (m *Model) litBlock() int {
 	switch {
 	case m.dragBlock >= 0 && m.dragBlock < len(m.blocks):
 		return m.dragBlock
 	case m.blockMenu.open && m.blockMenu.block >= 0 && m.blockMenu.block < len(m.blocks):
 		return m.blockMenu.block
-	case m.typeMenu.open && m.typeMenu.block >= 0 && m.typeMenu.block < len(m.blocks):
-		return m.typeMenu.block
 	case m.hoverBlock >= 0 && m.hoverBlock < len(m.blocks):
 		return m.hoverBlock
 	}

@@ -349,7 +349,9 @@ func TestNotesSlashMenuTurnsABlockIntoAHeading(t *testing.T) {
 	if err := driver.Type("/"); err != nil {
 		t.Fatal(err)
 	}
-	click(t, driver, "标题 1")
+	// The band carries its own 标题 1 button; the menu row that belongs to this
+	// slash is the one painted last.
+	clickLast(t, driver, "标题 1")
 	if err := driver.Type("开会"); err != nil {
 		t.Fatal(err)
 	}
@@ -816,6 +818,33 @@ func TestNotesDividerAfterALineKeepsTheNextLine(t *testing.T) {
 	}
 }
 
+// buttonFill finds the wash a band button paints when it is the block's own kind: the
+// rounded fill lands exactly on the button's rect, and a button that is not the kind
+// paints none.
+func buttonFill(t *testing.T, driver *app.Driver, label string) (gfx.Rect, bool) {
+	t.Helper()
+	var button gfx.Rect
+	found := false
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == label {
+			button, found = hit.Bounds, true
+		}
+	}
+	if !found {
+		t.Fatalf("no control named %q", label)
+	}
+	for _, primitive := range driver.Snapshot().Primitives {
+		if primitive.Kind != app.RectanglePrimitive || primitive.Radius <= 0 {
+			continue
+		}
+		b := primitive.Bounds
+		if b.X == button.X && b.Y == button.Y && b.Width == button.Width && b.Height == button.Height {
+			return b, true
+		}
+	}
+	return gfx.Rect{}, false
+}
+
 // TestNotesBandChangesTheBlockKind: the band under the title names where the note
 // lives and changes the kind of the block the caret is in without touching its
 // words; the note takes the keyboard back after the choice.
@@ -834,26 +863,36 @@ func TestNotesBandChangesTheBlockKind(t *testing.T) {
 	if !painted(driver, "我的笔记") {
 		t.Fatal("the band should name the folder the note lives in")
 	}
-	click(t, driver, "块类型")
-	if !painted(driver, "转为标题 2") {
-		t.Fatal("the band's type menu should offer 转为标题 2")
-	}
-	click(t, driver, "转为标题 2")
+	click(t, driver, "标题 2")
 	advance(t, driver)
 
 	blocks := noteByTitle(t, model, "带子").Blocks
 	if len(blocks) != 1 || blocks[0].Kind != domain.NoteBlockHeading ||
 		blocks[0].Level != 2 || blocks[0].Text != "小节" {
-		t.Fatalf("blocks after the band's menu = %+v", blocks)
+		t.Fatalf("blocks after the band's 标题 2 = %+v", blocks)
+	}
+	// The band wears the kind the line is in, and only that one.
+	if _, ok := buttonFill(t, driver, "标题 2"); !ok {
+		t.Fatal("the band should mark 标题 2 as the block's kind")
+	}
+	if _, ok := buttonFill(t, driver, "正文"); ok {
+		t.Fatal("正文 should not wear the selected fill while the line is a heading")
 	}
 	// The keyboard comes back to the note: the next word joins the same block.
 	if err := driver.Type("续"); err != nil {
-		t.Fatalf("typing after the band's menu: %v", err)
+		t.Fatalf("typing after the band's 标题 2: %v", err)
 	}
 	advance(t, driver)
 	blocks = noteByTitle(t, model, "带子").Blocks
 	if len(blocks) != 1 || blocks[0].Text != "小节续" {
-		t.Fatalf("the word typed after the menu landed in %+v", blocks)
+		t.Fatalf("the word typed after the band's 标题 2 landed in %+v", blocks)
+	}
+	// Back to prose from the same row of buttons.
+	click(t, driver, "正文")
+	advance(t, driver)
+	blocks = noteByTitle(t, model, "带子").Blocks
+	if len(blocks) != 1 || blocks[0].Kind != domain.NoteBlockText || blocks[0].Level != 0 {
+		t.Fatalf("blocks after the band's 正文 = %+v", blocks)
 	}
 }
 
@@ -904,7 +943,7 @@ func TestNotesBandKeepsThePathInANarrowWindow(t *testing.T) {
 	if err := driver.Paint(); err != nil {
 		t.Fatal(err)
 	}
-	button := noteControlBounds(t, driver, "块类型")
+	button := noteControlBounds(t, driver, "标题 1")
 	bodyX := float32(0)
 	for _, hit := range driver.Snapshot().Hits {
 		if hit.Label == "笔记正文" {
