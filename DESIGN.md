@@ -391,8 +391,8 @@ Windows 打开「高对比度」时，`highContrastTheme` 在所选外观之上�
 ### Chips / Marks
 
 - **Style:** 语义色字 + 同色 12% 底，无描边，5.5px 圆角，`PadX(6~8) PadY(1~2)`。
-- **Muted tag:** 中性胶囊用 `Muted` 底 + 次要灰字，和语义胶囊区分开（前者是分类，后者是状态）。
-- **Tag list:** 记录表与模板表的标签列，每个标签一枚中性胶囊（`internal/components/tag`），单行排列；放不下的折成一枚同样的 `+N`，不换行、不撑高表格行。列宽由表格决定，胶囊只负责按可用宽度测量与收口——同一枚胶囊在两页里必须是同一个形状。
+- **Muted tag:** 分类用的中性标签是 Viva 的 `ui/tag`（compact：`Secondary` 底、1px `Border` 描边、`RadiusControl` 圆角、`FontSizeS - 1` 的 Medium 字，字色 `SecondaryForeground`），和上面那种语义胶囊（状态，自绘）区分开。
+- **Tag list:** 记录表与模板表的标签列，每个标签一枚 Viva 的 compact tag（`internal/components/tag` 只负责这一列），单行排列；放不下的折成一枚同样的 `+N`，不换行、不撑高表格行。列宽由表格决定，组件按 `ui/tag` 的 padding 与描边量出宽度再收口——同一枚标签在两页里必须是同一个形状。
 
 ### Dialogs
 
