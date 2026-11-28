@@ -1084,6 +1084,9 @@ func TestNotesFooterShowsTheDraftState(t *testing.T) {
 			bodyX = hit.Bounds.X
 		}
 	}
+	if bodyX == 0 {
+		t.Fatal("the note painted no body to compare the footer's edge with")
+	}
 	if state.X < bodyX-1 || state.X > bodyX+1 {
 		t.Fatalf("the draft state starts at %.1f, want the note's own edge %.1f", state.X, bodyX)
 	}
