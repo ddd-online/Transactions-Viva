@@ -98,8 +98,8 @@ type State struct {
 	draft       Draft
 	fields      fields
 	tags        tags
-	datePick    datepicker.State
-	eventPick   datepicker.State
+	datePick    datepicker.Panel
+	eventPick   datepicker.Panel
 	mark        string
 	templateID  string
 	templateMsg string
@@ -115,8 +115,6 @@ func New() State {
 	state.tags.removes = state.tags.tree.Sub(state.tags.feature, state.tags.tree.Name("remove"))
 	state.tags.state.AllowCreate = true
 	state.tags.state.MatchCaseInsensitive = true
-	state.datePick = datepicker.NewState()
-	state.eventPick = datepicker.NewState()
 	return state
 }
 
@@ -156,8 +154,8 @@ func (state *State) View(c ui.C, spec Spec) {
 			state.templateField(c, spec)
 			ui.Row(c).Gap(12).Children(func() {
 				state.formField(c, &state.fields.date, "日期", func() {
-					datepicker.Picker(c, &state.datePick,
-						state.dateSpec("日期", "YYYY-MM-DD", &state.draft.Date, c.Bounds()))
+					state.datePick.Field(c, &state.draft.Date,
+						panelSpec("YYYY-MM-DD", c.Bounds()))
 				})
 				state.formField(c, &state.fields.kind, "类型", func() {
 					ui.Choice(c, &state.draft.Kind, kindLabels[:], nil).Grow(1)
@@ -176,8 +174,8 @@ func (state *State) View(c ui.C, spec Spec) {
 					selectbox.Select(c, &state.mark, markLabels[:], nil).Placeholder("选择标记")
 				})
 				state.formField(c, &state.fields.eventDate, "关联事件日期", func() {
-					datepicker.Picker(c, &state.eventPick,
-						state.dateSpec("关联事件日期", "请选择日期", &state.draft.EventDate, c.Bounds()))
+					state.eventPick.Field(c, &state.draft.EventDate,
+						panelSpec("请选择日期", c.Bounds()))
 				})
 			})
 			state.wideFormField(c, &state.fields.description, "描述", func() {
@@ -258,15 +256,11 @@ func (state *State) wideFormField(c ui.C, field *ui.FormFieldState, label string
 // dialog does not use, so the fixed row keeps the modal's density.
 const formFieldHeight float32 = 64
 
-// dateSpec is the dialog's single-day picker: the toolbar's DatePicker fixed to
-// days, without the grain choice and the period arrows; it writes the day it is
-// given back into value and closes.
-func (state *State) dateSpec(label, placeholder string, value *string, viewport gfx.Rect) datepicker.Spec {
-	return datepicker.Spec{
-		Label: label, Placeholder: placeholder, Start: *value,
-		Grain: datepicker.ByDay, Fill: true, CloseOnPick: true,
-		Viewport: viewport,
-		OnRange:  func(start, _ string) { *value = start },
+// panelSpec is the dialog's single-day picker: Viva's calendar in the panel the
+// field floats, which writes the day it is given back into the draft and closes.
+func panelSpec(placeholder string, viewport gfx.Rect) datepicker.PanelSpec {
+	return datepicker.PanelSpec{
+		Placeholder: placeholder, Fill: true, Viewport: viewport,
 	}
 }
 
@@ -371,7 +365,7 @@ func (state *State) Key(event gfx.KeyEvent) gfx.EventResult {
 		state.datePick.Open, state.eventPick.Open = false, false
 		return gfx.EventResult{Handled: true, Repaint: true}
 	}
-	for _, pick := range []*datepicker.State{&state.datePick, &state.eventPick} {
+	for _, pick := range []*datepicker.Panel{&state.datePick, &state.eventPick} {
 		if pick.Open {
 			if result := pick.Key(event); result.Handled {
 				return result

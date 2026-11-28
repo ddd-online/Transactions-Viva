@@ -25,9 +25,9 @@ var dayLabels = vivaday.Labels{
 // pages store. Keep it in the model beside the value it edits; its zero value is
 // ready to declare.
 //
-// It is for a field on a page. A field inside a ui.Modal keeps Picker's own day
-// grid: in Viva 0.6.10 a ui.Popover opened inside a dialog paints its panel but
-// publishes no hit for it, so a press on a day only dismisses the panel.
+// It is for a field on a page. A field inside a ui.Modal takes Panel: in Viva
+// 0.6.10 a ui.Popover opened inside a dialog publishes its hits outside the
+// dialog's focus trap, so a press on a day only dismisses the dialog.
 type Day struct {
 	picker *vivaday.DatePicker
 	value  time.Time

@@ -670,10 +670,11 @@ func TestRecordMarkSelectKeepsTheDialogStill(t *testing.T) {
 	}
 }
 
-// TestRecordDatePicker drives the composer's date panel: it opens over the
-// form, floats without moving it, writes the picked day and closes. The field
-// is the same DatePicker as the toolbar's, fixed to days and without the grain
-// choice and the period arrows.
+// TestRecordDatePicker drives the composer's date panel: Viva's calendar opens
+// over the form, floats without moving it, writes the picked day and closes.
+// The field is the dialog's own panel (see datepicker.Panel), one month grid and
+// no grain choice or period arrows, and a press on a day must not dismiss the
+// dialog around it.
 func TestRecordDatePicker(t *testing.T) {
 	driver, _ := open(t)
 	click(t, driver, "记一笔")
@@ -683,13 +684,19 @@ func TestRecordDatePicker(t *testing.T) {
 	if !hasControl(driver, "关闭日期选择") {
 		t.Fatal("the date panel did not open")
 	}
-	if inDialog(driver, "上一周期") || inDialog(driver, "月") {
-		t.Fatal("a single date kept the range's grain choice or period arrows")
+	now := time.Now()
+	if !shows(driver, fmt.Sprintf("%d月 %d", int(now.Month()), now.Year())) {
+		t.Fatal("the panel did not open on this month")
+	}
+	if !hasControl(driver, "上个月") || !hasControl(driver, "下个月") {
+		t.Fatal("the panel has no month arrows")
+	}
+	if inDialog(driver, "上一周期") {
+		t.Fatal("a single date kept the range's period arrows")
 	}
 	if moved := labelBoundsOf(t, driver, "取消"); moved != still {
 		t.Fatalf("opening the panel moved the form: %v -> %v", still, moved)
 	}
-	now := time.Now()
 	click(t, driver, fmt.Sprintf("%d 年 %d 月 15 日", now.Year(), int(now.Month())))
 	want := now.Format("2006-01") + "-15"
 	if !shows(driver, want) {
@@ -697,6 +704,9 @@ func TestRecordDatePicker(t *testing.T) {
 	}
 	if hasControl(driver, "关闭日期选择") {
 		t.Fatal("picking a day left the panel open")
+	}
+	if !hasControl(driver, "取消") {
+		t.Fatal("picking a day dismissed the dialog")
 	}
 }
 
