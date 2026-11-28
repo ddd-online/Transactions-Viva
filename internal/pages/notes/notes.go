@@ -989,14 +989,12 @@ func (m *Model) detail(c ui.C) {
 	})
 }
 
-// titleBar is the band: the panel button that shows or hides the tree, the
-// note's title as a field, and at the right the draft's state. The title is
-// always the field, as the reference application has it: a title is read and
-// typed in the same place.
+// titleBar is the band: the panel button that shows or hides the tree and the
+// note's title as a field. The title is always the field, as the reference
+// application has it: a title is read and typed in the same place.
 func (m *Model) titleBar(c ui.C) {
 	m.railButton(c)
 	m.titleField(c)
-	m.saveState(c)
 }
 
 // railButton shows or hides the tree column. It lives in the band rather than
@@ -1028,7 +1026,9 @@ func (m *Model) titleField(c ui.C) {
 	}
 }
 
-// saveState is the quiet state at the right of the band.
+// saveState is the quiet state at the left of the footer: the draft's word beside
+// the note's size, both of them read at the foot of the page rather than in its
+// title band, where the title belongs alone.
 func (m *Model) saveState(c ui.C) {
 	theme := c.Theme()
 	label, color := "已保存", theme.MutedForeground

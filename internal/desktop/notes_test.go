@@ -1057,6 +1057,31 @@ func TestNotesFooterCountsTheNote(t *testing.T) {
 	}
 }
 
+// TestNotesFooterShowsTheDraftState: the save state lives at the footer's left, on
+// the same line as the note's size, and it follows the draft — 未保存 while the pause
+// runs, 已保存 once it lands.
+func TestNotesFooterShowsTheDraftState(t *testing.T) {
+	driver, _ := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	click(t, driver, "笔记正文")
+	if err := driver.Type("草稿"); err != nil {
+		t.Fatal(err)
+	}
+	state := noteTextBounds(t, driver, "未保存")
+	size := noteTextBounds(t, driver, "字符数")
+	if state.Y != size.Y {
+		t.Fatalf("the draft state %v is not on the footer's line %v", state, size)
+	}
+	if state.X >= size.X {
+		t.Fatalf("the draft state %v should stand left of the note's size %v", state, size)
+	}
+	advance(t, driver)
+	if !painted(driver, "已保存") {
+		t.Fatal("the saved draft should say 已保存 in the footer")
+	}
+}
+
 // TestNotesDividerTakesTheCaretBelowIt: a rule holds no caret, so a press on it
 // puts the caret at the start of the text line under it, and the next word goes
 // there rather than into the rule's own line.
