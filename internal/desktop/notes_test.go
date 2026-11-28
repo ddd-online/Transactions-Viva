@@ -894,6 +894,17 @@ func TestNotesBandChangesTheBlockKind(t *testing.T) {
 	if len(blocks) != 1 || blocks[0].Kind != domain.NoteBlockText || blocks[0].Level != 0 {
 		t.Fatalf("blocks after the band's 正文 = %+v", blocks)
 	}
+	// Pressing the key the line already is gives the keyboard back too: the next
+	// word lands in the note, not nowhere.
+	click(t, driver, "正文")
+	if err := driver.Type("！"); err != nil {
+		t.Fatalf("typing after the lit key: %v", err)
+	}
+	advance(t, driver)
+	blocks = noteByTitle(t, model, "带子").Blocks
+	if len(blocks) != 1 || blocks[0].Text != "小节续！" {
+		t.Fatalf("the word typed after the lit key landed in %+v", blocks)
+	}
 }
 
 // TestNotesBandInsertsADivider: the band's 插入分隔线 is the block menu's command

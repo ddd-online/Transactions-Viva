@@ -21,6 +21,13 @@ const (
 	// the rail's header uses, so the two bands' controls sit on one line even
 	// though their bands are in different columns.
 	bandControlHeight float32 = 28
+	// bandMarkSize is the mark inside a band key, and paragraphMarkSize the pilcrow's.
+	// The pilcrow's ink fills its box while the H marks are capitals floating in
+	// theirs, so the same 15px point made the paragraph the heaviest of the four and
+	// the default read as the exception; at the caption step it weighs like its
+	// neighbours, and it is the same glyph the grip and the menus print.
+	bandMarkSize      float32 = 15
+	paragraphMarkSize float32 = 12
 	// bandRuleHeight is the hairline that separates the kind of the block from the
 	// two blocks a note adds. It is the page bands' own separator height.
 	bandRuleHeight float32 = 24
@@ -54,10 +61,15 @@ func (m *Model) editorBand(c ui.C) {
 // from the page's own filters.
 func (m *Model) blockCommands(c ui.C) {
 	ui.Row(c).Shrink(0).Gap(2).Items(ui.Center).Children(func() {
-		m.typeButton(c, domain.NoteBlockText, 0, icons.Pilcrow, "正文")
-		m.typeButton(c, domain.NoteBlockHeading, 1, icons.Heading1, "标题 1")
-		m.typeButton(c, domain.NoteBlockHeading, 2, icons.Heading2, "标题 2")
-		m.typeButton(c, domain.NoteBlockHeading, 3, icons.Heading3, "标题 3")
+		// One kind of one block: the four keys are one stop of Tab and the arrows
+		// move between them, as the buttons of a toolbar do natively. Six stops here
+		// would make the keyboard walk every kind before it reached the text.
+		ui.Row(c).Shrink(0).Gap(2).Items(ui.Center).FocusGroup(ui.FocusHorizontal).Children(func() {
+			m.typeButton(c, domain.NoteBlockText, 0, icons.Pilcrow, paragraphMarkSize, "正文")
+			m.typeButton(c, domain.NoteBlockHeading, 1, icons.Heading1, bandMarkSize, "标题 1")
+			m.typeButton(c, domain.NoteBlockHeading, 2, icons.Heading2, bandMarkSize, "标题 2")
+			m.typeButton(c, domain.NoteBlockHeading, 3, icons.Heading3, bandMarkSize, "标题 3")
+		})
 		ui.Divider(c).Height(bandRuleHeight).MarginX(4)
 		m.iconButton(c, "插入图片", icons.Image, m.pickPicture)
 		m.iconButton(c, "插入分隔线", icons.Minus, m.insertDivider)
@@ -70,7 +82,7 @@ func (m *Model) blockCommands(c ui.C) {
 //
 // The set stops at level 3: deeper headings are a rarer hand and stay in the grip's
 // menu and the "/" menu, which list all five levels and their chords.
-func (m *Model) typeButton(c ui.C, kind string, level int, icon gfx.Icon, label string) {
+func (m *Model) typeButton(c ui.C, kind string, level int, icon gfx.Icon, size float32, label string) {
 	theme := c.Theme()
 	active := false
 	if index := m.caretBlock(); index >= 0 {
@@ -91,7 +103,7 @@ func (m *Model) typeButton(c ui.C, kind string, level int, icon gfx.Icon, label 
 			Pressed(ui.Look{}.Background(theme.Accent.Over(state.Pressed(*theme))))
 	}
 	button.Children(func() {
-		ui.Icon(c, icon).Size(15, 15)
+		ui.Icon(c, icon).Size(size, size)
 	})
 	if button.Clicked() {
 		m.setBlockType(kind, level)
@@ -101,11 +113,16 @@ func (m *Model) typeButton(c ui.C, kind string, level int, icon gfx.Icon, label 
 // setBlockType turns the block the caret is in into a text block or a heading level.
 // Its words stay where they are — only the block's shape changes — and the switch is
 // the same one undo step the grip menu's 转为 row records.
+//
+// The note takes the keyboard back whether or not the block already had this kind:
+// a key is a keyboard detour, and pressing the one already lit must not leave the
+// focus ring on a button the writer then types into.
 func (m *Model) setBlockType(kind string, level int) {
 	index := m.caretBlock()
 	if index < 0 || index >= len(m.blocks) {
 		return
 	}
+	m.focusBody = true
 	block := m.blocks[index]
 	if block.Kind == kind && block.Level == level {
 		return
@@ -115,7 +132,6 @@ func (m *Model) setBlockType(kind string, level int) {
 	m.blocks[index].Level = level
 	m.bodyLayout = bodyLayout{}
 	m.selectedImage = -1
-	m.focusBody = true
 	m.markEdited(m.now)
 	m.flush()
 }
