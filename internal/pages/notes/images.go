@@ -22,6 +22,64 @@ const (
 // errNoImage is the lightbox's report while the shell cannot decode a picture.
 var errNoImage = errors.New("没有可显示的图片")
 
+// imageMenuState is a picture block's right-click menu: the block it commands and
+// the point of the body it hangs from, so it opens under the pointer.
+type imageMenuState struct {
+	open  bool
+	block int
+	at    gfx.Point
+}
+
+// imageContextMenu declares the picture's menu as a Viva context menu at the point
+// the secondary press landed, the way the "/" menu hangs from the caret. It is
+// declared after the body, so the press that opens it never reaches the text.
+func (m *Model) imageContextMenu(c ui.C, body ui.Box) {
+	if !m.imageMenu.open {
+		return
+	}
+	block := m.imageMenu.block
+	ui.ContextMenuAt(c, body, &m.imageMenu.open, m.imageMenu.at, func(items *ui.MenuItems) {
+		if items.Item("复制图片到剪贴板").Clicked() {
+			m.copyImage(block)
+			return
+		}
+		if items.Item("删除图片块").Destructive().Clicked() {
+			m.deleteImage(block)
+		}
+	})
+}
+
+// openImageMenu puts the menu under the pointer over one picture block, and marks
+// that block selected so the picture the menu commands is the one in the frame.
+func (m *Model) openImageMenu(block int, at gfx.Point) {
+	m.imageMenu = imageMenuState{open: true, block: block, at: at}
+	m.selectedImage = block
+}
+
+// copyImage puts the picture's file on the clipboard and says so. A file is what the
+// platform's clipboard holds: pasting it into a folder copies the file, and pasting
+// it into an editor that takes files inserts the picture.
+func (m *Model) copyImage(block int) {
+	m.imageMenu = imageMenuState{block: -1}
+	if block < 0 || block >= len(m.blocks) || m.blocks[block].Kind != domain.NoteBlockImage ||
+		m.cmds.CopyImage == nil {
+		return
+	}
+	if err := m.cmds.CopyImage(m.blocks[block].ImagePath); err != nil {
+		m.report(err)
+		return
+	}
+	m.focusBody = true
+	m.toast("图片已复制到剪贴板")
+}
+
+// deleteImage takes a picture block out of the note: the lines around it close up,
+// and one undo brings the picture back.
+func (m *Model) deleteImage(block int) {
+	m.imageMenu = imageMenuState{block: -1}
+	m.deleteBlock(block)
+}
+
 // lightbox is the picture the viewer shows. The viewer owns the zoom, the pan and
 // the dialog; the page owns which picture it is and the decode behind it.
 type lightbox struct {

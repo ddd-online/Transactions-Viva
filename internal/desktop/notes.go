@@ -23,6 +23,7 @@ func (m *Model) notesCommands() notespage.Commands {
 		PickImage:   m.pickNoteImage,
 		ImportImage: m.importNoteImage,
 		PasteImage:  m.pasteNoteImage,
+		CopyImage:   m.copyNoteImage,
 		LoadImage:   m.loadNoteImage,
 		LoadView:    m.loadNoteView,
 	}
@@ -76,6 +77,24 @@ func (m *Model) pasteNoteImage(noteID string) (string, int, int, error) {
 	}
 	bounds := picture.Bounds()
 	return path, bounds.Dx(), bounds.Dy(), nil
+}
+
+// copyNoteImage puts a stored picture on the clipboard as its own file: the platform
+// clipboard takes files, and a picture file is what an explorer copies and what an
+// editor that accepts dropped files inserts. The lightbox and the editor keep
+// decoding the same file; nothing is re-encoded for the clipboard.
+func (m *Model) copyNoteImage(relative string) error {
+	if m.workspace == nil {
+		return errNoNoteWorkspace
+	}
+	full, err := assets.Resolve(m.workspace.Directory(), relative)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(full); err != nil {
+		return fmt.Errorf("图片文件不存在：%w", err)
+	}
+	return app.SetClipboardFiles([]string{full})
 }
 
 // loadNoteImage decodes one stored picture for painting.

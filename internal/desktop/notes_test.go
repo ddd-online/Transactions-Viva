@@ -2002,6 +2002,81 @@ func TestNotesFeatureSwitchHidesTheSection(t *testing.T) {
 	}
 }
 
+// TestNotesImageContextMenu: a secondary press on a picture opens its menu; 复制图片到
+// 剪贴板 puts the picture's own file on the clipboard, and 删除图片块 takes the block
+// out with one undo behind it.
+func TestNotesImageContextMenu(t *testing.T) {
+	driver, model := open(t)
+	click(t, driver, "笔记")
+	createNote(t, driver)
+	if err := driver.Type("图片菜单"); err != nil {
+		t.Fatal(err)
+	}
+
+	source := filepath.Join(t.TempDir(), "wide.png")
+	file, err := os.Create(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	canvas := image.NewRGBA(image.Rect(0, 0, 120, 60))
+	for y := 0; y < 60; y++ {
+		for x := 0; x < 120; x++ {
+			canvas.Set(x, y, color.RGBA{R: 30, G: 120, B: 200, A: 255})
+		}
+	}
+	if err := png.Encode(file, canvas); err != nil {
+		t.Fatal(err)
+	}
+	file.Close()
+	model.pickNoteFile = func() (string, error) { return source, nil }
+	insertPicture(t, driver)
+	advance(t, driver)
+
+	blocks := noteByTitle(t, model, "图片菜单").Blocks
+	if len(blocks) == 0 || blocks[0].Kind != domain.NoteBlockImage {
+		t.Fatalf("blocks = %+v, want the picture first", blocks)
+	}
+	picture := filepath.Join(model.workspace.Directory(), "data", "assets",
+		filepath.FromSlash(blocks[0].ImagePath))
+
+	body := noteControlBounds(t, driver, "笔记正文")
+	x, y := body.X+body.Width/2, body.Y+60
+	if err := driver.ClickButton(x, y, gfx.PointerButtonSecondary); err != nil {
+		t.Fatal(err)
+	}
+	if !shows(driver, "复制图片到剪贴板") || !shows(driver, "删除图片块") {
+		t.Fatal("a picture's secondary press should open its menu")
+	}
+
+	click(t, driver, "复制图片到剪贴板")
+	files, err := app.ClipboardFiles()
+	if err != nil || len(files) != 1 || files[0] != picture {
+		t.Fatalf("clipboard files = %q, %v; want %q", files, err, picture)
+	}
+
+	// The menu comes back for the same picture, and its delete takes the block out.
+	if err := driver.ClickButton(x, y, gfx.PointerButtonSecondary); err != nil {
+		t.Fatal(err)
+	}
+	click(t, driver, "删除图片块")
+	advance(t, driver)
+	for _, block := range noteByTitle(t, model, "图片菜单").Blocks {
+		if block.Kind == domain.NoteBlockImage {
+			t.Fatalf("the picture is still in the note: %+v", block)
+		}
+	}
+
+	// One undo brings it back: the delete gave the note the keyboard back.
+	if err := driver.Chord(gfx.ModifierControl, "z"); err != nil {
+		t.Fatal(err)
+	}
+	advance(t, driver)
+	blocks = noteByTitle(t, model, "图片菜单").Blocks
+	if len(blocks) == 0 || blocks[0].Kind != domain.NoteBlockImage {
+		t.Fatalf("after the undo = %+v", blocks)
+	}
+}
+
 // TestNotesImageSelectAndLightbox selects a picture and opens it on the second
 // press; the lightbox is a modal titled 笔记图片.
 func TestNotesImageSelectAndLightbox(t *testing.T) {

@@ -198,6 +198,7 @@ func (m *Model) bodyView(c ui.C) {
 	})
 	m.gripBlock = m.column.block
 	m.slashMenu(c, body)
+	m.imageContextMenu(c, body)
 }
 
 // headingStep is the type of one heading level: its size and weight, and the
@@ -1190,6 +1191,19 @@ func (m *Model) bodyPointer(event gfx.PointerEvent) gfx.EventResult {
 		}
 		m.hoverBlock = block
 		return gfx.EventResult{Repaint: true}
+	}
+	if event.Kind == gfx.PointerDown && event.Button == gfx.PointerButtonSecondary {
+		// A picture's menu hangs from the press: the block under it is the picture
+		// commanded, and the note's caret stays where it was. The other menus close
+		// first, so only one is on screen.
+		if block := m.blockAtPoint(event.Y); block >= 0 && block < len(m.blocks) &&
+			m.blocks[block].Kind == domain.NoteBlockImage {
+			m.closeSlash()
+			m.blockMenu.open = false
+			m.openImageMenu(block, gfx.Point{X: event.X, Y: event.Y})
+			return gfx.EventResult{Handled: true, Repaint: true}
+		}
+		return gfx.EventResult{}
 	}
 	if event.Kind != gfx.PointerDown || event.Button != gfx.PointerButtonPrimary {
 		return gfx.EventResult{}

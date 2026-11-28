@@ -73,6 +73,10 @@ type Commands struct {
 	ImportImage func(noteID, source string) (string, int, int, error)
 	// PasteImage stores the clipboard's picture the way ImportImage does.
 	PasteImage func(noteID string) (string, int, int, error)
+	// CopyImage puts a stored picture on the system clipboard. The picture travels
+	// as its own file, which is the form the platform's clipboard takes, so it can
+	// be pasted into a folder as the file or into an editor as the picture.
+	CopyImage func(relative string) error
 	// LoadImage decodes a stored picture for painting.
 	LoadImage func(relative string, maxEdge int) (gfx.Bitmap, error)
 	// LoadView decodes a stored picture's view copy: the same picture, already
@@ -248,8 +252,11 @@ type Model struct {
 	bodyPane        gfx.Rect
 	lineStartsCache []int
 	slash           slashState
-	pickPending     bool
-	focusBody       bool
+	// imageMenu is the picture block's right-click menu: the block it commands and
+	// the point under the pointer it hangs from.
+	imageMenu   imageMenuState
+	pickPending bool
+	focusBody   bool
 
 	// imageRev changes whenever a picture block is added, so the effect that
 	// decodes the note's pictures runs again.
@@ -285,6 +292,7 @@ func New() *Model {
 		dragBlock:     -1,
 		blockMenu:     blockMenuState{block: -1},
 		resize:        resizeState{block: -1},
+		imageMenu:     imageMenuState{block: -1},
 		doc:           text.NewEditor(""),
 		viewer:        imageviewer.New(),
 		split:         ui.SplitterState{Pos: layout.RailWidth},
