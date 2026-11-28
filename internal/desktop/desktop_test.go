@@ -1563,6 +1563,75 @@ func TestDevModeFollowsTheReloadHost(t *testing.T) {
 	}
 }
 
+// TestWindowInsetsCoverTheReloadHostsWindowButtons guards the development
+// reload host's titlebar: that host owns the window and paints the window
+// buttons itself, but the page it drives reports no insets, so the page has to
+// reserve the strip the buttons take — otherwise the appearance toggle sits
+// under the close button, as it did in `viva dev`.
+func TestWindowInsetsCoverTheReloadHostsWindowButtons(t *testing.T) {
+	stripLeading, stripTrailing := windowButtonStrip()
+	if gotLeading, gotTrailing := windowInsets(0, 0, true); gotLeading != stripLeading || gotTrailing != stripTrailing {
+		t.Fatalf("development insets = %v,%v, want the window buttons' %v,%v",
+			gotLeading, gotTrailing, stripLeading, stripTrailing)
+	}
+	// A window of this process reports its own insets; they are used as they are.
+	if gotLeading, gotTrailing := windowInsets(0, 138, true); gotLeading != 0 || gotTrailing != 138 {
+		t.Fatalf("a reported inset was replaced: %v,%v", gotLeading, gotTrailing)
+	}
+	// No custom titlebar, nothing to clear.
+	if gotLeading, gotTrailing := windowInsets(0, 0, false); gotLeading != 0 || gotTrailing != 0 {
+		t.Fatalf("a system-titlebar window reserved %v,%v", gotLeading, gotTrailing)
+	}
+}
+
+// TestDevelopmentTitlebarReservesTheWindowButtonStrip wires the fallback to the
+// page: a development page whose canvas reports no insets still keeps the
+// appearance toggle out of the window buttons' strip, as `viva dev` needs.
+func TestDevelopmentTitlebarReservesTheWindowButtonStrip(t *testing.T) {
+	_, strip := windowButtonStrip()
+	if strip == 0 {
+		t.Skip("this platform keeps no window buttons at the titlebar's end")
+	}
+	model := New()
+	model.development = true
+	page := ui.NewPage(ui.PageConfig{Tree: &model.tree, View: model.page, Theme: &model.theme})
+	config := newConfig(model)
+	// The reload host owns the window, so nothing tells the page where the
+	// buttons it paints are.
+	config.WindowMode = app.WindowTitled
+	driver, err := app.NewDriver(ui.Configure(page, config), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(driver.Close)
+	toggle, ok := controlBounds(driver, "切换到深色模式")
+	if !ok {
+		t.Fatal("the titlebar has no appearance toggle")
+	}
+	width := float32(driver.Snapshot().Width)
+	if right := toggle.X + toggle.Width; right > width-strip {
+		t.Fatalf("the development toggle ends at %v, under buttons that start at %v", right, width-strip)
+	}
+}
+
+// TestTitlebarKeepsTheAppearanceToggleClearOfTheWindowButtons checks the strip
+// itself: the toggle's right edge stops before the window buttons begin.
+func TestTitlebarKeepsTheAppearanceToggleClearOfTheWindowButtons(t *testing.T) {
+	_, strip := windowButtonStrip()
+	if strip == 0 {
+		t.Skip("this platform keeps no window buttons at the titlebar's end")
+	}
+	driver, _ := open(t)
+	toggle, ok := controlBounds(driver, "切换到深色模式")
+	if !ok {
+		t.Fatal("the titlebar has no appearance toggle")
+	}
+	width := float32(driver.Snapshot().Width)
+	if right := toggle.X + toggle.Width; right > width-strip {
+		t.Fatalf("the toggle ends at %v, under buttons that start at %v", right, width-strip)
+	}
+}
+
 // TestTitlebarThemeButtonHoverChangesFill guards the titlebar's appearance
 // toggle: it is a Viva ButtonBase with an explicit Hover look, because the
 // titlebar's own fill is the same Muted colour Viva's Ghost button uses.

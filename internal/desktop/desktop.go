@@ -428,7 +428,7 @@ func (m *Model) page(c ui.C) {
 	// The update keeps running while another section is shown: an effect the
 	// paint stops declaring is cancelled, so the shell declares it every paint.
 	m.settings.KeepUpdate(c)
-	leading, trailing := c.TitlebarInsets()
+	leading, trailing := m.titlebarInsets(c)
 	theme := c.Theme()
 	ui.Column(c).Fill().Background(theme.Muted).Children(func() {
 		m.titlebar(c, leading, trailing)
@@ -437,6 +437,25 @@ func (m *Model) page(c ui.C) {
 			m.content(c)
 		})
 	})
+}
+
+// titlebarInsets is the room the window buttons take at the ends of the titlebar
+// strip, as this page has to keep its own content clear of them.
+func (m *Model) titlebarInsets(c ui.C) (leading, trailing float32) {
+	leading, trailing = c.TitlebarInsets()
+	return windowInsets(leading, trailing, m.development)
+}
+
+// windowInsets fills in the window buttons for a page the development reload
+// host drives: that host owns the window and paints the buttons for it, but the
+// page it renders sees a canvas without insets, so without the strip they take
+// the appearance toggle would sit under the close button. A window of this
+// process reports its own insets, which are used as they are.
+func windowInsets(leading, trailing float32, development bool) (float32, float32) {
+	if leading == 0 && trailing == 0 && development {
+		return windowButtonStrip()
+	}
+	return leading, trailing
 }
 
 // titlebar is the 36px application band: the product name at the left and the
