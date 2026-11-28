@@ -721,8 +721,10 @@ func (m *Model) bodyEvent(event window.TextEvent) (window.TextState, error) {
 			if !takesText(m.blocks[start].Kind) {
 				// A rule has no words to join, so a backspace at the start of the line
 				// under it takes the rule away instead. A picture's line keeps its guard:
-				// one keystroke is not how a picture is deleted.
-				if m.blocks[start].Kind == domain.NoteBlockDivider {
+				// one keystroke is not how a picture is deleted. A selection is left to
+				// the text system, which deletes the words it holds.
+				selection := m.doc.Selection()
+				if selection.Start == selection.End && m.blocks[start].Kind == domain.NoteBlockDivider {
 					m.deleteDivider(start)
 				}
 				return m.state(), nil
