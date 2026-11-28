@@ -686,6 +686,9 @@ func TestRecordDatePicker(t *testing.T) {
 	if inDialog(driver, "上一周期") || inDialog(driver, "月") {
 		t.Fatal("a single date kept the range's grain choice or period arrows")
 	}
+	if inDialog(driver, "今天") {
+		t.Fatal("a single date kept the range's 今天 shortcut")
+	}
 	if moved := labelBoundsOf(t, driver, "取消"); moved != still {
 		t.Fatalf("opening the panel moved the form: %v -> %v", still, moved)
 	}

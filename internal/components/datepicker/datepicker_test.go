@@ -86,6 +86,50 @@ func TestDayCellPicksDate(t *testing.T) {
 	}
 }
 
+// TestSingleDayPanelHasNoShortcuts keeps a one-day field's panel to its grid:
+// 今天 / 近 7 天 are a range's shortcuts, and a field that picks one day ended
+// with a 今天 row it did not need.
+func TestSingleDayPanelHasNoShortcuts(t *testing.T) {
+	open := func(t *testing.T, spec Spec, trigger string) *app.Driver {
+		t.Helper()
+		state := NewState()
+		page := ui.NewPage(ui.PageConfig{View: func(c ui.C) {
+			ui.Column(c).Fill().Children(func() { Picker(c, &state, spec) })
+		}})
+		driver, err := app.NewDriver(ui.Configure(page, app.Config{Width: 1200, Height: 800}), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(driver.Close)
+		clickLabel(t, driver, trigger)
+		return driver
+	}
+
+	field := open(t, Spec{
+		Label: "开始时间", Start: "", Grain: ByDay, Placeholder: "不填",
+		Fill: true, CloseOnPick: true, Viewport: gfx.Rect{Width: 1200, Height: 800},
+		OnRange: func(from, _ string) {},
+	}, "不填")
+	if painted(field, "今天") {
+		t.Fatal("a one-day panel offered 今天")
+	}
+	if !painted(field, fmt.Sprintf("%d 年 %d 月", time.Now().Year(), int(time.Now().Month()))) {
+		t.Fatal("the one-day panel did not open on this month")
+	}
+
+	// A range keeps the shortcuts: they are what a range is for.
+	rangeDriver := open(t, Spec{
+		Label: "日期范围", Start: "2026-11-01", End: "2026-11-30", Grain: ByDay,
+		Viewport: gfx.Rect{Width: 1200, Height: 800},
+		OnRange:  func(from, to string) {},
+	}, "2026-11-01 ~ 2026-11-30")
+	for _, label := range []string{"今天", "近 7 天", "本周", "本月", "上月"} {
+		if !painted(rangeDriver, label) {
+			t.Fatalf("the range panel lost its %q shortcut", label)
+		}
+	}
+}
+
 // painted reports whether the frame paints a text, the panel's title included.
 func painted(driver *app.Driver, want string) bool {
 	for _, text := range driver.Snapshot().Texts {

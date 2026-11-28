@@ -288,18 +288,27 @@ func (state *State) measure(canvas *gfx.Canvas, theme gfx.Theme, spec Spec, anch
 		cellWidth = sample.BoundsWidth()
 	}
 	width := float32(gridColumns)*cellWidth + float32(gridColumns-1)*gap
-	presetsHeight := viva.BeginButton(nil, theme, gfx.ID{}, gfx.Rect{}).Small().BoundsHeight()
-	presetsWidth := float32(0)
-	for _, preset := range datePresets(spec.Grain, spec.CloseOnPick) {
-		if preset.label == "" {
-			break
+	// A panel of shortcuts is a range's alone; a field that picks one day ends
+	// with the grid, and its panel is a row shorter.
+	presetsHeight := float32(0)
+	if presets := datePresets(spec.Grain, spec.CloseOnPick); presets[0].label != "" {
+		presetsHeight = viva.BeginButton(nil, theme, gfx.ID{}, gfx.Rect{}).Small().BoundsHeight()
+		presetsWidth := float32(0)
+		for _, preset := range presets {
+			if preset.label == "" {
+				break
+			}
+			presetsWidth += viva.BeginButton(canvas, theme, gfx.ID{}, gfx.Rect{Width: 4096, Height: presetsHeight}).
+				Small().SizeToFit(preset.label).BoundsWidth()
+			presetsWidth += gap
 		}
-		presetsWidth += viva.BeginButton(canvas, theme, gfx.ID{}, gfx.Rect{Width: 4096, Height: presetsHeight}).
-			Small().SizeToFit(preset.label).BoundsWidth()
-		presetsWidth += gap
+		width = max(width, presetsWidth-gap)
 	}
-	width = max(width, presetsWidth-gap) + 2*metrics.PadSurface
-	height := 2*metrics.PadSurface + cell + gap + gridHeight + gap + presetsHeight
+	width += 2 * metrics.PadSurface
+	height := 2*metrics.PadSurface + cell + gap + gridHeight
+	if presetsHeight > 0 {
+		height += gap + presetsHeight
+	}
 	y := anchor.Y + anchor.Height + gap
 	if spec.Viewport.Height > 0 {
 		if y+height > spec.Viewport.Bottom() {
@@ -690,10 +699,14 @@ type datePreset struct {
 	label, from, to string
 }
 
-// datePresets are the shortcuts of a grain, as the picker offered them. A
-// field that picks one day offers 今天 alone.
+// datePresets are the shortcuts of a range's grain. A field that picks one day
+// has none: the 今天 / 本周 row belongs to ranges, and a field that picks one day
+// is a single press on the grid.
 func datePresets(grain Grain, single bool) [datePresetCount]datePreset {
 	var presets [datePresetCount]datePreset
+	if single {
+		return presets
+	}
 	today := dateText(time.Now())
 	now, ok := parseDate(today)
 	if !ok {
@@ -701,10 +714,6 @@ func datePresets(grain Grain, single bool) [datePresetCount]datePreset {
 	}
 	set := func(index int, label, from, to string) {
 		presets[index] = datePreset{label: label, from: from, to: to}
-	}
-	if single {
-		set(0, "今天", today, today)
-		return presets
 	}
 	switch grain {
 	case ByMonth:
