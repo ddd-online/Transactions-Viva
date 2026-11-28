@@ -17,8 +17,9 @@ import (
 
 // IconKey is one bare icon command: the 28px key a rail header or a toolbar puts
 // beside its title — the theme's control corner, the pointer wash, the keyboard ring,
-// a 15px mark and the command's name as its tooltip. The caller reads Clicked itself
-// through the returned box, so a command that can be on adds its own background.
+// a 15px mark and the command's name as its tooltip. action runs when the key is
+// clicked; the box comes back so a command that can be on can paint its own
+// background.
 //
 // The diary rail and the notes page both keep their commands this way, so the two
 // headers cannot drift apart.
@@ -41,7 +42,7 @@ func IconKey(c ui.C, label string, icon gfx.Icon, action func()) ui.Box {
 
 // Pending is the honest state of a screen whose structure exists but whose
 // content has not been implemented yet. It names what will live there, so the
-// scaffnever pretends to hexisting data.
+// scaffold never pretends to be existing data.
 func Pending(c ui.C, title, note string) {
 	metrics := c.Theme().Metrics
 	ui.Column(c).Grow(1).FillWidth().Pad(metrics.PadSurface * 2).Gap(metrics.GapItem).Center().Children(func() {

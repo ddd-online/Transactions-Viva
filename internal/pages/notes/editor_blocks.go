@@ -206,15 +206,23 @@ func (m *Model) blockGrip(c ui.C, block int) {
 }
 
 // headingMark names a heading's level beside its grip: the level's own icon in the
-// gutter, left of the handle, so the block says what it is where it is dragged
-// from instead of only in its menu. A paragraph declares no mark, so the column
-// carries two children and the layout leaves the room for the mark unused.
+// gutter, left of the handle, so the block says what it is where it is dragged from
+// instead of only in its menu. A paragraph declares no mark, and neither does a
+// heading whose gutter is too narrow for one, so the column carries the second child
+// only when there is room for it.
 func (m *Model) headingMark(c ui.C, block int) {
 	if block < 0 || block >= len(m.blocks) {
 		return
 	}
 	heading := m.blocks[block]
 	if heading.Kind != domain.NoteBlockHeading {
+		return
+	}
+	// The gutter has to hold the mark, the air beside the grip and the grip itself.
+	// In a narrow editor it does not, and a mark clamped against the pane's edge would
+	// sit on the grip instead of beside it — there the band's lit type key names the
+	// level, so the mark steps aside rather than collide.
+	if _, offset := bodyColumn(m.bodyPane.Width); offset < gripGap+gripSize+headingMarkGap+headingMarkSize {
 		return
 	}
 	ui.Icon(c, headingIcon(heading.Level)).Size(headingMarkSize, headingMarkSize).

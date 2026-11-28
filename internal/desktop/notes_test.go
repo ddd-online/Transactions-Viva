@@ -207,6 +207,21 @@ func TestNotesHeadingMarkNamesTheLevel(t *testing.T) {
 	if mark, ok := markLeftOfGrip(driver, grip); ok {
 		t.Fatalf("a paragraph should carry no mark, got %v", mark)
 	}
+
+	// At the narrowest window the gutter cannot hold the mark beside the grip, so the
+	// mark steps aside instead of sitting on the handle: the band's lit key still
+	// names the level.
+	if err := driver.Resize(960, 620); err != nil {
+		t.Fatal(err)
+	}
+	if err := driver.Paint(); err != nil {
+		t.Fatal(err)
+	}
+	hoverBlock(t, driver, "小节")
+	grip = noteControlBounds(t, driver, "块操作")
+	if mark, ok := markLeftOfGrip(driver, grip); ok {
+		t.Fatalf("a narrow gutter should carry no mark, got %v", mark)
+	}
 }
 
 // TestNotesTitleIsAField drives the band's title: it is a field from the start,
