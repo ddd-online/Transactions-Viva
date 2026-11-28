@@ -19,6 +19,9 @@ coverage.out
 /.impeccable/config.local.json
 /.impeccable/mocks/
 
+# A local code index cache, not project source.
+/.codegraph/
+
 # Editor and OS clutter.
 /.vscode/
 .DS_Store
