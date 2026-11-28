@@ -484,9 +484,13 @@ func (p *lessonsPanel) formModal(c ui.C) {
 			})
 			ui.Column(c).Gap(4).Children(func() {
 				typography.Caption(c, "股票")
-				if selectbox.Select(c, &p.stockCode, stockCodes,
-					func(code string) string { return stockLabels[code] }).
-					Placeholder(p.stockPlaceholder()).Label("股票").
+				// A Combobox, not a Select: the account can have dozens of
+				// stocks, and the list is searched by name or code instead of
+				// being scrolled through as a menu taller than the dialog.
+				if selectbox.Combo(c, &p.stockCode, stockCodes,
+					func(code string) string { return stockLabels[code] }, "股票").
+					FillWidth().
+					Placeholder(p.stockPlaceholder()).
 					Disabled(p.sourceLocked || len(stockCodes) == 0).Changed() {
 					p.roundID = ""
 					p.sourceMissing = false
