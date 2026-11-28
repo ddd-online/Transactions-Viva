@@ -75,6 +75,22 @@ func (m *Model) rowLabel(index int) string {
 	return fmt.Sprintf("%s，%d 字", label, one.wordCount)
 }
 
+// rowKey is a row's identity: the date key behind it, given a number the first time
+// it is seen, so closing a branch above a row does not hand its focus to whichever
+// row takes its index next.
+func (m *Model) rowKey(index int) int {
+	if index < 0 || index >= len(m.rows) {
+		return -1
+	}
+	key := m.rows[index].key
+	if id, ok := m.rowKeys[key]; ok {
+		return id
+	}
+	m.nextRowKey++
+	m.rowKeys[key] = m.nextRowKey
+	return m.nextRowKey
+}
+
 // rowContent paints one row inside the tree's own row box (already indented for
 // its depth and padded for the chevron):
 //
@@ -325,22 +341,27 @@ func (m *Model) chooseRow(index int) {
 	m.rebuildRows()
 }
 
-// openAround expands the year and month a date falls in, so a date just written
-// or imported is visible in the tree without hunting for its branches.
+// openAround expands the year and month a date falls in, so the day the editor shows
+// is visible in the tree. It opens that branch only: picking another day reveals its
+// own month, and the rest of the tree stays the way the user left it.
 func (m *Model) openAround(date string) {
 	if !domain.IsDiaryDate(date) {
 		return
 	}
-	year, month := domain.DiaryYearKey(date), domain.DiaryMonthKey(date)
-	if len(m.dates) > 0 {
-		// The newest entry's branches open too, so a ledger with entries shows
-		// its latest day without a click.
-		newest := m.dates[0].Date
-		if domain.IsDiaryDate(newest) {
-			m.expanded[domain.DiaryYearKey(newest)] = true
-			m.expanded[domain.DiaryMonthKey(newest)] = true
-		}
+	m.expanded[domain.DiaryYearKey(date)] = true
+	m.expanded[domain.DiaryMonthKey(date)] = true
+}
+
+// openFirstLook opens what the first look at a book should show: the day the editor
+// opened on and the newest entry, so a book with entries is not a wall of closed
+// years. Later picks open only their own branch (see openAround), and 收起全部 is
+// therefore not undone by choosing a day.
+func (m *Model) openFirstLook() {
+	m.openAround(m.selected)
+	if len(m.dates) == 0 {
+		return
 	}
-	m.expanded[year] = true
-	m.expanded[month] = true
+	if newest := m.dates[0].Date; domain.IsDiaryDate(newest) {
+		m.openAround(newest)
+	}
 }

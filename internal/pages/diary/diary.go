@@ -20,6 +20,7 @@ import (
 	"github.com/vivaui/viva/gfx"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components"
 	"transactions/internal/components/datepicker"
 	"transactions/internal/components/emptystate"
 	"transactions/internal/components/layout"
@@ -89,6 +90,11 @@ type Model struct {
 	// the visible tree rows rebuilt from both.
 	expanded map[string]bool
 	rows     []row
+	// rowKeys gives a row its identity across rebuilds: a closed branch takes rows
+	// away above a row, and the tree keeps the focus by this number, not by the index
+	// the row happened to have.
+	rowKeys    map[string]int
+	nextRowKey int
 
 	tree ui.TreeState
 	pick datepicker.State
@@ -108,9 +114,10 @@ func New() *Model {
 	m := &Model{
 		selected: domain.Today(),
 		expanded: map[string]bool{},
+		rowKeys:  map[string]int{},
 		pick:     datepicker.NewState(),
 	}
-	m.tree.Key = func(index int) int { return index }
+	m.tree.Key = m.rowKey
 	m.tree.Node = m.node
 	m.tree.Label = m.rowLabel
 	m.tree.RowHeight = layout.TreeRowHeight
@@ -152,7 +159,7 @@ func (m *Model) Reload() {
 	}
 	m.dates = dates
 	m.loadEntry()
-	m.openAround(m.selected)
+	m.openFirstLook()
 	m.rebuildRows()
 }
 
@@ -218,7 +225,7 @@ func (m *Model) SetBook(id string) {
 			m.errorMessage = "读取日记列表失败：" + err.Error()
 		}
 	}
-	m.openAround(m.selected)
+	m.openFirstLook()
 	m.rebuildRows()
 }
 
@@ -336,25 +343,14 @@ func (m *Model) saveState(c ui.C) {
 
 // expandAllButton is the one command of the tree header: it opens every year and
 // month, or closes them back to the years. It is the notes tree's key with the same
-// two labels and the same two marks, so the two rails are read the same way.
+// two labels and the same two marks, and the same shared key body, so the two rails
+// are read the same way.
 func (m *Model) expandAllButton(c ui.C) {
-	theme := c.Theme()
 	label, icon := "展开全部", icons.ListTree
 	if m.allExpanded() {
 		label, icon = "收起全部", icons.ListX
 	}
-	button := ui.ButtonBase(c, label).Size(28, 28).
-		Radius(theme.Metrics.RadiusControl).
-		Hover(ui.Look{}.Background(state.Hover(*theme))).
-		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
-		Focus(ui.Look{}.Ring(2, theme.Ring)).
-		Tooltip(label)
-	button.Children(func() {
-		ui.Icon(c, icon).Size(15, 15)
-	})
-	if button.Clicked() {
-		m.toggleExpandAll()
-	}
+	components.IconKey(c, label, icon, m.toggleExpandAll)
 }
 
 // rail is the date tree column: its own header with the count, the command that

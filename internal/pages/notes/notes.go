@@ -20,6 +20,7 @@ import (
 	"github.com/vivaui/viva/text"
 	"github.com/vivaui/viva/ui"
 
+	"transactions/internal/components"
 	"transactions/internal/components/emptystate"
 	"transactions/internal/components/imageviewer"
 	"transactions/internal/components/layout"
@@ -627,20 +628,7 @@ func (m *Model) toolbar(c ui.C) {
 // iconButton is one bare icon command of the page: the toolbar's four and the
 // band's panel button.
 func (m *Model) iconButton(c ui.C, label string, icon gfx.Icon, action func()) ui.Box {
-	theme := c.Theme()
-	button := ui.ButtonBase(c, label).Size(28, 28).
-		Radius(theme.Metrics.RadiusControl).
-		Hover(ui.Look{}.Background(state.Hover(*theme))).
-		Pressed(ui.Look{}.Background(state.Pressed(*theme))).
-		Focus(ui.Look{}.Ring(2, theme.Ring)).
-		Tooltip(label)
-	button.Children(func() {
-		ui.Icon(c, icon).Size(15, 15)
-	})
-	if button.Clicked() {
-		action()
-	}
-	return button
+	return components.IconKey(c, label, icon, action)
 }
 
 // allExpanded reports whether every folder that holds something is open, which
