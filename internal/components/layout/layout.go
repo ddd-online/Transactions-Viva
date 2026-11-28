@@ -212,6 +212,11 @@ func TableRow(c ui.C, element ui.Box) ui.Box {
 // band whose readings summarize the whole page (the stock records and the
 // ladder) passes right and sits them against the trailing edge; the rest run
 // together at the leading edge like a sentence.
+//
+// A band with a word at one edge and readings at the other (the note editor's
+// draft state and its size) passes right false and declares a Spacer between the
+// two groups: the row is then spread across the band instead of gathering at its
+// leading edge, and every reading still keeps GroupGap.
 func Footer(c ui.C, right bool, body func()) {
 	row := ui.Row(c).Height(FooterHeight).FillWidth().
 		PadX(Inset).Gap(GroupGap).Items(ui.Center)

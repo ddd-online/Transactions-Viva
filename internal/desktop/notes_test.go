@@ -1076,6 +1076,17 @@ func TestNotesFooterShowsTheDraftState(t *testing.T) {
 	if state.X >= size.X {
 		t.Fatalf("the draft state %v should stand left of the note's size %v", state, size)
 	}
+	// The state starts where the note's own column does: the band's 16px inset, the
+	// same edge the body and the breadcrumb stand on.
+	bodyX := float32(0)
+	for _, hit := range driver.Snapshot().Hits {
+		if hit.Label == "笔记正文" {
+			bodyX = hit.Bounds.X
+		}
+	}
+	if state.X < bodyX-1 || state.X > bodyX+1 {
+		t.Fatalf("the draft state starts at %.1f, want the note's own edge %.1f", state.X, bodyX)
+	}
 	advance(t, driver)
 	if !painted(driver, "已保存") {
 		t.Fatal("the saved draft should say 已保存 in the footer")

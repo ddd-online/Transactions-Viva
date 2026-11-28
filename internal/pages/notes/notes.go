@@ -1026,9 +1026,10 @@ func (m *Model) titleField(c ui.C) {
 	}
 }
 
-// saveState is the quiet state at the left of the footer: the draft's word beside
-// the note's size, both of them read at the foot of the page rather than in its
-// title band, where the title belongs alone.
+// saveState is the draft's word at the left of the footer: quietly saved, still
+// waiting for the pause, or failed. It is the footer's leading edge the way the note's
+// size is its trailing one, and it keeps its own room so a narrow window shortens
+// nothing that matters — three characters are never the thing to cut.
 func (m *Model) saveState(c ui.C) {
 	theme := c.Theme()
 	label, color := "已保存", theme.MutedForeground
@@ -1038,8 +1039,6 @@ func (m *Model) saveState(c ui.C) {
 	case saveFailed:
 		label, color = "保存失败", theme.Danger
 	}
-	// The state never gives way: a long title truncates instead of pushing it
-	// out of the band.
 	typography.Caption(c, label).Color(color).Shrink(0)
 }
 
